@@ -1,0 +1,96 @@
+{{ $config := .Values.trainingConfig }}
+
+apiVersion: kubeflow.org/v1
+kind: PyTorchJob
+metadata:
+  name: nlp-training
+  labels:
+    app: nlp-training
+spec:
+  pytorchReplicaSpecs:
+    Worker:
+      replicas: {{ $config.nodes }}
+      template:
+        spec:
+          containers:
+          - name: pytorch
+            image: {{ .Values.image.trainingImage }}
+            env:
+              {{- range $key, $value := $config.envVars }}
+              - name: {{ $key }}
+                value: {{ $value | quote }}
+              {{- end}}
+            {{- if eq $config.wandbKey "nil" }}
+            command: ["torchrun"]
+            {{- if gt (int $config.nodes) 1 }}
+            args:
+              - "--nnodes={{ $config.nodes }}"
+              - "--nproc_per_node={{ $config.ntasksPerNode }}"
+              - "--rdzv-backend=c10d"
+              - "--rdzv-endpoint=nlp-training-worker-0"
+              - "{{ $config.scriptPath }}"
+              {{- range $config.scriptArgs }}
+              - {{ . | quote }}
+              {{- end }}
+            {{- else }}
+            args:
+              - "--nproc_per_node={{ $config.ntasksPerNode }}"
+              - "{{ $config.scriptPath }}"
+              {{- range $config.scriptArgs }}
+              - {{ . | quote }}
+              {{- end }}
+            {{- end }}
+            {{- else }}
+            command: ["bash", "-c"]
+            args:
+              - "wandb login {{ $config.wandbKey }} && torchrun --nnodes={{ $config.nodes }} --rdzv-backend=c10d --rdzv-endpoint=nlp-training-worker-0 --nproc_per_node={{ $config.numGPUs }} {{ $config.scriptPath }} {{ $config.scriptArgs }}"
+            {{- end }}
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            securityContext:
+              capabilities:
+                add: [ "IPC_LOCK" ]
+            {{- if or (eq $config.device "gpu") (eq $config.device "trainium") (gt (int $config.numEFADevices) 0 ) }}
+            resources:
+              requests:
+                {{- if eq $config.device "gpu" }}
+                nvidia.com/gpu: {{ $config.ntasksPerNode }}
+                {{- end }}
+                {{- if eq $config.device "trainium" }}
+                aws.amazon.com/neuroncore: {{ $config.ntasksPerNode }}
+                {{- end }}
+                {{- if gt (int $config.numEFADevices) 0 }}
+                vpc.amazonaws.com/efa: {{ $config.numEFADevices }}
+                {{- end }}
+              limits:
+                {{- if eq $config.device "gpu" }}
+                nvidia.com/gpu: {{ $config.ntasksPerNode }}
+                {{- end }}
+                {{- if eq $config.device "trainium" }}
+                aws.amazon.com/neuroncore: {{ $config.ntasksPerNode }}
+                {{- end }}
+                {{- if gt (int $config.numEFADevices) 0 }}
+                vpc.amazonaws.com/efa: {{ $config.numEFADevices }}
+                {{- end }}
+            {{- end }}
+            volumeMounts:
+            {{- if $config.persistentVolumeClaim.claimName }}
+            - mountPath: {{ $config.persistentVolumeClaim.subPath }}
+              name: workspace
+             {{- end }}
+            {{- if not $config.customScript }}
+            - mountPath: /config
+              name: training-config
+            {{- end }}
+          restartPolicy: {{ $config.restartPolicy }}
+
+          volumes:
+          {{- if $config.persistentVolumeClaim.claimName }}
+          - name: workspace
+            persistentVolumeClaim:
+              claimName: {{ $config.persistentVolumeClaim.claimName }}
+          {{- end }}
+          {{- if not $config.customScript }}
+          - configMap:
+              name: training-config
+            name: training-config
+          {{- end }}

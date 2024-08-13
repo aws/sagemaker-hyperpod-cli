@@ -1,0 +1,51 @@
+from typing import Optional
+
+from hyperpod_cli.clients.kubernetes_client import KubernetesClient
+from hyperpod_cli.service.list_pods import ListPods
+
+
+class ExecCommand:
+    def __init__(self):
+        return
+
+    def exec_command(
+        self,
+        job_name: str,
+        pod_name: Optional[str],
+        namespace: Optional[str],
+        all_pods: Optional[bool],
+        bash_command: tuple,
+    ):
+        before_seperator = bash_command[: bash_command.index("-")]
+
+        if before_seperator:
+            raise RuntimeError(
+                f"please provide bash command after -, unexpected char found {before_seperator}"
+            )
+
+        after_seperator = bash_command[bash_command.index("-") + 1 :]
+        bash_command_str: str = " ".join(after_seperator)
+
+        k8s_client = KubernetesClient()
+        list_pods_service = ListPods()
+
+        if not namespace:
+            namespace = k8s_client.get_current_context_namespace()
+
+        pods_for_training_job = list_pods_service.list_pods_for_training_job(
+            job_name, namespace, False
+        )
+
+        if all_pods:
+            output = ""
+            for pod in pods_for_training_job:
+                output += (pod + "\n")
+                output += (k8s_client.exec_command_on_pod(pod, namespace, bash_command_str) + "\n")
+                output += "\n"
+            return output
+        else:
+            if pod_name not in pods_for_training_job:
+                raise RuntimeError(
+                    f"Given pod name {pod_name} is not associated with training job {job_name} in namespace {namespace}"
+                )
+            return k8s_client.exec_command_on_pod(pod_name, namespace, bash_command_str)
