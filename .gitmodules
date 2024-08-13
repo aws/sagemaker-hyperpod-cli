@@ -1,0 +1,4 @@
+[submodule "src/hyperpod_cli/custom_launcher/launcher/nemo/nemo_framework_launcher"]
+	path = src/hyperpod_cli/custom_launcher/launcher/nemo/nemo_framework_launcher
+	url = https://github.com/NVIDIA/NeMo-Framework-Launcher.git
+	branch = 3d41c31

@@ -1,0 +1,2 @@
+namespace: "kubeflow"
+roleName: "hyperpod-scientist-user-namespace-level-role"

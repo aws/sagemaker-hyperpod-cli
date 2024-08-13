@@ -1,0 +1,13 @@
+   ## Training operator container repo and tag
+image:
+ repository: kubeflow/training-operator
+ tag: "v1-855e096"
+createNamespace: true
+schemes:
+  - pytorchjob
+  - tfjob
+  - mxjob
+  - xgboostjob
+  - paddlejob
+# disabled to avoid the conflicting mpijobs.kubeflow.org with mpi-operator  
+# - mpijob

@@ -1,0 +1,23 @@
+persistentVolume:
+  name: fsx-pv
+  capacity: 1200Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  mountOptions:
+    - flock
+  reclaimPolicy: Retain
+  csi:
+    driver: fsx.csi.aws.com
+    volumeHandle: ???
+    volumeAttributes:
+      dnsname: ???
+      mountname: fsx
+
+persistentVolumeClaim:
+  name: fsx-claim
+  storageClassName: fsx-sc
+  accessModes:
+    - ReadWriteMany
+  requests:
+    storage: 1200Gi

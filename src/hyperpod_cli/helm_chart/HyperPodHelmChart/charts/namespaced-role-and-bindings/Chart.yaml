@@ -1,0 +1,5 @@
+apiVersion: v2
+name: namespaced-role-and-bindings
+version: 0.1.0
+appVersion: 1.0
+description: A Helm chart for setting up Hyperpod role and role bindings for cluster role in a namespace

@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mpi-operator.fullname" . }}
+  labels:
+    app: mpi-operator
+    app.kubernetes.io/component: mpijob
+    kustomize.component: mpi-operator
+  {{- include "mpi-operator.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.mpiOperator.replicas }}
+  selector:
+    matchLabels:
+      app: mpi-operator
+      app.kubernetes.io/component: mpijob
+      app.kubernetes.io/name: mpi-operator
+      kustomize.component: mpi-operator
+    {{- include "mpi-operator.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: mpi-operator
+        app.kubernetes.io/component: mpijob
+        app.kubernetes.io/name: mpi-operator
+        kustomize.component: mpi-operator
+      {{- include "mpi-operator.labels" . | nindent 8 }}
+      {{- include "mpi-operator.selectorLabels" . | nindent 8 }}
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+{{- if .Values.mpiOperator.affinity }}
+      affinity:
+{{ toYaml .Values.mpiOperator.affinity | indent 8 }}
+      {{- end }}
+      {{- if .Values.mpiOperator.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.mpiOperator.nodeSelector | indent 8 }}
+      {{- end }}
+      {{- if .Values.mpiOperator.tolerations }}
+      tolerations:
+{{ toYaml .Values.mpiOperator.tolerations | indent 8 }}
+      {{- end }}
+      {{- if .Values.mpiOperator.topologySpreadConstraints }}
+      topologySpreadConstraints:
+{{ toYaml .Values.mpiOperator.topologySpreadConstraints | indent 8 }}
+      {{- end }}
+      containers:
+      - args:
+        {{- toYaml .Values.mpiOperator.additionalArgs | nindent 8 }}
+        env:
+        - name: KUBERNETES_CLUSTER_DOMAIN
+          value: "cluster.local"
+        image: {{ .Values.mpiOperator.image.repository }}:{{ .Values.mpiOperator.image.tag | default .Chart.AppVersion }}
+        name: mpi-operator
+        imagePullPolicy: {{ .Values.mpiOperator.imagePullPolicy | default "IfNotPresent "}}
+        resources: {}
+      serviceAccountName: {{ include "mpi-operator.fullname" . }}

@@ -1,0 +1,9 @@
+apiVersion: v2
+name: storage
+version: 0.1.0
+appVersion: 1.0
+description: A Helm chart for deploying storage configuration in K8
+keywords:
+  - Fsx
+  - EBS
+

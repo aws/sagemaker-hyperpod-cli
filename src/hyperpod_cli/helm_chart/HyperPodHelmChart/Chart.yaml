@@ -1,0 +1,77 @@
+apiVersion: v2
+name: hyperpod-helm-chart
+description: A Helm chart for Kubernetes
+
+# A chart can be either an 'application' or a 'library' chart.
+#
+# Application charts are a collection of templates that can be packaged into versioned archives
+# to be deployed.
+#
+# Library charts provide useful utilities or functions for the chart developer. They're included as
+# a dependency of application charts to inject those utilities and functions into the rendering
+# pipeline. Library charts do not define any templates and therefore cannot be deployed.
+type: application
+
+# This is the chart version. This version number should be incremented each time you make changes
+# to the chart and its templates, including the app version.
+# Versions are expected to follow Semantic Versioning (https://semver.org/)
+version: 0.1.0
+
+# This is the version number of the application being deployed. This version number should be
+# incremented each time you make changes to the application. Versions are not expected to
+# follow Semantic Versioning. They should reflect the version the application is using.
+# It is recommended to use it with quotes.
+appVersion: "1.16.0"
+
+dependencies:
+  - name: training-operators
+    version: "0.1.0"
+    repository: "file://charts/training-operators"
+  - name: mlflow
+    version: "0.1.0"
+    repository: "file://charts/mlflow"
+    condition: mlflow.enabled
+  - name: nvidia-device-plugin
+    version: "0.16.1"
+    repository: https://nvidia.github.io/k8s-device-plugin
+    condition: nvidia-device-plugin.devicePlugin.enabled    
+  - name: aws-efa-k8s-device-plugin
+    version: "0.5.3"
+    repository: https://aws.github.io/eks-charts/
+    condition: aws-efa-k8s-device-plugin.devicePlugin.enabled
+  - name: neuron-device-plugin
+    version: "0.1.0"
+    repository: "file://charts/neuron-device-plugin"
+    condition: neuron-device-plugin.devicePlugin.enabled  
+  - name: kueue  
+    version: "0.1.0"
+    repository: "file://charts/kueue"
+    condition: kueue.enabled  
+  - name: storage
+    version: "0.1.0"
+    repository: "file://charts/storage"
+    condition: storage.enabled 
+  - name: health-monitoring-agent
+    version: "0.1.0"
+    repository: "file://charts/health-monitoring-agent"
+    condition: health-monitoring-agent.enabled 
+  - name: mpi-operator
+    version: "0.1.0"
+    repository: "file://charts/mpi-operator"
+    condition: mpi-operator.enabled 
+  - name: deep-health-check
+    version: "0.1.0"
+    repository: "file://charts/deep-health-check"
+    condition: deep-health-check.enabled
+  - name: job-auto-restart
+    version: "0.1.0"
+    repository: "file://charts/job-auto-restart"
+    condition: job-auto-restart.enabled
+  - name: cluster-role-and-bindings
+    version: "0.1.0"
+    repository: "file://charts/cluster-role-and-bindings"
+    condition: cluster-role-and-bindings.enabled
+  - name: namespaced-role-and-bindings
+    version: "0.1.0"
+    repository: "file://charts/namespaced-role-and-bindings"
+    condition: namespaced-role-and-bindings.enabled

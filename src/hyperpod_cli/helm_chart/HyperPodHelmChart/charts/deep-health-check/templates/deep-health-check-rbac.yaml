@@ -1,0 +1,42 @@
+# rbac.yaml
+# service account
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: deep-health-check-service-account
+  namespace: {{ .Values.namespace }}
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: deep-health-check-service-account-role
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+      - patch
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: deep-health-check-service-account-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: deep-health-check-service-account-role
+subjects:
+  - kind: ServiceAccount
+    name: deep-health-check-service-account
+    namespace: {{ .Values.namespace }}
