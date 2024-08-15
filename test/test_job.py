@@ -1,6 +1,6 @@
 import unittest
 from unittest import mock
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, mock_open
 
 from click.testing import CliRunner
 
@@ -10,6 +10,7 @@ from hyperpod_cli.service.describe_training_job import DescribeTrainingJob
 from hyperpod_cli.service.list_pods import ListPods
 from hyperpod_cli.service.list_training_jobs import ListTrainingJobs
 
+VALID_CONFIG_FILE_DATA = "cluster:\n  cluster_type: k8s\n  instance_type: ml.g5.xlarge\n  cluster_config: {pullPolicy: IfNotPresent}"
 
 class JobTest(unittest.TestCase):
     def setUp(self):
@@ -413,6 +414,7 @@ class JobTest(unittest.TestCase):
     @mock.patch("hyperpod_cli.commands.job.compose")
     @mock.patch("hyperpod_cli.commands.job.customer_launcher")
     @mock.patch("os.path.exists", return_value=True)
+    @mock.patch("builtins.open", mock_open(read_data=VALID_CONFIG_FILE_DATA))
     def test_submit_job_with_config_file(
         self, mock_exists, mock_main, mock_compose, mock_initialize_config_dir
     ):
@@ -657,3 +659,80 @@ class JobTest(unittest.TestCase):
             ],
         )
         self.assertEqual(result.exit_code, 1)
+
+    @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
+    @mock.patch("hyperpod_cli.commands.job.compose")
+    @mock.patch("hyperpod_cli.commands.job.customer_launcher")
+    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch("yaml.dump")
+    @mock.patch("os.path.exists", return_value=True)
+    @mock.patch("os.remove", return_value=None)
+    def test_submit_job_with_cli_args_with_service_account(
+        self,
+        mock_remove,
+        mock_exists,
+        mock_yaml_dump,
+        mock_file,
+        mock_main,
+        mock_compose,
+        mock_initialize_config_dir,
+    ):
+        mock_yaml_dump.return_value = None
+        mock_main.return_value = None
+        mock_compose.return_value = None
+        mock_initialize_config_dir.return_value.__enter__.return_value = None
+        result = self.runner.invoke(
+            start_job,
+            [
+                "--name",
+                "test-job",
+                "--instance-type",
+                "ml.c5.xlarge",
+                "--image",
+                "pytorch:1.9.0-cuda11.1-cudnn8-runtime",
+                "--node-count",
+                "2",
+                "--service-account-name",
+                "test-account-service"
+            ],
+        )
+        self.assertEqual(result.exit_code, 0)
+
+
+    @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
+    @mock.patch("hyperpod_cli.commands.job.compose")
+    @mock.patch("hyperpod_cli.commands.job.customer_launcher")
+    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch("yaml.dump")
+    @mock.patch("os.path.exists", return_value=True)
+    @mock.patch("os.remove", return_value=None)
+    def test_submit_job_with_cli_args_with_persistent_volume_claims(
+        self,
+        mock_remove,
+        mock_exists,
+        mock_yaml_dump,
+        mock_file,
+        mock_main,
+        mock_compose,
+        mock_initialize_config_dir,
+    ):
+        mock_yaml_dump.return_value = None
+        mock_main.return_value = None
+        mock_compose.return_value = None
+        mock_initialize_config_dir.return_value.__enter__.return_value = None
+        result = self.runner.invoke(
+            start_job,
+            [
+                "--name",
+                "test-job",
+                "--instance-type",
+                "ml.c5.xlarge",
+                "--image",
+                "pytorch:1.9.0-cuda11.1-cudnn8-runtime",
+                "--node-count",
+                "2",
+                "--persistent-volume-claims",
+                "claim1:test1,claim2:test2"
+            ],
+        )
+        self.assertEqual(result.exit_code, 0)

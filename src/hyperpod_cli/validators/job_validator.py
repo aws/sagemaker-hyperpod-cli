@@ -1,7 +1,15 @@
 import json
+import os
+import yaml
+from yaml.loader import SafeLoader
 from typing import Optional
 
-from hyperpod_cli.constants.command_constants import RestartPolicy
+from hyperpod_cli.constants.command_constants import (
+    RestartPolicy,
+    KUEUE_QUEUE_NAME_LABEL_KEY,
+    HYPERPOD_AUTO_RESUME_ANNOTATION_KEY,
+    HYPERPOD_MAX_RETRY_ANNOTATION_KEY,
+)
 from hyperpod_cli.constants.hyperpod_instance_types import HyperpodInstanceType
 from hyperpod_cli.utils import setup_logger
 from hyperpod_cli.validators.validator import Validator
@@ -29,6 +37,7 @@ class JobValidator(Validator):
         auto_resume: bool,
         restart_policy: Optional[RestartPolicy],
     ):
+        # Hard coded validations. TODO: support more options for following fields
         if job_kind is not None and job_kind != "kubeflow/PyTorchJob":
             logger.error("The only supported 'job-kind' is 'kubeflow/PyTorchJob'.")
             return False
@@ -39,12 +48,6 @@ class JobValidator(Validator):
 
         if scheduler_type is not None and scheduler_type != "Kueue":
             logger.error("The only supported 'scheduler_type' is 'Kueue'.")
-            return False
-
-        if (queue_name is None and priority is not None) or (
-            queue_name is not None and priority is None
-        ):
-            logger.error("Must provide both or neither of 'queue_name' and 'priority'.")
             return False
 
         if config_name is not None and name is not None:
@@ -66,17 +69,6 @@ class JobValidator(Validator):
                 )
                 return False
 
-            if instance_type is None:
-                logger.error(
-                    "Please provide 'instance-type' to specify instance type for training job"
-                )
-                return False
-
-            else:
-                if instance_type not in [member.value for member in HyperpodInstanceType]:
-                    logger.error("Please provide SageMaker HyperPod supported 'instance-type'")
-                    return False
-
             if image is None:
                 logger.error(
                     "Please provide 'image' to specify the training image for training job"
@@ -92,14 +84,99 @@ class JobValidator(Validator):
                         "Please ensure 'label-selector' keys are string type and values are string or list of string type"
                     )
                     return False
+            return validate_hyperpod_related_fields(instance_type, queue_name, priority, auto_resume, restart_policy)
 
-            if auto_resume and restart_policy != RestartPolicy.ON_FAILURE.value:
-                logger.error(
-                    "To enable 'auto_resume', please ensure the 'restart-policy' is 'OnFailure'. "
-                )
-                return False
         return True
 
+    def validate_submit_job_config_yaml(self, file):
+        if not os.path.exists(file):
+            logger.error(f"Configuration file {file} does not exist.")
+            return False
+        config_data = verify_and_load_yaml(file)
+        if config_data is None:
+            return False
+
+        return validate_yaml_content(config_data)
+
+
+def verify_and_load_yaml(file_path: str):
+    try:
+        with open(file_path, 'r') as file:
+            # Attempt to load the YAML file
+            data = yaml.load(file, Loader=SafeLoader)
+            return data
+    except Exception as e:
+        logger.error(f"The config file {file_path} is not a valid YAML file. Error: {e}")
+        return None
+
+
+def validate_yaml_content(data):
+    cluster_fields = data.get("cluster")
+    if cluster_fields is None:
+        logger.error("Please ensure 'cluster' field provided in the config file")
+        return False
+    cluster_type = cluster_fields.get("cluster_type")
+    if cluster_type is None or cluster_type != "k8s":
+        logger.error("Only support 'k8s' cluster type currently.")
+        return False
+    cluster_config_fields = cluster_fields.get("cluster_config")
+    if cluster_config_fields is None:
+        logger.error("Please ensure 'cluster' contains 'cluster_config' field in the config file")
+        return False
+
+    custom_labels = cluster_config_fields.get("custom_labels")
+    annotations = cluster_config_fields.get("annotations")
+
+    instance_type = cluster_fields.get("instance_type", None)
+    queue_name = None
+    if custom_labels is not None:
+        queue_name = custom_labels.get(KUEUE_QUEUE_NAME_LABEL_KEY, None)
+
+    auto_resume = False
+    if annotations is not None:
+        auto_resume = annotations.get(HYPERPOD_AUTO_RESUME_ANNOTATION_KEY, False)
+        if auto_resume and (annotations.get(HYPERPOD_MAX_RETRY_ANNOTATION_KEY) is None):
+            logger.error(
+                f"Please provide both '{HYPERPOD_AUTO_RESUME_ANNOTATION_KEY}' "
+                f"and '{HYPERPOD_MAX_RETRY_ANNOTATION_KEY}' "
+                f"annotations to use Auto Resume feature")
+            return False
+
+    priority = cluster_config_fields.get("priority_class_name", None)
+    restart_policy = cluster_config_fields.get("restartPolicy", None)
+
+    return validate_hyperpod_related_fields(instance_type, queue_name, priority, auto_resume, restart_policy)
+
+
+def validate_hyperpod_related_fields(
+    instance_type: Optional[str],
+    queue_name: Optional[str],
+    priority: Optional[str],
+    auto_resume: bool,
+    restart_policy: Optional[RestartPolicy],
+):
+    if instance_type is None:
+        logger.error(
+            "Please provide 'instance-type' to specify instance type for training job"
+        )
+        return False
+    else:
+        if instance_type not in [member.value for member in HyperpodInstanceType]:
+            logger.error("Please provide SageMaker HyperPod supported 'instance-type'")
+            return False
+
+    if auto_resume and restart_policy != RestartPolicy.ON_FAILURE.value:
+        logger.error(
+            "To enable 'auto_resume', please ensure the 'restart-policy' is 'OnFailure'. "
+        )
+        return False
+
+    if (queue_name is None and priority is not None) or (
+        queue_name is not None and priority is None
+    ):
+        logger.error("Must provide both or neither of 'queue_name' and 'priority'.")
+        return False
+    return True
 
 def is_dict_str_list_str(data: dict) -> bool:
     """

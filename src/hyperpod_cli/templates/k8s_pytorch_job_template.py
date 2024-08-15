@@ -19,6 +19,7 @@ cluster:
     cluster_config:
         namespace: ??? # the namespace to submit job
         custom_labels: ???
+        service_account_name: ???
         annotations: ???
         priority_class_name: ???
         # Create k8s NodeAffinity to select nodes to deploy jobs which matches required and preferred labels
@@ -41,10 +42,7 @@ cluster:
         #       - 100
         label_selector: ???
         # persistent volume, usually used to mount FSx
-        persistentVolumeClaim:
-            # This claim should be created before running
-            claimName: null
-            mountPath: null  # path is mirrored into pod (no leading slash b/c relative to root)
+        persistent_volume_claims: ???
         pullPolicy: ??? # policy to pull container, can be Always, IfNotPresent and Never
         restartPolicy: ??? # PyTorchJob restart policy
 

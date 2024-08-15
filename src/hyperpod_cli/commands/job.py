@@ -1,7 +1,7 @@
 import datetime
 import os
 import sys
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 import click
 import yaml
@@ -18,6 +18,7 @@ from hyperpod_cli.constants.command_constants import (
     DEEP_HEALTH_CHECK_PASSED_ONLY_NODE_AFFINITY_DICT,
     PullPolicy,
     RestartPolicy,
+    PersistentVolumeClaim
 )
 from hyperpod_cli.custom_launcher.main import main as customer_launcher
 from hyperpod_cli.service.cancel_training_job import CancelTrainingJob
@@ -197,7 +198,7 @@ def cancel_job(name: str, namespace: Optional[str]):
 @click.option(
     "--results-dir",
     type=click.STRING,
-    default="./result",
+    default="./results",
     help="The location to store the results, checkpoints and logs.",
 )
 @click.option(
@@ -255,6 +256,19 @@ def cancel_job(name: str, namespace: Optional[str]):
     default=False,
     help="Start job only on the nodes that passed deep health check",
 )
+@click.option(
+    "--service-account-name",
+    type=click.STRING,
+    required=False,
+    help="Service account name to give permissions to call aws services",
+)
+@click.option(
+    "--persistent-volume-claims",
+    type=click.STRING,
+    required=False,
+    help="A pod can have more than one claims to mounts, provide them in comma seperated format without spaces"
+         " claimName:<container/mount/path>,claimName1:<container/mount/path1>",
+)
 def start_job(
     config_name: Optional[str],
     config_path: Optional[str],
@@ -279,6 +293,8 @@ def start_job(
     max_retry: Optional[int],
     restart_policy: Optional[str],
     deep_health_check_passed_nodes_only: bool,
+    service_account_name: Optional[str],
+    persistent_volume_claims: Optional[str]
 ):
     # TODO: Support more job kinds and command
 
@@ -319,6 +335,21 @@ def start_job(
                 _override_or_remove(
                     config["training_cfg"]["run"], "ntasks_per_node", tasks_per_node
                 )
+
+            if service_account_name:
+                config["cluster"]["cluster_config"]["service_account_name"] = service_account_name
+
+            persistent_volume_claims_list: List[PersistentVolumeClaim] = []
+            if persistent_volume_claims:
+                for claim in persistent_volume_claims.split(','):
+                    claim_name, mount_path = claim.split(":")
+                    persistent_volume_claims_list.append(PersistentVolumeClaim(claim_name, mount_path))
+            if persistent_volume_claims_list and len(persistent_volume_claims_list) > 0:
+                pvc_mount = []
+                for persistent_volume_claim in persistent_volume_claims_list:
+                    pvc_mount.append({'name': persistent_volume_claim.claim_name,
+                                         'mountPath': persistent_volume_claim.mount_path})
+                config["cluster"]["cluster_config"]["persistent_volume_claims"] = pvc_mount
 
             if label_selector is not None:
                 config["cluster"]["cluster_config"]["label_selector"] = label_selector
@@ -370,8 +401,7 @@ def start_job(
         """Submit job with the provided configuration file or directly with CLI
         arguments"""
         config_file_path = os.path.join(str(config_path), str(config_name))
-        if not os.path.exists(config_file_path):
-            logger.error(f"Configuration file {config_file_path} does not exist.")
+        if not validator.validate_submit_job_config_yaml(config_file_path):
             sys.exit(1)
         launcher_config_path = str(config_path)
         launcher_config_file_name = str(config_name)

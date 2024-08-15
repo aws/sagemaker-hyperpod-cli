@@ -43,3 +43,11 @@ class Orchestrator(Enum):
 class OutputFormat(Enum):
     JSON = "json"
     TABLE = "table"
+
+class PersistentVolumeClaim:
+    claim_name: str
+    mount_path: str
+
+    def __init__(self, claim_name, mount_path):
+        self.claim_name = claim_name
+        self.mount_path = mount_path

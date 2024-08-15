@@ -15,13 +15,12 @@ training_cfg:
   # ntasks_per_node: 1 # Number of devices to use per node
 cluster:
  cluster_type: k8s # currently k8s only
- instance_type: c5.2xlarge
+ instance_type: ml.c5.2xlarge
  cluster_config:
+  # name of service account associated with the namespace
+  service_account_name: null
   # persistent volume, usually used to mount FSx
-  persistentVolumeClaim:
-   # This claim should be created before running
-   claimName: null
-   mountPath: null
+  persistent_volume_claims: null
   namespace: kubeflow
   # required node affinity to select nodes with HyperPod
   # labels and passed health check if burn-in enabled
@@ -34,7 +33,7 @@ cluster:
               - Passed
       weights:
           - 100
-  pullPolicy: Always # policy to pull container, can be Always, IfNotPresent and Never
+  pullPolicy: IfNotPresent # policy to pull container, can be Always, IfNotPresent and Never
   restartPolicy: OnFailure # restart policy
 
 base_results_dir: ./result # Location to store the results, checkpoints and logs.
