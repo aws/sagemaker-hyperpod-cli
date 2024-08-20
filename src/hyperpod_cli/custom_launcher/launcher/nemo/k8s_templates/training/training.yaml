@@ -94,7 +94,10 @@ spec:
         spec:
           {{- if $config.priorityClassName }}
           priorityClassName: {{ $config.priorityClassName }}
-          {{- end}}
+          {{- end }}
+          {{- if $config.serviceAccountName }}
+          serviceAccountName: {{ $config.serviceAccountName }}
+          {{- end }}
           containers:
           - name: pytorch
             image: {{ .Values.image.trainingImage }}
@@ -133,10 +136,12 @@ spec:
                 {{- end }}
             {{- end }}
             volumeMounts:
-            {{- if $config.persistentVolumeClaim.claimName }}
-            - mountPath: {{ $config.persistentVolumeClaim.mountPath }}
-              name: workspace
-             {{- end }}
+            {{- if $config.persistentVolumeClaims }}
+            {{- range $config.persistentVolumeClaims }}
+            - mountPath: {{ .mountPath }}
+              name: {{ .claimName }}-volume
+            {{- end }}
+            {{- end }}
             {{- if not $config.customScript }}
             - mountPath: /config
               name: training-config
@@ -183,10 +188,12 @@ spec:
           {{- end }}
 
           volumes:
-          {{- if $config.persistentVolumeClaim.claimName }}
-          - name: workspace
+          {{- if $config.persistentVolumeClaims }}
+          {{- range $config.persistentVolumeClaims }}
+          - name: {{ .claimName }}-volume
             persistentVolumeClaim:
-              claimName: {{ $config.persistentVolumeClaim.claimName }}
+              claimName: {{ .claimName }}
+          {{- end }}
           {{- end }}
           {{- if not $config.customScript }}
           - configMap:

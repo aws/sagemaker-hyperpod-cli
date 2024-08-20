@@ -143,7 +143,8 @@ def _get_hyperpod_clusters(sm_client: boto3.client) -> List[str]:
     cluster_names: List[str] = []
     try:
         response = sm_client.list_clusters()
-        cluster_names = [cluster["ClusterName"] for cluster in response["ClusterSummaries"]]
+        if 'ClusterSummaries' in response:
+            cluster_names = [cluster["ClusterName"] for cluster in response["ClusterSummaries"]]
     except Exception as e:
         logger.error(f"Failed to list HyperPod clusters with error: {e}")
 

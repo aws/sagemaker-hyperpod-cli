@@ -46,11 +46,15 @@ class ListTrainingJobs:
     def _generate_list_training_job_output(self, jobs: List):
         output_jobs = {"jobs": []}
         for job in jobs:
-            name = job.get("metadata").get("name")
-            namespace = job.get("metadata").get("namespace")
-            creation_time = job.get("status").get("startTime")
-            state = self._get_job_status(job.get("status").get("conditions"), name)
-            output_jobs["jobs"].append({"Name":name, "Namespace":namespace, "Creation Time": creation_time, "State":state})
+            if job.get("metadata"):
+                name = job.get("metadata").get("name")
+                namespace = job.get("metadata").get("namespace")
+                creation_time = None
+                state = None
+                if job.get("status"):
+                    creation_time = job.get("status").get("startTime")
+                    state = self._get_job_status(job.get("status").get("conditions"), name)
+                output_jobs["jobs"].append({"Name":name, "Namespace":namespace, "Creation Time": creation_time, "State":state})
 
         return json.dumps(output_jobs, indent=1, sort_keys=False)
 

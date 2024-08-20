@@ -204,6 +204,49 @@ class ClusterTest(unittest.TestCase):
     @mock.patch("hyperpod_cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("subprocess.run")
+    def test_list_clusters_no_cluster_summary(
+        self,
+        mock_subprocess_run: mock.Mock,
+        mock_kubernetes_client: mock.Mock,
+        mock_validate_cluster_and_get_eks_arn: mock.Mock,
+        mock_validae_aws_credentials: mock.Mock,
+        mock_session: mock.Mock,
+        mock_load_kube_config: mock.Mock,
+    ):
+
+        self.mock_k8s_client.list_node_with_temp_config.return_value = _generate_nodes_list()
+        mock_kubernetes_client.return_value = self.mock_k8s_client
+
+        mock_validae_aws_credentials.validate_aws_credential.return_value = None
+        mock_validate_cluster_and_get_eks_arn.return_value = (
+            "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
+        )
+
+        mock_load_kube_config.return_value = None
+        mock_subprocess_run.return_value = None
+
+        self.mock_sm_client.describe_cluster.return_value = {
+            "Orchestrator": {
+                "Eks": {"ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"}
+            }
+        }
+        self.mock_sm_client.list_clusters.return_value = {"Key": "Value"}
+        self.mock_session.client.return_value = self.mock_sm_client
+        mock_session.return_value = self.mock_session
+
+        result = self.runner.invoke(list_clusters)
+        self.assertEqual(result.exit_code, 0)
+        self.assertNotIn("cluster-1", result.output)
+        self.assertNotIn("cluster-2", result.output)
+        # Expect JSON output
+        json.loads(result.output)
+
+    @mock.patch("kubernetes.config.load_kube_config")
+    @mock.patch("boto3.Session")
+    @mock.patch("hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential")
+    @mock.patch("hyperpod_cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("subprocess.run")
     def test_list_clusters_table_output(
         self,
         mock_subprocess_run: mock.Mock,

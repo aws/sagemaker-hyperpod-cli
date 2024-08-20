@@ -9,7 +9,11 @@ from nemo_launcher.utils.job_utils import JobPaths
 from omegaconf import OmegaConf
 
 from ..accelerator_devices import get_num_accelerator_devices
-from ..efa import efa_supported_instance, instanceWithMultipleEFAs, instanceWithRDMASupport
+from ..efa import (
+    efa_supported_instance,
+    instanceWithMultipleEFAs,
+    instanceWithRDMASupport,
+)
 from .launchers import SMAutoLauncher
 
 # Predefined distributed args for torchrun
@@ -303,9 +307,7 @@ class SMTraining(Training):
         mounts_string = mounts_string.replace(",None:None", "")
         return mounts_string
 
-    def generate_default_k8s_value_template(
-        self, template_root, cluster_parameters, stage_cfg_path=None
-    ):
+    def generate_default_k8s_value_template(self, template_root, cluster_parameters, stage_cfg_path=None):
         """
         Setting the general k8s configs that will be applicable for all device types and training methods
         """
@@ -321,21 +323,16 @@ class SMTraining(Training):
             values_template.trainingConfig.envVars = cluster_parameters["env_vars"]
         if "restartPolicy" in cluster_parameters:
             values_template.trainingConfig.restartPolicy = cluster_parameters["restartPolicy"]
-        if "persistentVolumeClaim" in cluster_parameters:
-            values_template.trainingConfig.persistentVolumeClaim.claimName = cluster_parameters[
-                "persistentVolumeClaim"
-            ]["claimName"]
-            values_template.trainingConfig.persistentVolumeClaim.mountPath = cluster_parameters[
-                "persistentVolumeClaim"
-            ]["mountPath"]
+        if "persistent_volume_claims" in cluster_parameters:
+            values_template.trainingConfig.persistentVolumeClaims = cluster_parameters["persistent_volume_claims"]
         if cluster_parameters.get("namespace", None) is not None:
             values_template.trainingConfig.namespace = cluster_parameters["namespace"]
         if cluster_parameters.get("annotations", None) is not None:
             values_template.trainingConfig.annotations = cluster_parameters["annotations"]
         if cluster_parameters.get("priority_class_name", None) is not None:
-            values_template.trainingConfig.priorityClassName = cluster_parameters[
-                "priority_class_name"
-            ]
+            values_template.trainingConfig.priorityClassName = cluster_parameters["priority_class_name"]
+        if cluster_parameters.get("service_account_name") is not None:
+            values_template.trainingConfig.serviceAccountName = cluster_parameters["service_account_name"]
         if cluster_parameters.get("custom_labels", None) is not None:
             values_template.trainingConfig.customLabels = cluster_parameters["custom_labels"]
         if cluster_parameters.get("label_selector", None) is not None:
@@ -401,9 +398,7 @@ class SMTraining(Training):
             os.path.abspath(os.path.dirname(__file__)),
             f"k8s_templates/training",
         )
-        values_template = self.generate_default_k8s_value_template(
-            template_root, cluster_parameters, stage_cfg_path
-        )
+        values_template = self.generate_default_k8s_value_template(template_root, cluster_parameters, stage_cfg_path)
         values_template = self.update_stage_specific_k8s_values(values_template)
         self.write_value_template(values_template, job_path)
 
@@ -582,7 +577,5 @@ class SMCustomTrainingTrainium(SMCustomTraining):
         Custom training specifc k8s values for trainum
         """
         super().update_stage_specific_k8s_values(values_template)
-        values_template.trainingConfig.numNeuronDevices = get_num_accelerator_devices(
-            self.instance_type
-        )
+        values_template.trainingConfig.numNeuronDevices = get_num_accelerator_devices(self.instance_type)
         return values_template

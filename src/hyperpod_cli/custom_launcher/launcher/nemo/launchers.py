@@ -15,7 +15,7 @@ class SMAutoLauncher(AutoLauncher):
         """Returns supported launchers as a dictionary from launcher name to launcher class"""
         return {
             "bcm": SMSlurmLauncher,
-            "k8s": K8SLauncher,
+            "k8s": SMK8SLauncher,
         }
 
 
@@ -102,3 +102,31 @@ class SMSlurmLauncher(SlurmLauncher):
             origin_sbatch_str[:command_idx] + distributed_strs + origin_sbatch_str[command_idx:]
         )
         return "\n".join(updated_sbatch_str)
+
+
+class SMK8SLauncher(K8SLauncher):
+    """
+    Launcher for SM training jobs using K8s.
+    """
+
+    def _make_submission_file_text(self, command_groups: List[List[str]]) -> str:
+        """
+        Generate the script to launch the Helm chart.
+        A very simple bash script is generated which runs `helm install` for the
+        Helm chart that was generated.
+
+        :param List[List[str]] command_groups: Command groups to launch with
+        :return: submission script file's text
+        :rtype: str
+        """
+        paths = job_utils.JobPaths(folder=self.folder, job_name=self.job_name)
+        helm_charts = paths.folder / "k8s_template"
+        job_name = self.job_name.replace("_", "-")
+
+        extra_helm_args = ""
+        if self.parameters.get("namespace", None):
+            extra_helm_args += f" --namespace {self.parameters['namespace']}"
+
+        # Apply a timeout of 15min in case images take a long time to bring up
+        # or pre-install hooks take a while
+        return f"#!/bin/bash\nhelm install --timeout=15m --wait {extra_helm_args} {job_name} {helm_charts}\n"

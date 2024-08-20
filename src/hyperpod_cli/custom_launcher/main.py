@@ -2,7 +2,11 @@ import math
 import os
 import sys
 
-LAUNCHER_SCRIPT_PATH = f"{os.path.dirname(os.path.abspath(__file__))}/launcher/nemo/nemo_framework_launcher/launcher_scripts/"
+from .validations_wrapper import validate_config
+
+LAUNCHER_SCRIPT_PATH = (
+    f"{os.path.dirname(os.path.abspath(__file__))}/launcher/nemo/nemo_framework_launcher/launcher_scripts/"
+)
 sys.path.append(LAUNCHER_SCRIPT_PATH)
 
 import hydra
@@ -26,7 +30,10 @@ from nemo_launcher.core.stages import (
     PromptLearning,
 )
 
-from .launcher.accelerator_devices import get_num_accelerator_devices, get_num_cores_per_accelerator
+from .launcher.accelerator_devices import (
+    get_num_accelerator_devices,
+    get_num_cores_per_accelerator,
+)
 from .launcher.nemo.stages import (
     SMCustomTrainingCPU,
     SMCustomTrainingGPU,
@@ -35,12 +42,8 @@ from .launcher.nemo.stages import (
 )
 
 omegaconf.OmegaConf.register_new_resolver("multiply", lambda x, y: x * y, replace=True)
-omegaconf.OmegaConf.register_new_resolver(
-    "divide_ceil", lambda x, y: int(math.ceil(x / y)), replace=True
-)
-omegaconf.OmegaConf.register_new_resolver(
-    "divide_floor", lambda x, y: int(math.floor(x / y)), replace=True
-)
+omegaconf.OmegaConf.register_new_resolver("divide_ceil", lambda x, y: int(math.ceil(x / y)), replace=True)
+omegaconf.OmegaConf.register_new_resolver("divide_floor", lambda x, y: int(math.floor(x / y)), replace=True)
 
 STR2STAGECLASS = {
     "fine_tuning": FineTuning,
@@ -131,9 +134,9 @@ def preprocess_config(cfg):
         else:
             instance_type = cfg.cluster.get("instance_type")
             if instance_type is not None and get_num_accelerator_devices(instance_type) is not None:
-                ntasks_per_node = get_num_accelerator_devices(
+                ntasks_per_node = get_num_accelerator_devices(instance_type) * get_num_cores_per_accelerator(
                     instance_type
-                ) * get_num_cores_per_accelerator(instance_type)
+                )
             else:
                 ntasks_per_node = 8
         # To align with https://github.com/NVIDIA/NeMo-Framework-Launcher/blob/23.11/launcher_scripts/nemo_launcher/core/stages.py#L721
@@ -151,6 +154,7 @@ def preprocess_config(cfg):
 
 
 @hydra.main(config_path="conf", config_name="config", version_base="1.2")
+@validate_config
 def main(cfg):
     custom_script = preprocess_config(cfg)
 

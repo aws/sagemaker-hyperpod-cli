@@ -10,8 +10,36 @@ from hyperpod_cli.commands.job import (
 )
 from hyperpod_cli.commands.pod import exec, get_log
 
+HELP_TEXT = """
+Find more information at: https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod.html
 
-@click.group()
+Basic Commands:
+  * list-capacity   List capacity of HyperPod clusters.
+  * connect-cluster Creates a connection from users local terminal to the HyperPod cluster 
+                    allowing user to Start and preform other basic operations with training jobs.
+  * start-job       Start a training job from a file on HyperPod cluster.
+  * get-job         Show details of a specific training job submitted on HyperPod cluster.
+  * list-job        List training job on a HyperPod cluster.
+  * cancel-job      Cancel training job on a HyperPod cluster.
+
+Troubleshooting and Debugging Commands:
+  * get-log     Get logs for a pod of training job running on HyperPod cluster.
+  * list-pods       List all pods associated with a training job on HyperPod cluster.
+  * exec            Execute a command on a pod of a training job on HyperPod cluster.
+
+Usage:
+  hyperpod [command] [options]
+
+Use "hyperpod <command> --help" for more information about a given command.
+"""
+
+
+class HyperPodCommandGroup(click.Group):
+    def format_help(self, ctx, formatter):
+        click.echo(HELP_TEXT)
+
+
+@click.group(cls=HyperPodCommandGroup)
 def cli():
     pass
 
@@ -25,7 +53,6 @@ cli.add_command(cancel_job)
 cli.add_command(exec)
 cli.add_command(list_pods)
 cli.add_command(get_log)
-
 
 if __name__ == "__main__":
     cli()

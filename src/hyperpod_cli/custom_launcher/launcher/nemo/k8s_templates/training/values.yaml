@@ -49,11 +49,11 @@ trainingConfig:
   # from NeMo, not used currently
   wandbKey: "nil"
 
+  # name of service account associated with the namespace
+  serviceAccountName: null
+
   # persistent volume, usually used to mount FSx
-  persistentVolumeClaim:
-    # This claim should be created before running
-    claimName: null # name of the PV claim
-    mountPath: null  # path is mirrored into pod (no leading slash b/c relative to root of pvc)
+  persistentVolumeClaims: null
 
   # A github repo if user might want to use script inside
   git:

@@ -51,22 +51,24 @@ setup(
         "pyyaml",
         "ratelimit",
         "tabulate",
-        # NeMo framework required packages: https://github.com/NVIDIA/NeMo-Framework-Launcher/blob/main/requirements.txt
-        "hera",
+        # NeMo framework required packages:
+        # https://github.com/NVIDIA/NeMo-Framework-Launcher/blob/23.11/requirements.txt
+        "hydra-core>1.3,<=1.3.2",
         "omegaconf>=2.2,<2.3",
+        "pynvml==11.4.1",
+        "requests==2.26.0",
+        "tqdm==4.62.3",
         "zstandard==0.15.2",
-        "hydra-core>=1.2.0,<1.3",
         # Test dependencies
         "pytest",
         "pytest-cov",
+        "tox==4.18.0"
     ],
     entry_points={
         "console_scripts": [
             "hyperpod=hyperpod_cli.cli:cli",
         ],
     },
-    test_command="brazilpython_pytest",
-    # Enable build-time format checking
     check_format=True,
     # Enable type checking
     test_mypy=True,

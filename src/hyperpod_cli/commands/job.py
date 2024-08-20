@@ -347,7 +347,7 @@ def start_job(
             if persistent_volume_claims_list and len(persistent_volume_claims_list) > 0:
                 pvc_mount = []
                 for persistent_volume_claim in persistent_volume_claims_list:
-                    pvc_mount.append({'name': persistent_volume_claim.claim_name,
+                    pvc_mount.append({'claimName': persistent_volume_claim.claim_name,
                                          'mountPath': persistent_volume_claim.mount_path})
                 config["cluster"]["cluster_config"]["persistent_volume_claims"] = pvc_mount
 

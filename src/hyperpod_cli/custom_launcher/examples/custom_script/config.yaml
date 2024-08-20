@@ -15,8 +15,8 @@ training_cfg:
 
   entry_script: ??? # Path to the entry script of training/fine-tuning. This path should be inside container or relative path in git repo
   script_args:
-    - "--some_args 1"
-    - "--some_other_args 2"
+    - "--some_args" : "debug"
+    - "--some_other_args" : 1
   run:
     name: test_custom # Current run name
     nodes: 8 # Number of nodes to use for current training
@@ -48,6 +48,10 @@ cluster:
     #     annotation-key-1: annotation-value-1
     #     annotation-key-2: annotation-value-2
     annotations: null
+    # add service account to job pods
+    # Example:
+    #  serviceAccountName: service_account
+    service_account_name: null
     # priorityClassName for Kueue scheduler to decide jobs priority
     priority_class_name: null
     # Create k8s NodeAffinity to select nodes to deploy jobs which matches required and preferred labels
@@ -70,10 +74,8 @@ cluster:
     #       - 100
     label_selector: null
     # persistent volume, usually used to mount FSx
-    persistentVolumeClaim:
-      # This claim should be created before running
-      claimName: null
-      mountPath: null  # path is mirrored into pod (no leading slash b/c relative to root)
+    persistentVolumeClaims: null
+
     pullPolicy: Always # policy to pull container, can be Always, IfNotPresent and Never
     restartPolicy: Never # restart policy
 
