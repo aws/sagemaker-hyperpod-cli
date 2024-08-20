@@ -1,0 +1,31 @@
+name: PR Checks
+on:
+  pull_request_target:
+      branches:
+          - "main*"
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.head_ref }}
+    cancel-in-progress: true
+
+permissions:
+  id-token: write   # This is required for requesting the JWT
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    strategy:
+        matrix:
+          python-version: ["38", "39", "310", "311", "312"]
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 3600
+      - name: Run Unit Tests in Python ${{ matrix.python-version }}
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: ${{ secrets.UNIT_TEST_PROJECT_PREFIX }}${{ matrix.python-version }}
+          source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
