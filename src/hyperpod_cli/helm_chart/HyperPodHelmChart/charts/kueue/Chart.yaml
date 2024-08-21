@@ -1,0 +1,8 @@
+apiVersion: v2
+name: kueue
+version: 0.1.0
+appVersion: 1.0
+description: A Helm chart for deploying kueue for scheduling
+keywords:
+  - kueue
+

@@ -1,0 +1,23 @@
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ClusterQueue
+metadata:
+  name: {{ .Values.clusterQueue.name }}
+spec:
+  namespaceSelector: {}
+
+{{- range .Values.queues }}
+---
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: LocalQueue
+metadata:
+  namespace: {{ .namespace }}
+  name: {{ .name }}
+spec:
+  clusterQueue: {{ $.Values.clusterQueue.name }}
+  priority: {{ .priority }}
+  policies:
+    - name: preemption
+      spec:
+        type: PreemptionPolicy
+        preemptionPolicy: {{ .preemption.policy }}
+{{- end }}

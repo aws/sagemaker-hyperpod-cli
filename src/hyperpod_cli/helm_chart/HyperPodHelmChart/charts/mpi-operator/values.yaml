@@ -1,0 +1,38 @@
+mpiOperator:
+  additionalArgs:
+  - -alsologtostderr
+  # Increase default logging, default is very terse
+  - -stderrthreshold=INFO
+  - -v=4
+  image:
+    repository: mpioperator/mpi-operator
+    tag: "0.5"
+  replicas: 1
+  serviceAccount:
+    annotations: {}
+
+  ## Node labels for pod assignment
+  ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
+  nodeSelector: {}
+
+  ## Affinity settings for pod assignment
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+  affinity: {}
+
+  ## Tolerations for pod assignment
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+  tolerations:
+  - key: sagemaker.amazonaws.com/node-health-status
+    operator: "Equal"
+    value: "Unschedulable"
+    effect: "NoSchedule"
+
+  ## Topology spread constraints for pod assignment
+  ## Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
+  topologySpreadConstraints: []
+
+  ## Image Pull Policy for operator deployment
+  imagePullPolicy: IfNotPresent
+
+## Apply extra labels to all created resources
+extraLabels: {}
