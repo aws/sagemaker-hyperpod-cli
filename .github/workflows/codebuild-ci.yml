@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
         matrix:
-          python-version: ["38", "39", "310", "311", "312"]
+          python-version: ["38", "39", "310", "311"]
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v3
