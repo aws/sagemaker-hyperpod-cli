@@ -1,0 +1,10 @@
+apiVersion: v2
+name: mpi-operator
+version: 0.1.0
+appVersion: "0.5.0"
+description: A Helm chart for deploying Kubeflow MPI operator
+keywords:
+  - kubeflow
+  - mpi
+  - operator
+

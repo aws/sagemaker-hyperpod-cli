@@ -1,0 +1,6 @@
+apiVersion: v1
+name: neuron-device-plugin
+description: A Helm chart for Neuron device plugin.
+version: v0.1.0
+appVersion: "v2.19.16"
+home: https://github.com/aws-neuron/

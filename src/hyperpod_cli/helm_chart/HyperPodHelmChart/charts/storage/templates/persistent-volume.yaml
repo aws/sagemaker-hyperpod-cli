@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Values.persistentVolume.name }}
+spec:
+  capacity:
+    storage: {{ .Values.persistentVolume.capacity }}
+  volumeMode: {{ .Values.persistentVolume.volumeMode }}
+  accessModes:
+    {{- range .Values.persistentVolume.accessModes }}
+    - {{ . }}
+    {{- end }}
+  mountOptions:
+    {{- range .Values.persistentVolume.mountOptions }}
+    - {{ . }}
+    {{- end }}
+  persistentVolumeReclaimPolicy: {{ .Values.persistentVolume.reclaimPolicy }}
+  csi:
+    driver: {{ .Values.persistentVolume.csi.driver }}
+    volumeHandle: {{ .Values.persistentVolume.csi.volumeHandle }}
+    volumeAttributes:
+      dnsname: {{ .Values.persistentVolume.csi.volumeAttributes.dnsname }}
+      mountname: {{ .Values.persistentVolume.csi.volumeAttributes.mountname }}
