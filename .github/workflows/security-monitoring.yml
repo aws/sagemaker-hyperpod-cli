@@ -1,0 +1,40 @@
+name: Security Monitoring
+ 
+on:
+  schedule:
+    - cron: '0 16 * * *'
+ 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.run_id }}
+  cancel-in-progress: true
+ 
+permissions:
+  id-token: write
+ 
+jobs:
+  check-dependabot-alerts:
+    runs-on: ubuntu-latest
+    outputs:
+      dependabot_alert_status: ${{ steps.check-dependabot-alerts.outputs.dependabot_alert_status }}
+    steps:
+      - name: Check for dependabot alerts
+        id: check-dependabot-alerts
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          github-token: ${{ secrets.GH_PAT }}
+          script: |
+            async function checkAlerts() {
+              const owner = '${{ github.repository_owner }}';
+              const repo = '${{ github.event.repository.name }}';
+            
+              const dependabotAlerts = await github.rest.dependabot.listAlertsForRepo({
+                owner,
+                repo,
+                headers: {
+                  'accept': 'applications/vnd.github+json'
+                }
+              }); 
+              const activeDependabotAlerts = dependabotAlerts.data.filter(alert => alert.state === 'open');
+              core.setOutput('dependabot_alert_status', activeDependabotAlerts.length > 0 ? '1': '0');
+            }
+            await checkAlerts();
