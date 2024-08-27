@@ -1,11 +1,27 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 import datetime
+import logging
+import json
 import os
 import sys
+import subprocess
 from typing import Any, Dict, Optional, List
 
 import click
 import yaml
 from hydra import compose, initialize_config_dir
+from hyperpod_cli import utils
 
 from hyperpod_cli.constants.command_constants import (
     ENV_VARS_DICT,
@@ -20,13 +36,14 @@ from hyperpod_cli.constants.command_constants import (
     RestartPolicy,
     PersistentVolumeClaim
 )
+from hyperpod_cli.clients.kubernetes_client import KubernetesClient
 from hyperpod_cli.custom_launcher.main import main as customer_launcher
 from hyperpod_cli.service.cancel_training_job import CancelTrainingJob
-from hyperpod_cli.service.describe_training_job import DescribeTrainingJob
+from hyperpod_cli.service.get_training_job import GetTrainingJob
 from hyperpod_cli.service.list_pods import ListPods
 from hyperpod_cli.service.list_training_jobs import ListTrainingJobs
 from hyperpod_cli.templates.k8s_pytorch_job_template import KUBERNETES_PYTORCH_JOB_TEMPLATE
-from hyperpod_cli.utils import setup_logger
+from hyperpod_cli.utils import setup_logger, set_logging_level
 from hyperpod_cli.validators.job_validator import JobValidator
 
 logger = setup_logger(__name__)
@@ -37,7 +54,7 @@ logger = setup_logger(__name__)
     "--name",
     type=click.STRING,
     required=True,
-    help="The name of the training job you want to describe",
+    help="The name of the training job you want to get details",
 )
 @click.option(
     "--namespace",
@@ -54,19 +71,28 @@ logger = setup_logger(__name__)
     required=False,
     help="List training jobs from all namespaces",
 )
-def get_job(name: str, namespace: Optional[str], verbose: Optional[bool]):
+@click.option("--debug", is_flag=True, help="Enable debug mode")
+def get_job(
+    name: str,
+    namespace: Optional[str],
+    verbose: Optional[bool],
+    debug: bool,
+):
     """
-    Describe a job running on Hyperpod Cluster
+    Get details for job running on Hyperpod Cluster
     """
+    if debug:
+        set_logging_level(logger, logging.DEBUG)
 
-    describe_training_job_service = DescribeTrainingJob()
+    get_training_job_service = GetTrainingJob()
 
     try:
+        logger.debug("Getting training job details")
         # Execute the command to describe training job
-        result = describe_training_job_service.describe_training_job(name, namespace, verbose)
+        result = get_training_job_service.get_training_job(name, namespace, verbose)
         click.echo(result)
     except Exception as e:
-        sys.exit(f"Unexpected error happens when trying to describe training job {name} : {e}")
+        sys.exit(f"Unexpected error happens when trying to get training job {name} : {e}")
 
 
 @click.command()
@@ -93,10 +119,20 @@ def get_job(name: str, namespace: Optional[str], verbose: Optional[bool]):
     required=False,
     help="Filter training jobs based on labels provided",
 )
-def list_jobs(namespace: Optional[str], all_namespaces: Optional[bool], selector: Optional[str]):
+@click.option("--debug", is_flag=True, help="Enable debug mode")
+def list_jobs(
+    namespace: Optional[str],
+    all_namespaces: Optional[bool],
+    selector: Optional[str],
+    debug: bool,
+):
+    if debug:
+        set_logging_level(logger, logging.DEBUG)
+
     """List training jobs in the hyperpod cluster."""
     list_training_job_service = ListTrainingJobs()
     try:
+        logger.debug("Listing training jobs")
         result = list_training_job_service.list_training_jobs(namespace, all_namespaces, selector)
         click.echo(result)
     except Exception as e:
@@ -117,14 +153,22 @@ def list_jobs(namespace: Optional[str], all_namespaces: Optional[bool], selector
     required=False,
     help="The namespace where training job was submitted",
 )
-def list_pods(name: str, namespace: Optional[str]):
+@click.option("--debug", is_flag=True, help="Enable debug mode")
+def list_pods(
+    name: str,
+    namespace: Optional[str],
+    debug: bool,
+):
     """
     List pods associted with a training job on hyperpod cluster
     """
+    if debug:
+        set_logging_level(logger, logging.DEBUG)
 
     list_pods_service = ListPods()
 
     try:
+        logger.debug("Listing Pods for the training job")
         result = list_pods_service.list_pods_for_training_job(name, namespace, True)
         click.echo(result)
     except Exception as e:
@@ -145,12 +189,20 @@ def list_pods(name: str, namespace: Optional[str]):
     required=False,
     help="The namespace where training job was submitted",
 )
-def cancel_job(name: str, namespace: Optional[str]):
+@click.option("--debug", is_flag=True, help="Enable debug mode")
+def cancel_job(
+    name: str,
+    namespace: Optional[str],
+    debug: bool,
+):
     """Cancel the job running on hyperpod cluster."""
+    if debug:
+        set_logging_level(logger, logging.DEBUG)
 
     cancel_training_job_service = CancelTrainingJob()
 
     try:
+        logger.debug("Cancelling the training job")
         result = cancel_training_job_service.cancel_training_job(name, namespace)
         click.echo(result)
     except Exception as e:
@@ -166,7 +218,6 @@ def cancel_job(name: str, namespace: Optional[str]):
 @click.option(
     "--namespace",
     type=click.STRING,
-    default="kubeflow",
     help="The cluster's namespace to run training job",
 )
 @click.option(
@@ -185,7 +236,6 @@ def cancel_job(name: str, namespace: Optional[str]):
 @click.option(
     "--entry-script",
     type=click.STRING,
-    default="./train.py",
     help="The training docker container entry script",
 )
 @click.option(
@@ -241,7 +291,6 @@ def cancel_job(name: str, namespace: Optional[str]):
 @click.option(
     "--max-retry",
     type=click.INT,
-    default=1,
     help="The max retry configured for auto-resume training job",
 )
 @click.option(
@@ -269,6 +318,7 @@ def cancel_job(name: str, namespace: Optional[str]):
     help="A pod can have more than one claims to mounts, provide them in comma seperated format without spaces"
          " claimName:<container/mount/path>,claimName1:<container/mount/path1>",
 )
+@click.option("--debug", is_flag=True, help="Enable debug mode")
 def start_job(
     config_name: Optional[str],
     config_path: Optional[str],
@@ -294,12 +344,19 @@ def start_job(
     restart_policy: Optional[str],
     deep_health_check_passed_nodes_only: bool,
     service_account_name: Optional[str],
-    persistent_volume_claims: Optional[str]
+    persistent_volume_claims: Optional[str],
+    debug: bool,
 ):
     # TODO: Support more job kinds and command
+    if debug:
+        set_logging_level(logger, logging.DEBUG)
+
+    if not namespace:
+        k8s_client = KubernetesClient()
+        namespace = k8s_client.get_current_context_namespace()
 
     validator = JobValidator()
-    if not validator.validate_submit_job_args(
+    if not validator.validate_start_job_args(
         config_name,
         name,
         node_count,
@@ -313,6 +370,9 @@ def start_job(
         priority,
         auto_resume,
         restart_policy,
+        max_retry,
+        namespace,
+        entry_script,
     ):
         sys.exit(1)
 
@@ -358,7 +418,11 @@ def start_job(
             else:
                 config["cluster"]["cluster_config"]["label_selector"] = NODE_AFFINITY_DICT
 
-            if auto_resume and max_retry is not None:
+            if auto_resume:
+                # Set max_retryn default to 1
+                if max_retry is None:
+                    max_retry = 1
+
                 annotations = {
                     HYPERPOD_AUTO_RESUME_ANNOTATION_KEY: auto_resume,
                     HYPERPOD_MAX_RETRY_ANNOTATION_KEY: max_retry,
@@ -398,23 +462,24 @@ def start_job(
         launcher_config_path = GENERATED_LAUNCHER_CONFIG_FILE_PATH
         launcher_config_file_name = filename
     else:
-        """Submit job with the provided configuration file or directly with CLI
+        """Start job with the provided configuration file or directly with CLI
         arguments"""
         config_file_path = os.path.join(str(config_path), str(config_name))
-        if not validator.validate_submit_job_config_yaml(config_file_path):
+        if not validator.validate_start_job_config_yaml(config_file_path):
             sys.exit(1)
         launcher_config_path = str(config_path)
         launcher_config_file_name = str(config_name)
 
-    logger.debug(f"Submitting job with config {launcher_config_path}/{launcher_config_file_name}")
+    logger.debug(f"Starting job with config {launcher_config_path}/{launcher_config_file_name}")
 
     # Initialize Hydra and call custom launcher with Hydra config to submit job
     try:
         with initialize_config_dir(config_dir=launcher_config_path, version_base="1.2"):
             cfg = compose(config_name=launcher_config_file_name)
-            customer_launcher(cfg)
+            with suppress_standard_output_context():
+                customer_launcher(cfg)
     except Exception as e:
-        logger.error(f"Submitting job failed due to: {e}")
+        logger.error(f"Starting job failed due to: {e}")
         sys.exit(1)
     finally:
         # Remove temporary created Launcher config file for submit via CLI argument case
@@ -422,6 +487,8 @@ def start_job(
             file_to_delete = os.path.join(launcher_config_path, launcher_config_file_name)
             if os.path.exists(file_to_delete):
                 os.remove(file_to_delete)
+    console_link = utils.get_cluster_console_url()
+    print(json.dumps({"Console URL": console_link}, indent=1, sort_keys=False))
 
 
 def _override_or_remove(
@@ -445,3 +512,17 @@ def _is_accelerator_instance_type(
     ):
         return True
     return False
+
+
+class suppress_standard_output_context:
+    def __enter__(self):
+        self._original_popen = subprocess.Popen
+        subprocess.Popen = self._popen_suppress
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        subprocess.Popen = self._original_popen
+
+    def _popen_suppress(self, *args, **kwargs):
+        if 'stdout' not in kwargs:
+            kwargs['stdout'] = open(os.devnull, 'w')
+        return self._original_popen(*args, **kwargs)

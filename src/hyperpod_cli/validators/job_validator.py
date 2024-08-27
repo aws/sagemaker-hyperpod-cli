@@ -1,3 +1,15 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 import json
 import os
 import yaml
@@ -9,6 +21,7 @@ from hyperpod_cli.constants.command_constants import (
     KUEUE_QUEUE_NAME_LABEL_KEY,
     HYPERPOD_AUTO_RESUME_ANNOTATION_KEY,
     HYPERPOD_MAX_RETRY_ANNOTATION_KEY,
+    HYPERPOD_NAMESPACE_PREFIX,
 )
 from hyperpod_cli.constants.hyperpod_instance_types import HyperpodInstanceType
 from hyperpod_cli.utils import setup_logger
@@ -21,7 +34,7 @@ class JobValidator(Validator):
     def __init__(self):
         super().__init__()
 
-    def validate_submit_job_args(
+    def validate_start_job_args(
         self,
         config_name: Optional[str],
         name: Optional[str],
@@ -36,6 +49,9 @@ class JobValidator(Validator):
         priority: Optional[str],
         auto_resume: bool,
         restart_policy: Optional[RestartPolicy],
+        max_retry: Optional[int],
+        namespace: Optional[str],
+        entry_script: Optional[str],
     ):
         # Hard coded validations. TODO: support more options for following fields
         if job_kind is not None and job_kind != "kubeflow/PyTorchJob":
@@ -63,6 +79,12 @@ class JobValidator(Validator):
             return False
 
         if name is not None:
+            if entry_script is None:
+                logger.error(
+                    "Please provide 'entry-script' for the training job"
+                )
+                return False
+
             if node_count is None:
                 logger.error(
                     "Please provide 'node-count' to specify number of nodes used for training job"
@@ -84,11 +106,13 @@ class JobValidator(Validator):
                         "Please ensure 'label-selector' keys are string type and values are string or list of string type"
                     )
                     return False
-            return validate_hyperpod_related_fields(instance_type, queue_name, priority, auto_resume, restart_policy)
+            return validate_hyperpod_related_fields(instance_type, queue_name,
+                                                    priority, auto_resume,
+                                                    restart_policy, max_retry, namespace)
 
         return True
 
-    def validate_submit_job_config_yaml(self, file):
+    def validate_start_job_config_yaml(self, file):
         if not os.path.exists(file):
             logger.error(f"Configuration file {file} does not exist.")
             return False
@@ -126,6 +150,7 @@ def validate_yaml_content(data):
 
     custom_labels = cluster_config_fields.get("custom_labels")
     annotations = cluster_config_fields.get("annotations")
+    namespace = cluster_config_fields.get("namespace")
 
     instance_type = cluster_fields.get("instance_type", None)
     queue_name = None
@@ -133,8 +158,10 @@ def validate_yaml_content(data):
         queue_name = custom_labels.get(KUEUE_QUEUE_NAME_LABEL_KEY, None)
 
     auto_resume = False
+    max_retry = None
     if annotations is not None:
         auto_resume = annotations.get(HYPERPOD_AUTO_RESUME_ANNOTATION_KEY, False)
+        max_retry = annotations.get(HYPERPOD_MAX_RETRY_ANNOTATION_KEY, None)
         if auto_resume and (annotations.get(HYPERPOD_MAX_RETRY_ANNOTATION_KEY) is None):
             logger.error(
                 f"Please provide both '{HYPERPOD_AUTO_RESUME_ANNOTATION_KEY}' "
@@ -145,7 +172,8 @@ def validate_yaml_content(data):
     priority = cluster_config_fields.get("priority_class_name", None)
     restart_policy = cluster_config_fields.get("restartPolicy", None)
 
-    return validate_hyperpod_related_fields(instance_type, queue_name, priority, auto_resume, restart_policy)
+    return validate_hyperpod_related_fields(instance_type, queue_name, priority,
+                                            auto_resume, restart_policy, max_retry, namespace)
 
 
 def validate_hyperpod_related_fields(
@@ -154,6 +182,8 @@ def validate_hyperpod_related_fields(
     priority: Optional[str],
     auto_resume: bool,
     restart_policy: Optional[RestartPolicy],
+    max_retry: Optional[int],
+    namespace: Optional[str],
 ):
     if instance_type is None:
         logger.error(
@@ -165,9 +195,21 @@ def validate_hyperpod_related_fields(
             logger.error("Please provide SageMaker HyperPod supported 'instance-type'")
             return False
 
+    if max_retry and not auto_resume:
+        logger.error(
+            "Please enable 'auto_resume' with 'max_retry' option."
+        )
+        return False
+
     if auto_resume and restart_policy != RestartPolicy.ON_FAILURE.value:
         logger.error(
             "To enable 'auto_resume', please ensure the 'restart-policy' is 'OnFailure'. "
+        )
+        return False
+
+    if auto_resume and not _is_hyperpod_monitored_namespaces(namespace):
+        logger.error(
+            "Please ensure submit job to 'kubeflow' namespace or namespace with 'hyperpod' prefix to make 'auto-resume' work as expected "
         )
         return False
 
@@ -220,3 +262,13 @@ def _validate_json_str(
         # Catch any other exceptions
         logger.error(f"An unexpected error occurred: {e}")
         return False
+
+
+def _is_hyperpod_monitored_namespaces(
+    namespace: Optional[str],
+):
+    if namespace is not None:
+        if namespace.startswith(HYPERPOD_NAMESPACE_PREFIX) or namespace == 'kubeflow':
+            return True
+
+    return False

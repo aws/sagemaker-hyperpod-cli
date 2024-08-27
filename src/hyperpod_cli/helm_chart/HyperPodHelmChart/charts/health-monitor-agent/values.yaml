@@ -1,1 +1,2 @@
-namespace: "amazon-sagemaker-hyperpod-system"
+namespace: "aws-hyperpod"
+hmaimage: "590183648699.dkr.ecr.us-west-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.230.0_1.0.19.0"

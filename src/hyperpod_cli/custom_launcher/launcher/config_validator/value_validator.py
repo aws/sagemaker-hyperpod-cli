@@ -131,7 +131,7 @@ def _validate_cluster_type_argument(config: DictConfig) -> None:
     """
     cluster_type_argument_name = "cluster.cluster_type"
     cluster_type = get_argument(config, cluster_type_argument_name)
-    supported_cluster_types = ["slurm", "k8s"]
+    supported_cluster_types = ["k8s"]
     if cluster_type is not None and cluster_type not in supported_cluster_types:
         raise ValueError("Provided cluster_type is not supported")
 

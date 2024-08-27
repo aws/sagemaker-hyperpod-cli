@@ -10,6 +10,26 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-PYTORCH_CUSTOM_OBJECT_GROUP = "kubeflow.org"
-PYTORCH_CUSTOM_OBJECT_PLURAL = "pytorchjobs"
-PYTORCH_CUSTOM_OBJECT_VERSION = "v1"
+"""Placeholder docstring"""
+from __future__ import absolute_import
+
+import json
+import os
+
+import importlib.metadata
+
+CLI_PREFIX = "AWS-SageMaker-Hyperpod-CLI"
+
+CLI_VERSION = importlib.metadata.version("requests")
+
+def get_user_agent_extra_suffix():
+    """Get the user agent extra suffix string specific to SageMaker Hyperpod CLI
+
+    Adhers to new boto recommended User-Agent 2.0 header format
+
+    Returns:
+        str: The user agent extra suffix string to be appended
+    """
+    suffix = "cli/{}#{}".format(CLI_PREFIX, CLI_VERSION)
+
+    return suffix

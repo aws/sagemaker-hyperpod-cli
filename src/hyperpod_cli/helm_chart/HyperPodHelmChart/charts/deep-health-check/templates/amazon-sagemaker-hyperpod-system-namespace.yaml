@@ -1,6 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: amazon-sagemaker-hyperpod-system
-  labels:
-    name: amazon-sagemaker-hyperpod-system

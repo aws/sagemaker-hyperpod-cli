@@ -20,13 +20,7 @@ See instructions in DEVELOPMENT.md
 
 ** Prerequisites **
 
-Notes: Please run this package in cloud desktop.
-
-1. CLI job submission depends on Kandinsky
-- Install local wheel. Kandinsky package are built into a wheel under /wheels folder
-- Go to your Python environment, for example PyCharm venv: ```source ~/.virtualenvs/HyperpodCLI_Py39/bin/activate```
-- Pip install the wheel ```pip install wheels/launcher-0.1.0-py3-none-any.whl```
-- After this, you can use ```launcher``` in CLI code and unit tests
+1. Make sure your local python version >= 3.8. Supported python versions are 3.8, 3.9, 3.10, 3.11
 
 2. Install all dependencies and built ```hyperpod``` CLI
 
@@ -58,7 +52,11 @@ Run ```pytest``` directly, and it will look ```setup.cfg``` for extra arguments 
 coverage config.
 
 ## Troubleshooting
-### pytest failures
+### pytest 'start_job' related Unit Test failures
+- Underlying, the Click CLIRunner unit test tool has some issue with UTF-8 encoding
+- To resolve this, temporary use ```LC_ALL=C pytest test/unit_tests``` to complete the Unit tests
+
+### pytest 'NoSuchModule' errors
 - double check whether ```pytest``` is running the same venv or global environment as your project by ```which pytest```.
 - If ```pytest``` is running in venv, ensure ```hyperpod``` is installed in venv.
 - Otherwise, if ```pytest``` is running globally, ensure ```hyperpod``` is installed globally.

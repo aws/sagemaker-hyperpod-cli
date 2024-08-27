@@ -1,3 +1,15 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 import unittest
 from unittest import mock
 from unittest.mock import MagicMock
@@ -27,6 +39,21 @@ class PodTest(unittest.TestCase):
         mock_get_logs_service_and_get_logs.return_value = "{}"
         result = self.runner.invoke(get_log, ["--name", "example-job", "--pod", "pod-name"])
         self.assertEqual(result.exit_code, 0)
+
+    @mock.patch("hyperpod_cli.service.get_logs.GetLogs")
+    @mock.patch("hyperpod_cli.service.get_logs.GetLogs.get_training_job_logs")
+    @mock.patch("logging.Logger.debug")
+    def test_get_logs_happy_case_debug_mode(
+        self,
+        mock_debug: mock.Mock,
+        mock_get_logs_service_and_get_logs: mock.Mock,
+        mock_get_logs_service: mock.Mock,
+    ):
+        mock_get_logs_service.return_value = self.mock_get_job_log
+        mock_get_logs_service_and_get_logs.return_value = "{}"
+        result = self.runner.invoke(get_log, ["--name", "example-job", "--pod", "pod-name", "--debug"])
+        self.assertEqual(result.exit_code, 0)
+        mock_debug.assert_called()
 
     @mock.patch("hyperpod_cli.service.get_logs.GetLogs")
     @mock.patch("hyperpod_cli.service.get_logs.GetLogs.get_training_job_logs")
@@ -95,6 +122,23 @@ class PodTest(unittest.TestCase):
             exec, ["--name", "example-job", "--pod", "pod-name", "-", "date"]
         )
         self.assertEqual(result.exit_code, 0)
+
+    @mock.patch("hyperpod_cli.service.exec_command.ExecCommand")
+    @mock.patch("hyperpod_cli.service.exec_command.ExecCommand.exec_command")
+    @mock.patch("logging.Logger.debug")
+    def test_exec_command_happy_case_debug_mode(
+        self,
+        mock_debug: mock.Mock,
+        mock_exec_command_service_and_exec_command: mock.Mock,
+        mock_exec_command_service: mock.Mock,
+    ):
+        mock_exec_command_service.return_value = self.mock_exec_command
+        mock_exec_command_service_and_exec_command.return_value = "{}"
+        result = self.runner.invoke(
+            exec, ["--name", "example-job", "--pod", "pod-name", "-", "date", "--debug"]
+        )
+        self.assertEqual(result.exit_code, 0)
+        mock_debug.assert_called()
 
     @mock.patch("hyperpod_cli.service.exec_command.ExecCommand")
     @mock.patch("hyperpod_cli.service.exec_command.ExecCommand.exec_command")

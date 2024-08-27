@@ -108,7 +108,7 @@ affinity: {}
 
 namespace:
   create: true
-  name: amazon-sagemaker-hyperpod-system
+  name: aws-hyperpod
 
 mlflow:
   enabled: true
@@ -121,6 +121,16 @@ nvidia-device-plugin:
     enabled: true
   allowDefaultNamespace: true
   namespaceOverride: "kube-system"
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms: 
+        - matchExpressions:
+          # nvidia plugin needs at least one node selector. Below label exists for all hyperpod nodes
+          - key: kubernetes.io/os
+            operator: In
+            values:
+            - "linux"
   tolerations:
     - key: nvidia.com/gpu
       operator: Exists

@@ -1,3 +1,15 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 import os
 from typing import List, Optional
 
@@ -185,7 +197,7 @@ class KubernetesClient:
     def get_logs_for_pod(self, pod_name: str, namespace: str):
         return client.CoreV1Api().read_namespaced_pod_log(name=pod_name, namespace=namespace)
 
-    def describe_training_job(self, job_name: str, namespace: str):
+    def get_job(self, job_name: str, namespace: str):
         return client.CustomObjectsApi().get_namespaced_custom_object(
             group=PYTORCH_CUSTOM_OBJECT_GROUP,
             version=PYTORCH_CUSTOM_OBJECT_VERSION,

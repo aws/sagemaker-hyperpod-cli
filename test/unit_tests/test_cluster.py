@@ -1,3 +1,15 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 import json
 import subprocess
 import unittest
@@ -44,9 +56,6 @@ class ClusterTest(unittest.TestCase):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         result = self.runner.invoke(connect_cluster, ["--name", "my-cluster"])
         self.assertEqual(result.exit_code, 0)
-        self.assertIn(
-            "Connect to HyperPod Cluster my-cluster in default namespace succeeded", result.output
-        )
 
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("boto3.Session")
@@ -71,9 +80,33 @@ class ClusterTest(unittest.TestCase):
         mock_subprocess_run.return_value = MagicMock(returncode=0)
         result = self.runner.invoke(connect_cluster, ["--name", "my-cluster"])
         self.assertEqual(result.exit_code, 0)
-        self.assertIn(
-            "Connect to HyperPod Cluster my-cluster in default namespace succeeded", result.output
-        )
+
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("boto3.Session")
+    @mock.patch("subprocess.run")
+    @mock.patch("logging.Logger.debug")
+    def test_connect_to_new_cluster_success_debug_mode(
+        self,
+        mock_debug: mock.Mock,
+        mock_subprocess_run: mock.Mock,
+        mock_session: mock.Mock,
+        mock_kubernetes_client: mock.Mock,
+    ):
+        mock_session.return_value = self.mock_session
+        self.mock_session.client.return_value = self.mock_sm_client
+        self.mock_sm_client.describe_cluster.return_value = {
+            "Orchestrator": {
+                "Eks": {"ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/my-cluster"}
+            }
+        }
+
+        self.mock_k8s_client.context_exists.return_value = False
+        self.mock_k8s_client.set_context.return_value = None
+        mock_kubernetes_client.return_value = self.mock_k8s_client
+        mock_subprocess_run.return_value = MagicMock(returncode=0)
+        result = self.runner.invoke(connect_cluster, ["--name", "my-cluster", "--debug"])
+        self.assertEqual(result.exit_code, 0)
+        mock_debug.assert_called()
 
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("boto3.Session")
@@ -100,9 +133,6 @@ class ClusterTest(unittest.TestCase):
             connect_cluster, ["--name", "my-cluster", "--region", "us-east-1"]
         )
         self.assertEqual(result.exit_code, 0)
-        self.assertIn(
-            "Connect to HyperPod Cluster my-cluster in default namespace succeeded", result.output
-        )
 
     @mock.patch("boto3.Session")
     def test_connect_describe_cluster_failure(self, mock_session: mock.Mock):
@@ -111,11 +141,7 @@ class ClusterTest(unittest.TestCase):
         self.mock_sm_client.describe_cluster.side_effect = Exception("Failed to describe cluster")
 
         result = self.runner.invoke(connect_cluster, ["--name", "my-cluster"])
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn(
-            "Unexpected error happens when try to connect to cluster my-cluster", result.output
-        )
-        self.assertIn("Failed to describe cluster", result.output)
+        self.assertEqual(result.exit_code, 1)
 
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("boto3.Session")
@@ -141,11 +167,7 @@ class ClusterTest(unittest.TestCase):
             returncode=1, cmd=["aws", "eks", "update-kubeconfig"]
         )
         result = self.runner.invoke(connect_cluster, ["--name", "my-cluster"])
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn(
-            "Unexpected error happens when try to connect to cluster my-cluster", result.output
-        )
-        self.assertIn("Failed to update kubeconfig", result.output)
+        self.assertEqual(result.exit_code, 1)
 
     @mock.patch("hyperpod_cli.commands.cluster.Validator")
     def test_connect_validator_failure(self, mock_validator_cls):
@@ -153,7 +175,7 @@ class ClusterTest(unittest.TestCase):
         mock_validator.validate_aws_credential.return_value = False
 
         result = self.runner.invoke(connect_cluster, ["--name", "my-cluster"])
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 1)
 
     @mock.patch("kubernetes.config.load_kube_config")
     @mock.patch("boto3.Session")
@@ -197,6 +219,92 @@ class ClusterTest(unittest.TestCase):
         self.assertIn("cluster-2", result.output)
         # Expect JSON output
         json.loads(result.output)
+
+    @mock.patch("kubernetes.config.load_kube_config")
+    @mock.patch("boto3.Session")
+    @mock.patch("hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential")
+    @mock.patch("hyperpod_cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("subprocess.run")
+    @mock.patch("logging.Logger.debug")
+    def test_list_clusters_debug_mode(
+        self,
+        mock_debug: mock.Mock,
+        mock_subprocess_run: mock.Mock,
+        mock_kubernetes_client: mock.Mock,
+        mock_validate_cluster_and_get_eks_arn: mock.Mock,
+        mock_validae_aws_credentials: mock.Mock,
+        mock_session: mock.Mock,
+        mock_load_kube_config: mock.Mock,
+    ):
+        self.mock_k8s_client.list_node_with_temp_config.return_value = _generate_nodes_list()
+        mock_kubernetes_client.return_value = self.mock_k8s_client
+
+        mock_validae_aws_credentials.validate_aws_credential.return_value = None
+        mock_validate_cluster_and_get_eks_arn.return_value = (
+            "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
+        )
+
+        mock_load_kube_config.return_value = None
+        mock_subprocess_run.return_value = None
+
+        self.mock_sm_client.describe_cluster.return_value = {
+            "Orchestrator": {
+                "Eks": {"ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"}
+            }
+        }
+        self.mock_sm_client.list_clusters.return_value = _generate_list_clusters_response()
+        self.mock_session.client.return_value = self.mock_sm_client
+        mock_session.return_value = self.mock_session
+
+        result = self.runner.invoke(list_clusters, ["--debug"])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("cluster-1", result.output)
+        self.assertIn("cluster-2", result.output)
+        # Expect JSON output
+        json.loads(result.output)
+        mock_debug.assert_called()
+
+    @mock.patch("kubernetes.config.load_kube_config")
+    @mock.patch("boto3.Session")
+    @mock.patch("hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential")
+    @mock.patch("hyperpod_cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("subprocess.run")
+    def test_list_clusters_maximum_number(
+        self,
+        mock_subprocess_run: mock.Mock,
+        mock_kubernetes_client: mock.Mock,
+        mock_validate_cluster_and_get_eks_arn: mock.Mock,
+        mock_validae_aws_credentials: mock.Mock,
+        mock_session: mock.Mock,
+        mock_load_kube_config: mock.Mock,
+    ):
+
+        self.mock_k8s_client.list_node_with_temp_config.return_value = _generate_nodes_list()
+        mock_kubernetes_client.return_value = self.mock_k8s_client
+
+        mock_validae_aws_credentials.validate_aws_credential.return_value = None
+        eks_cluster_arns = [f"arn:aws:eks:us-west-2:123456789012:cluster/cluster-{i}" for i in range(100)]
+        mock_validate_cluster_and_get_eks_arn.side_effect = eks_cluster_arns
+
+        mock_load_kube_config.return_value = None
+        mock_subprocess_run.return_value = None
+
+        sm_cluster_details = [{"Orchestrator": {"Eks": {"ClusterArn": f"arn:aws:eks:us-west-2:123456789012:cluster/cluster-{i}"}}} for i in range(100)]
+        self.mock_sm_client.describe_cluster.side_effect = sm_cluster_details
+        self.mock_sm_client.list_clusters.return_value = _generate_list_clusters_response_over_maximum()
+        self.mock_session.client.return_value = self.mock_sm_client
+        mock_session.return_value = self.mock_session
+
+        result = self.runner.invoke(list_clusters)
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("cluster-1", result.output)
+        self.assertIn("cluster-2", result.output)
+        # Expect JSON output
+        output = json.loads(result.output)
+        # Each cluster has 2 instance type, so total output size is 2 * 50 = 100
+        self.assertTrue(len(output) == 100)
 
     @mock.patch("kubernetes.config.load_kube_config")
     @mock.patch("boto3.Session")
@@ -700,3 +808,9 @@ def _generate_nodes_list_no_status():
 
 def _generate_list_clusters_response():
     return {"ClusterSummaries": [{"ClusterName": "cluster-1"}, {"ClusterName": "cluster-2"}]}
+
+
+def _generate_list_clusters_response_over_maximum():
+    cluster_list = [{"ClusterName": f"cluster-{i+1}"} for i in range(100)]
+    return {"ClusterSummaries": cluster_list}
+

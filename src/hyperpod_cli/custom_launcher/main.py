@@ -132,7 +132,7 @@ def preprocess_config(cfg):
         if run_config.get("ntasks_per_node") is not None:
             ntasks_per_node = run_config.get("ntasks_per_node")
         else:
-            instance_type = cfg.cluster.get("instance_type")
+            instance_type = get_instance_type(cfg)
             if instance_type is not None and get_num_accelerator_devices(instance_type) is not None:
                 ntasks_per_node = get_num_accelerator_devices(instance_type) * get_num_cores_per_accelerator(
                     instance_type
@@ -148,7 +148,6 @@ def preprocess_config(cfg):
         # To align with https://github.com/NVIDIA/NeMo-Framework-Launcher/blob/23.11/launcher_scripts/nemo_launcher/core/stages.py#L313C54-L313C72
         with omegaconf.open_dict(cfg):
             cfg.training = {"model": {"ub_tp_comm_overlap": False}}
-        print(cfg)
         return True
     return False
 

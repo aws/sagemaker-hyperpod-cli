@@ -1,5 +1,20 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+import logging
 import subprocess
 import json
+import sys
+import botocore.config
 from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
@@ -20,8 +35,15 @@ from hyperpod_cli.constants.command_constants import (
     Orchestrator,
     OutputFormat,
 )
+from hyperpod_cli.telemetry.user_agent import get_user_agent_extra_suffix
 from hyperpod_cli.service.list_pods import ListPods
-from hyperpod_cli.utils import get_name_from_arn, get_sagemaker_client, setup_logger
+from hyperpod_cli.utils import (
+    get_name_from_arn,
+    get_sagemaker_client,
+    setup_logger,
+    set_logging_level,
+    store_current_hyperpod_context,
+)
 from hyperpod_cli.validators.cluster_validator import ClusterValidator
 from hyperpod_cli.validators.validator import Validator
 
@@ -53,20 +75,33 @@ logger = setup_logger(__name__)
     help="Config the output format, default is JSON. Table output format is also supported",
 )
 @click.option("--clusters", type=click.STRING, required=False, help="The list of clusters to show")
+@click.option("--debug", is_flag=True, help="Enable debug mode")
 def list_clusters(
     region: Optional[str],
     orchestrator: Optional[str],
     output: Optional[str],
     clusters: Optional[str],
+    debug: bool,
 ):
     """Get clusters capacity."""
+    if debug:
+        set_logging_level(logger, logging.DEBUG)
     validator = ClusterValidator()
+
+    # Make use of user_agent_extra field of the botocore_config object
+    # to append SageMaker Hyperpod CLI specific user_agent suffix
+    # to the current User-Agent header value from boto3
+    # This config will also make sure that user_agent never fails to log the User-Agent string
+    # even if boto User-Agent header format is updated in the future
+    # Ref: https://botocore.amazonaws.com/v1/documentation/api/latest/reference/config.html
+    botocore_config = botocore.config.Config(user_agent_extra=get_user_agent_extra_suffix())
+
     session = boto3.Session(region_name=region) if region else boto3.Session()
     if not validator.validate_aws_credential(session):
         logger.error("Cannot list clusters capacity due to AWS credentials issue")
         return
 
-    sm_client = get_sagemaker_client(session)
+    sm_client = get_sagemaker_client(session, botocore_config)
 
     if clusters:
         cluster_names = clusters.split(",")
@@ -76,7 +111,9 @@ def list_clusters(
     cluster_capacities: List[List[str]] = []
 
     k8s_client = KubernetesClient()
+    counter = 0
     for cluster_name in cluster_names:
+        current_cluster_capacities_size = len(cluster_capacities)
         rate_limited_operation(
             cluster_name=cluster_name,
             validator=validator,
@@ -86,6 +123,18 @@ def list_clusters(
             temp_config_file=TEMP_KUBE_CONFIG_FILE,
             cluster_capacities=cluster_capacities,
         )
+        # cluster_capacities will only be updated when the cluster
+        # is a valid Hyperpod EKS cluster. This check avoid
+        # we skipped many Hyperpod Slurm clusters and didn't return
+        # any Hyperpod EKS clusters.
+        if len(cluster_capacities) > current_cluster_capacities_size:
+            counter += 1
+        # Currently only support list <= 50 clusters
+        # TODO: Support pagination and list more clusters
+        if counter >= 50:
+            logger.debug("'list-clusters' reached maximum number of Hyperpod EKS clusters.")
+            break
+
     headers = [
         "Cluster",
         "InstanceType",
@@ -218,6 +267,7 @@ def _aggregate_nodes_info(nodes: List[client.V1Node]) -> Dict[str, Dict[str, Any
 @click.option(
     "--region", type=click.STRING, required=False, help="The region HyperPod EKS cluster resides"
 )
+@click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.option(
     "--namespace",
     type=click.STRING,
@@ -228,6 +278,7 @@ def _aggregate_nodes_info(nodes: List[client.V1Node]) -> Dict[str, Dict[str, Any
 def connect_cluster(
     name: str,
     region: Optional[str],
+    debug: bool,
     namespace: str = "default",
 ) -> None:
     """
@@ -236,22 +287,27 @@ def connect_cluster(
     Args:
         name (str): The name of the HyperPod EKS cluster to connect to.
         namespace (str): The namespace connect to. Default as 'default' namespace.
+        debug (bool): Enable debug mode.
         region (Optional[str]): The AWS region where the HyperPod EKS cluster resides.
             If not provided, the default region from the AWS credentials will be used.
 
     Returns:
         None
     """
+    if debug:
+        set_logging_level(logger, logging.DEBUG)
     validator = Validator()
+    botocore_config = botocore.config.Config(user_agent_extra=get_user_agent_extra_suffix())
     session = boto3.Session(region_name=region) if region else boto3.Session()
     if not validator.validate_aws_credential(session):
         logger.error("Cannot connect to HyperPod cluster due to aws credentials error")
-        return
+        sys.exit(1)
 
     try:
-        sm_client = get_sagemaker_client(session)
+        sm_client = get_sagemaker_client(session, botocore_config)
         hp_cluster_details = sm_client.describe_cluster(ClusterName=name)
         logger.debug("Fetched hyperpod cluster details")
+        store_current_hyperpod_context(hp_cluster_details)
         eks_cluster_arn = hp_cluster_details["Orchestrator"]["Eks"]["ClusterArn"]
         logger.debug(f"hyperpod cluster's EKS orchestrator cluster arn: {eks_cluster_arn}")
 
@@ -262,9 +318,9 @@ def connect_cluster(
             _update_kube_config(eks_name, region, None)
 
         k8s_client.set_context(eks_cluster_arn, namespace)
-        click.echo(f"Connect to HyperPod Cluster {name} in {namespace} namespace succeeded")
     except Exception as e:
-        click.echo(f"Unexpected error happens when try to connect to cluster {name}. Error: {e}")
+        logger.error(f"Unexpected error happens when try to connect to cluster {name}. Error: {e}")
+        sys.exit(1)
 
 
 def _update_kube_config(eks_name: str, region: Optional[str], config_file: Optional[str]) -> None:

@@ -94,7 +94,7 @@ spec:
           args:
             - --enable-k8s-exporter=false
             - --config.system-log-monitor=/config/system-message-monitor.json
-          image: 590183648699.dkr.ecr.us-west-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.230.0_1.0.19.0
+          image: {{ .Values.hmaimage }}
           resources:
             limits:
               cpu: 500m

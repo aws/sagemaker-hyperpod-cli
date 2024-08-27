@@ -1,3 +1,15 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 import click
 
 from hyperpod_cli.commands.cluster import connect_cluster, list_clusters
@@ -14,16 +26,16 @@ HELP_TEXT = """
 Find more information at: https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod.html
 
 Basic Commands:
-  * list-capacity   List capacity of HyperPod clusters.
+  * list-clusters   List clusters information for HyperPod EKS clusters.
   * connect-cluster Creates a connection from users local terminal to the HyperPod cluster 
                     allowing user to Start and preform other basic operations with training jobs.
   * start-job       Start a training job from a file on HyperPod cluster.
   * get-job         Show details of a specific training job submitted on HyperPod cluster.
-  * list-job        List training job on a HyperPod cluster.
+  * list-jobs       List training job on a HyperPod cluster.
   * cancel-job      Cancel training job on a HyperPod cluster.
 
 Troubleshooting and Debugging Commands:
-  * get-log     Get logs for a pod of training job running on HyperPod cluster.
+  * get-log         Get logs for a pod of training job running on HyperPod cluster.
   * list-pods       List all pods associated with a training job on HyperPod cluster.
   * exec            Execute a command on a pod of a training job on HyperPod cluster.
 

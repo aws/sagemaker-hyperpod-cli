@@ -113,7 +113,6 @@ class SMTraining(Training):
     def _make_torchrun_string(self):
         """
         Create torchrun string based on single/multi-node job
-        This is only used for Slurm based jobs
         """
         ntasks_per_node = get_ntasks_per_node(self.stage_cfg)
         if int(get_num_nodes(self.stage_cfg)) > 1:
@@ -124,7 +123,6 @@ class SMTraining(Training):
     def _make_custom_call_string(self, stage_cfg_path=None):
         """
         Create the training command with torchrun, script and args
-        This is only used for Slurm based jobs
         """
         script_path = str(self._entry_script_path)
         torchrun_cmd = self._make_torchrun_string()
@@ -136,7 +134,6 @@ class SMTraining(Training):
     def _get_hostfile_location(self):
         """
         Get the file location to store the hostnames
-        This is only used for Slurm based jobs
         """
         job_path = self.get_job_path()
         hostfile_location = Path(job_path.folder / "hostname")
@@ -145,7 +142,6 @@ class SMTraining(Training):
     def _get_nodeid_location(self):
         """
         Get the file location to store the nodeid, which will be used for node_rank in torchrun arg
-        This is only used for Slurm based jobs
         """
         job_path = self.get_job_path()
         nodeid_location = Path(job_path.folder / "node_id")
@@ -157,7 +153,6 @@ class SMTraining(Training):
         - Handle resolving hostname and create torch distribtued args
         - Pull from github if required
         - Launch torchrun command
-        This is only used for Slurm based jobs
         """
         nodes = get_num_nodes(self.stage_cfg)
         ntasks_per_node = get_ntasks_per_node(self.stage_cfg)
@@ -214,7 +209,6 @@ class SMTraining(Training):
         else:
             script_text.append('GIT_CLONE_DIR=""')
 
-        # Unset env variable SLURM_NTASKS since it's deprecated by slurm and will have conflict in PTL
         script_text.append("")
         script_text.append("unset SLURM_NTASKS")
 
@@ -225,7 +219,6 @@ class SMTraining(Training):
     def make_stage_command_groups(self, stage_cfg_path: Path) -> List[List[str]]:
         """
         Custom run stage which will invoke the entry script only
-        This is only used for Slurm based jobs
         [TODO] Make this compatiable with NeMo flow as well
         """
         # There will be only a single command group
@@ -234,10 +227,7 @@ class SMTraining(Training):
 
     def run(self) -> str:
         """
-        Run current stage returns job id on slurm based system otherwise empty string
-
-        :return: job id on slurm based system otherwise empty string
-        :rtype: str
+        Run current stage
         """
         # Setup folders and datasets
         self.setup_folder_and_data()
@@ -488,9 +478,6 @@ class SMCustomTraining(SMTraining):
     def _make_cluster_parameters(self, cluster: str) -> Dict:
         """
         Make a cluster-specific parameters for jobs on different clusters.
-        Current clusters include bcm(slurm), bcp and interactive.
-        For example for bcm, it will return slurm parameters:
-            {'job_name': 'some_name', 'nodes': 2, 'ntasks_per_node': 8, ...}
 
         :param str cluster: i.e. `bcm`, `bcp`, `interactive`, etc.
         :return: a dictionary of cluster parameters, e.g. `ntasks_per_node`

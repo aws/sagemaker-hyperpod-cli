@@ -1,0 +1,154 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description:  This template creates s3 bucket for storing lifecycle script needed for 
+  HyperPod cluster jobs
+
+Parameters:
+  ResourceNamePrefix:
+    Description: 'Prefix to be used for all resources created by this template'
+    Type: String
+    Default: 'hyperpod-eks-test'
+
+  BucketName:
+    Description: 'S3 bucket name'
+    Type: String
+    Default: 'hyperpod-test-bucket'
+
+Resources:
+
+  ExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - hyperpod.sagemaker.amazonaws.com
+                - roleproxy.im.aws.internal
+                - roleproxy.ease.aws.internal
+                - sagemaker.amazonaws.com
+                - scuderia.im.aws.internal
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonSageMakerFullAccess'
+        - 'arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly'
+        - 'arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy'
+        - 'arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy'
+        - 'arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess'
+        - 'arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore'
+        - 'arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy'
+      Policies:
+        - PolicyName: !Sub '${ResourceNamePrefix}-EKS-ReadOnly'
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'eks:Describe*'
+                  - 'eks:List*'
+                  - 'eks:AccessKubernetesApi'
+                Resource: '*'
+        - PolicyName: !Sub "${ResourceNamePrefix}-SageMakerClustersExecutionRoleIPv6Policy"
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "ec2:AssignIpv6Addresses"
+                  - "ec2:DescribeInstances"
+                  - "ec2:DescribeTags"
+                  - "ec2:DescribeNetworkInterfaces"
+                  - "ec2:DescribeInstanceTypes"
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - 'ec2:CreateTags'
+                Resource:
+                  - "arn:aws:ec2:*:*:network-interface/*"
+      RoleName: !Sub '${ResourceNamePrefix}-ExecutionRole'
+
+  ServiceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - sagemaker.amazonaws.com
+                - scuderia.im.aws.internal
+                - hyperpod.sagemaker.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: !Sub '${ResourceNamePrefix}-EKS-ReadOnly'
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'eks:DescribeCluster'
+                Resource: '*'
+        - PolicyName: 'SageMakerWriteLogAccess'
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogStream'
+                  - 'logs:CreateLogGroup'
+                  - 'logs:PutLogEvents'
+                Resource: !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/sagemaker/Clusters/*'
+      RoleName: 'HyperPodServiceRoleAlternative'
+
+  ServiceRoleV2:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - sagemaker.amazonaws.com
+                - scuderia.im.aws.internal
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: !Sub '${ResourceNamePrefix}-EKS-ReadOnly'
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'eks:DescribeCluster'
+                Resource: '*'
+      RoleName: 'HyperPodServiceRoleV2Alternative'
+
+  Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Sub '${BucketName}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+Outputs:
+  ExecutionRole:
+    Description: 'Execution Role Arn'
+    Value: !GetAtt ExecutionRole.Arn
+
+  ServiceRole:
+    Description: 'Execution Role Arn'
+    Value: !GetAtt ServiceRole.Arn
+
+  Bucket:
+    Description: 'Bucket Name'
+    Value: !Ref Bucket
