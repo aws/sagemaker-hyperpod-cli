@@ -57,7 +57,7 @@ setup(
         "omegaconf==2.3",
         "pynvml==11.4.1",
         "requests==2.32.3",
-        "tqdm==4.62.3",
+        "tqdm==4.66.3",
         "zstandard==0.15.2",
         # Test dependencies
         "pytest==8.3.2",
