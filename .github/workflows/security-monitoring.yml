@@ -38,3 +38,19 @@ jobs:
               core.setOutput('dependabot_alert_status', activeDependabotAlerts.length > 0 ? '1': '0');
             }
             await checkAlerts();
+  put-metric-data:
+    runs-on: ubuntu-latest
+    needs: [check-dependabot-alerts]
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@12e3392609eaaceb7ae6191b3f54bbcb85b5002b
+        with:
+          role-to-assume: ${{ secrets.MONITORING_ROLE_ARN }}
+          aws-region: us-west-2
+      - name: Put Dependabot Alert Metric Data
+        run: |
+          if [ "${{ needs.check-dependabot-alerts.outputs.dependabot_alert_status }}" == "1" ]; then
+            aws cloudwatch put-metric-data --metric-name DependabotAlert --namespace SecurityMonitoringMetrics --value 1 --unit Count --dimensions ProjectName=sagemaker-hyperpod-cli
+          else
+            aws cloudwatch put-metric-data --metric-name DependabotAlert --namespace SecurityMonitoringMetrics --value 0 --unit Count --dimensions ProjectName=sagemaker-hyperpod-cli
+          fi
