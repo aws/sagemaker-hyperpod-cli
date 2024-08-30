@@ -92,7 +92,7 @@ def get_sagemaker_client(
 ) -> botocore.client.BaseClient:
     # TODO: change to use public endpoint when release
     return session.client(
-        service_name="sagemaker-beta",
+        service_name="sagemaker",
         config=config,
     )
 
@@ -164,8 +164,6 @@ def get_cluster_console_url():
             f"https://{region}.console.aws.amazon.com/sagemaker/"
             f"home?region={region}#/cluster-management/{cluster_name}"
         )
-        if _validate_link(console_url) and _validate_placeholders(
-            region, cluster_name
-        ):
+        if _validate_link(console_url) and _validate_placeholders(region, cluster_name):
             return console_url
     return None

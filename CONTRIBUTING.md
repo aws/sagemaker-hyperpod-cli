@@ -63,3 +63,17 @@ See the [LICENSE](LICENSE) file for our project's licensing. We will ask you to 
 Install tox using `pip install tox`
 Run the following tox command and verify that all code checks and unit tests pass: `tox`. It will run test for Python 3.8, 3.9, 3.10
 You can also run a test suit with a single python version with the following command: `tox -e py310/py39/py38`
+
+## Troubleshooting
+### pytest 'start_job' related Unit Test failures
+- Underlying, the Click CLIRunner unit test tool has some issue with UTF-8 encoding
+- To resolve this, temporary use ```LC_ALL=C pytest test/unit_tests``` to complete the Unit tests
+
+### pytest 'NoSuchModule' errors
+- double check whether ```pytest``` is running the same venv or global environment as your project by ```which pytest```.
+- If ```pytest``` is running in venv, ensure ```hyperpod``` is installed in venv.
+- Otherwise, if ```pytest``` is running globally, ensure ```hyperpod``` is installed globally.
+
+### Unit test in IDEA
+Check ```setup.cfg``` and comment out line 95 to make ```pytest``` not checking ```setup.cfg``` for extra arguments.
+This will make local IDEA unit tests working.

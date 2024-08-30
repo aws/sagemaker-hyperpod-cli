@@ -66,8 +66,10 @@ setup(
     packages=find_packages(where="src", exclude=("test",)),
     install_requires=[
         "click==8.1.7",
-        "boto3==1.35.3",
-        "botocore==1.35.6 ",
+        "awscli>=1.34.9",
+        "awscli-cwlogs>=1.4.6",
+        "boto3>=1.35.3,<2.0",
+        "botocore>=1.35.6 ",
         "kubernetes==30.1.0",
         "pyyaml==6.0.2",
         "ratelimit==2.2.1",

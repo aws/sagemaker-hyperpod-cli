@@ -213,7 +213,7 @@ class ClusterTest(unittest.TestCase):
         result = self.runner.invoke(connect_cluster, ["--cluster-name", "my-cluster"])
         self.assertEqual(result.exit_code, 1)
 
-    @mock.patch("hyperpod_cli.commands.cluster.Validator")
+    @mock.patch("hyperpod_cli.commands.cluster.ClusterValidator")
     @mock.patch("builtins.open", new_callable=mock_open)
     def test_connect_validator_failure(self, mock_open_test, mock_validator_cls):
         mock_validator = mock_validator_cls.return_value
@@ -237,7 +237,7 @@ class ClusterTest(unittest.TestCase):
         mock_subprocess_run: mock.Mock,
         mock_kubernetes_client: mock.Mock,
         mock_validate_cluster_and_get_eks_arn: mock.Mock,
-        mock_validae_aws_credentials: mock.Mock,
+        mock_validate_aws_credentials: mock.Mock,
         mock_session: mock.Mock,
         mock_load_kube_config: mock.Mock,
     ):
@@ -246,7 +246,7 @@ class ClusterTest(unittest.TestCase):
         )
         mock_kubernetes_client.return_value = self.mock_k8s_client
 
-        mock_validae_aws_credentials.validate_aws_credential.return_value = None
+        mock_validate_aws_credentials.validate_aws_credential.return_value = None
         mock_validate_cluster_and_get_eks_arn.return_value = (
             "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
         )
@@ -291,7 +291,7 @@ class ClusterTest(unittest.TestCase):
         mock_subprocess_run: mock.Mock,
         mock_kubernetes_client: mock.Mock,
         mock_validate_cluster_and_get_eks_arn: mock.Mock,
-        mock_validae_aws_credentials: mock.Mock,
+        mock_validate_aws_credentials: mock.Mock,
         mock_session: mock.Mock,
         mock_load_kube_config: mock.Mock,
     ):
@@ -300,7 +300,7 @@ class ClusterTest(unittest.TestCase):
         )
         mock_kubernetes_client.return_value = self.mock_k8s_client
 
-        mock_validae_aws_credentials.validate_aws_credential.return_value = None
+        mock_validate_aws_credentials.validate_aws_credential.return_value = None
         mock_validate_cluster_and_get_eks_arn.return_value = (
             "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
         )
@@ -344,7 +344,7 @@ class ClusterTest(unittest.TestCase):
         mock_subprocess_run: mock.Mock,
         mock_kubernetes_client: mock.Mock,
         mock_validate_cluster_and_get_eks_arn: mock.Mock,
-        mock_validae_aws_credentials: mock.Mock,
+        mock_validate_aws_credentials: mock.Mock,
         mock_session: mock.Mock,
         mock_load_kube_config: mock.Mock,
     ):
@@ -353,7 +353,7 @@ class ClusterTest(unittest.TestCase):
         )
         mock_kubernetes_client.return_value = self.mock_k8s_client
 
-        mock_validae_aws_credentials.validate_aws_credential.return_value = None
+        mock_validate_aws_credentials.validate_aws_credential.return_value = None
         eks_cluster_arns = [
             f"arn:aws:eks:us-west-2:123456789012:cluster/cluster-{i}"
             for i in range(100)
@@ -404,7 +404,7 @@ class ClusterTest(unittest.TestCase):
         mock_subprocess_run: mock.Mock,
         mock_kubernetes_client: mock.Mock,
         mock_validate_cluster_and_get_eks_arn: mock.Mock,
-        mock_validae_aws_credentials: mock.Mock,
+        mock_validate_aws_credentials: mock.Mock,
         mock_session: mock.Mock,
         mock_load_kube_config: mock.Mock,
     ):
@@ -413,7 +413,7 @@ class ClusterTest(unittest.TestCase):
         )
         mock_kubernetes_client.return_value = self.mock_k8s_client
 
-        mock_validae_aws_credentials.validate_aws_credential.return_value = None
+        mock_validate_aws_credentials.validate_aws_credential.return_value = None
         mock_validate_cluster_and_get_eks_arn.return_value = (
             "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
         )
@@ -454,7 +454,7 @@ class ClusterTest(unittest.TestCase):
         mock_subprocess_run: mock.Mock,
         mock_kubernetes_client: mock.Mock,
         mock_validate_cluster_and_get_eks_arn: mock.Mock,
-        mock_validae_aws_credentials: mock.Mock,
+        mock_validate_aws_credentials: mock.Mock,
         mock_session: mock.Mock,
         mock_load_kube_config: mock.Mock,
     ):
@@ -463,7 +463,7 @@ class ClusterTest(unittest.TestCase):
         )
         mock_kubernetes_client.return_value = self.mock_k8s_client
 
-        mock_validae_aws_credentials.validate_aws_credential.return_value = None
+        mock_validate_aws_credentials.validate_aws_credential.return_value = None
         mock_validate_cluster_and_get_eks_arn.return_value = (
             "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
         )
@@ -511,7 +511,7 @@ class ClusterTest(unittest.TestCase):
         mock_subprocess_run: mock.Mock,
         mock_kubernetes_client: mock.Mock,
         mock_validate_cluster_and_get_eks_arn: mock.Mock,
-        mock_validae_aws_credentials: mock.Mock,
+        mock_validate_aws_credentials: mock.Mock,
         mock_session: mock.Mock,
         mock_load_kube_config: mock.Mock,
     ):
@@ -521,7 +521,7 @@ class ClusterTest(unittest.TestCase):
         )
         mock_kubernetes_client.return_value = self.mock_k8s_client
 
-        mock_validae_aws_credentials.validate_aws_credential.return_value = None
+        mock_validate_aws_credentials.validate_aws_credential.return_value = None
         mock_validate_cluster_and_get_eks_arn.return_value = (
             "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
         )
@@ -566,7 +566,7 @@ class ClusterTest(unittest.TestCase):
         mock_subprocess_run: mock.Mock,
         mock_kubernetes_client: mock.Mock,
         mock_validate_cluster_and_get_eks_arn: mock.Mock,
-        mock_validae_aws_credentials: mock.Mock,
+        mock_validate_aws_credentials: mock.Mock,
         mock_session: mock.Mock,
         mock_load_kube_config: mock.Mock,
     ):
@@ -576,7 +576,7 @@ class ClusterTest(unittest.TestCase):
         )
         mock_kubernetes_client.return_value = self.mock_k8s_client
 
-        mock_validae_aws_credentials.validate_aws_credential.return_value = None
+        mock_validate_aws_credentials.validate_aws_credential.return_value = None
         mock_validate_cluster_and_get_eks_arn.return_value = (
             "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
         )
@@ -621,7 +621,7 @@ class ClusterTest(unittest.TestCase):
         mock_subprocess_run: mock.Mock,
         mock_kubernetes_client: mock.Mock,
         mock_validate_cluster_and_get_eks_arn: mock.Mock,
-        mock_validae_aws_credentials: mock.Mock,
+        mock_validate_aws_credentials: mock.Mock,
         mock_session: mock.Mock,
         mock_load_kube_config: mock.Mock,
     ):
@@ -631,7 +631,7 @@ class ClusterTest(unittest.TestCase):
         )
         mock_kubernetes_client.return_value = self.mock_k8s_client
 
-        mock_validae_aws_credentials.validate_aws_credential.return_value = None
+        mock_validate_aws_credentials.validate_aws_credential.return_value = None
         mock_validate_cluster_and_get_eks_arn.return_value = (
             "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
         )
@@ -707,7 +707,7 @@ class ClusterTest(unittest.TestCase):
         mock_subprocess_run: mock.Mock,
         mock_kubernetes_client: mock.Mock,
         mock_validate_cluster_and_get_eks_arn: mock.Mock,
-        mock_validae_aws_credentials: mock.Mock,
+        mock_validate_aws_credentials: mock.Mock,
         mock_session: mock.Mock,
         mock_load_kube_config: mock.Mock,
     ):
@@ -716,7 +716,7 @@ class ClusterTest(unittest.TestCase):
         )
         mock_kubernetes_client.return_value = self.mock_k8s_client
 
-        mock_validae_aws_credentials.validate_aws_credential.return_value = None
+        mock_validate_aws_credentials.validate_aws_credential.return_value = None
         mock_validate_cluster_and_get_eks_arn.return_value = (
             "arn:aws:eks:us-west-2:123456789012:cluster/cluster-3"
         )
@@ -758,7 +758,7 @@ class ClusterTest(unittest.TestCase):
         mock_subprocess_run: mock.Mock,
         mock_kubernetes_client: mock.Mock,
         mock_validate_cluster_and_get_eks_arn: mock.Mock,
-        mock_validae_aws_credentials: mock.Mock,
+        mock_validate_aws_credentials: mock.Mock,
         mock_session: mock.Mock,
         mock_load_kube_config: mock.Mock,
     ):
@@ -767,7 +767,7 @@ class ClusterTest(unittest.TestCase):
         )
         mock_kubernetes_client.return_value = self.mock_k8s_client
 
-        mock_validae_aws_credentials.validate_aws_credential.return_value = None
+        mock_validate_aws_credentials.validate_aws_credential.return_value = None
         mock_validate_cluster_and_get_eks_arn.return_value = (
             "arn:aws:eks:us-west-2:123456789012:cluster/cluster-3"
         )
@@ -807,7 +807,7 @@ class ClusterTest(unittest.TestCase):
         mock_subprocess_run: mock.Mock,
         mock_kubernetes_client: mock.Mock,
         mock_validate_cluster_and_get_eks_arn: mock.Mock,
-        mock_validae_aws_credentials: mock.Mock,
+        mock_validate_aws_credentials: mock.Mock,
         mock_session: mock.Mock,
         mock_load_kube_config: mock.Mock,
     ):
@@ -816,7 +816,7 @@ class ClusterTest(unittest.TestCase):
         )
         mock_kubernetes_client.return_value = self.mock_k8s_client
 
-        mock_validae_aws_credentials.validate_aws_credential.return_value = None
+        mock_validate_aws_credentials.validate_aws_credential.return_value = None
         mock_validate_cluster_and_get_eks_arn.return_value = (
             "arn:aws:eks:us-west-2:123456789012:cluster/cluster-3"
         )
@@ -858,7 +858,7 @@ class ClusterTest(unittest.TestCase):
         mock_subprocess_run: mock.Mock,
         mock_kubernetes_client: mock.Mock,
         mock_validate_cluster_and_get_eks_arn: mock.Mock,
-        mock_validae_aws_credentials: mock.Mock,
+        mock_validate_aws_credentials: mock.Mock,
         mock_session: mock.Mock,
         mock_load_kube_config: mock.Mock,
     ):
@@ -867,7 +867,7 @@ class ClusterTest(unittest.TestCase):
         )
         mock_kubernetes_client.return_value = self.mock_k8s_client
 
-        mock_validae_aws_credentials.validate_aws_credential.return_value = None
+        mock_validate_aws_credentials.validate_aws_credential.return_value = None
         mock_validate_cluster_and_get_eks_arn.return_value = None
 
         mock_load_kube_config.return_value = None

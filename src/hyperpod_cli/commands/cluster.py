@@ -45,7 +45,6 @@ from hyperpod_cli.utils import (
     store_current_hyperpod_context,
 )
 from hyperpod_cli.validators.cluster_validator import ClusterValidator
-from hyperpod_cli.validators.validator import Validator
 
 # Best guess of EKS describeCluster and SageMaker listCluster
 # rate limit as 5tps. So Ratelimit to 4 to avoid throttling

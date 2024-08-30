@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+import boto3
 import datetime
 import logging
 import json
@@ -378,11 +379,15 @@ def start_job(
     if debug:
         set_logging_level(logger, logging.DEBUG)
 
-    if not namespace:
+    validator = JobValidator()
+    if not validator.validate_aws_credential(boto3.Session()):
+        logger.error("Cannot start Training job due to AWS credentials issue")
+        sys.exit(1)
+
+    if not namespace and config_file is None:
         k8s_client = KubernetesClient()
         namespace = k8s_client.get_current_context_namespace()
 
-    validator = JobValidator()
     if not validator.validate_start_job_args(
         config_file,
         job_name,
@@ -452,13 +457,11 @@ def start_job(
                 )
 
             volume_list: List[Volume] = []
-            
+
             if volumes:
                 for volume in volumes.split(","):
                     volume_name, host_path, container_path = volume.split(":")
-                    volume_list.append(
-                        Volume(volume_name, host_path, container_path)
-                    )
+                    volume_list.append(Volume(volume_name, host_path, container_path))
             if volume_list and len(volume_list) > 0:
                 volume_mount = []
                 for volume in volume_list:
@@ -469,10 +472,8 @@ def start_job(
                             "volumeName": volume.volume_name,
                         }
                     )
-                config["cluster"]["cluster_config"]["volumes"] = (
-                    volume_mount
-                )
-                
+                config["cluster"]["cluster_config"]["volumes"] = volume_mount
+
             if label_selector is not None:
                 config["cluster"]["cluster_config"]["label_selector"] = label_selector
             elif deep_health_check_passed_nodes_only:

@@ -1,0 +1,82 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+
+# Hydra configurations. SageMaker Hyperpod CLI use Hydra to manage start-job YAML files.
+defaults:
+ - override hydra/job_logging: stdout
+
+hydra:
+ run:
+  dir: .
+ output_subdir: null
+
+training_cfg:
+ # entry_script: Required. Path to the entry script of training/fine-tuning, this path should be inside container
+ entry_script: ./train.py
+ # script_args: Optional. List of script arguments.
+ script_args: []
+ run:
+  # name: Required. Current Training Job name
+  name: hyperpod-cli-test
+  # nodes: Required. Number of nodes to use for current training
+  nodes: 2
+  # ntasks_per_node: Optional. Number of devices to use per node.
+  # For CPU instances, default value will be 8; For GPU or TRN instances, default value
+  # will be the accelerator cores number on the instance
+  ntasks_per_node: 1
+cluster:
+ # cluster_type: Required. Currently, only support k8s cluster type
+ cluster_type: k8s
+ # instance_type: Required. SageMaker Hyperpod supported instance type only.
+ instance_type: ml.c5.2xlarge
+ # cluster_config: Required. Fields related to cluster configuration for each Training job run.
+ cluster_config:
+  # annotations: Optional. The annotations attached to the Training job.
+  # To use SageMaker Hyperpod Job AutoResume feature, set annotations like following example:
+  #   annotations:
+  #    sagemaker.amazonaws.com/enable-job-auto-resume: True
+  #    sagemaker.amazonaws.com/job-max-retry-count: 1
+  annotations:
+  # service_account_name: Optional. The name of service account associated with the namespace
+  service_account_name: null
+  # persistent_volume_claims: Optional. The persistent volume claims, usually used to mount FSx
+  persistent_volume_claims: null
+  # namespace: Optional. The namespace to submit job. If not specify, Training job will submit to
+  # the current namespace from Kubernetes context.
+  namespace: kubeflow
+  # labal_selector: Optional. Defines Kubernetes node affinity to select nodes with labels. Following
+  # config will choose SageMaker HyperPod health labels and prefer nodes with SageMaker Hyperpod burn-in
+  # test passed label.
+  label_selector:
+      required:
+          sagemaker.amazonaws.com/node-health-status:
+              - Schedulable
+      preferred:
+          sagemaker.amazonaws.com/deep-health-check-status:
+              - Passed
+      weights:
+          - 100
+  # pullPolicy: Required. Kubernetes PyTorchJob pull policy to pull container, can be Always, IfNotPresent and Never
+  pullPolicy: IfNotPresent
+  # restartPolicy: Required. Kubernetes PyTorchJob restart policy. Can be OnFailure, Always or Never.
+  # To use SageMaker Hyperpod AutoResume functionality, please set it to OnFailure.
+  restartPolicy: OnFailure
+
+# base_results_dir: Optional. Location to store the results, checkpoints and logs.
+base_results_dir: ./result
+# container: Required. Docker image to be used for Training Job
+container: docker.io/kubeflowkatib/pytorch-mnist:v1beta1-45c5727
+
+# env_vars: Optional. Environment variables passed to the training job.
+env_vars:
+ NCCL_DEBUG: INFO # Logging level for NCCL. Set to "INFO" for debug information

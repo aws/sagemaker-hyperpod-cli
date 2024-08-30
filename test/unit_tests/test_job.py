@@ -374,8 +374,12 @@ class JobTest(unittest.TestCase):
     @mock.patch("os.remove", return_value=None)
     @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
     def test_start_job_with_cli_args(
         self,
+        mock_boto3,
+        mock_validator_cls,
         mock_kubernetes_client: mock.Mock,
         mock_get_console_link,
         mock_remove,
@@ -386,6 +390,8 @@ class JobTest(unittest.TestCase):
         mock_compose,
         mock_initialize_config_dir,
     ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
@@ -417,8 +423,12 @@ class JobTest(unittest.TestCase):
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
     @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_with_namespace(
         self,
+        mock_boto3,
+        mock_validator_cls,
         mock_get_console_link,
         mock_remove,
         mock_exists,
@@ -428,6 +438,8 @@ class JobTest(unittest.TestCase):
         mock_compose,
         mock_initialize_config_dir,
     ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
         mock_main.return_value = None
@@ -462,8 +474,12 @@ class JobTest(unittest.TestCase):
     @mock.patch("logging.Logger.debug")
     @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_debug_mode(
         self,
+        mock_boto3,
+        mock_validator_cls,
         mock_kubernetes_client,
         mock_get_console_link,
         mock_debug,
@@ -475,6 +491,8 @@ class JobTest(unittest.TestCase):
         mock_compose,
         mock_initialize_config_dir,
     ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
@@ -509,8 +527,12 @@ class JobTest(unittest.TestCase):
     @mock.patch("os.remove", return_value=None)
     @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_gpu(
         self,
+        mock_boto3,
+        mock_validator_cls,
         mock_kubernetes_client,
         mock_get_console_link,
         mock_remove,
@@ -521,6 +543,8 @@ class JobTest(unittest.TestCase):
         mock_compose,
         mock_initialize_config_dir,
     ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
@@ -553,8 +577,12 @@ class JobTest(unittest.TestCase):
     @mock.patch("os.remove", return_value=None)
     @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_custom_label_selection(
         self,
+        mock_boto3,
+        mock_validator_cls,
         mock_kubernetes_client,
         mock_get_console_link,
         mock_remove,
@@ -565,6 +593,8 @@ class JobTest(unittest.TestCase):
         mock_compose,
         mock_initialize_config_dir,
     ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
@@ -593,9 +623,18 @@ class JobTest(unittest.TestCase):
     @mock.patch("builtins.open", new_callable=mock.mock_open)
     @mock.patch("yaml.dump")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_label_selection_not_json_str(
-        self, mock_kubernetes_client, mock_yaml_dump, mock_file
+        self,
+        mock_boto3,
+        mock_validator_cls,
+        mock_kubernetes_client,
+        mock_yaml_dump,
+        mock_file,
     ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_yaml_dump.return_value = None
         result = self.runner.invoke(
@@ -620,9 +659,18 @@ class JobTest(unittest.TestCase):
     @mock.patch("builtins.open", new_callable=mock.mock_open)
     @mock.patch("yaml.dump")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_label_selection_invalid_values(
-        self, mock_kubernetes_client, mock_yaml_dump, mock_file
+        self,
+        mock_boto3,
+        mock_validator_cls,
+        mock_kubernetes_client,
+        mock_yaml_dump,
+        mock_file,
     ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_yaml_dump.return_value = None
         result = self.runner.invoke(
@@ -654,8 +702,12 @@ class JobTest(unittest.TestCase):
     @mock.patch("os.path.abspath", return_value="/absolute/path/to/file.yaml")
     @mock.patch("os.path.isabs", return_value=False)
     @mock.patch("os.path.split", return_value=("/absolute/path/to", "file.yaml"))
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
     def test_start_job_with_config_file(
         self,
+        mock_boto3,
+        mock_validator_cls,
         mock_split,
         mock_isabs,
         mock_abspath,
@@ -666,6 +718,8 @@ class JobTest(unittest.TestCase):
         mock_compose,
         mock_initialize_config_dir,
     ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_main.return_value = None
@@ -686,8 +740,12 @@ class JobTest(unittest.TestCase):
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("os.path.isabs", return_value=True)
     @mock.patch("os.path.split", return_value=("/absolute/path/to", "file.yaml"))
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
     def test_start_job_with_config_file_absolute_path(
         self,
+        mock_boto,
+        mock_validator_cls,
         mock_split,
         mock_isabs,
         mock_kubernetes_client,
@@ -697,6 +755,8 @@ class JobTest(unittest.TestCase):
         mock_compose,
         mock_initialize_config_dir,
     ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_main.return_value = None
@@ -710,13 +770,45 @@ class JobTest(unittest.TestCase):
 
     @mock.patch("yaml.safe_load")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_invalid_template(
         self,
+        mock_boto3,
+        mock_validator_cls,
         mock_kubernetes_client,
         mock_yaml_load,
     ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_yaml_load.return_value = {"invalid": "dict"}
+        result = self.runner.invoke(
+            start_job,
+            [
+                "--job-name",
+                "test-job",
+                "--instance-type",
+                "ml.c5.xlarge",
+                "--image",
+                "pytorch:1.9.0-cuda11.1-cudnn8-runtime",
+                "--node-count",
+                "2",
+                "--entry-script",
+                "/opt/train/src/train.py",
+            ],
+        )
+        self.assertEqual(result.exit_code, 1)
+
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
+    def test_start_job_with_cli_args_aws_credentials_error(
+        self,
+        mock_boto3,
+        mock_validator_cls,
+    ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = False
         result = self.runner.invoke(
             start_job,
             [
@@ -738,13 +830,19 @@ class JobTest(unittest.TestCase):
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("os.path.isabs", return_value=True)
     @mock.patch("os.path.split", return_value=("/absolute/path/to", "file.yaml"))
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
     def test_start_job_with_invalid_config_file_path(
         self,
+        mock_boto3,
+        mock_validator_cls,
         mock_split,
         mock_isabs,
         mock_kubernetes_client,
         mock_exists,
     ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         result = self.runner.invoke(
             start_job,
@@ -757,14 +855,20 @@ class JobTest(unittest.TestCase):
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("os.path.isabs", return_value=True)
     @mock.patch("os.path.split", return_value=("/absolute/path/to", "file.yaml"))
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
     def test_start_job_with_invalid_config_file(
         self,
+        mock_boto3,
+        mock_validator_cls,
         mock_split,
         mock_isabs,
         mock_kubernetes_client,
         mock_join,
         mock_exists,
     ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_join.return_value = "/path/to/config/invalid.yaml"
         mock_exists.side_effect = lambda path: path != "/path/to/config/invalid.yaml"
@@ -780,8 +884,12 @@ class JobTest(unittest.TestCase):
     @mock.patch("builtins.open", new_callable=mock.mock_open)
     @mock.patch("yaml.dump")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_command_failed(
         self,
+        mock_boto3,
+        mock_validator_cls,
         mock_kubernetes_client,
         mock_yaml_dump,
         mock_file,
@@ -789,6 +897,8 @@ class JobTest(unittest.TestCase):
         mock_compose,
         mock_initialize_config_dir,
     ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_yaml_dump.return_value = None
         mock_main.side_effect = Exception("submit job error")
@@ -838,8 +948,12 @@ class JobTest(unittest.TestCase):
     @mock.patch("os.remove", return_value=None)
     @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_auto_resume_enabled(
         self,
+        mock_boto3,
+        mock_validator_cls,
         mock_kubernetes_client,
         mock_get_console_link,
         mock_remove,
@@ -850,6 +964,8 @@ class JobTest(unittest.TestCase):
         mock_compose,
         mock_initialize_config_dir,
     ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
@@ -884,8 +1000,12 @@ class JobTest(unittest.TestCase):
     @mock.patch("os.remove", return_value=None)
     @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_deep_health_check_passed_nodes_only(
         self,
+        mock_boto3,
+        mock_validator_cls,
         mock_kubernetes_client,
         mock_get_console_link,
         mock_remove,
@@ -896,6 +1016,8 @@ class JobTest(unittest.TestCase):
         mock_compose,
         mock_initialize_config_dir,
     ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
@@ -930,8 +1052,12 @@ class JobTest(unittest.TestCase):
     @mock.patch("os.remove", return_value=None)
     @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_with_kueue(
         self,
+        mock_boto3,
+        mock_validator_cls,
         mock_kubernetes_client,
         mock_get_console_link,
         mock_remove,
@@ -942,6 +1068,8 @@ class JobTest(unittest.TestCase):
         mock_compose,
         mock_initialize_config_dir,
     ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
@@ -977,8 +1105,12 @@ class JobTest(unittest.TestCase):
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_with_kueue_invalid(
         self,
+        mock_boto3,
+        mock_validator_cls,
         mock_kubernetes_client,
         mock_remove,
         mock_exists,
@@ -988,6 +1120,8 @@ class JobTest(unittest.TestCase):
         mock_compose,
         mock_initialize_config_dir,
     ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_yaml_dump.return_value = None
         mock_main.return_value = None
@@ -1021,8 +1155,12 @@ class JobTest(unittest.TestCase):
     @mock.patch("os.remove", return_value=None)
     @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_with_service_account(
         self,
+        mock_boto3,
+        mock_validator_cls,
         mock_kubernetes_client,
         mock_get_console_link,
         mock_remove,
@@ -1033,6 +1171,8 @@ class JobTest(unittest.TestCase):
         mock_compose,
         mock_initialize_config_dir,
     ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
@@ -1067,8 +1207,12 @@ class JobTest(unittest.TestCase):
     @mock.patch("os.remove", return_value=None)
     @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_with_persistent_volume_claims(
         self,
+        mock_boto3,
+        mock_validator_cls,
         mock_kubernetes_client,
         mock_get_console_link,
         mock_remove,
@@ -1079,6 +1223,8 @@ class JobTest(unittest.TestCase):
         mock_compose,
         mock_initialize_config_dir,
     ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
@@ -1113,8 +1259,12 @@ class JobTest(unittest.TestCase):
     @mock.patch("os.remove", return_value=None)
     @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    def test_start_job_with_cli_args_with_persistent_volume_claims(
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
+    def test_start_job_with_cli_args_with_local_volume(
         self,
+        mock_boto3,
+        mock_validator_cls,
         mock_kubernetes_client,
         mock_get_console_link,
         mock_remove,
@@ -1125,6 +1275,8 @@ class JobTest(unittest.TestCase):
         mock_compose,
         mock_initialize_config_dir,
     ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
@@ -1134,7 +1286,7 @@ class JobTest(unittest.TestCase):
         result = self.runner.invoke(
             start_job,
             [
-                "--name",
+                "--job-name",
                 "test-job",
                 "--instance-type",
                 "ml.c5.xlarge",
@@ -1147,7 +1299,7 @@ class JobTest(unittest.TestCase):
                 "--entry-script",
                 "/opt/train/src/train.py",
                 "--volumes",
-                "data:/data:/data"
+                "data:/data:/data",
             ],
         )
         self.assertEqual(result.exit_code, 0)
