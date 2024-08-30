@@ -1,3 +1,15 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 import subprocess
 import os
 import time
@@ -8,6 +20,7 @@ from hyperpod_cli.utils import setup_logger
 from test.integration_tests.abstract_integration_tests import AbstractIntegrationTests
 
 logger = setup_logger(__name__)
+
 
 class TestHappyCase(AbstractIntegrationTests):
     namespace = "kubeflow"
@@ -30,12 +43,12 @@ class TestHappyCase(AbstractIntegrationTests):
         command = [
             "hyperpod",
             "connect-cluster",
-            "--name",
-            super().hyperpod_cli_cluster_name ,
+            "--cluster-name",
+            super().hyperpod_cli_cluster_name,
             "--region",
             "us-west-2",
             "--namespace",
-            self.namespace
+            self.namespace,
         ]
 
         result = self._execute_test_command(command)
@@ -44,14 +57,14 @@ class TestHappyCase(AbstractIntegrationTests):
 
     @pytest.mark.order(2)
     def test_start_job(self):
-        config_path = os.path.expanduser('~/HyperpodCLI/src/HyperpodCLI/test/integration_tests/data')
+        config_path = os.path.expanduser(
+            "~/HyperpodCLI/src/HyperpodCLI/test/integration_tests/data/basicJob.yaml"
+        )
         command = [
-            'hyperpod',
-            'start-job',
-            '--config-path',
+            "hyperpod",
+            "start-job",
+            "--config-file",
             config_path,
-            '--config-name',
-            'basicJob.yaml'
         ]
 
         result = self._execute_test_command(command)
@@ -62,12 +75,7 @@ class TestHappyCase(AbstractIntegrationTests):
 
     @pytest.mark.order(3)
     def test_get_job(self):
-        command = [
-            "hyperpod",
-            "get-job",
-            "--name",
-            "hyperpod-cli-test"
-        ]
+        command = ["hyperpod", "get-job", "--job-name", "hyperpod-cli-test"]
 
         result = self._execute_test_command(command)
         assert result.returncode == 0
@@ -76,10 +84,7 @@ class TestHappyCase(AbstractIntegrationTests):
 
     @pytest.mark.order(4)
     def test_list_jobs(self):
-        command = [
-            "hyperpod",
-            "list-jobs"
-        ]
+        command = ["hyperpod", "list-jobs"]
 
         result = self._execute_test_command(command)
         assert result.returncode == 0
@@ -88,12 +93,7 @@ class TestHappyCase(AbstractIntegrationTests):
 
     @pytest.mark.order(5)
     def test_list_pods(self):
-        command = [
-            "hyperpod",
-            "list-pods",
-            "--name",
-            "hyperpod-cli-test"
-        ]
+        command = ["hyperpod", "list-pods", "--job-name", "hyperpod-cli-test"]
 
         result = self._execute_test_command(command)
         assert result.returncode == 0
@@ -105,7 +105,7 @@ class TestHappyCase(AbstractIntegrationTests):
         command = [
             "hyperpod",
             "get-log",
-            "--name",
+            "--job-name",
             "hyperpod-cli-test",
             "--pod",
             "hyperpod-cli-test-worker-0",
@@ -115,15 +115,9 @@ class TestHappyCase(AbstractIntegrationTests):
         assert result.returncode == 0
         logger.info(result.stdout)
 
-
     @pytest.mark.order(7)
     def test_cancel_job(self):
-        command = [
-            "hyperpod",
-            "cancel-job",
-            "--name",
-            "hyperpod-cli-test"
-        ]
+        command = ["hyperpod", "cancel-job", "--job-name", "hyperpod-cli-test"]
 
         result = self._execute_test_command(command)
         assert result.returncode == 0

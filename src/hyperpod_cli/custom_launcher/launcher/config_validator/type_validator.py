@@ -27,6 +27,7 @@ class TypeValidator:
         ('cluster.cluster_config.priority_class_name', 'string'),
         ('cluster.cluster_config.label_selector', 'dict'),
         ('cluster.cluster_config.persistentVolumeClaims', 'list_dict'),
+        ('cluster.cluster_config.volumes', 'list_dict'),
         ('cluster.cluster_config.pullPolicy', 'string'),
         ('cluster.cluster_config.restartPolicy', 'string'),
         ('base_results_dir', 'path'),

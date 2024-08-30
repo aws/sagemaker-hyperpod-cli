@@ -20,7 +20,6 @@ from hyperpod_cli import utils
 
 
 class GetTrainingJob:
-
     def __init__(self):
         return
 
@@ -52,7 +51,9 @@ class GetTrainingJob:
                     "Name": output.get("metadata").get("name"),
                     "Namespace": output.get("metadata").get("namespace"),
                     "Label": output.get("metadata").get("labels"),
-                    "Creation Timestamp": output.get("metadata").get("creationTimestamp"),
+                    "Creation Timestamp": output.get("metadata").get(
+                        "creationTimestamp"
+                    ),
                 }
             result.update({"Status": output.get("status")})
             result.update({"Console URL": utils.get_cluster_console_url()})
@@ -68,9 +69,13 @@ class GetTrainingJob:
                     "Label": output.get("metadata").get("labels"),
                     "Annotations": output.get("metadata").get("annotations"),
                     "Metadata": {
-                        "Creation Timestamp": output.get("metadata").get("creationTimestamp"),
+                        "Creation Timestamp": output.get("metadata").get(
+                            "creationTimestamp"
+                        ),
                         "Generation": output.get("metadata").get("generation"),
-                        "Resource Version": output.get("metadata").get("resourceVersion"),
+                        "Resource Version": output.get("metadata").get(
+                            "resourceVersion"
+                        ),
                         "UID": output.get("metadata").get("uid"),
                     },
                 }

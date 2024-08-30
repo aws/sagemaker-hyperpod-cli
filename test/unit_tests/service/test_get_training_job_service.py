@@ -20,6 +20,7 @@ from hyperpod_cli.service.get_training_job import GetTrainingJob
 
 SAMPLE_HYPERPOD_CLUSTER_URL = "https://us-west-2.console.aws.amazon.com/sagemaker/home?region=us-west-2#/cluster-management/cluster_name"
 
+
 class GetTrainingJobTest(unittest.TestCase):
     def setUp(self):
         self.mock_k8s_client = MagicMock(spec=KubernetesClient)
@@ -30,7 +31,7 @@ class GetTrainingJobTest(unittest.TestCase):
     def test_get_training_job_with_namespace(
         self,
         mock_kubernetes_client: mock.Mock,
-        mock_current_hyperpod_context: mock.Mock
+        mock_current_hyperpod_context: mock.Mock,
     ):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         mock_current_hyperpod_context.return_value = SAMPLE_HYPERPOD_CLUSTER_URL
@@ -47,7 +48,7 @@ class GetTrainingJobTest(unittest.TestCase):
     def test_get_training_job_without_namespace(
         self,
         mock_kubernetes_client: mock.Mock,
-        mock_current_hyperpod_context: mock.Mock
+        mock_current_hyperpod_context: mock.Mock,
     ):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         mock_current_hyperpod_context.return_value = SAMPLE_HYPERPOD_CLUSTER_URL
@@ -63,7 +64,7 @@ class GetTrainingJobTest(unittest.TestCase):
     def test_get_training_job_with_verbose(
         self,
         mock_kubernetes_client: mock.Mock,
-        mock_current_hyperpod_context: mock.Mock
+        mock_current_hyperpod_context: mock.Mock,
     ):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         mock_current_hyperpod_context.return_value = SAMPLE_HYPERPOD_CLUSTER_URL
@@ -79,7 +80,7 @@ class GetTrainingJobTest(unittest.TestCase):
     def test_get_training_job_with_verbose_with_no_output(
         self,
         mock_kubernetes_client: mock.Mock,
-        mock_current_hyperpod_context: mock.Mock
+        mock_current_hyperpod_context: mock.Mock,
     ):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         mock_current_hyperpod_context.return_value = SAMPLE_HYPERPOD_CLUSTER_URL
@@ -93,7 +94,7 @@ class GetTrainingJobTest(unittest.TestCase):
     def test_get_training_job_without_verbose_with_no_output(
         self,
         mock_kubernetes_client: mock.Mock,
-        mock_current_hyperpod_context: mock.Mock
+        mock_current_hyperpod_context: mock.Mock,
     ):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         mock_current_hyperpod_context.return_value = SAMPLE_HYPERPOD_CLUSTER_URL
@@ -107,7 +108,7 @@ class GetTrainingJobTest(unittest.TestCase):
     def test_get_training_job_without_verbose_without_metadata(
         self,
         mock_kubernetes_client: mock.Mock,
-        mock_current_hyperpod_context: mock.Mock
+        mock_current_hyperpod_context: mock.Mock,
     ):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         mock_current_hyperpod_context.return_value = SAMPLE_HYPERPOD_CLUSTER_URL
@@ -121,7 +122,7 @@ class GetTrainingJobTest(unittest.TestCase):
     def test_get_training_job_with_verbose_with_values(
         self,
         mock_kubernetes_client: mock.Mock,
-        mock_current_hyperpod_context: mock.Mock
+        mock_current_hyperpod_context: mock.Mock,
     ):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         mock_current_hyperpod_context.return_value = SAMPLE_HYPERPOD_CLUSTER_URL
@@ -142,7 +143,7 @@ class GetTrainingJobTest(unittest.TestCase):
     def test_get_training_job_with_verbose_without_metadata(
         self,
         mock_kubernetes_client: mock.Mock,
-        mock_current_hyperpod_context: mock.Mock
+        mock_current_hyperpod_context: mock.Mock,
     ):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         mock_current_hyperpod_context.return_value = SAMPLE_HYPERPOD_CLUSTER_URL

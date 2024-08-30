@@ -315,6 +315,8 @@ class SMTraining(Training):
             values_template.trainingConfig.restartPolicy = cluster_parameters["restartPolicy"]
         if "persistent_volume_claims" in cluster_parameters:
             values_template.trainingConfig.persistentVolumeClaims = cluster_parameters["persistent_volume_claims"]
+        if "volumes" in cluster_parameters:
+            values_template.trainingConfig.volumes = cluster_parameters["volumes"]
         if cluster_parameters.get("namespace", None) is not None:
             values_template.trainingConfig.namespace = cluster_parameters["namespace"]
         if cluster_parameters.get("annotations", None) is not None:
@@ -444,7 +446,7 @@ class SMCustomTraining(SMTraining):
             # script_args will be a list of dict which has key of arg_name and value of arg_value
             for arg in list(self.stage_cfg.script_args):
                 for key, val in arg.items():
-                    arg_str.append(f"--{key} {val} ")
+                    arg_str.append(f"{key} {val} ")
         return "".join(arg_str)
 
     def update_stage_specific_k8s_values(self, values_template):

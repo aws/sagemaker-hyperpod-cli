@@ -38,7 +38,9 @@ SAMPLE_OUTPUT: V1PodList = V1PodList(
                 containers=[
                     V1Container(
                         name="test-container",
-                        resources=V1ResourceRequirements(requests={"nvidia.com/gpu": "1"}),
+                        resources=V1ResourceRequirements(
+                            requests={"nvidia.com/gpu": "1"}
+                        ),
                     )
                 ],
             ),
@@ -56,14 +58,13 @@ SAMPLE_OUTPUT: V1PodList = V1PodList(
                     )
                 ],
             ),
-            status=V1PodStatus(phase="running")
+            status=V1PodStatus(phase="running"),
         ),
     ]
 )
 
 
 class TestListPods(unittest.TestCase):
-
     def setUp(self):
         self.mock_list_pods = ListPods()
         self.mock_k8s_client = MagicMock(spec=KubernetesClient)
@@ -75,7 +76,9 @@ class TestListPods(unittest.TestCase):
     ):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         self.mock_k8s_client.list_pods_with_labels.return_value = SAMPLE_OUTPUT
-        result = self.mock_list_pods.list_pods_for_training_job("test-job", "kubeflow", False)
+        result = self.mock_list_pods.list_pods_for_training_job(
+            "test-job", "kubeflow", False
+        )
         self.assertEqual(2, len(result))
 
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
@@ -85,7 +88,9 @@ class TestListPods(unittest.TestCase):
     ):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         self.mock_k8s_client.list_pods_with_labels.return_value = V1PodList(items=[])
-        result = self.mock_list_pods.list_pods_for_training_job("test-job", "kubeflow", False)
+        result = self.mock_list_pods.list_pods_for_training_job(
+            "test-job", "kubeflow", False
+        )
         self.assertEqual(0, len(result))
 
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
@@ -95,7 +100,9 @@ class TestListPods(unittest.TestCase):
     ):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         self.mock_k8s_client.list_pods_with_labels.return_value = V1PodList(items=[])
-        result = self.mock_list_pods.list_pods_for_training_job("test-job", "kubeflow", True)
+        result = self.mock_list_pods.list_pods_for_training_job(
+            "test-job", "kubeflow", True
+        )
         self.assertNotIn("test-name", result)
 
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
@@ -105,8 +112,12 @@ class TestListPods(unittest.TestCase):
     ):
         sample_metadata_none_output: V1PodList = V1PodList(items=[V1Pod(metadata=None)])
         mock_kubernetes_client.return_value = self.mock_k8s_client
-        self.mock_k8s_client.list_pods_with_labels.return_value = sample_metadata_none_output
-        result = self.mock_list_pods.list_pods_for_training_job("test-job", "kubeflow", False)
+        self.mock_k8s_client.list_pods_with_labels.return_value = (
+            sample_metadata_none_output
+        )
+        result = self.mock_list_pods.list_pods_for_training_job(
+            "test-job", "kubeflow", False
+        )
         self.assertEqual(0, len(result))
 
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
@@ -127,7 +138,9 @@ class TestListPods(unittest.TestCase):
     ):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         self.mock_k8s_client.list_pods_with_labels.return_value = SAMPLE_OUTPUT
-        result = self.mock_list_pods.list_pods_for_training_job("test-job", "kubeflow", True)
+        result = self.mock_list_pods.list_pods_for_training_job(
+            "test-job", "kubeflow", True
+        )
         self.assertIn("test-name", result)
 
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
@@ -137,8 +150,12 @@ class TestListPods(unittest.TestCase):
     ):
         sample_metadata_none_output: V1PodList = V1PodList(items=[V1Pod(metadata=None)])
         mock_kubernetes_client.return_value = self.mock_k8s_client
-        self.mock_k8s_client.list_pods_with_labels.return_value = sample_metadata_none_output
-        result = self.mock_list_pods.list_pods_for_training_job("test-job", "kubeflow", True)
+        self.mock_k8s_client.list_pods_with_labels.return_value = (
+            sample_metadata_none_output
+        )
+        result = self.mock_list_pods.list_pods_for_training_job(
+            "test-job", "kubeflow", True
+        )
         self.assertNotIn("test-name", result)
 
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
@@ -165,7 +182,9 @@ class TestListPods(unittest.TestCase):
                     containers=[
                         V1Container(
                             name="test-container",
-                            resources=V1ResourceRequirements(requests={"nvidia.com/gpu": "1"}),
+                            resources=V1ResourceRequirements(
+                                requests={"nvidia.com/gpu": "1"}
+                            ),
                         )
                     ]
                 )

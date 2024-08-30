@@ -142,6 +142,12 @@ spec:
               name: {{ .claimName }}-volume
             {{- end }}
             {{- end }}
+            {{- if $config.volumes }}
+            {{- range $config.volumes }}
+            - mountPath: {{ .mountPath }}
+              name: {{ .volumeName }}
+            {{- end }}
+            {{- end }}            
             {{- if not $config.customScript }}
             - mountPath: /config
               name: training-config
@@ -195,6 +201,13 @@ spec:
               claimName: {{ .claimName }}
           {{- end }}
           {{- end }}
+          {{- if $config.volumes }}
+          {{- range $config.volumes }}
+          - name: {{ .volumeName }}
+            hostPath:
+              path: {{ .hostPath }}
+          {{- end }}
+          {{- end }}          
           {{- if not $config.customScript }}
           - configMap:
               name: training-config

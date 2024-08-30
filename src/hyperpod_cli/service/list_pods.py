@@ -68,9 +68,13 @@ class ListPods:
                             "aws.amazon.com/neurondevice"
                         )
                         if gpu_request:
-                            accelerator_devices_requests_by_node[node_name] += int(gpu_request)
+                            accelerator_devices_requests_by_node[node_name] += int(
+                                gpu_request
+                            )
                         if neuron_request:
-                            accelerator_devices_requests_by_node[node_name] += int(neuron_request)
+                            accelerator_devices_requests_by_node[node_name] += int(
+                                neuron_request
+                            )
 
         return accelerator_devices_requests_by_node
 
@@ -88,7 +92,14 @@ class ListPods:
                         status = _pod.status.phase
                     if _pod.metadata.creation_timestamp:
                         creation_timestamp = str(_pod.metadata.creation_timestamp)
-                    output_pods["pods"].append({"Pod Name": name, "Namespace": namespace, "Status": status, "Creation Time": creation_timestamp})
+                    output_pods["pods"].append(
+                        {
+                            "Pod Name": name,
+                            "Namespace": namespace,
+                            "Status": status,
+                            "Creation Time": creation_timestamp,
+                        }
+                    )
 
         return json.dumps(output_pods, indent=1, sort_keys=False)
 

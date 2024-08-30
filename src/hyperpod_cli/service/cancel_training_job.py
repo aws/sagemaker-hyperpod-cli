@@ -17,7 +17,6 @@ from hyperpod_cli.clients.kubernetes_client import KubernetesClient
 
 
 class CancelTrainingJob:
-
     def __init__(self):
         return
 
@@ -33,9 +32,15 @@ class CancelTrainingJob:
             namespace = k8s_client.get_current_context_namespace()
 
         result = k8s_client.delete_training_job(job_name=job_name, namespace=namespace)
-        helm_chart_cleanup_command = ["helm", "uninstall", job_name, "--namespace",  namespace]
+        helm_chart_cleanup_command = [
+            "helm",
+            "uninstall",
+            job_name,
+            "--namespace",
+            namespace,
+        ]
 
-        if result.get("status") and result.get("status") == 'Success':
+        if result.get("status") and result.get("status") == "Success":
             subprocess.run(helm_chart_cleanup_command, capture_output=True, text=True)
             return None
         else:

@@ -89,7 +89,9 @@ class KubernetesClient:
             client.CoreV1Api: The CoreV1Api client.
         """
         if self._kube_client is None:
-            raise RuntimeError("Kubernetes client is not initialized. Call set_context() first.")
+            raise RuntimeError(
+                "Kubernetes client is not initialized. Call set_context() first."
+            )
         return client.CoreV1Api(self._kube_client)
 
     def get_apps_v1_api(self) -> client.AppsV1Api:
@@ -100,7 +102,9 @@ class KubernetesClient:
             client.AppsV1Api: The AppsV1Api client.
         """
         if self._kube_client is None:
-            raise RuntimeError("Kubernetes client is not initialized. Call set_context() first.")
+            raise RuntimeError(
+                "Kubernetes client is not initialized. Call set_context() first."
+            )
         return client.AppsV1Api(self._kube_client)
 
     def context_exists(self, context: str) -> bool:
@@ -195,7 +199,9 @@ class KubernetesClient:
         return pods
 
     def get_logs_for_pod(self, pod_name: str, namespace: str):
-        return client.CoreV1Api().read_namespaced_pod_log(name=pod_name, namespace=namespace)
+        return client.CoreV1Api().read_namespaced_pod_log(
+            name=pod_name, namespace=namespace
+        )
 
     def get_job(self, job_name: str, namespace: str):
         return client.CustomObjectsApi().get_namespaced_custom_object(

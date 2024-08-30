@@ -55,6 +55,9 @@ trainingConfig:
   # persistent volume, usually used to mount FSx
   persistentVolumeClaims: null
 
+  # temp volume mount
+  volumes: null
+
   # A github repo if user might want to use script inside
   git:
     repo_url: null

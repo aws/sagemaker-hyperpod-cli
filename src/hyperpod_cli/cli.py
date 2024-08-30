@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import click
+import pkg_resources
 
 from hyperpod_cli.commands.cluster import connect_cluster, list_clusters
 from hyperpod_cli.commands.job import (
@@ -28,7 +29,7 @@ Find more information at: https://docs.aws.amazon.com/sagemaker/latest/dg/sagema
 Basic Commands:
   * list-clusters   List clusters information for HyperPod EKS clusters.
   * connect-cluster Creates a connection from users local terminal to the HyperPod cluster 
-                    allowing user to Start and preform other basic operations with training jobs.
+                    allowing user to start and preform other basic operations with training jobs.
   * start-job       Start a training job from a file on HyperPod cluster.
   * get-job         Show details of a specific training job submitted on HyperPod cluster.
   * list-jobs       List training job on a HyperPod cluster.
@@ -45,6 +46,8 @@ Usage:
 Use "hyperpod <command> --help" for more information about a given command.
 """
 
+VERSION = pkg_resources.get_distribution("hyperpod").version
+
 
 class HyperPodCommandGroup(click.Group):
     def format_help(self, ctx, formatter):
@@ -52,6 +55,7 @@ class HyperPodCommandGroup(click.Group):
 
 
 @click.group(cls=HyperPodCommandGroup)
+@click.version_option(version=VERSION)
 def cli():
     pass
 

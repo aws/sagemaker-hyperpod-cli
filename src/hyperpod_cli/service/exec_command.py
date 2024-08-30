@@ -51,8 +51,11 @@ class ExecCommand:
         if all_pods:
             output = ""
             for pod in pods_for_training_job:
-                output += (pod + "\n")
-                output += (k8s_client.exec_command_on_pod(pod, namespace, bash_command_str) + "\n")
+                output += pod + "\n"
+                output += (
+                    k8s_client.exec_command_on_pod(pod, namespace, bash_command_str)
+                    + "\n"
+                )
                 output += "\n"
             return output
         else:

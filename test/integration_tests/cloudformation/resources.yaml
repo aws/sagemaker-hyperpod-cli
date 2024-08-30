@@ -1,3 +1,15 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 AWSTemplateFormatVersion: '2010-09-09'
 Description:  This template deploys a VPC, with three public and private subnets spread
   across three Availability Zones. It deploys an internet gateway, with a default
@@ -9,6 +21,10 @@ Parameters:
     Description: An environment name that is prefixed to resource names
     Type: String
     Default: "hyperpod-eks-vpc"
+
+  EKSClusterRoleArn:
+    Description: Role used for creating eks cluster
+    Type: String
 
   VpcCIDR:
     Description: Please enter the IP range (CIDR notation) for this VPC
@@ -351,29 +367,12 @@ Resources:
       SecurityGroupIds:
         - !Ref NoIngressSecurityGroup
 
-  ClusterRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      RoleName: !Sub ${ClusterName}-cluster-role
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - eks.amazonaws.com
-            Action:
-              - 'sts:AssumeRole'
-      Path: /
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
-
   EKSCluster:
     Type: 'AWS::EKS::Cluster'
     Properties:
       Name: !Ref ClusterName
       Version: !Ref KubernetesVersion
-      RoleArn: !GetAtt ClusterRole.Arn
+      RoleArn: !Ref EKSClusterRoleArn
       AccessConfig:
         # For now, HyperPod requires config map to work
         AuthenticationMode: API_AND_CONFIG_MAP

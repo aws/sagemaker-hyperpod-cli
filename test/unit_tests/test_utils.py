@@ -22,20 +22,86 @@ from hyperpod_cli.utils import (
     set_logging_level,
     setup_logger,
     get_cluster_console_url,
-    store_current_hyperpod_context
+    store_current_hyperpod_context,
 )
 
 DATA_JSON = {
     "ClusterArn": "arn:aws:sagemaker:us-west-2:205812255177:cluster/jew43eabxr86",
     "ClusterName": "hyperpod-eks-test-1723857725",
     "ClusterStatus": "InService",
-    "CreationTime": "2024-08-17 01:26:35.921000+00:00"
+    "CreationTime": "2024-08-17 01:26:35.921000+00:00",
 }
 
-DATA = '{"ClusterArn": "arn:aws:sagemaker:us-west-2:1234567890:cluster/test",' \
-       ' "ClusterName": "hyperpod-eks-test",' \
-       ' "ClusterStatus": "InService",' \
-       ' "CreationTime": "2024-08-17 01:26:35.921000+00:00"}'
+DATA = (
+    '{"ClusterArn": "arn:aws:sagemaker:us-west-2:1234567890:cluster/test",'
+    ' "ClusterName": "hyperpod-eks-test",'
+    ' "ClusterStatus": "InService",'
+    ' "CreationTime": "2024-08-17 01:26:35.921000+00:00"}'
+)
+
+INVALID_DATA = (
+    '{"ClusterArn": "arn:aws:sagemaker:us-west$2:1234567890:cluster/test",'
+    ' "ClusterName": "hyperpod-eks-test",'
+    ' "ClusterStatus": "InService",'
+    ' "CreationTime": "2024-08-17 01:26:35.921000+00:00"}'
+)
+
+INVALID_DATA_NONE_NAME = (
+    '{"ClusterArn": "arn:aws:sagemaker:us-west-2:1234567890:cluster/test",'
+    ' "ClusterName": "" ,'
+    ' "ClusterStatus": "InService",'
+    ' "CreationTime": "2024-08-17 01:26:35.921000+00:00"}'
+)
+
+INVALID_DATA_LONGER_REGION_PREFIX = (
+    '{"ClusterArn": "arn:aws:sagemaker:old-west-2:1234567890:cluster/test",'
+    ' "ClusterName": "hyperpod-eks-test",'
+    ' "ClusterStatus": "InService",'
+    ' "CreationTime": "2024-08-17 01:26:35.921000+00:00"}'
+)
+
+INVALID_DATA_SHORT_REGION_PREFIX = (
+    '{"ClusterArn": "arn:aws:sagemaker:o-west-2:1234567890:cluster/test",'
+    ' "ClusterName": "hyperpod-eks-test",'
+    ' "ClusterStatus": "InService",'
+    ' "CreationTime": "2024-08-17 01:26:35.921000+00:00"}'
+)
+
+INVALID_DATA_SHORT_REGION = (
+    '{"ClusterArn": "arn:aws:sagemaker:us-we-2:1234567890:cluster/test",'
+    ' "ClusterName": "hyperpod-eks-test",'
+    ' "ClusterStatus": "InService",'
+    ' "CreationTime": "2024-08-17 01:26:35.921000+00:00"}'
+)
+
+INVALID_DATA_LONGER_REGION = (
+    '{"ClusterArn": "arn:aws:sagemaker:us-northwesteast-2:1234567890:cluster/test",'
+    ' "ClusterName": "hyperpod-eks-test",'
+    ' "ClusterStatus": "InService",'
+    ' "CreationTime": "2024-08-17 01:26:35.921000+00:00"}'
+)
+
+INVALID_DATA_REGION_SUFFIX = (
+    '{"ClusterArn": "arn:aws:sagemaker:us-west-y:1234567890:cluster/test",'
+    ' "ClusterName": "hyperpod-eks-test",'
+    ' "ClusterStatus": "InService",'
+    ' "CreationTime": "2024-08-17 01:26:35.921000+00:00"}'
+)
+
+INVALID_DATA_LONGER_REGION_SUFFIX = (
+    '{"ClusterArn": "arn:aws:sagemaker:us-west-98789:1234567890:cluster/test",'
+    ' "ClusterName": "hyperpod-eks-test",'
+    ' "ClusterStatus": "InService",'
+    ' "CreationTime": "2024-08-17 01:26:35.921000+00:00"}'
+)
+
+INVALID_DATA_LONGER_CLUSTER_NAME = (
+    '{"ClusterArn": "arn:aws:sagemaker:us-west-98789:1234567890:cluster/test",'
+    ' "ClusterName": "hyperpod-eks-test-hyperpod-eks-test-hyperpod-eks-test-hyperpod-eks-test",'
+    ' "ClusterStatus": "InService",'
+    ' "CreationTime": "2024-08-17 01:26:35.921000+00:00"}'
+)
+
 
 class TestUtils(unittest.TestCase):
     def test_get_name_from_arn_success(self):
@@ -69,12 +135,14 @@ class TestUtils(unittest.TestCase):
         formatter = logger.handlers[0].formatter
         self.assertIsInstance(formatter, logging.Formatter)
         self.assertEqual(
-            formatter._style._fmt, "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            formatter._style._fmt,
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
 
-    @patch('logging.Logger')
-    @patch('logging.Handler')
-    def test_set_logging_level(self,
+    @patch("logging.Logger")
+    @patch("logging.Handler")
+    def test_set_logging_level(
+        self,
         mock_handler,
         mock_logger,
     ):
@@ -95,7 +163,6 @@ class TestUtils(unittest.TestCase):
         mock_logger.setLevel.assert_called_with(logging.ERROR)
         mock_handler.setLevel.assert_called_with(logging.ERROR)
 
-
     @patch("boto3.Session")
     def test_get_sagemaker_client(self, mock_boto_session: mock.Mock):
         mock_boto_session.client.return_value = None
@@ -109,7 +176,72 @@ class TestUtils(unittest.TestCase):
     def test_get_cluster_console_url(self):
         mock_read = mock_open(read_data=DATA)
         with patch("builtins.open", mock_read):
-            get_cluster_console_url()
-
+            result = get_cluster_console_url()
+        self.assertEqual(
+            result,
+            "https://us-west-2.console.aws.amazon.com/sagemaker/home?region=us-west-2#/cluster-management/hyperpod-eks-test",
+        )
         mock_read.assert_called_once_with("/tmp/hyperpod_current_context.json", "r")
 
+    def test_get_cluster_console_url_invalid_data(self):
+        mock_read = mock_open(read_data=INVALID_DATA)
+        with patch("builtins.open", mock_read):
+            result = get_cluster_console_url()
+        self.assertIsNone(result)
+        mock_read.assert_called_once_with("/tmp/hyperpod_current_context.json", "r")
+
+    def test_get_cluster_console_url_longer_region_prefix(self):
+        mock_read = mock_open(read_data=INVALID_DATA_LONGER_REGION_PREFIX)
+        with patch("builtins.open", mock_read):
+            result = get_cluster_console_url()
+        self.assertIsNone(result)
+        mock_read.assert_called_once_with("/tmp/hyperpod_current_context.json", "r")
+
+    def test_get_cluster_console_url_shorter_region_prefix(self):
+        mock_read = mock_open(read_data=INVALID_DATA_SHORT_REGION_PREFIX)
+        with patch("builtins.open", mock_read):
+            result = get_cluster_console_url()
+        self.assertIsNone(result)
+        mock_read.assert_called_once_with("/tmp/hyperpod_current_context.json", "r")
+
+    def test_get_cluster_console_url_short_region(self):
+        mock_read = mock_open(read_data=INVALID_DATA_SHORT_REGION)
+        with patch("builtins.open", mock_read):
+            result = get_cluster_console_url()
+        self.assertIsNone(result)
+        mock_read.assert_called_once_with("/tmp/hyperpod_current_context.json", "r")
+
+    def test_get_cluster_console_url_long_region(self):
+        mock_read = mock_open(read_data=INVALID_DATA_LONGER_REGION)
+        with patch("builtins.open", mock_read):
+            result = get_cluster_console_url()
+        self.assertIsNone(result)
+        mock_read.assert_called_once_with("/tmp/hyperpod_current_context.json", "r")
+
+    def test_get_cluster_console_url_invalid_char_region_suffix(self):
+        mock_read = mock_open(read_data=INVALID_DATA_REGION_SUFFIX)
+        with patch("builtins.open", mock_read):
+            result = get_cluster_console_url()
+        self.assertIsNone(result)
+        mock_read.assert_called_once_with("/tmp/hyperpod_current_context.json", "r")
+
+    def test_get_cluster_console_url_longer_region_suffix(self):
+        mock_read = mock_open(read_data=INVALID_DATA_LONGER_REGION_SUFFIX)
+        with patch("builtins.open", mock_read):
+            result = get_cluster_console_url()
+        self.assertIsNone(result)
+        mock_read.assert_called_once_with("/tmp/hyperpod_current_context.json", "r")
+
+    def test_get_cluster_console_url_longer_cluster_name(self):
+        mock_read = mock_open(read_data=INVALID_DATA_LONGER_CLUSTER_NAME)
+        with patch("builtins.open", mock_read):
+            result = get_cluster_console_url()
+        self.assertIsNone(result)
+        mock_read.assert_called_once_with("/tmp/hyperpod_current_context.json", "r")
+
+    def test_get_cluster_console_url_longer_cluster_name_null(self):
+        mock_read = mock_open(read_data=INVALID_DATA_NONE_NAME)
+        with patch("builtins.open", mock_read):
+            result = get_cluster_console_url()
+        self.assertIsNone(result)
+        mock_read.assert_called_once_with("/tmp/hyperpod_current_context.json", "r")

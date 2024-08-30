@@ -20,7 +20,9 @@ class GetLogs:
     def __init__(self):
         return
 
-    def get_training_job_logs(self, job_name: str, pod_name: str, namespace: Optional[str]):
+    def get_training_job_logs(
+        self, job_name: str, pod_name: str, namespace: Optional[str]
+    ):
         """
         Get logs for pod asscoited with the training job
         """

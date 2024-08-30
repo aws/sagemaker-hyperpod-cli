@@ -69,7 +69,9 @@ class ListTrainingJobsTest(unittest.TestCase):
     ):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         self.mock_k8s_client.list_training_jobs.return_value = SAMPLE_OUTPUT
-        result = self.mock_list_training_jobs.list_training_jobs("namespace", None, None)
+        result = self.mock_list_training_jobs.list_training_jobs(
+            "namespace", None, None
+        )
         self.assertIn("test-name", result)
         self.assertIn("test-name1", result)
 
@@ -152,12 +154,17 @@ class ListTrainingJobsTest(unittest.TestCase):
             "items": [
                 {
                     "metadata": {"name": "test-name", "namespace": "test-namespace"},
-                    "status": {"startTime": "test-time", "conditions": [{"type": "unknown"}]},
+                    "status": {
+                        "startTime": "test-time",
+                        "conditions": [{"type": "unknown"}],
+                    },
                 }
             ]
         }
         mock_kubernetes_client.return_value = self.mock_k8s_client
         self.mock_k8s_client.list_namespaces.return_value = ["namespace"]
-        self.mock_k8s_client.list_training_jobs.return_value = unknown_status_sample_output
+        self.mock_k8s_client.list_training_jobs.return_value = (
+            unknown_status_sample_output
+        )
         with self.assertRaises(RuntimeError):
             self.mock_list_training_jobs.list_training_jobs(None, True, None)

@@ -40,7 +40,9 @@ class Validator:
             # Check if credentials are available
             credentials = session.get_credentials()
             if not credentials:
-                logger.error("No AWS credentials found. Please configure your AWS credentials.")
+                logger.error(
+                    "No AWS credentials found. Please configure your AWS credentials."
+                )
                 return False
 
             # Get an STS client to check the credentials
@@ -57,7 +59,10 @@ class Validator:
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             if error_code == "ExpiredToken":
-                logger.error("AWS credentials have expired. Please refresh your AWS " "credentials")
+                logger.error(
+                    "AWS credentials have expired. Please refresh your AWS "
+                    "credentials"
+                )
             else:
                 logger.error(f"Get credentials AWS client error: {e}")
             return False

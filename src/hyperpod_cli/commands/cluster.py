@@ -58,7 +58,10 @@ logger = setup_logger(__name__)
 
 @click.command()
 @click.option(
-    "--region", type=click.STRING, required=False, help="The region HyperPod EKS cluster resides"
+    "--region",
+    type=click.STRING,
+    required=False,
+    help="The region HyperPod EKS cluster resides",
 )
 @click.option(
     "--orchestrator",
@@ -74,7 +77,9 @@ logger = setup_logger(__name__)
     default=OutputFormat.JSON.value,
     help="Config the output format, default is JSON. Table output format is also supported",
 )
-@click.option("--clusters", type=click.STRING, required=False, help="The list of clusters to show")
+@click.option(
+    "--clusters", type=click.STRING, required=False, help="The list of clusters to show"
+)
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 def list_clusters(
     region: Optional[str],
@@ -94,23 +99,37 @@ def list_clusters(
     # This config will also make sure that user_agent never fails to log the User-Agent string
     # even if boto User-Agent header format is updated in the future
     # Ref: https://botocore.amazonaws.com/v1/documentation/api/latest/reference/config.html
-    botocore_config = botocore.config.Config(user_agent_extra=get_user_agent_extra_suffix())
+    botocore_config = botocore.config.Config(
+        user_agent_extra=get_user_agent_extra_suffix()
+    )
 
     session = boto3.Session(region_name=region) if region else boto3.Session()
     if not validator.validate_aws_credential(session):
         logger.error("Cannot list clusters capacity due to AWS credentials issue")
-        return
+        sys.exit(1)
 
-    sm_client = get_sagemaker_client(session, botocore_config)
+    try:
+        sm_client = get_sagemaker_client(session, botocore_config)
+    except botocore.exceptions.NoRegionError:
+        logger.error(
+            f"Please ensure you configured AWS default region or use '--region' argument to specify the region"
+        )
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Failed to initialize SageMaker Client: {e}")
+        sys.exit(1)
 
     if clusters:
         cluster_names = clusters.split(",")
     else:
-        cluster_names = _get_hyperpod_clusters(sm_client)
+        try:
+            cluster_names = _get_hyperpod_clusters(sm_client)
+        except Exception as e:
+            logger.error(f"Failed to list HyperPod clusters with error: {e}")
+            sys.exit(1)
 
     cluster_capacities: List[List[str]] = []
 
-    k8s_client = KubernetesClient()
     counter = 0
     for cluster_name in cluster_names:
         current_cluster_capacities_size = len(cluster_capacities)
@@ -118,7 +137,6 @@ def list_clusters(
             cluster_name=cluster_name,
             validator=validator,
             sm_client=sm_client,
-            k8s_client=k8s_client,
             region=region,
             temp_config_file=TEMP_KUBE_CONFIG_FILE,
             cluster_capacities=cluster_capacities,
@@ -132,7 +150,9 @@ def list_clusters(
         # Currently only support list <= 50 clusters
         # TODO: Support pagination and list more clusters
         if counter >= 50:
-            logger.debug("'list-clusters' reached maximum number of Hyperpod EKS clusters.")
+            logger.debug(
+                "'list-clusters' reached maximum number of Hyperpod EKS clusters."
+            )
             break
 
     headers = [
@@ -156,18 +176,22 @@ def rate_limited_operation(
     cluster_name: str,
     validator: ClusterValidator,
     sm_client: BaseClient,
-    k8s_client: KubernetesClient,
     region: Optional[str],
     temp_config_file: str,
     cluster_capacities: List[List[str]],
 ) -> None:
     try:
-        eks_cluster_arn = validator.validate_cluster_and_get_eks_arn(cluster_name, sm_client)
+        eks_cluster_arn = validator.validate_cluster_and_get_eks_arn(
+            cluster_name, sm_client
+        )
         if eks_cluster_arn is None:
-            logger.warning(f"Cannot find EKS cluster behind {cluster_name}, continue...")
+            logger.warning(
+                f"Cannot find EKS cluster behind {cluster_name}, continue..."
+            )
             return
         eks_cluster_name = get_name_from_arn(eks_cluster_arn)
         _update_kube_config(eks_cluster_name, region, temp_config_file)
+        k8s_client = KubernetesClient()
         nodes = k8s_client.list_node_with_temp_config(
             temp_config_file, SAGEMAKER_HYPERPOD_NAME_LABEL
         )
@@ -190,12 +214,11 @@ def rate_limited_operation(
 
 def _get_hyperpod_clusters(sm_client: boto3.client) -> List[str]:
     cluster_names: List[str] = []
-    try:
-        response = sm_client.list_clusters()
-        if 'ClusterSummaries' in response:
-            cluster_names = [cluster["ClusterName"] for cluster in response["ClusterSummaries"]]
-    except Exception as e:
-        logger.error(f"Failed to list HyperPod clusters with error: {e}")
+    response = sm_client.list_clusters()
+    if "ClusterSummaries" in response:
+        cluster_names = [
+            cluster["ClusterName"] for cluster in response["ClusterSummaries"]
+        ]
 
     return cluster_names
 
@@ -244,14 +267,18 @@ def _aggregate_nodes_info(nodes: List[client.V1Node]) -> Dict[str, Dict[str, Any
             if not node.status:
                 continue
             gpu_allocatable = node.status.allocatable.get("nvidia.com/gpu")
-            neuron_allocatable = node.status.allocatable.get("aws.amazon.com/neurondevice")
-            nodes_summary[instance_type]["accelerator_devices_available"] += int(gpu_allocatable) if gpu_allocatable else int(neuron_allocatable)
+            neuron_allocatable = node.status.allocatable.get(
+                "aws.amazon.com/neurondevice"
+            )
+            nodes_summary[instance_type]["accelerator_devices_available"] += (
+                int(gpu_allocatable) if gpu_allocatable else int(neuron_allocatable)
+            )
 
         # Accelerator Devices available = Allocatable devices - Allocated devices
         if node_name in nodes_resource_allocated_dict:
-            nodes_summary[instance_type][
-                "accelerator_devices_available"
-            ] -= nodes_resource_allocated_dict[node_name]
+            nodes_summary[instance_type]["accelerator_devices_available"] -= (
+                nodes_resource_allocated_dict[node_name]
+            )
 
     logger.debug(f"nodes_summary: {nodes_summary}")
     return nodes_summary
@@ -259,13 +286,16 @@ def _aggregate_nodes_info(nodes: List[client.V1Node]) -> Dict[str, Dict[str, Any
 
 @click.command()
 @click.option(
-    "--name",
+    "--cluster-name",
     type=click.STRING,
     required=True,
-    help="The name of the HyperPod EKS cluster you want to connect " "to.",
+    help="The name of the HyperPod EKS cluster you want to connect to.",
 )
 @click.option(
-    "--region", type=click.STRING, required=False, help="The region HyperPod EKS cluster resides"
+    "--region",
+    type=click.STRING,
+    required=False,
+    help="The region HyperPod EKS cluster resides",
 )
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.option(
@@ -276,7 +306,7 @@ def _aggregate_nodes_info(nodes: List[client.V1Node]) -> Dict[str, Dict[str, Any
     default="default",
 )
 def connect_cluster(
-    name: str,
+    cluster_name: str,
     region: Optional[str],
     debug: bool,
     namespace: str = "default",
@@ -285,7 +315,7 @@ def connect_cluster(
     Connect to a HyperPod EKS cluster.
 
     Args:
-        name (str): The name of the HyperPod EKS cluster to connect to.
+        cluster_name (str): The name of the HyperPod EKS cluster to connect to.
         namespace (str): The namespace connect to. Default as 'default' namespace.
         debug (bool): Enable debug mode.
         region (Optional[str]): The AWS region where the HyperPod EKS cluster resides.
@@ -296,8 +326,10 @@ def connect_cluster(
     """
     if debug:
         set_logging_level(logger, logging.DEBUG)
-    validator = Validator()
-    botocore_config = botocore.config.Config(user_agent_extra=get_user_agent_extra_suffix())
+    validator = ClusterValidator()
+    botocore_config = botocore.config.Config(
+        user_agent_extra=get_user_agent_extra_suffix()
+    )
     session = boto3.Session(region_name=region) if region else boto3.Session()
     if not validator.validate_aws_credential(session):
         logger.error("Cannot connect to HyperPod cluster due to aws credentials error")
@@ -305,25 +337,33 @@ def connect_cluster(
 
     try:
         sm_client = get_sagemaker_client(session, botocore_config)
-        hp_cluster_details = sm_client.describe_cluster(ClusterName=name)
+        hp_cluster_details = sm_client.describe_cluster(ClusterName=cluster_name)
         logger.debug("Fetched hyperpod cluster details")
         store_current_hyperpod_context(hp_cluster_details)
         eks_cluster_arn = hp_cluster_details["Orchestrator"]["Eks"]["ClusterArn"]
-        logger.debug(f"hyperpod cluster's EKS orchestrator cluster arn: {eks_cluster_arn}")
+        logger.debug(
+            f"hyperpod cluster's EKS orchestrator cluster arn: {eks_cluster_arn}"
+        )
 
+        eks_name = get_name_from_arn(eks_cluster_arn)
+        _update_kube_config(eks_name, region, None)
         k8s_client = KubernetesClient()
-        if not k8s_client.context_exists(eks_cluster_arn):
-            logger.debug("Context not exists, updating kubeconfig")
-            eks_name = get_name_from_arn(eks_cluster_arn)
-            _update_kube_config(eks_name, region, None)
-
         k8s_client.set_context(eks_cluster_arn, namespace)
+    except botocore.exceptions.NoRegionError:
+        logger.error(
+            f"Please ensure you configured AWS default region or use '--region' argument to specify the region"
+        )
+        sys.exit(1)
     except Exception as e:
-        logger.error(f"Unexpected error happens when try to connect to cluster {name}. Error: {e}")
+        logger.error(
+            f"Unexpected error happens when try to connect to cluster {cluster_name}. Error: {e}"
+        )
         sys.exit(1)
 
 
-def _update_kube_config(eks_name: str, region: Optional[str], config_file: Optional[str]) -> None:
+def _update_kube_config(
+    eks_name: str, region: Optional[str], config_file: Optional[str]
+) -> None:
     """
     Update the local kubeconfig with the specified EKS cluster details.
 

@@ -117,10 +117,14 @@ class TestJobValidator(unittest.TestCase):
         )
 
         self.assertFalse(result)
-        mock_logger.error.assert_called_once_with("The only supported 'command' is 'torchrun'.")
+        mock_logger.error.assert_called_once_with(
+            "The only supported 'command' is 'torchrun'."
+        )
 
     @patch("hyperpod_cli.validators.job_validator.logger")
-    def test_validate_start_job_args_both_config_name_and_name_provided(self, mock_logger):
+    def test_validate_start_job_args_both_config_name_and_name_provided(
+        self, mock_logger
+    ):
         config_name = "config.yaml"
         name = "job-name"
         node_count = None
@@ -154,7 +158,9 @@ class TestJobValidator(unittest.TestCase):
         )
 
     @patch("hyperpod_cli.validators.job_validator.logger")
-    def test_validate_start_job_args_neither_config_name_nor_name_provided(self, mock_logger):
+    def test_validate_start_job_args_neither_config_name_nor_name_provided(
+        self, mock_logger
+    ):
         config_name = None
         name = None
         node_count = None
@@ -188,7 +194,9 @@ class TestJobValidator(unittest.TestCase):
         )
 
     @patch("hyperpod_cli.validators.job_validator.logger")
-    def test_validate_start_job_args_name_provided_but_node_count_missing(self, mock_logger):
+    def test_validate_start_job_args_name_provided_but_node_count_missing(
+        self, mock_logger
+    ):
         config_name = None
         name = "job-name"
         node_count = None
@@ -222,7 +230,9 @@ class TestJobValidator(unittest.TestCase):
         )
 
     @patch("hyperpod_cli.validators.job_validator.logger")
-    def test_validate_start_job_args_name_provided_but_instance_type_missing(self, mock_logger):
+    def test_validate_start_job_args_name_provided_but_instance_type_missing(
+        self, mock_logger
+    ):
         config_name = None
         name = "job-name"
         node_count = "2"
@@ -256,7 +266,9 @@ class TestJobValidator(unittest.TestCase):
         )
 
     @patch("hyperpod_cli.validators.job_validator.logger")
-    def test_validate_start_job_args_name_provided_but_entry_script_missing(self, mock_logger):
+    def test_validate_start_job_args_name_provided_but_entry_script_missing(
+        self, mock_logger
+    ):
         config_name = None
         name = "job-name"
         node_count = "2"
@@ -290,7 +302,9 @@ class TestJobValidator(unittest.TestCase):
         )
 
     @patch("hyperpod_cli.validators.job_validator.logger")
-    def test_validate_start_job_args_name_provided_but_invalid_instance_type(self, mock_logger):
+    def test_validate_start_job_args_name_provided_but_invalid_instance_type(
+        self, mock_logger
+    ):
         config_name = None
         name = "job-name"
         node_count = "2"
@@ -641,25 +655,38 @@ class TestJobValidator(unittest.TestCase):
         self.assertFalse(result)
 
     @patch("os.path.exists", return_value=True)
-    @patch("hyperpod_cli.validators.job_validator.verify_and_load_yaml", return_value=None)
-    def test_validate_start_job_config_yaml_invalid_yaml(self, mock_verify_and_load_yaml, mock_exists):
+    @patch(
+        "hyperpod_cli.validators.job_validator.verify_and_load_yaml", return_value=None
+    )
+    def test_validate_start_job_config_yaml_invalid_yaml(
+        self, mock_verify_and_load_yaml, mock_exists
+    ):
         result = self.validator.validate_start_job_config_yaml("test.yaml")
         self.assertFalse(result)
 
     @patch("os.path.exists", return_value=True)
     @patch("hyperpod_cli.validators.job_validator.verify_and_load_yaml")
-    @patch("hyperpod_cli.validators.job_validator.validate_yaml_content", return_value=True)
-    def test_validate_start_job_config_yaml_valid(self, mock_validate_yaml_content, mock_verify_and_load_yaml, mock_exists):
+    @patch(
+        "hyperpod_cli.validators.job_validator.validate_yaml_content", return_value=True
+    )
+    def test_validate_start_job_config_yaml_valid(
+        self, mock_validate_yaml_content, mock_verify_and_load_yaml, mock_exists
+    ):
         mock_data = {"cluster": {"cluster_type": "k8s", "cluster_config": {}}}
         mock_verify_and_load_yaml.return_value = mock_data
         result = self.validator.validate_start_job_config_yaml("test.yaml")
         self.assertTrue(result)
 
     @patch("os.path.exists", return_value=True)
-    @patch("builtins.open", mock_open(read_data="cluster:\n  cluster_type: k8s\n  cluster_config: {}"))
+    @patch(
+        "builtins.open",
+        mock_open(read_data="cluster:\n  cluster_type: k8s\n  cluster_config: {}"),
+    )
     def test_verify_and_load_yaml_valid(self, mock_exists):
         result = verify_and_load_yaml("test.yaml")
-        self.assertEqual(result, {"cluster": {"cluster_type": "k8s", "cluster_config": {}}})
+        self.assertEqual(
+            result, {"cluster": {"cluster_type": "k8s", "cluster_config": {}}}
+        )
 
     @patch("os.path.exists", return_value=True)
     @patch("builtins.open", mock_open(read_data="{invalid yaml"))
@@ -675,7 +702,7 @@ class TestJobValidator(unittest.TestCase):
                 "cluster_config": {
                     "pullPolicy": "IfNotPresent",
                     "restartPolicy": "OnFailure",
-                }
+                },
             }
         }
         result = validate_yaml_content(mock_data)
@@ -694,7 +721,7 @@ class TestJobValidator(unittest.TestCase):
                 "cluster_config": {
                     "pullPolicy": "IfNotPresent",
                     "restartPolicy": "OnFailure",
-                }
+                },
             }
         }
         result = validate_yaml_content(mock_data)
@@ -719,7 +746,7 @@ class TestJobValidator(unittest.TestCase):
                     "pullPolicy": "IfNotPresent",
                     "restartPolicy": "OnFailure",
                     "custom_labels": {"kueue.x-k8s.io/queue-name": "test"},
-                    "priority_class_name": "high-priority"
+                    "priority_class_name": "high-priority",
                 },
             }
         }
@@ -738,7 +765,7 @@ class TestJobValidator(unittest.TestCase):
                     "annotations": {
                         "sagemaker.amazonaws.com/enable-job-auto-resume": True,
                         "sagemaker.amazonaws.com/job-max-retry-count": 3,
-                    }
+                    },
                 },
             }
         }
@@ -757,7 +784,7 @@ class TestJobValidator(unittest.TestCase):
                     "annotations": {
                         "sagemaker.amazonaws.com/enable-job-auto-resume": True,
                         "sagemaker.amazonaws.com/job-max-retry-count": 3,
-                    }
+                    },
                 },
             }
         }
@@ -775,7 +802,7 @@ class TestJobValidator(unittest.TestCase):
                     "restartPolicy": "OnFailure",
                     "annotations": {
                         "sagemaker.amazonaws.com/enable-job-auto-resume": True,
-                    }
+                    },
                 },
             }
         }
@@ -783,51 +810,65 @@ class TestJobValidator(unittest.TestCase):
         self.assertFalse(result)
 
     def test_validate_hyperpod_related_fields_valid(self):
-        result = validate_hyperpod_related_fields(instance_type="ml.g5.xlarge",
-                                                  queue_name="test-queue",
-                                                  priority="high-priority",
-                                                  auto_resume=False,
-                                                  restart_policy=RestartPolicy.NEVER.value,
-                                                  max_retry=None,
-                                                  namespace="kubeflow")
+        result = validate_hyperpod_related_fields(
+            instance_type="ml.g5.xlarge",
+            queue_name="test-queue",
+            priority="high-priority",
+            auto_resume=False,
+            restart_policy=RestartPolicy.NEVER.value,
+            max_retry=None,
+            namespace="kubeflow",
+        )
         self.assertTrue(result)
 
     def test_validate_hyperpod_related_fields_invalid_instance_type(self):
         result = validate_hyperpod_related_fields(
-            instance_type="invalid-instance-type", queue_name="test-queue",
-            priority="high-priority", auto_resume=False,
-            restart_policy=RestartPolicy.NEVER.value, max_retry=None, namespace="kubeflow")
+            instance_type="invalid-instance-type",
+            queue_name="test-queue",
+            priority="high-priority",
+            auto_resume=False,
+            restart_policy=RestartPolicy.NEVER.value,
+            max_retry=None,
+            namespace="kubeflow",
+        )
         self.assertFalse(result)
 
     def test_validate_hyperpod_related_fields_invalid_auto_resume(self):
-        result = validate_hyperpod_related_fields(instance_type="ml.g5.xlarge",
-                                                  queue_name="test-queue",
-                                                  priority="high-priority",
-                                                  auto_resume=True,
-                                                  restart_policy=RestartPolicy.NEVER.value,
-                                                  max_retry=1,
-                                                  namespace="kubeflow")
+        result = validate_hyperpod_related_fields(
+            instance_type="ml.g5.xlarge",
+            queue_name="test-queue",
+            priority="high-priority",
+            auto_resume=True,
+            restart_policy=RestartPolicy.NEVER.value,
+            max_retry=1,
+            namespace="kubeflow",
+        )
         self.assertFalse(result)
 
     def test_validate_hyperpod_related_fields_invalid_max_retry(self):
-        result = validate_hyperpod_related_fields(instance_type="ml.g5.xlarge",
-                                                  queue_name="test-queue",
-                                                  priority="high-priority",
-                                                  auto_resume=False,
-                                                  restart_policy=RestartPolicy.ON_FAILURE.value,
-                                                  max_retry=1,
-                                                  namespace="kubeflow")
+        result = validate_hyperpod_related_fields(
+            instance_type="ml.g5.xlarge",
+            queue_name="test-queue",
+            priority="high-priority",
+            auto_resume=False,
+            restart_policy=RestartPolicy.ON_FAILURE.value,
+            max_retry=1,
+            namespace="kubeflow",
+        )
         self.assertFalse(result)
 
     def test_validate_hyperpod_related_fields_invalid_queue_and_priority(self):
-        result = validate_hyperpod_related_fields(instance_type="ml.g5.xlarge",
-                                                  queue_name=None,
-                                                  priority="high-priority",
-                                                  auto_resume=False,
-                                                  restart_policy=RestartPolicy.NEVER.value,
-                                                  max_retry=None,
-                                                  namespace="kubeflow")
+        result = validate_hyperpod_related_fields(
+            instance_type="ml.g5.xlarge",
+            queue_name=None,
+            priority="high-priority",
+            auto_resume=False,
+            restart_policy=RestartPolicy.NEVER.value,
+            max_retry=None,
+            namespace="kubeflow",
+        )
         self.assertFalse(result)
+
 
 if __name__ == "__main__":
     unittest.main()

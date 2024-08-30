@@ -36,6 +36,7 @@ DEEP_HEALTH_CHECK_STATUS_LABEL = "sagemaker.amazonaws.com/deep-health-check-stat
 TEMP_KUBE_CONFIG_FILE = "/tmp/kubeconfig"
 HYPERPOD_NAMESPACE_PREFIX = "hyperpod"
 
+
 class PullPolicy(Enum):
     ALWAYS = "Always"
     IF_NOT_PRESENT = "IfNotPresent"
@@ -57,6 +58,7 @@ class OutputFormat(Enum):
     JSON = "json"
     TABLE = "table"
 
+
 class PersistentVolumeClaim:
     claim_name: str
     mount_path: str
@@ -64,3 +66,13 @@ class PersistentVolumeClaim:
     def __init__(self, claim_name, mount_path):
         self.claim_name = claim_name
         self.mount_path = mount_path
+
+class Volume:
+    volume_name: str
+    host_path: str
+    mount_path: str
+
+    def __init__(self, volume_name, host_path, mount_path):
+        self.host_path = host_path
+        self.mount_path = mount_path
+        self.volume_name = volume_name

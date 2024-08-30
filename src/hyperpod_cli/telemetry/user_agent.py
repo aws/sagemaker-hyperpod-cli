@@ -11,16 +11,14 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
+
 from __future__ import absolute_import
 
-import json
-import os
+import pkg_resources
 
-import importlib.metadata
 
 CLI_PREFIX = "AWS-SageMaker-Hyperpod-CLI"
 
-CLI_VERSION = importlib.metadata.version("requests")
 
 def get_user_agent_extra_suffix():
     """Get the user agent extra suffix string specific to SageMaker Hyperpod CLI
@@ -30,6 +28,6 @@ def get_user_agent_extra_suffix():
     Returns:
         str: The user agent extra suffix string to be appended
     """
-    suffix = "cli/{}#{}".format(CLI_PREFIX, CLI_VERSION)
+    suffix = "cli/{}#{}".format(CLI_PREFIX, pkg_resources.get_distribution("hyperpod").version)
 
     return suffix

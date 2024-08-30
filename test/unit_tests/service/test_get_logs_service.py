@@ -20,7 +20,6 @@ from hyperpod_cli.service.list_pods import ListPods
 
 
 class TestGetLogs(unittest.TestCase):
-
     def setUp(self):
         self.mock_get_logs = GetLogs()
         self.mock_list_pods_service = MagicMock(spec=ListPods)
@@ -39,7 +38,9 @@ class TestGetLogs(unittest.TestCase):
         mock_list_training_job_pods_service.return_value = self.mock_list_pods_service
         mock_list_training_job_pods_service_with_list_pods.return_value = ["test-pod"]
         self.mock_k8s_client.get_logs_for_pod.return_value = "test logs"
-        result = self.mock_get_logs.get_training_job_logs("sample-job", "test-pod", "kubeflow")
+        result = self.mock_get_logs.get_training_job_logs(
+            "sample-job", "test-pod", "kubeflow"
+        )
         self.assertIn("test logs", result)
 
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
@@ -56,7 +57,9 @@ class TestGetLogs(unittest.TestCase):
         self.mock_k8s_client.get_current_context_namespace.return_value = "kubeflow"
         mock_list_training_job_pods_service_with_list_pods.return_value = ["test-pod"]
         self.mock_k8s_client.get_logs_for_pod.return_value = "test logs"
-        result = self.mock_get_logs.get_training_job_logs("sample-job", "test-pod", None)
+        result = self.mock_get_logs.get_training_job_logs(
+            "sample-job", "test-pod", None
+        )
         self.assertIn("test logs", result)
 
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")

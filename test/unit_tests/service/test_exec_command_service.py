@@ -20,7 +20,6 @@ from hyperpod_cli.service.list_pods import ListPods
 
 
 class ExecCommandServiceTest(unittest.TestCase):
-
     def setUp(self):
         self.mock_exec_command = ExecCommand()
         self.mock_list_pods_service = MagicMock(spec=ListPods)
@@ -37,9 +36,13 @@ class ExecCommandServiceTest(unittest.TestCase):
     ):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         self.mock_k8s_client.get_current_context_namespace.return_value = "kubeflow"
-        self.mock_k8s_client.exec_command_on_pod.return_value = "Fri Aug  9 06:16:05 UTC 2024"
+        self.mock_k8s_client.exec_command_on_pod.return_value = (
+            "Fri Aug  9 06:16:05 UTC 2024"
+        )
         mock_list_training_job_pods_service.return_value = self.mock_list_pods_service
-        mock_list_training_job_pods_service_with_list_pods.return_value = ["sample-job-master-0"]
+        mock_list_training_job_pods_service_with_list_pods.return_value = [
+            "sample-job-master-0"
+        ]
         result = self.mock_exec_command.exec_command(
             "sample-job",
             "sample-job-master-0",
@@ -62,9 +65,13 @@ class ExecCommandServiceTest(unittest.TestCase):
         mock_kubernetes_client: mock.Mock,
     ):
         mock_kubernetes_client.return_value = self.mock_k8s_client
-        self.mock_k8s_client.exec_command_on_pod.return_value = "Fri Aug  9 06:16:05 UTC 2024"
+        self.mock_k8s_client.exec_command_on_pod.return_value = (
+            "Fri Aug  9 06:16:05 UTC 2024"
+        )
         mock_list_training_job_pods_service.return_value = self.mock_list_pods_service
-        mock_list_training_job_pods_service_with_list_pods.return_value = ["sample-job-master-0"]
+        mock_list_training_job_pods_service_with_list_pods.return_value = [
+            "sample-job-master-0"
+        ]
         result = self.mock_exec_command.exec_command(
             "sample-job",
             "sample-job-master-0",
@@ -85,7 +92,9 @@ class ExecCommandServiceTest(unittest.TestCase):
         mock_list_training_job_pods_service: mock.Mock,
     ):
         mock_list_training_job_pods_service.return_value = self.mock_list_pods_service
-        mock_list_training_job_pods_service_with_list_pods.return_value = ["sample-job-master-1"]
+        mock_list_training_job_pods_service_with_list_pods.return_value = [
+            "sample-job-master-1"
+        ]
         with self.assertRaises(RuntimeError):
             self.mock_exec_command.exec_command(
                 "sample-job",
@@ -124,9 +133,13 @@ class ExecCommandServiceTest(unittest.TestCase):
         mock_kubernetes_client: mock.Mock,
     ):
         mock_kubernetes_client.return_value = self.mock_k8s_client
-        self.mock_k8s_client.exec_command_on_pod.return_value = "Fri Aug  9 06:16:05 UTC 2024"
+        self.mock_k8s_client.exec_command_on_pod.return_value = (
+            "Fri Aug  9 06:16:05 UTC 2024"
+        )
         mock_list_training_job_pods_service.return_value = self.mock_list_pods_service
-        mock_list_training_job_pods_service_with_list_pods.return_value = ["sample-job-master-0"]
+        mock_list_training_job_pods_service_with_list_pods.return_value = [
+            "sample-job-master-0"
+        ]
         result = self.mock_exec_command.exec_command(
             "sample-job",
             None,

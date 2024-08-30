@@ -80,9 +80,7 @@ class JobValidator(Validator):
 
         if name is not None:
             if entry_script is None:
-                logger.error(
-                    "Please provide 'entry-script' for the training job"
-                )
+                logger.error("Please provide 'entry-script' for the training job")
                 return False
 
             if node_count is None:
@@ -106,9 +104,15 @@ class JobValidator(Validator):
                         "Please ensure 'label-selector' keys are string type and values are string or list of string type"
                     )
                     return False
-            return validate_hyperpod_related_fields(instance_type, queue_name,
-                                                    priority, auto_resume,
-                                                    restart_policy, max_retry, namespace)
+            return validate_hyperpod_related_fields(
+                instance_type,
+                queue_name,
+                priority,
+                auto_resume,
+                restart_policy,
+                max_retry,
+                namespace,
+            )
 
         return True
 
@@ -125,12 +129,14 @@ class JobValidator(Validator):
 
 def verify_and_load_yaml(file_path: str):
     try:
-        with open(file_path, 'r') as file:
+        with open(file_path, "r") as file:
             # Attempt to load the YAML file
             data = yaml.load(file, Loader=SafeLoader)
             return data
     except Exception as e:
-        logger.error(f"The config file {file_path} is not a valid YAML file. Error: {e}")
+        logger.error(
+            f"The config file {file_path} is not a valid YAML file. Error: {e}"
+        )
         return None
 
 
@@ -145,7 +151,9 @@ def validate_yaml_content(data):
         return False
     cluster_config_fields = cluster_fields.get("cluster_config")
     if cluster_config_fields is None:
-        logger.error("Please ensure 'cluster' contains 'cluster_config' field in the config file")
+        logger.error(
+            "Please ensure 'cluster' contains 'cluster_config' field in the config file"
+        )
         return False
 
     custom_labels = cluster_config_fields.get("custom_labels")
@@ -166,14 +174,22 @@ def validate_yaml_content(data):
             logger.error(
                 f"Please provide both '{HYPERPOD_AUTO_RESUME_ANNOTATION_KEY}' "
                 f"and '{HYPERPOD_MAX_RETRY_ANNOTATION_KEY}' "
-                f"annotations to use Auto Resume feature")
+                f"annotations to use Auto Resume feature"
+            )
             return False
 
     priority = cluster_config_fields.get("priority_class_name", None)
     restart_policy = cluster_config_fields.get("restartPolicy", None)
 
-    return validate_hyperpod_related_fields(instance_type, queue_name, priority,
-                                            auto_resume, restart_policy, max_retry, namespace)
+    return validate_hyperpod_related_fields(
+        instance_type,
+        queue_name,
+        priority,
+        auto_resume,
+        restart_policy,
+        max_retry,
+        namespace,
+    )
 
 
 def validate_hyperpod_related_fields(
@@ -196,9 +212,7 @@ def validate_hyperpod_related_fields(
             return False
 
     if max_retry and not auto_resume:
-        logger.error(
-            "Please enable 'auto_resume' with 'max_retry' option."
-        )
+        logger.error("Please enable 'auto_resume' with 'max_retry' option.")
         return False
 
     if auto_resume and restart_policy != RestartPolicy.ON_FAILURE.value:
@@ -220,6 +234,7 @@ def validate_hyperpod_related_fields(
         return False
     return True
 
+
 def is_dict_str_list_str(data: dict) -> bool:
     """
     Check if the given dictionary is of type Dict[str, List[str]].
@@ -233,7 +248,9 @@ def is_dict_str_list_str(data: dict) -> bool:
     for key, value in data.items():
         if not isinstance(value, list) and not isinstance(value, str):
             return False
-        elif isinstance(value, list) and not all(isinstance(item, str) for item in value):
+        elif isinstance(value, list) and not all(
+            isinstance(item, str) for item in value
+        ):
             return False
     return True
 
@@ -268,7 +285,7 @@ def _is_hyperpod_monitored_namespaces(
     namespace: Optional[str],
 ):
     if namespace is not None:
-        if namespace.startswith(HYPERPOD_NAMESPACE_PREFIX) or namespace == 'kubeflow':
+        if namespace.startswith(HYPERPOD_NAMESPACE_PREFIX) or namespace == "kubeflow":
             return True
 
     return False

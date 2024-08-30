@@ -57,7 +57,9 @@ namespaces: V1NamespaceList = V1NamespaceList(
     ]
 )
 
-namespaces_no_metadata: V1NamespaceList = V1NamespaceList(items=[V1Namespace(metadata=None)])
+namespaces_no_metadata: V1NamespaceList = V1NamespaceList(
+    items=[V1Namespace(metadata=None)]
+)
 
 pods_with_next_token: V1PodList = V1PodList(
     metadata=V1ListMeta(
@@ -113,7 +115,6 @@ nodes_no_next_token: V1NodeList = V1NodeList(
 
 
 class TestKubernetesClient(unittest.TestCase):
-
     @patch("kubernetes.config.load_kube_config")
     def test_singleton_instance(self, mock_load_kube_config):
         mock_load_kube_config.return_value = None
@@ -125,7 +126,9 @@ class TestKubernetesClient(unittest.TestCase):
     @patch("kubernetes.config.load_kube_config")
     @patch("yaml.safe_dump")
     @patch("yaml.safe_load")
-    @patch("builtins.open", new_callable=mock_open, read_data=yaml.dump(KUBECONFIG_DATA))
+    @patch(
+        "builtins.open", new_callable=mock_open, read_data=yaml.dump(KUBECONFIG_DATA)
+    )
     def test_set_context_success(
         self,
         mock_open_file: Mock,
@@ -140,13 +143,17 @@ class TestKubernetesClient(unittest.TestCase):
         mock_client.return_value = MagicMock()
         test_client = KubernetesClient()
         test_client.set_context("context2", "default")
-        mock_open_file.assert_called_with(os.path.expanduser(KUBE_CONFIG_DEFAULT_LOCATION), "w")
+        mock_open_file.assert_called_with(
+            os.path.expanduser(KUBE_CONFIG_DEFAULT_LOCATION), "w"
+        )
 
     @patch("kubernetes.client.ApiClient")
     @patch("kubernetes.config.load_kube_config")
     @patch("yaml.safe_dump")
     @patch("yaml.safe_load")
-    @patch("builtins.open", new_callable=mock_open, read_data=yaml.dump(KUBECONFIG_DATA))
+    @patch(
+        "builtins.open", new_callable=mock_open, read_data=yaml.dump(KUBECONFIG_DATA)
+    )
     def test_set_context_failure(
         self,
         mock_open_file: Mock,
@@ -167,7 +174,9 @@ class TestKubernetesClient(unittest.TestCase):
     @patch("kubernetes.config.load_kube_config")
     @patch("yaml.safe_dump")
     @patch("yaml.safe_load")
-    @patch("builtins.open", new_callable=mock_open, read_data=yaml.dump(KUBECONFIG_DATA))
+    @patch(
+        "builtins.open", new_callable=mock_open, read_data=yaml.dump(KUBECONFIG_DATA)
+    )
     def test_set_context_success_other_namespace(
         self,
         mock_open_file: Mock,
@@ -182,17 +191,25 @@ class TestKubernetesClient(unittest.TestCase):
         mock_client.return_value = MagicMock()
         test_client = KubernetesClient()
         test_client.set_context("context2", "kubeflow")
-        mock_open_file.assert_called_with(os.path.expanduser(KUBE_CONFIG_DEFAULT_LOCATION), "w")
+        mock_open_file.assert_called_with(
+            os.path.expanduser(KUBE_CONFIG_DEFAULT_LOCATION), "w"
+        )
 
     @patch("kubernetes.client.ApiClient")
     @patch("kubernetes.config.load_kube_config")
     @patch("kubernetes.config.list_kube_config_contexts")
     def test_context_exists_success(
-        self, mock_list_kube_config_contexts: Mock, mock_kube_config: Mock, mock_client: Mock
+        self,
+        mock_list_kube_config_contexts: Mock,
+        mock_kube_config: Mock,
+        mock_client: Mock,
     ):
         mock_kube_config.return_value = None
         mock_client.return_value = MagicMock()
-        mock_list_kube_config_contexts.return_value = (KUBECONFIG_DATA["contexts"], None)
+        mock_list_kube_config_contexts.return_value = (
+            KUBECONFIG_DATA["contexts"],
+            None,
+        )
         test_client = KubernetesClient()
         self.assertTrue(test_client.context_exists("context1"))
 
@@ -200,11 +217,17 @@ class TestKubernetesClient(unittest.TestCase):
     @patch("kubernetes.config.load_kube_config")
     @patch("kubernetes.config.list_kube_config_contexts")
     def test_context_not_exists_succeeded(
-        self, mock_list_kube_config_contexts: Mock, mock_kube_config: Mock, mock_client: Mock
+        self,
+        mock_list_kube_config_contexts: Mock,
+        mock_kube_config: Mock,
+        mock_client: Mock,
     ):
         mock_kube_config.return_value = None
         mock_client.return_value = MagicMock()
-        mock_list_kube_config_contexts.return_value = (KUBECONFIG_DATA["contexts"], None)
+        mock_list_kube_config_contexts.return_value = (
+            KUBECONFIG_DATA["contexts"],
+            None,
+        )
         test_client = KubernetesClient()
         self.assertFalse(test_client.context_exists("invalid-context"))
 
@@ -212,7 +235,10 @@ class TestKubernetesClient(unittest.TestCase):
     @patch("kubernetes.config.load_kube_config")
     @patch("kubernetes.config.list_kube_config_contexts")
     def test_context_exists_error(
-        self, mock_list_kube_config_contexts: Mock, mock_kube_config: Mock, mock_client: Mock
+        self,
+        mock_list_kube_config_contexts: Mock,
+        mock_kube_config: Mock,
+        mock_client: Mock,
     ):
         mock_kube_config.return_value = None
         mock_client.return_value = MagicMock()
@@ -364,7 +390,9 @@ class TestKubernetesClient(unittest.TestCase):
     @patch(
         "kubernetes.client.CustomObjectsApi",
         return_value=Mock(
-            list_namespaced_custom_object=Mock(return_value={"items": ["test", "test1"]})
+            list_namespaced_custom_object=Mock(
+                return_value={"items": ["test", "test1"]}
+            )
         ),
     )
     def test_list_training_job(self, mock_core_client: Mock):
@@ -374,7 +402,9 @@ class TestKubernetesClient(unittest.TestCase):
 
     @patch(
         "kubernetes.client.CoreV1Api",
-        return_value=Mock(list_pod_for_all_namespaces=Mock(return_value=pods_no_next_token)),
+        return_value=Mock(
+            list_pod_for_all_namespaces=Mock(return_value=pods_no_next_token)
+        ),
     )
     def test_list_pods_in_all_namespaces_with_labels(self, mock_core_client: Mock):
         test_client = KubernetesClient()
@@ -385,7 +415,9 @@ class TestKubernetesClient(unittest.TestCase):
         "kubernetes.client.CoreV1Api.list_pod_for_all_namespaces",
         side_effect=[pods_with_next_token, pods_no_next_token],
     )
-    def test_list_pods_in_all_namespaces_with_labels_with_pagination(self, mock_method: Mock):
+    def test_list_pods_in_all_namespaces_with_labels_with_pagination(
+        self, mock_method: Mock
+    ):
         test_client = KubernetesClient()
         result = test_client.list_pods_in_all_namespaces_with_labels("kubeflow")
         self.assertEqual(2, len(result))

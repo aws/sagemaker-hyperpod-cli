@@ -22,7 +22,10 @@ class ListTrainingJobs:
         return
 
     def list_training_jobs(
-        self, namespace: Optional[str], all_namespaces: Optional[bool], selector: Optional[str]
+        self,
+        namespace: Optional[str],
+        all_namespaces: Optional[bool],
+        selector: Optional[str],
     ) -> str:
         """
         List training job provided by the user in the specified namespace.
@@ -38,7 +41,9 @@ class ListTrainingJobs:
         if all_namespaces:
             namespaces: List[str] = k8s_client.list_namespaces()
             for _namespace in namespaces:
-                _jobs = k8s_client.list_training_jobs(namespace=_namespace, label_selector=selector)
+                _jobs = k8s_client.list_training_jobs(
+                    namespace=_namespace, label_selector=selector
+                )
                 if _jobs.get("items") and len(_jobs.get("items")) > 0:
                     for _job in _jobs.get("items"):
                         jobs.append(_job)
@@ -65,8 +70,17 @@ class ListTrainingJobs:
                 state = None
                 if job.get("status"):
                     creation_time = job.get("status").get("startTime")
-                    state = self._get_job_status(job.get("status").get("conditions"), name)
-                output_jobs["jobs"].append({"Name":name, "Namespace":namespace, "Creation Time": creation_time, "State":state})
+                    state = self._get_job_status(
+                        job.get("status").get("conditions"), name
+                    )
+                output_jobs["jobs"].append(
+                    {
+                        "Name": name,
+                        "Namespace": namespace,
+                        "Creation Time": creation_time,
+                        "State": state,
+                    }
+                )
 
         return json.dumps(output_jobs, indent=1, sort_keys=False)
 
@@ -82,5 +96,7 @@ class ListTrainingJobs:
             ):
                 current_status = "Created"
             else:
-                raise RuntimeError(f"Unknown status {state.get('type')} for job {job_name}")
+                raise RuntimeError(
+                    f"Unknown status {state.get('type')} for job {job_name}"
+                )
         return current_status

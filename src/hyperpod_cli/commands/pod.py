@@ -25,7 +25,7 @@ logger = setup_logger(__name__)
 
 @click.command()
 @click.option(
-    "--name",
+    "--job-name",
     type=click.STRING,
     required=True,
     help="The name of the training job you want to view logs",
@@ -46,7 +46,7 @@ logger = setup_logger(__name__)
 )
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 def get_log(
-    name: str,
+    job_name: str,
     pod: str,
     namespace: Optional[str],
     debug: bool,
@@ -59,15 +59,18 @@ def get_log(
 
     try:
         logger.debug("Getting logs for the training job")
-        result = get_logs_service.get_training_job_logs(name, pod, namespace=namespace)
+        result = get_logs_service.get_training_job_logs(
+            job_name, pod, namespace=namespace
+        )
         click.echo(result)
     except Exception as e:
-        sys.exit(f"Unexpected error happens when trying to get logs for training job {name} : {e}")
+        sys.exit(
+            f"Unexpected error happens when trying to get logs for training job {job_name} : {e}"
+        )
 
 
 def _exec_command_required_option_pod_and_all_pods():
     class OptionRequiredClass(click.Command):
-
         def invoke(self, ctx):
             pod = ctx.params["pod"]
             all_pods = ctx.params["all_pods"]
@@ -89,7 +92,7 @@ def _exec_command_required_option_pod_and_all_pods():
     context_settings={"ignore_unknown_options": True, "allow_extra_args": False},
 )
 @click.option(
-    "--name",
+    "--job-name",
     type=click.STRING,
     required=True,
     help="The name of the training job you want to view logs",
@@ -120,7 +123,7 @@ def _exec_command_required_option_pod_and_all_pods():
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.argument("bash_command", nargs=-1, type=click.UNPROCESSED)
 def exec(
-    name: str,
+    job_name: str,
     namespace: Optional[str],
     pod: Optional[str],
     all_pods: Optional[bool],
@@ -135,7 +138,11 @@ def exec(
 
     try:
         logger.debug("Executing command for the training job")
-        result = exec_command_service.exec_command(name, pod, namespace, all_pods, bash_command)
+        result = exec_command_service.exec_command(
+            job_name, pod, namespace, all_pods, bash_command
+        )
         click.echo(result)
     except Exception as e:
-        sys.exit(f"Unexpected error happens when trying to exec command for pod {pod} : {e}")
+        sys.exit(
+            f"Unexpected error happens when trying to exec command for pod {pod} : {e}"
+        )

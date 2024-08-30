@@ -57,10 +57,16 @@ cluster:
         persistent_volume_claims: null
         pullPolicy: ??? # policy to pull container, can be Always, IfNotPresent and Never
         restartPolicy: ??? # PyTorchJob restart policy
+        # temp volume, usually used to mount temp directory
+        # volumes, used to mount temp path to container
+        # example:
+        # volumes:
+        #  - volumeName: data1
+        #    hostPath: "/data"
+        #    mountPath: "/data"              
+        volumes: ???
 
 base_results_dir: ???  # Location to store the results, checkpoints and logs.
-container_mounts: # List of additional paths to mount to container. They will be mounted to same path.
-    - null
 container: ??? # container to use
 
 env_vars:

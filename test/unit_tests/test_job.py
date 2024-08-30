@@ -18,13 +18,21 @@ from unittest.mock import MagicMock, mock_open
 
 from click.testing import CliRunner
 
-from hyperpod_cli.commands.job import cancel_job, get_job, list_jobs, list_pods, start_job, suppress_standard_output_context
+from hyperpod_cli.commands.job import (
+    cancel_job,
+    get_job,
+    list_jobs,
+    list_pods,
+    start_job,
+    suppress_standard_output_context,
+)
 from hyperpod_cli.service.cancel_training_job import CancelTrainingJob
 from hyperpod_cli.service.get_training_job import GetTrainingJob
 from hyperpod_cli.service.list_pods import ListPods
 from hyperpod_cli.service.list_training_jobs import ListTrainingJobs
 
 VALID_CONFIG_FILE_DATA = "cluster:\n  cluster_type: k8s\n  instance_type: ml.g5.xlarge\n  cluster_config: {pullPolicy: IfNotPresent}"
+
 
 class JobTest(unittest.TestCase):
     def setUp(self):
@@ -35,9 +43,7 @@ class JobTest(unittest.TestCase):
         self.list_pods = MagicMock(spec=ListPods)
 
     @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob")
-    @mock.patch(
-        "hyperpod_cli.service.get_training_job.GetTrainingJob.get_training_job"
-    )
+    @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob.get_training_job")
     def test_get_job_happy_case(
         self,
         mock_get_training_job_service_and_get_job: mock.Mock,
@@ -45,14 +51,12 @@ class JobTest(unittest.TestCase):
     ):
         mock_get_training_job_service.return_value = self.mock_get_job
         mock_get_training_job_service_and_get_job.return_value = {"Name": "example-job"}
-        result = self.runner.invoke(get_job, ["--name", "example-job"])
+        result = self.runner.invoke(get_job, ["--job-name", "example-job"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("example-job", result.output)
 
     @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob")
-    @mock.patch(
-        "hyperpod_cli.service.get_training_job.GetTrainingJob.get_training_job"
-    )
+    @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob.get_training_job")
     @mock.patch("logging.Logger.debug")
     def test_get_job_happy_case_debug_mode(
         self,
@@ -62,15 +66,13 @@ class JobTest(unittest.TestCase):
     ):
         mock_get_training_job_service.return_value = self.mock_get_job
         mock_get_training_job_service_and_get_job.return_value = {"Name": "example-job"}
-        result = self.runner.invoke(get_job, ["--name", "example-job"])
+        result = self.runner.invoke(get_job, ["--job-name", "example-job"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("example-job", result.output)
         mock_debug.assert_called()
 
     @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob")
-    @mock.patch(
-        "hyperpod_cli.service.get_training_job.GetTrainingJob.get_training_job"
-    )
+    @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob.get_training_job")
     def test_get_job_happy_case_with_namespace(
         self,
         mock_get_training_job_service_and_get_job: mock.Mock,
@@ -79,15 +81,13 @@ class JobTest(unittest.TestCase):
         mock_get_training_job_service.return_value = self.mock_get_job
         mock_get_training_job_service_and_get_job.return_value = {"Name": "example-job"}
         result = self.runner.invoke(
-            get_job, ["--name", "example-job", "--namespace", "kubeflow"]
+            get_job, ["--job-name", "example-job", "--namespace", "kubeflow"]
         )
         self.assertEqual(result.exit_code, 0)
         self.assertIn("example-job", result.output)
 
     @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob")
-    @mock.patch(
-        "hyperpod_cli.service.get_training_job.GetTrainingJob.get_training_job"
-    )
+    @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob.get_training_job")
     def test_get_job_happy_case_with_namespace_and_verbose(
         self,
         mock_get_training_job_service_and_get_job: mock.Mock,
@@ -96,19 +96,18 @@ class JobTest(unittest.TestCase):
         mock_get_training_job_service.return_value = self.mock_get_job
         mock_get_training_job_service_and_get_job.return_value = {"Name": "example-job"}
         result = self.runner.invoke(
-            get_job, ["--name", "example-job", "--namespace", "kubeflow", "--verbose"]
+            get_job,
+            ["--job-name", "example-job", "--namespace", "kubeflow", "--verbose"],
         )
         self.assertEqual(result.exit_code, 0)
         self.assertIn("example-job", result.output)
 
     def test_get_job_error_missing_name_option(self):
         result = self.runner.invoke(get_job, ["example-job"])
-        self.assertIn("Missing option '--name'", result.output)
+        self.assertIn("Missing option '--job-name'", result.output)
 
     @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob")
-    @mock.patch(
-        "hyperpod_cli.service.get_training_job.GetTrainingJob.get_training_job"
-    )
+    @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob.get_training_job")
     def test_get_job_when_subprocess_command_gives_exception(
         self,
         mock_get_training_job_service_and_get_job: mock.Mock,
@@ -116,14 +115,16 @@ class JobTest(unittest.TestCase):
     ):
         mock_get_training_job_service.return_value = self.mock_get_job
         mock_get_training_job_service_and_get_job.side_effect = Exception("Boom!")
-        result = self.runner.invoke(get_job, ["--name", "example-job"])
+        result = self.runner.invoke(get_job, ["--job-name", "example-job"])
         self.assertEqual(result.exit_code, 1)
         self.assertIn(
             "Unexpected error happens when trying to get training job", result.output
         )
 
     @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs")
-    @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs")
+    @mock.patch(
+        "hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
+    )
     def test_list_job_happy_case(
         self,
         mock_list_training_job_service_and_list_jobs: mock.Mock,
@@ -136,7 +137,9 @@ class JobTest(unittest.TestCase):
         self.assertIn("jobs", result.output)
 
     @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs")
-    @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs")
+    @mock.patch(
+        "hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
+    )
     @mock.patch("logging.Logger.debug")
     def test_list_job_happy_case_debug_mode(
         self,
@@ -152,7 +155,9 @@ class JobTest(unittest.TestCase):
         mock_debug.assert_called()
 
     @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs")
-    @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs")
+    @mock.patch(
+        "hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
+    )
     def test_list_job_happy_case_with_namespace(
         self,
         mock_list_training_job_service_and_list_jobs: mock.Mock,
@@ -165,7 +170,9 @@ class JobTest(unittest.TestCase):
         self.assertIn("jobs", result.output)
 
     @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs")
-    @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs")
+    @mock.patch(
+        "hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
+    )
     def test_list_job_happy_case_with_all_namespace(
         self,
         mock_list_training_job_service_and_list_jobs: mock.Mock,
@@ -178,7 +185,9 @@ class JobTest(unittest.TestCase):
         self.assertIn("jobs", result.output)
 
     @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs")
-    @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs")
+    @mock.patch(
+        "hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
+    )
     def test_list_job_happy_case_with_all_namespace_and_selector(
         self,
         mock_list_training_job_service_and_list_jobs: mock.Mock,
@@ -191,7 +200,9 @@ class JobTest(unittest.TestCase):
         self.assertIn("jobs", result.output)
 
     @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs")
-    @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs")
+    @mock.patch(
+        "hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
+    )
     def test_list_job_happy_case_with_bad_field(
         self,
         mock_list_training_job_service_and_list_jobs: mock.Mock,
@@ -199,11 +210,13 @@ class JobTest(unittest.TestCase):
     ):
         mock_list_training_job_service.return_value = self.mock_list_jobs
         mock_list_training_job_service_and_list_jobs.return_value = "{}"
-        result = self.runner.invoke(list_jobs, ["--name", "kubeflow"])
+        result = self.runner.invoke(list_jobs, ["--job-name", "kubeflow"])
         self.assertEqual(result.exit_code, 2)
 
     @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs")
-    @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs")
+    @mock.patch(
+        "hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
+    )
     def test_list_job_when_subprocess_command_gives_exception(
         self,
         mock_list_training_job_service_and_list_jobs: mock.Mock,
@@ -213,7 +226,9 @@ class JobTest(unittest.TestCase):
         mock_list_training_job_service_and_list_jobs.side_effect = Exception("Boom!")
         result = self.runner.invoke(list_jobs)
         self.assertEqual(result.exit_code, 1)
-        self.assertIn("Unexpected error happens when trying to list training job", result.output)
+        self.assertIn(
+            "Unexpected error happens when trying to list training job", result.output
+        )
 
     @mock.patch("hyperpod_cli.service.list_pods.ListPods")
     @mock.patch("hyperpod_cli.service.list_pods.ListPods.list_pods_for_training_job")
@@ -224,7 +239,7 @@ class JobTest(unittest.TestCase):
     ):
         mock_list_training_job_service.return_value = self.list_pods
         mock_list_training_job_service_and_list_jobs.return_value = "{}"
-        result = self.runner.invoke(list_pods, ["--name", "example-job"])
+        result = self.runner.invoke(list_pods, ["--job-name", "example-job"])
         self.assertEqual(result.exit_code, 0)
 
     @mock.patch("hyperpod_cli.service.list_pods.ListPods")
@@ -238,7 +253,7 @@ class JobTest(unittest.TestCase):
     ):
         mock_list_training_job_service.return_value = self.list_pods
         mock_list_training_job_service_and_list_jobs.return_value = "{}"
-        result = self.runner.invoke(list_pods, ["--name", "example-job", "--debug"])
+        result = self.runner.invoke(list_pods, ["--job-name", "example-job", "--debug"])
         self.assertEqual(result.exit_code, 0)
         mock_debug.assert_called()
 
@@ -251,13 +266,15 @@ class JobTest(unittest.TestCase):
     ):
         mock_list_training_job_service.return_value = self.list_pods
         mock_list_training_job_service_and_list_jobs.return_value = "{}"
-        result = self.runner.invoke(list_pods, ["--name", "example-job", "--namespace", "kubeflow"])
+        result = self.runner.invoke(
+            list_pods, ["--job-name", "example-job", "--namespace", "kubeflow"]
+        )
         self.assertEqual(result.exit_code, 0)
 
     def test_list_pods_error_missing_name_option(self):
         result = self.runner.invoke(list_pods, ["example-job"])
         self.assertEqual(2, result.exit_code)
-        self.assertIn("Missing option '--name'", result.output)
+        self.assertIn("Missing option '--job-name'", result.output)
 
     @mock.patch("hyperpod_cli.service.list_pods.ListPods")
     @mock.patch("hyperpod_cli.service.list_pods.ListPods.list_pods_for_training_job")
@@ -268,14 +285,17 @@ class JobTest(unittest.TestCase):
     ):
         mock_list_training_job_service.return_value = self.list_pods
         mock_list_training_job_service_and_list_jobs.side_effect = Exception("Boom!")
-        result = self.runner.invoke(list_pods, ["--name", "example-job"])
+        result = self.runner.invoke(list_pods, ["--job-name", "example-job"])
         self.assertEqual(result.exit_code, 1)
         self.assertIn(
-            "Unexpected error happens when trying to list pods for training job", result.output
+            "Unexpected error happens when trying to list pods for training job",
+            result.output,
         )
 
     @mock.patch("hyperpod_cli.service.cancel_training_job.CancelTrainingJob")
-    @mock.patch("hyperpod_cli.service.cancel_training_job.CancelTrainingJob.cancel_training_job")
+    @mock.patch(
+        "hyperpod_cli.service.cancel_training_job.CancelTrainingJob.cancel_training_job"
+    )
     def test_cancel_job_happy_case(
         self,
         mock_cancel_training_job_service_and_cancel_job: mock.Mock,
@@ -283,12 +303,14 @@ class JobTest(unittest.TestCase):
     ):
         mock_cancel_training_job_service.return_value = self.mock_cancel_job
         mock_cancel_training_job_service_and_cancel_job.return_value = "{}"
-        result = self.runner.invoke(cancel_job, ["--name", "example-job"])
+        result = self.runner.invoke(cancel_job, ["--job-name", "example-job"])
         self.assertEqual(result.exit_code, 0)
-        self.assertIn('{}\n', result.output)
+        self.assertIn("{}\n", result.output)
 
     @mock.patch("hyperpod_cli.service.cancel_training_job.CancelTrainingJob")
-    @mock.patch("hyperpod_cli.service.cancel_training_job.CancelTrainingJob.cancel_training_job")
+    @mock.patch(
+        "hyperpod_cli.service.cancel_training_job.CancelTrainingJob.cancel_training_job"
+    )
     @mock.patch("logging.Logger.debug")
     def test_cancel_job_happy_case_debug_mode(
         self,
@@ -298,13 +320,17 @@ class JobTest(unittest.TestCase):
     ):
         mock_cancel_training_job_service.return_value = self.mock_cancel_job
         mock_cancel_training_job_service_and_cancel_job.return_value = "{}"
-        result = self.runner.invoke(cancel_job, ["--name", "example-job", "--debug"])
+        result = self.runner.invoke(
+            cancel_job, ["--job-name", "example-job", "--debug"]
+        )
         self.assertEqual(result.exit_code, 0)
-        self.assertIn('{}\n', result.output)
+        self.assertIn("{}\n", result.output)
         mock_debug.assert_called()
 
     @mock.patch("hyperpod_cli.service.cancel_training_job.CancelTrainingJob")
-    @mock.patch("hyperpod_cli.service.cancel_training_job.CancelTrainingJob.cancel_training_job")
+    @mock.patch(
+        "hyperpod_cli.service.cancel_training_job.CancelTrainingJob.cancel_training_job"
+    )
     def test_cancel_job_happy_case_with_namespace(
         self,
         mock_cancel_training_job_service_and_cancel_job: mock.Mock,
@@ -313,17 +339,19 @@ class JobTest(unittest.TestCase):
         mock_cancel_training_job_service.return_value = self.mock_cancel_job
         mock_cancel_training_job_service_and_cancel_job.return_value = "{}"
         result = self.runner.invoke(
-            cancel_job, ["--name", "example-job", "--namespace", "kubeflow"]
+            cancel_job, ["--job-name", "example-job", "--namespace", "kubeflow"]
         )
         self.assertEqual(result.exit_code, 0)
-        self.assertIn('{}\n', result.output)
+        self.assertIn("{}\n", result.output)
 
     def test_cancel_job_error_missing_name_option(self):
         result = self.runner.invoke(cancel_job, ["example-job"])
-        self.assertIn("Missing option '--name'", result.output)
+        self.assertIn("Missing option '--job-name'", result.output)
 
     @mock.patch("hyperpod_cli.service.cancel_training_job.CancelTrainingJob")
-    @mock.patch("hyperpod_cli.service.cancel_training_job.CancelTrainingJob.cancel_training_job")
+    @mock.patch(
+        "hyperpod_cli.service.cancel_training_job.CancelTrainingJob.cancel_training_job"
+    )
     def test_cancel_job_when_subprocess_command_gives_exception(
         self,
         mock_cancel_training_job_service_and_cancel_job: mock.Mock,
@@ -331,9 +359,11 @@ class JobTest(unittest.TestCase):
     ):
         mock_cancel_training_job_service.return_value = self.mock_cancel_job
         mock_cancel_training_job_service_and_cancel_job.side_effect = Exception("Boom!")
-        result = self.runner.invoke(cancel_job, ["--name", "example-job"])
+        result = self.runner.invoke(cancel_job, ["--job-name", "example-job"])
         self.assertEqual(result.exit_code, 1)
-        self.assertIn("Unexpected error happens when trying to cancel training job", result.output)
+        self.assertIn(
+            "Unexpected error happens when trying to cancel training job", result.output
+        )
 
     @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
     @mock.patch("hyperpod_cli.commands.job.compose")
@@ -365,7 +395,7 @@ class JobTest(unittest.TestCase):
         result = self.runner.invoke(
             start_job,
             [
-                "--name",
+                "--job-name",
                 "test-job",
                 "--instance-type",
                 "ml.c5.xlarge",
@@ -406,7 +436,7 @@ class JobTest(unittest.TestCase):
         result = self.runner.invoke(
             start_job,
             [
-                "--name",
+                "--job-name",
                 "test-job",
                 "--instance-type",
                 "ml.c5.xlarge",
@@ -454,7 +484,7 @@ class JobTest(unittest.TestCase):
         result = self.runner.invoke(
             start_job,
             [
-                "--name",
+                "--job-name",
                 "test-job",
                 "--instance-type",
                 "ml.c5.xlarge",
@@ -500,7 +530,7 @@ class JobTest(unittest.TestCase):
         result = self.runner.invoke(
             start_job,
             [
-                "--name",
+                "--job-name",
                 "test-job",
                 "--instance-type",
                 "ml.g5.xlarge",
@@ -544,7 +574,7 @@ class JobTest(unittest.TestCase):
         result = self.runner.invoke(
             start_job,
             [
-                "--name",
+                "--job-name",
                 "test-job",
                 "--instance-type",
                 "ml.c5.xlarge",
@@ -563,16 +593,15 @@ class JobTest(unittest.TestCase):
     @mock.patch("builtins.open", new_callable=mock.mock_open)
     @mock.patch("yaml.dump")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    def test_start_job_with_cli_args_label_selection_not_json_str(self,
-        mock_kubernetes_client,
-        mock_yaml_dump,
-        mock_file):
+    def test_start_job_with_cli_args_label_selection_not_json_str(
+        self, mock_kubernetes_client, mock_yaml_dump, mock_file
+    ):
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_yaml_dump.return_value = None
         result = self.runner.invoke(
             start_job,
             [
-                "--name",
+                "--job-name",
                 "test-job",
                 "--instance-type",
                 "ml.c5.xlarge",
@@ -599,7 +628,7 @@ class JobTest(unittest.TestCase):
         result = self.runner.invoke(
             start_job,
             [
-                "--name",
+                "--job-name",
                 "test-job",
                 "--instance-type",
                 "ml.c5.xlarge",
@@ -622,14 +651,20 @@ class JobTest(unittest.TestCase):
     @mock.patch("builtins.open", mock_open(read_data=VALID_CONFIG_FILE_DATA))
     @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("os.path.abspath", return_value="/absolute/path/to/file.yaml")
+    @mock.patch("os.path.isabs", return_value=False)
+    @mock.patch("os.path.split", return_value=("/absolute/path/to", "file.yaml"))
     def test_start_job_with_config_file(
         self,
+        mock_split,
+        mock_isabs,
+        mock_abspath,
         mock_kubernetes_client,
         mock_get_console_link,
         mock_exists,
         mock_main,
         mock_compose,
-        mock_initialize_config_dir
+        mock_initialize_config_dir,
     ):
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
@@ -637,7 +672,39 @@ class JobTest(unittest.TestCase):
         mock_compose.return_value = None
         mock_initialize_config_dir.return_value.__enter__.return_value = None
         result = self.runner.invoke(
-            start_job, ["--config-name", "valid.config", "--config-path", "/path/to/config"]
+            start_job,
+            ["--config-file", "file.yaml"],
+        )
+        self.assertEqual(result.exit_code, 0)
+
+    @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
+    @mock.patch("hyperpod_cli.commands.job.compose")
+    @mock.patch("hyperpod_cli.commands.job.customer_launcher")
+    @mock.patch("os.path.exists", return_value=True)
+    @mock.patch("builtins.open", mock_open(read_data=VALID_CONFIG_FILE_DATA))
+    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("os.path.isabs", return_value=True)
+    @mock.patch("os.path.split", return_value=("/absolute/path/to", "file.yaml"))
+    def test_start_job_with_config_file_absolute_path(
+        self,
+        mock_split,
+        mock_isabs,
+        mock_kubernetes_client,
+        mock_get_console_link,
+        mock_exists,
+        mock_main,
+        mock_compose,
+        mock_initialize_config_dir,
+    ):
+        mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
+        mock_get_console_link.return_value = "test-console-link"
+        mock_main.return_value = None
+        mock_compose.return_value = None
+        mock_initialize_config_dir.return_value.__enter__.return_value = None
+        result = self.runner.invoke(
+            start_job,
+            ["--config-file", "/absolute/path/to/file.yaml"],
         )
         self.assertEqual(result.exit_code, 0)
 
@@ -653,7 +720,7 @@ class JobTest(unittest.TestCase):
         result = self.runner.invoke(
             start_job,
             [
-                "--name",
+                "--job-name",
                 "test-job",
                 "--instance-type",
                 "ml.c5.xlarge",
@@ -669,22 +736,31 @@ class JobTest(unittest.TestCase):
 
     @mock.patch("os.path.exists", return_value=False)
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("os.path.isabs", return_value=True)
+    @mock.patch("os.path.split", return_value=("/absolute/path/to", "file.yaml"))
     def test_start_job_with_invalid_config_file_path(
         self,
+        mock_split,
+        mock_isabs,
         mock_kubernetes_client,
         mock_exists,
     ):
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         result = self.runner.invoke(
-            start_job, ["--config-name", "invalid.yaml", "--config-path", "/path/to/config"]
+            start_job,
+            ["--config-file", "/absolute/path/to/file.yaml"],
         )
         self.assertNotEqual(result.exit_code, 0)
 
     @mock.patch("os.path.exists")
     @mock.patch("os.path.join")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("os.path.isabs", return_value=True)
+    @mock.patch("os.path.split", return_value=("/absolute/path/to", "file.yaml"))
     def test_start_job_with_invalid_config_file(
         self,
+        mock_split,
+        mock_isabs,
         mock_kubernetes_client,
         mock_join,
         mock_exists,
@@ -693,7 +769,8 @@ class JobTest(unittest.TestCase):
         mock_join.return_value = "/path/to/config/invalid.yaml"
         mock_exists.side_effect = lambda path: path != "/path/to/config/invalid.yaml"
         result = self.runner.invoke(
-            start_job, ["--config-name", "test_job.py", "--config-path", "/path/to/config"]
+            start_job,
+            ["--config-file", "/absolute/path/to/file.yaml"],
         )
         self.assertNotEqual(result.exit_code, 0)
 
@@ -720,7 +797,7 @@ class JobTest(unittest.TestCase):
         result = self.runner.invoke(
             start_job,
             [
-                "--name",
+                "--job-name",
                 "test-job",
                 "--instance-type",
                 "ml.c5.xlarge",
@@ -741,7 +818,14 @@ class JobTest(unittest.TestCase):
     def test_start_job_with_invalid_args(self, mock_validate):
         result = self.runner.invoke(
             start_job,
-            ["--name", "test-job", "--instance-type", "invalid-type", "--image", "invalid-image"],
+            [
+                "--job-name",
+                "test-job",
+                "--instance-type",
+                "invalid-type",
+                "--image",
+                "invalid-image",
+            ],
         )
         self.assertEqual(result.exit_code, 1)
 
@@ -775,7 +859,7 @@ class JobTest(unittest.TestCase):
         result = self.runner.invoke(
             start_job,
             [
-                "--name",
+                "--job-name",
                 "test-job",
                 "--instance-type",
                 "ml.c5.xlarge",
@@ -821,7 +905,7 @@ class JobTest(unittest.TestCase):
         result = self.runner.invoke(
             start_job,
             [
-                "--name",
+                "--job-name",
                 "test-job",
                 "--instance-type",
                 "ml.c5.xlarge",
@@ -867,7 +951,7 @@ class JobTest(unittest.TestCase):
         result = self.runner.invoke(
             start_job,
             [
-                "--name",
+                "--job-name",
                 "test-job",
                 "--instance-type",
                 "ml.c5.xlarge",
@@ -912,7 +996,7 @@ class JobTest(unittest.TestCase):
         result = self.runner.invoke(
             start_job,
             [
-                "--name",
+                "--job-name",
                 "test-job",
                 "--instance-type",
                 "ml.c5.xlarge",
@@ -958,7 +1042,7 @@ class JobTest(unittest.TestCase):
         result = self.runner.invoke(
             start_job,
             [
-                "--name",
+                "--job-name",
                 "test-job",
                 "--instance-type",
                 "ml.c5.xlarge",
@@ -974,6 +1058,51 @@ class JobTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
+    @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
+    @mock.patch("hyperpod_cli.commands.job.compose")
+    @mock.patch("hyperpod_cli.commands.job.customer_launcher")
+    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch("yaml.dump")
+    @mock.patch("os.path.exists", return_value=True)
+    @mock.patch("os.remove", return_value=None)
+    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    def test_start_job_with_cli_args_with_persistent_volume_claims(
+        self,
+        mock_kubernetes_client,
+        mock_get_console_link,
+        mock_remove,
+        mock_exists,
+        mock_yaml_dump,
+        mock_file,
+        mock_main,
+        mock_compose,
+        mock_initialize_config_dir,
+    ):
+        mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
+        mock_get_console_link.return_value = "test-console-link"
+        mock_yaml_dump.return_value = None
+        mock_main.return_value = None
+        mock_compose.return_value = None
+        mock_initialize_config_dir.return_value.__enter__.return_value = None
+        result = self.runner.invoke(
+            start_job,
+            [
+                "--job-name",
+                "test-job",
+                "--instance-type",
+                "ml.c5.xlarge",
+                "--image",
+                "pytorch:1.9.0-cuda11.1-cudnn8-runtime",
+                "--node-count",
+                "2",
+                "--persistent-volume-claims",
+                "claim1:test1,claim2:test2",
+                "--entry-script",
+                "/opt/train/src/train.py",
+            ],
+        )
+        self.assertEqual(result.exit_code, 0)
 
     @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
     @mock.patch("hyperpod_cli.commands.job.compose")
@@ -1017,6 +1146,8 @@ class JobTest(unittest.TestCase):
                 "claim1:test1,claim2:test2",
                 "--entry-script",
                 "/opt/train/src/train.py",
+                "--volumes",
+                "data:/data:/data"
             ],
         )
         self.assertEqual(result.exit_code, 0)
@@ -1030,7 +1161,7 @@ class JobTest(unittest.TestCase):
         # Ensure that the original Popen is restored after exiting the context
         original_popen = subprocess.Popen
 
-        with mock.patch('subprocess.Popen', mock_popen):
+        with mock.patch("subprocess.Popen", mock_popen):
             with suppress_standard_output_context():
                 # Inside the context, subprocess.Popen should be replaced by the _popen_suppress method
                 subprocess.Popen('echo "test"')
@@ -1038,8 +1169,8 @@ class JobTest(unittest.TestCase):
 
                 # Check if 'stdout' is redirected to os.devnull
                 args, kwargs = mock_popen.call_args
-                self.assertIn('stdout', kwargs)
-                self.assertEqual(kwargs['stdout'].name, os.devnull)
+                self.assertIn("stdout", kwargs)
+                self.assertEqual(kwargs["stdout"].name, os.devnull)
 
         # Outside the context, subprocess.Popen should be restored to its original implementation
         self.assertIs(subprocess.Popen, original_popen)

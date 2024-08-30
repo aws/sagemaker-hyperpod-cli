@@ -20,7 +20,7 @@ from botocore.config import Config
 
 from hyperpod_cli.constants.command_constants import (
     GENERATED_LAUNCHER_CONFIG_FILE_PATH,
-    HYPERPOD_CLUSTER_CONTEXT_FILE_NAME
+    HYPERPOD_CLUSTER_CONTEXT_FILE_NAME,
 )
 
 
@@ -68,7 +68,8 @@ def setup_logger(
 
     # Create a formatter and set it for the handler
     formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
     console_handler.setFormatter(formatter)
 
@@ -86,31 +87,85 @@ def set_logging_level(
     logger.handlers[0].setLevel(logging_level)
 
 
-def get_sagemaker_client(session: boto3.Session, config: Config = None) -> botocore.client.BaseClient:
+def get_sagemaker_client(
+    session: boto3.Session, config: Config = None
+) -> botocore.client.BaseClient:
     # TODO: change to use public endpoint when release
     return session.client(
-        service_name="sagemaker",
-        config=config
+        service_name="sagemaker-beta",
+        config=config,
     )
 
 
 def store_current_hyperpod_context(data):
-    with open(GENERATED_LAUNCHER_CONFIG_FILE_PATH + HYPERPOD_CLUSTER_CONTEXT_FILE_NAME, "w") as hyperpod_current_context:
+    with open(
+        GENERATED_LAUNCHER_CONFIG_FILE_PATH + HYPERPOD_CLUSTER_CONTEXT_FILE_NAME, "w"
+    ) as hyperpod_current_context:
         hyperpod_current_context.write(json.dumps(data, indent=4, default=str))
 
 
 def _retrieve_current_hyperpod_context():
-    file = open(GENERATED_LAUNCHER_CONFIG_FILE_PATH + HYPERPOD_CLUSTER_CONTEXT_FILE_NAME, "r")
+    file = open(
+        GENERATED_LAUNCHER_CONFIG_FILE_PATH + HYPERPOD_CLUSTER_CONTEXT_FILE_NAME, "r"
+    )
     return json.load(file)
+
+
+def _validate_link(console_url):
+    pattern = "https:\/\/([a-z0-9-]+).console.aws.amazon.com\/sagemaker\/home\?region=([a-z0-9-]+)#\/cluster-management\/([a-z0-9-]+)"
+    match = re.match(pattern, console_url)
+    if match:
+        return True
+    else:
+        return False
+
+
+def _validate_placeholders(region, cluster_name):
+    output = False
+    region_char_list = region.split("-")
+
+    if len(region_char_list) != 3:
+        return False
+
+    region_prefix_match = re.match("[a-z]+", region_char_list[0])
+    region_match = re.match("[a-z]+", region_char_list[1])
+    region_suffix_match = re.match("[0-9]+", region_char_list[2])
+
+    region_prefix_length = len(region_char_list[0])
+    region_length = len(region_char_list[1])
+    region_suffix_length = len(region_char_list[2])
+    if (
+        region_prefix_match
+        and region_match
+        and region_suffix_match
+        and region_prefix_length == 2
+        and region_suffix_length == 1
+        and region_length >= 4
+        and region_length < 10
+        and len(cluster_name) >= 1
+        and len(cluster_name) <= 63
+    ):
+        output = True
+    return output
 
 
 def get_cluster_console_url():
     hyperpod_context_cluster = _retrieve_current_hyperpod_context()
     console_url = None
-    if hyperpod_context_cluster and hyperpod_context_cluster.get("ClusterArn")\
-            and hyperpod_context_cluster.get("ClusterName"):
+    if (
+        hyperpod_context_cluster
+        and hyperpod_context_cluster.get("ClusterArn")
+        and hyperpod_context_cluster.get("ClusterName")
+    ):
         region = hyperpod_context_cluster.get("ClusterArn").split(":")[3]
         cluster_name = hyperpod_context_cluster.get("ClusterName")
-        console_url = f"https://{region}.console.aws.amazon.com/sagemaker/" \
-                      f"home?region={region}#/cluster-management/{cluster_name}"
-    return console_url
+
+        console_url = (
+            f"https://{region}.console.aws.amazon.com/sagemaker/"
+            f"home?region={region}#/cluster-management/{cluster_name}"
+        )
+        if _validate_link(console_url) and _validate_placeholders(
+            region, cluster_name
+        ):
+            return console_url
+    return None

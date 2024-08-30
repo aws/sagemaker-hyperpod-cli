@@ -34,7 +34,8 @@ from hyperpod_cli.constants.command_constants import (
     DEEP_HEALTH_CHECK_PASSED_ONLY_NODE_AFFINITY_DICT,
     PullPolicy,
     RestartPolicy,
-    PersistentVolumeClaim
+    PersistentVolumeClaim,
+    Volume,
 )
 from hyperpod_cli.clients.kubernetes_client import KubernetesClient
 from hyperpod_cli.custom_launcher.main import main as customer_launcher
@@ -42,7 +43,9 @@ from hyperpod_cli.service.cancel_training_job import CancelTrainingJob
 from hyperpod_cli.service.get_training_job import GetTrainingJob
 from hyperpod_cli.service.list_pods import ListPods
 from hyperpod_cli.service.list_training_jobs import ListTrainingJobs
-from hyperpod_cli.templates.k8s_pytorch_job_template import KUBERNETES_PYTORCH_JOB_TEMPLATE
+from hyperpod_cli.templates.k8s_pytorch_job_template import (
+    KUBERNETES_PYTORCH_JOB_TEMPLATE,
+)
 from hyperpod_cli.utils import setup_logger, set_logging_level
 from hyperpod_cli.validators.job_validator import JobValidator
 
@@ -51,7 +54,7 @@ logger = setup_logger(__name__)
 
 @click.command()
 @click.option(
-    "--name",
+    "--job-name",
     type=click.STRING,
     required=True,
     help="The name of the training job you want to get details",
@@ -73,7 +76,7 @@ logger = setup_logger(__name__)
 )
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 def get_job(
-    name: str,
+    job_name: str,
     namespace: Optional[str],
     verbose: Optional[bool],
     debug: bool,
@@ -89,10 +92,12 @@ def get_job(
     try:
         logger.debug("Getting training job details")
         # Execute the command to describe training job
-        result = get_training_job_service.get_training_job(name, namespace, verbose)
+        result = get_training_job_service.get_training_job(job_name, namespace, verbose)
         click.echo(result)
     except Exception as e:
-        sys.exit(f"Unexpected error happens when trying to get training job {name} : {e}")
+        sys.exit(
+            f"Unexpected error happens when trying to get training job {job_name} : {e}"
+        )
 
 
 @click.command()
@@ -133,7 +138,9 @@ def list_jobs(
     list_training_job_service = ListTrainingJobs()
     try:
         logger.debug("Listing training jobs")
-        result = list_training_job_service.list_training_jobs(namespace, all_namespaces, selector)
+        result = list_training_job_service.list_training_jobs(
+            namespace, all_namespaces, selector
+        )
         click.echo(result)
     except Exception as e:
         sys.exit(f"Unexpected error happens when trying to list training job : {e}")
@@ -141,7 +148,7 @@ def list_jobs(
 
 @click.command()
 @click.option(
-    "--name",
+    "--job-name",
     type=click.STRING,
     required=True,
     help="The name of the training job you want to describe",
@@ -155,7 +162,7 @@ def list_jobs(
 )
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 def list_pods(
-    name: str,
+    job_name: str,
     namespace: Optional[str],
     debug: bool,
 ):
@@ -169,15 +176,17 @@ def list_pods(
 
     try:
         logger.debug("Listing Pods for the training job")
-        result = list_pods_service.list_pods_for_training_job(name, namespace, True)
+        result = list_pods_service.list_pods_for_training_job(job_name, namespace, True)
         click.echo(result)
     except Exception as e:
-        sys.exit(f"Unexpected error happens when trying to list pods for training job {name} : {e}")
+        sys.exit(
+            f"Unexpected error happens when trying to list pods for training job {job_name} : {e}"
+        )
 
 
 @click.command()
 @click.option(
-    "--name",
+    "--job-name",
     type=click.STRING,
     required=True,
     help="The name of the training job you want to cancel",
@@ -191,7 +200,7 @@ def list_pods(
 )
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 def cancel_job(
-    name: str,
+    job_name: str,
     namespace: Optional[str],
     debug: bool,
 ):
@@ -203,18 +212,21 @@ def cancel_job(
 
     try:
         logger.debug("Cancelling the training job")
-        result = cancel_training_job_service.cancel_training_job(name, namespace)
+        result = cancel_training_job_service.cancel_training_job(job_name, namespace)
         click.echo(result)
     except Exception as e:
-        sys.exit(f"Unexpected error happens when trying to cancel training job {name} : {e}")
+        sys.exit(
+            f"Unexpected error happens when trying to cancel training job {job_name} : {e}"
+        )
 
 
 @click.command()
-@click.option("--config-name", type=click.Path(), help="Config file to submit training job")
 @click.option(
-    "--config-path", default="../HyperpodCLI/", help="Path to the configuration directory"
+    "--config-file",
+    type=click.Path(),
+    help="Config file to submit training job. Please provide absolute path to the file or a file under current folder",
 )
-@click.option("--name", type=click.STRING, help="The name of the training job")
+@click.option("--job-name", type=click.STRING, help="The name of the training job")
 @click.option(
     "--namespace",
     type=click.STRING,
@@ -226,7 +238,11 @@ def cancel_job(
     default="kubeflow/PyTorchJob",
     help="The type of training job, currently only kubeflow/PytorchJob supported",
 )
-@click.option("--image", type=click.STRING, help="The docker container image used for training job")
+@click.option(
+    "--image",
+    type=click.STRING,
+    help="The docker container image used for training job",
+)
 @click.option(
     "--pull-policy",
     type=click.Choice([c.value for c in PullPolicy]),
@@ -244,7 +260,9 @@ def cancel_job(
     default="torchrun",
     help="The command to run entry script. Currently, only 'torchrun' supported",
 )
-@click.option("--script-args", type=click.STRING, help="The arguments list for entry script")
+@click.option(
+    "--script-args", type=click.STRING, help="The arguments list for entry script"
+)
 @click.option(
     "--results-dir",
     type=click.STRING,
@@ -262,7 +280,9 @@ def cancel_job(
     help="The instance type for the node to run the training job",
 )
 @click.option(
-    "--node-count", type=click.INT, help="The number of nodes to run distributed training job"
+    "--node-count",
+    type=click.INT,
+    help="The number of nodes to run distributed training job",
 )
 @click.option(
     "--tasks-per-node",
@@ -316,13 +336,19 @@ def cancel_job(
     type=click.STRING,
     required=False,
     help="A pod can have more than one claims to mounts, provide them in comma seperated format without spaces"
-         " claimName:<container/mount/path>,claimName1:<container/mount/path1>",
+    " claimName:<container/mount/path>,claimName1:<container/mount/path1>",
+)
+@click.option(
+    "--volumes",
+    type=click.STRING,
+    required=False,
+    help="add temp directory for container to store data in the hosts"
+    " <volume_name>:</host/mount/path>:</container/mount/path>,<volume_name>:</host/mount/path1>:</container/mount/path1>",
 )
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 def start_job(
-    config_name: Optional[str],
-    config_path: Optional[str],
-    name: Optional[str],
+    config_file: Optional[str],
+    job_name: Optional[str],
     namespace: Optional[str],
     job_kind: Optional[str],
     image: Optional[str],
@@ -345,6 +371,7 @@ def start_job(
     deep_health_check_passed_nodes_only: bool,
     service_account_name: Optional[str],
     persistent_volume_claims: Optional[str],
+    volumes: Optional[str],
     debug: bool,
 ):
     # TODO: Support more job kinds and command
@@ -357,8 +384,8 @@ def start_job(
 
     validator = JobValidator()
     if not validator.validate_start_job_args(
-        config_name,
-        name,
+        config_file,
+        job_name,
         node_count,
         instance_type,
         image,
@@ -378,18 +405,21 @@ def start_job(
 
     """Submit job with the provided configuration file or directly with CLI
     arguments."""
-    if name is not None:
+    if job_name is not None:
         config = yaml.safe_load(KUBERNETES_PYTORCH_JOB_TEMPLATE)
         try:
             # Update the configuration with provided arguments
             config["container"] = image
             config["cluster"]["instance_type"] = str(instance_type)[len("ml.") :]
             config["training_cfg"]["entry_script"] = entry_script
-            config["training_cfg"]["run"]["name"] = name
+            config["training_cfg"]["run"]["name"] = job_name
             config["training_cfg"]["run"]["nodes"] = node_count
             config["env_vars"] = ENV_VARS_DICT if environment is None else environment
 
-            if not _is_accelerator_instance_type(str(instance_type)) and tasks_per_node is None:
+            if (
+                not _is_accelerator_instance_type(str(instance_type))
+                and tasks_per_node is None
+            ):
                 config["training_cfg"]["run"]["ntasks_per_node"] = 8
             else:
                 _override_or_remove(
@@ -397,26 +427,62 @@ def start_job(
                 )
 
             if service_account_name:
-                config["cluster"]["cluster_config"]["service_account_name"] = service_account_name
+                config["cluster"]["cluster_config"]["service_account_name"] = (
+                    service_account_name
+                )
 
             persistent_volume_claims_list: List[PersistentVolumeClaim] = []
             if persistent_volume_claims:
-                for claim in persistent_volume_claims.split(','):
+                for claim in persistent_volume_claims.split(","):
                     claim_name, mount_path = claim.split(":")
-                    persistent_volume_claims_list.append(PersistentVolumeClaim(claim_name, mount_path))
+                    persistent_volume_claims_list.append(
+                        PersistentVolumeClaim(claim_name, mount_path)
+                    )
             if persistent_volume_claims_list and len(persistent_volume_claims_list) > 0:
                 pvc_mount = []
                 for persistent_volume_claim in persistent_volume_claims_list:
-                    pvc_mount.append({'claimName': persistent_volume_claim.claim_name,
-                                         'mountPath': persistent_volume_claim.mount_path})
-                config["cluster"]["cluster_config"]["persistent_volume_claims"] = pvc_mount
+                    pvc_mount.append(
+                        {
+                            "claimName": persistent_volume_claim.claim_name,
+                            "mountPath": persistent_volume_claim.mount_path,
+                        }
+                    )
+                config["cluster"]["cluster_config"]["persistent_volume_claims"] = (
+                    pvc_mount
+                )
 
+            volume_list: List[Volume] = []
+            
+            if volumes:
+                for volume in volumes.split(","):
+                    volume_name, host_path, container_path = volume.split(":")
+                    volume_list.append(
+                        Volume(volume_name, host_path, container_path)
+                    )
+            if volume_list and len(volume_list) > 0:
+                volume_mount = []
+                for volume in volume_list:
+                    volume_mount.append(
+                        {
+                            "hostPath": volume.host_path,
+                            "mountPath": volume.mount_path,
+                            "volumeName": volume.volume_name,
+                        }
+                    )
+                config["cluster"]["cluster_config"]["volumes"] = (
+                    volume_mount
+                )
+                
             if label_selector is not None:
                 config["cluster"]["cluster_config"]["label_selector"] = label_selector
             elif deep_health_check_passed_nodes_only:
-                config["cluster"]["cluster_config"]["label_selector"] = DEEP_HEALTH_CHECK_PASSED_ONLY_NODE_AFFINITY_DICT
+                config["cluster"]["cluster_config"]["label_selector"] = (
+                    DEEP_HEALTH_CHECK_PASSED_ONLY_NODE_AFFINITY_DICT
+                )
             else:
-                config["cluster"]["cluster_config"]["label_selector"] = NODE_AFFINITY_DICT
+                config["cluster"]["cluster_config"]["label_selector"] = (
+                    NODE_AFFINITY_DICT
+                )
 
             if auto_resume:
                 # Set max_retryn default to 1
@@ -431,20 +497,26 @@ def start_job(
             else:
                 config["cluster"]["cluster_config"].pop("annotations")
 
-            _override_or_remove(config["cluster"]["cluster_config"], "pullPolicy", pull_policy)
+            _override_or_remove(
+                config["cluster"]["cluster_config"], "pullPolicy", pull_policy
+            )
             _override_or_remove(
                 config["cluster"]["cluster_config"], "restartPolicy", restart_policy
             )
             _override_or_remove(
                 config["cluster"]["cluster_config"],
                 "custom_labels",
-                {KUEUE_QUEUE_NAME_LABEL_KEY: queue_name} if queue_name is not None else None,
+                {KUEUE_QUEUE_NAME_LABEL_KEY: queue_name}
+                if queue_name is not None
+                else None,
             )
             _override_or_remove(
                 config["cluster"]["cluster_config"], "priority_class_name", priority
             )
             _override_or_remove(config["training_cfg"], "script_args", script_args)
-            _override_or_remove(config["cluster"]["cluster_config"], "namespace", namespace)
+            _override_or_remove(
+                config["cluster"]["cluster_config"], "namespace", namespace
+            )
             _override_or_remove(config, "base_results_dir", results_dir)
         except Exception as e:
             logger.error(f"Config template has unexpected error: {e}")
@@ -453,7 +525,9 @@ def start_job(
         now = datetime.datetime.now()
         timestamp = now.strftime("%Y%m%d-%H%M%S")
         filename = f"{HYPERPOD_KUBERNETES_JOB_PREFIX}-{timestamp}.yaml"
-        with open(os.path.join(GENERATED_LAUNCHER_CONFIG_FILE_PATH, filename), "w") as file:
+        with open(
+            os.path.join(GENERATED_LAUNCHER_CONFIG_FILE_PATH, filename), "w"
+        ) as file:
             yaml.dump(config, file, default_flow_style=False)
 
         logger.debug(
@@ -464,13 +538,19 @@ def start_job(
     else:
         """Start job with the provided configuration file or directly with CLI
         arguments"""
-        config_file_path = os.path.join(str(config_path), str(config_name))
-        if not validator.validate_start_job_config_yaml(config_file_path):
+        if os.path.isabs(config_file):
+            abs_config_file_path = config_file
+        else:
+            abs_config_file_path = os.path.abspath(config_file)
+        if not validator.validate_start_job_config_yaml(abs_config_file_path):
             sys.exit(1)
+        config_path, config_name = os.path.split(abs_config_file_path)
         launcher_config_path = str(config_path)
         launcher_config_file_name = str(config_name)
 
-    logger.debug(f"Starting job with config {launcher_config_path}/{launcher_config_file_name}")
+    logger.debug(
+        f"Starting job with config {launcher_config_path}/{launcher_config_file_name}"
+    )
 
     # Initialize Hydra and call custom launcher with Hydra config to submit job
     try:
@@ -483,8 +563,10 @@ def start_job(
         sys.exit(1)
     finally:
         # Remove temporary created Launcher config file for submit via CLI argument case
-        if name is not None and config_name is None:
-            file_to_delete = os.path.join(launcher_config_path, launcher_config_file_name)
+        if job_name is not None and config_file is None:
+            file_to_delete = os.path.join(
+                launcher_config_path, launcher_config_file_name
+            )
             if os.path.exists(file_to_delete):
                 os.remove(file_to_delete)
     console_link = utils.get_cluster_console_url()
@@ -523,6 +605,6 @@ class suppress_standard_output_context:
         subprocess.Popen = self._original_popen
 
     def _popen_suppress(self, *args, **kwargs):
-        if 'stdout' not in kwargs:
-            kwargs['stdout'] = open(os.devnull, 'w')
+        if "stdout" not in kwargs:
+            kwargs["stdout"] = open(os.devnull, "w")
         return self._original_popen(*args, **kwargs)
