@@ -111,14 +111,14 @@ hyperpod start-job --job-name <job-name> [--namespace <namespace>] [--job-kind <
 * `namespace` (string) - Optional. The namespace to use. Default is `kubeflow`.
 * `image` (string) - Required. The image used when creating the training job.
 * `pull-policy` (enum) - Optional. The policy to pull the container image. Valid values are `Always`, `IfNotPresent`, and `Never`, as available from the PyTorchJob. The default is `Always`.
-* `command` (string) - Optional. The command to run the entrypoint script. Currently, only `torchrun` is supported in Kandinsky, and the CLI will restrict it to only `torchrun`.
+* `command` (string) - Optional. The command to run the entrypoint script. Currently, only `torchrun` is supported, and the CLI will restrict it to only `torchrun`.
 * `entry-script` (string) - Required. The path to the training script. Default is `./train.py`.
 * `script-args` (list[string]) - Optional. The list of script arguments.
 * `environment` (dict[string, string]) - Optional. The environment variables (key-value pairs) to set in the containers.
-* `node-count` (int) - Required. The number of nodes to launch the jobs on.
-* `instance-type` (string) - Required. The instance type used by Kandinsky to determine the GPU/CPU/TRN launcher.
-* `tasks-per-node` (int) - Optional. The number of devices to use per instance. Similar to the Kandinsky field. Kandinsky has added default value support for GPU devices. The default value for CPU devices on Kandinsky has been pushed back, but we can provide a default value in the CLI to make this field completely optional.
-* `label-selector` (dict[string, list[string]]) - Optional. A dictionary of labels and their values that will override the predefined node selection rules based on the HyperPod `node-health-status` label and values. If users provide this field, the CLI will launch the job with this customized label selection. See examples of use cases in "Using custom labels" and "Node Selector Behavior".
+* `node-count` (int) - Required. The number of nodes (instances) to launch the jobs on.
+* `instance-type` (string) - Required. The instance type to launch the job on.
+* `tasks-per-node` (int) - Optional. The number of devices to use per instance.
+* `label-selector` (dict[string, list[string]]) - Optional. A dictionary of labels and their values that will override the predefined node selection rules based on the HyperPod `node-health-status` label and values. If users provide this field, the CLI will launch the job with this customized label selection.
 * `deep-health-check-passed-nodes-only` (bool) - Optional. If set to `true`, the job will be launched only on nodes that have the `deep-health-check-status` label with the value `passed`.
 * `scheduler-type` (enum) - Optional. The scheduler type to use. Currently, only `Kueue` is supported.
 * `queue-name` (string) - Optional. The queue to submit the job to, which is created by an admin.
