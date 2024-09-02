@@ -96,7 +96,7 @@ hyperpod connect-cluster --cluster-name <cluster-name> [--region <region>] [--na
 
 * `cluster-name` (string) - Required. The cluster name to connect to.
 * `region` (string) - Optional. The region that the cluster resides.  If not provided, the default will be set to the region from the current AWS account credentials.
-* `namespace` (string) - Optional. The namespace that users want to connect to. If not provided, the default namespace will be `default`.
+* `namespace` (string) - Optional. The namespace that you want to connect to. If not specified, this command uses the [Kubernetes namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) of the Amazon EKS cluster associated with the SageMaker HyperPod cluster in your AWS account.
 
 ### Submitting a Job
 
@@ -108,7 +108,7 @@ hyperpod start-job --job-name <job-name> [--namespace <namespace>] [--job-kind <
 
 * `job-name` (string) - Required. The name of the job.
 * `job-kind` (string) - Optional. The training job kind. The job types currently supported are `kubeflow` and `PyTorchJob`.
-* `namespace` (string) - Optional. The namespace to use. If not specified, this command uses the [Kubernetes namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) of the EKS cluster in your AWS account. The default value is `default`.
+* `namespace` (string) - Optional. The namespace to use. If not specified, this command uses the [Kubernetes namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) of the Amazon EKS cluster associated with the SageMaker HyperPod cluster in your AWS account.
 * `image` (string) - Required. The image used when creating the training job.
 * `pull-policy` (enum) - Optional. The policy to pull the container image. Valid values are `Always`, `IfNotPresent`, and `Never`, as available from the PyTorchJob. The default is `Always`.
 * `command` (string) - Optional. The command to run the entrypoint script. Currently, only `torchrun` is supported, and the CLI will restrict it to only `torchrun`.
@@ -121,15 +121,15 @@ hyperpod start-job --job-name <job-name> [--namespace <namespace>] [--job-kind <
 * `label-selector` (dict[string, list[string]]) - Optional. A dictionary of labels and their values that will override the predefined node selection rules based on the HyperPod `node-health-status` label and values. If users provide this field, the CLI will launch the job with this customized label selection.
 * `deep-health-check-passed-nodes-only` (bool) - Optional. If set to `true`, the job will be launched only on nodes that have the `deep-health-check-status` label with the value `passed`.
 * `scheduler-type` (enum) - Optional. The scheduler type to use. Currently, only `Kueue` is supported.
-* `queue-name` (string) - Optional. The queue to submit the job to, which is created by an admin.
-* `priority` (string) - Optional. The priority for the job, which needs to be created by an admin and match the name in the cluster.
+* `queue-name` (string) - Optional. The queue to submit the job to, which is created by the cluster admin users in your AWS account.
+* `priority` (string) - Optional. The priority for the job, which needs to be created by the cluster admin users and match the name in the cluster.
 * `auto-resume` (bool) - Optional. If set to `true`, the job will automatically resume after a failure. Note that `auto-resume` currently only works in the `kubeflow` namespace or the namespace prefixed with `aws-hyperpod`. To enable `auto-resume`, you also should set `restart-policy` to `OnFailure`.
 * `max-retry` (int) - Optional. The maximum number of retries if `auto-resume` is `true`. If `auto-resume` is set to true and `max-retry` is not specified, the default value is 1.
 * `restart-policy` (enum) - Optional. The PyTorchJob restart policy, which can be `Always`, `OnFailure`, `Never`, or `ExitCode`. The default is `OnFailure`. To enable `auto-resume`, `restart-policy` should be set to `OnFailure`.
-* `volumes` (list[string]) - Optional. Add a temp directory for container to store data in the hosts.
-* `persistent-volume-claims` (list[string]) - Optional. The pre-created persistent volume claims (PVCs) that the data scientist can choose to mount to the containers (admin responsibility).
-* `results-dir` (string) - Optional. The location to store the results, checkpoints, and logs. Users should gain the storage location from cluster admins. The default value is `./results`.
-* `service-account-name` - Optional. The Kubernetes service account that allows Pods to access resources based on the permissions granted to that service account. The cluster admin should create the Kubernetes service account.
+* `volumes` (list[string]) - Optional. Add a temp directory for containers to store data in the hosts.
+* `persistent-volume-claims` (list[string]) - Optional. The pre-created persistent volume claims (PVCs) that the data scientist can choose to mount to the containers. The cluster admin users should create PVCs and provide it to the data scientist users.
+* `results-dir` (string) - Optional. The location to store the results, checkpoints, and logs. The cluster admin users should set this up and provide it to the data scientist users. The default value is `./results`.
+* `service-account-name` - Optional. The Kubernetes service account that allows Pods to access resources based on the permissions granted to that service account. The cluster admin users should create the Kubernetes service account.
 
 
 ### Getting Job Details
@@ -152,7 +152,7 @@ This command lists all the training jobs in the connected HyperPod cluster or na
 hyperpod list-jobs [--namespace <namespace>] [--all-namespaces] [--selector <key=value>]
 ```
 
-* `namespace` (string) - Optional. The namespace to list the jobs in. If not provided, the CLI will try to list the jobs in the namespace set by the customer while connecting to the cluster. If provided, and the customer has access to the namespace, the CLI will list the jobs from the specified namespace.
+* `namespace` (string) - Optional. The namespace to list the jobs in. If not provided, the CLI will try to list the jobs in the namespace set by the cluster admin users while connecting to the cluster. If provided, and the customer has access to the namespace, the CLI will list the jobs from the specified namespace.
 * `all-namespaces` (flag) - Optional. If set, the CLI will list jobs from all namespaces the user has access to. The namespace in the current AWS account credentials will be ignored, even if specified with the `--namespace` option.
 * `selector` (string) - Optional. A label selector to filter the listed jobs. The selector supports the '=', '==', and '!=' operators (e.g., `-l key1=value1,key2=value2`). The listed jobs must satisfy all of the specified label constraints.
 
