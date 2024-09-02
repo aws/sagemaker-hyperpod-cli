@@ -83,9 +83,9 @@ This command lists the available HyperPod clusters and their capacity informatio
 hyperpod list-clusters [--region <region>] [--clusters <cluster1,cluster2>] [--orchestrator <eks>] [--output <json|table>]
 ```
 
-* `region` (string) - Optional. The region that the Cluster resides. Default will be the region from the current AWS account credentials.
+* `region` (string) - Optional. The region that the HyperPod and EKS clusters are located. If not specified, it will be set to the region from the current AWS account credentials.
 * `clusters` (list[string]) - Optional. A list of HyperPod cluster names that users want to check the capacity for. This is useful for users who know some of their most commonly used clusters and want to check the capacity status of the clusters in the AWS account.
-* `orchestrator` (enum) - Optional. The orchestrator type for the cluster. Currently, only `'eks'` is the only available option for supporting SageMaker HyperPod clusters orchestrated by Amazon EKS.
+* `orchestrator` (enum) - Optional. The orchestrator type for the cluster. Currently, `'eks'` is the only available option.
 * `output` (enum) - Optional. The output format. Available values are `TABLE` and `JSON`. The default value is `JSON`.
 
 ### Connecting to a Cluster
@@ -97,7 +97,7 @@ hyperpod connect-cluster --cluster-name <cluster-name> [--region <region>] [--na
 ```
 
 * `cluster-name` (string) - Required. The cluster name to connect to.
-* `region` (string) - Optional. The region that the cluster resides.  If not provided, the default will be set to the region from the current AWS account credentials.
+* `region` (string) - Optional. The region that the HyperPod and EKS clusters are located. If not specified, it will be set to the region from the current AWS account credentials.
 * `namespace` (string) - Optional. The namespace that you want to connect to. If not specified, this command uses the [Kubernetes namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) of the Amazon EKS cluster associated with the SageMaker HyperPod cluster in your AWS account.
 
 ### Submitting a Job
@@ -144,7 +144,7 @@ hyperpod get-job --job-name <job-name> [--namespace <namespace>] [--verbose]
 
 * `job-name` (string) - Required. The name of the job.
 * `namespace` (string) - Optional. The namespace to describe the job in. If not provided, the CLI will try to describe the job in the namespace set by the customer while connecting to the cluster. If provided, and the customer has access to the namespace, the CLI will describe the job from the specified namespace.
-* `verbose` (flag) - Optional. If set, the CLI will enable verbose mode and print out more detailed output with additional fields.
+* `verbose` (flag) - Optional. If set to `True`, the command enables verbose mode and prints out more detailed output with additional fields.
 
 ### Listing Jobs
 
@@ -154,9 +154,9 @@ This command lists all the training jobs in the connected HyperPod cluster or na
 hyperpod list-jobs [--namespace <namespace>] [--all-namespaces] [--selector <key=value>]
 ```
 
-* `namespace` (string) - Optional. The namespace to list the jobs in. If not provided, the CLI will try to list the jobs in the namespace set by the cluster admin users while connecting to the cluster. If provided, and the customer has access to the namespace, the CLI will list the jobs from the specified namespace.
-* `all-namespaces` (flag) - Optional. If set, the CLI will list jobs from all namespaces the user has access to. The namespace in the current AWS account credentials will be ignored, even if specified with the `--namespace` option.
-* `selector` (string) - Optional. A label selector to filter the listed jobs. The selector supports the '=', '==', and '!=' operators (e.g., `-l key1=value1,key2=value2`). The listed jobs must satisfy all of the specified label constraints.
+* `namespace` (string) - Optional. The namespace to list the jobs in. If not provided, this command lists the jobs in the namespace specified during connecting to the cluster. If the namespace is provided and if the data scientist users have access to the namespace, this command lists the jobs from the specified namespace.
+* `all-namespaces` (flag) - Optional. If set, this command lists jobs from all namespaces the data scientist users have access to. The namespace in the current AWS account credentials will be ignored, even if specified with the `--namespace` option.
+* `selector` (string) - Optional. A label selector to filter the listed jobs. The selector supports the '=', '==', and '!=' operators (e.g., `-l key1=value1,key2=value2`).
 
 ### Canceling a Job
 
