@@ -28,7 +28,7 @@ The SageMaker HyperPod CLI is a tool that helps data scientists submit training 
 
 ## Installation
 
-1. Make sure that your local python version is 3.8 or later. Supported python versions are 3.8, 3.9, 3.10, 3.11
+1. Make sure that your local python version is 3.8 or later.
 
 1. Install ```helm```.
 
