@@ -1,7 +1,9 @@
 
-# HyperPod CLI
+# SageMaker HyperPod command-line interface
 
-The HyperPod CLI is a command-line interface for managing training jobs on the HyperPod Kubernetes cluster.
+The Amazon SageMaker HyperPod command-line interface (HyperPod CLI) is a tool that helps data scientists manage training jobs on the SageMaker HyperPod clusters orchestrated by Amazon EKS.
+
+This documentation serves as a reference for the available HyperPod CLI commands. For a comprehensive user guide, see [Orchestrating HyperPod clusters with Amazon EKS](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks.html) in the *Amazon SageMaker Developer Guide*.
 
 ## Table of Contents
 - [Overview](#overview)
@@ -22,7 +24,7 @@ The HyperPod CLI is a command-line interface for managing training jobs on the H
 
 ## Overview
 
-The SageMaker HyperPod CLI is a tool that helps data scientists submit training jobs to the SageMaker HyperPod clusters orchestrated by Amazon EKS. It provides a set of commands for managing the full lifecycle of training jobs, including submitting, describing, listing, and canceling jobs, as well as accessing logs and executing commands within the job's containers. The CLI is designed to abstract away the complexity of working directly with Kubernetes for these core actions of managing jobs on SageMaker HyperPod clusters orchestrated by Amazon EKS.
+The SageMaker HyperPod CLI is a tool that helps data scientists submit training jobs to the Amazon SageMaker HyperPod clusters orchestrated by Amazon EKS. It provides a set of commands for managing the full lifecycle of training jobs, including submitting, describing, listing, and canceling jobs, as well as accessing logs and executing commands within the job's containers. The CLI is designed to abstract away the complexity of working directly with Kubernetes for these core actions of managing jobs on SageMaker HyperPod clusters orchestrated by Amazon EKS.
 
 ## Installation
 
