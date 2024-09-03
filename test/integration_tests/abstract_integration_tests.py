@@ -201,9 +201,7 @@ class AbstractIntegrationTests:
                     )
 
     def describe_vpc_stack_and_set_values(self, cfn_client):
-        describe_vpc_stack = cfn_client.describe_stacks(
-            StackName=self.vpc_stack_name
-        )
+        describe_vpc_stack = cfn_client.describe_stacks(StackName=self.vpc_stack_name)
         if describe_vpc_stack:
             cfn_output = describe_vpc_stack.get("Stacks")[0]
             if cfn_output and cfn_output.get("Outputs"):

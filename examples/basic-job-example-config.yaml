@@ -46,7 +46,7 @@ cluster:
   #   annotations:
   #    sagemaker.amazonaws.com/enable-job-auto-resume: True
   #    sagemaker.amazonaws.com/job-max-retry-count: 1
-  annotations:
+  annotations: null
   # service_account_name: Optional. The name of service account associated with the namespace
   service_account_name: null
   # persistent_volume_claims: Optional. The persistent volume claims, usually used to mount FSx
@@ -54,6 +54,12 @@ cluster:
   # namespace: Optional. The namespace to submit job. If not specify, Training job will submit to
   # the current namespace from Kubernetes context.
   namespace: kubeflow
+  # volumes: Optional. Used to mount temp path to container. Example of usage:
+  # volumes:
+  #  - volumeName: v1
+  #    hostPath: /data
+  #    mountPath: /data
+  volumes: null
   # labal_selector: Optional. Defines Kubernetes node affinity to select nodes with labels. Following
   # config will choose SageMaker HyperPod health labels and prefer nodes with SageMaker Hyperpod burn-in
   # test passed label.

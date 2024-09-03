@@ -303,7 +303,7 @@ class TestJobValidator(unittest.TestCase):
         )
 
     def test_validate_start_job_args_auto_resume_in_namespace_with_aws_hyperpod_prefix(
-        self
+        self,
     ):
         name = "test-job"
         node_count = 1
@@ -337,9 +337,7 @@ class TestJobValidator(unittest.TestCase):
         self.assertTrue(result)
 
     @patch("hyperpod_cli.validators.job_validator.logger")
-    def test_validate_start_job_args_auto_resume_in_wrong_namespace(
-        self, mock_logger
-    ):
+    def test_validate_start_job_args_auto_resume_in_wrong_namespace(self, mock_logger):
         name = "test-job"
         node_count = 1
         instance_type = "ml.p4d.24xlarge"
@@ -373,11 +371,9 @@ class TestJobValidator(unittest.TestCase):
         mock_logger.error.assert_called_once_with(
             "Please ensure submit job to 'kubeflow' namespace or namespace with 'aws-hyperpod' prefix to make 'auto-resume' work as expected "
         )
-    
+
     @patch("hyperpod_cli.validators.job_validator.logger")
-    def test_validate_start_job_args_no_auto_resume_has_max_retry(
-        self, mock_logger
-    ):
+    def test_validate_start_job_args_no_auto_resume_has_max_retry(self, mock_logger):
         name = "test-job"
         node_count = 1
         instance_type = "ml.p4d.24xlarge"
@@ -919,8 +915,10 @@ class TestJobValidator(unittest.TestCase):
         }
         result = validate_yaml_content(mock_data)
         self.assertTrue(result)
-    
-    def test_validate_yaml_content_valid_with_auto_resume_in_aws_hyperpod_namespace(self):
+
+    def test_validate_yaml_content_valid_with_auto_resume_in_aws_hyperpod_namespace(
+        self,
+    ):
         mock_data = {
             "cluster": {
                 "cluster_type": "k8s",
@@ -958,7 +956,9 @@ class TestJobValidator(unittest.TestCase):
         result = validate_yaml_content(mock_data)
         self.assertFalse(result)
 
-    def test_validate_yaml_content_valid_with_auto_resume_wrong_hyperpod_namespace(self):
+    def test_validate_yaml_content_valid_with_auto_resume_wrong_hyperpod_namespace(
+        self,
+    ):
         mock_data = {
             "cluster": {
                 "cluster_type": "k8s",

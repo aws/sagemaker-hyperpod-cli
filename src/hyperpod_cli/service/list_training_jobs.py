@@ -13,6 +13,7 @@
 from typing import List, Optional
 
 import json
+from datetime import datetime
 
 from hyperpod_cli.clients.kubernetes_client import KubernetesClient
 
@@ -71,8 +72,7 @@ class ListTrainingJobs:
                 if job.get("status"):
                     creation_time = job.get("status").get("startTime")
                     state = self._get_job_status(
-                        job.get("status").get("conditions"), name
-                    )
+                        job.get("status").get("conditions"))
                 output_jobs["jobs"].append(
                     {
                         "Name": name,
@@ -84,19 +84,12 @@ class ListTrainingJobs:
 
         return json.dumps(output_jobs, indent=1, sort_keys=False)
 
-    def _get_job_status(self, status: List, job_name: str) -> Optional[str]:
+    def _get_job_status(self, status: List) -> Optional[str]:
         current_status = None
+        last_date_time = datetime.strptime('2001-08-27T22:47:57Z', '%Y-%m-%dT%H:%M:%SZ')
         for state in status:
-            if state.get("type") == "Succeeded":
-                current_status = "Succeeded"
-            elif state.get("type") == "Running" and current_status != "Succeeded":
-                current_status = "Running"
-            elif state.get("type") == "Created" and (
-                current_status != "Running" or current_status != "Succeeded"
-            ):
-                current_status = "Created"
-            else:
-                raise RuntimeError(
-                    f"Unknown status {state.get('type')} for job {job_name}"
-                )
+            state_date_time = datetime.strptime(state.get("lastTransitionTime"), '%Y-%m-%dT%H:%M:%SZ')
+            if state_date_time > last_date_time:
+                last_date_time = state_date_time
+                current_status = state.get('type')
         return current_status

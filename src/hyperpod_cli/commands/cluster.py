@@ -75,16 +75,9 @@ logger = setup_logger(__name__)
     help="Config the output format, default is JSON. Table output format is also supported",
 )
 @click.option(
-    "--clusters", 
-    type=click.STRING, 
-    required=False, 
-    help="The list of clusters to show"
+    "--clusters", type=click.STRING, required=False, help="The list of clusters to show"
 )
-@click.option(
-    "--debug", 
-    is_flag=True, 
-    help="Enable debug mode"
-)
+@click.option("--debug", is_flag=True, help="Enable debug mode")
 def list_clusters(
     region: Optional[str],
     orchestrator: Optional[str],
@@ -307,11 +300,7 @@ def _aggregate_nodes_info(nodes: List[client.V1Node]) -> Dict[str, Dict[str, Any
     help="The namespace connect to",
     default="default",
 )
-@click.option(
-    "--debug", 
-    is_flag=True, 
-    help="Enable debug mode"
-)
+@click.option("--debug", is_flag=True, help="Enable debug mode")
 def connect_cluster(
     cluster_name: str,
     region: Optional[str],

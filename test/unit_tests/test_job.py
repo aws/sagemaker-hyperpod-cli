@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import unittest
+import click
 import subprocess
 import os
 from unittest import mock
@@ -25,6 +26,7 @@ from hyperpod_cli.commands.job import (
     list_pods,
     start_job,
     suppress_standard_output_context,
+    validate_only_config_file_argument,
 )
 from hyperpod_cli.service.cancel_training_job import CancelTrainingJob
 from hyperpod_cli.service.get_training_job import GetTrainingJob
@@ -1326,3 +1328,30 @@ class JobTest(unittest.TestCase):
 
         # Outside the context, subprocess.Popen should be restored to its original implementation
         self.assertIs(subprocess.Popen, original_popen)
+
+    @mock.patch("click.core.Context")
+    def test_no_config_file_argument(self, mock_ctx):
+        mock_ctx.params = {}
+        validate_only_config_file_argument(mock_ctx)
+        # No assertion needed as the function should return without raising an error
+
+    @mock.patch("click.core.Context")
+    def test_only_config_file_argument(self, mock_ctx):
+        mock_ctx.params = {"config_file": "config.yaml"}
+        mock_ctx.get_parameter_source = mock.Mock(
+            return_value=click.core.ParameterSource.COMMANDLINE
+        )
+        validate_only_config_file_argument(mock_ctx)
+        # No assertion needed as the function should return without raising an error
+
+    @mock.patch("click.core.Context")
+    def test_config_file_with_other_arguments(self, mock_ctx):
+        mock_ctx.params = {"config_file": "config.yaml", "other_arg": "value"}
+        mock_ctx.get_parameter_source = mock.Mock(
+            side_effect=[
+                click.core.ParameterSource.COMMANDLINE,
+                click.core.ParameterSource.COMMANDLINE,
+            ]
+        )
+        with self.assertRaises(click.BadParameter):
+            validate_only_config_file_argument(mock_ctx)
