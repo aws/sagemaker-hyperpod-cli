@@ -1,20 +1,8 @@
 # HyperpodCLI
 
 ** Describe HyperpodCLI here **
-A CLI tool to manage Kubernetes jobs with commands to submit, describe, list, cancel jobs, and more.
+A CLI tool to manage Kubernetes jobs in AWS HyperPod cluster with commands to submit, describe, list, cancel jobs, and more 
 
-## Documentation
-
-Generated documentation for the latest released version can be accessed here:
-https://devcentral.amazon.com/ac/brazil/package-master/package/go/documentation?name=HyperpodCLI&interface=1.0&versionSet=live
-
-## Development
-
-See instructions in DEVELOPMENT.md
-
-## Contributing and building package
-
-[//]: # (TODO)
 
 ## Installation
 
@@ -41,9 +29,17 @@ rm -f ./get_helm.sh
 pip install .
 ```
 
-4. config.yaml and result folder already created locally. 
-You can submit the jobs by running 
+4. HyperPod CLI currently only supports starting kubeflow/PyTorchJob. To start a job, you need to install Kubeflow Training Operator first. 
+- You can either follow [kubeflow public doc](https://www.kubeflow.org/docs/components/training/installation/) to install it.
+- Or you can follow the Readme under helm_chart to install Kubeflow Training Operator.
+
+5. config.yaml and result folder already created locally.
+You can submit the jobs by running
 
 ```
 hyperpod start-job --config-file ./examples/basic-job-example-config.yaml
 ```
+
+## Contributing and building package
+
+See instructions in CONTRIBUTING.md

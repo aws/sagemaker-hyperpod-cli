@@ -75,7 +75,11 @@ logger = setup_logger(__name__)
     required=False,
     help="List training jobs from all namespaces",
 )
-@click.option("--debug", is_flag=True, help="Enable debug mode")
+@click.option(
+    "--debug", 
+    is_flag=True, 
+    help="Enable debug mode"
+)
 def get_job(
     job_name: str,
     namespace: Optional[str],
@@ -125,7 +129,11 @@ def get_job(
     required=False,
     help="Filter training jobs based on labels provided",
 )
-@click.option("--debug", is_flag=True, help="Enable debug mode")
+@click.option(
+    "--debug", 
+    is_flag=True, 
+    help="Enable debug mode"
+)
 def list_jobs(
     namespace: Optional[str],
     all_namespaces: Optional[bool],
@@ -161,7 +169,11 @@ def list_jobs(
     required=False,
     help="The namespace where training job was submitted",
 )
-@click.option("--debug", is_flag=True, help="Enable debug mode")
+@click.option(
+    "--debug", 
+    is_flag=True, 
+    help="Enable debug mode"
+)
 def list_pods(
     job_name: str,
     namespace: Optional[str],
@@ -199,7 +211,11 @@ def list_pods(
     required=False,
     help="The namespace where training job was submitted",
 )
-@click.option("--debug", is_flag=True, help="Enable debug mode")
+@click.option(
+    "--debug", 
+    is_flag=True, 
+    help="Enable debug mode"
+)
 def cancel_job(
     job_name: str,
     namespace: Optional[str],
@@ -227,7 +243,11 @@ def cancel_job(
     type=click.Path(),
     help="Config file to submit training job. Please provide absolute path to the file or a file under current folder",
 )
-@click.option("--job-name", type=click.STRING, help="The name of the training job")
+@click.option(
+    "--job-name", 
+    type=click.STRING, 
+    help="The name of the training job"
+)
 @click.option(
     "--namespace",
     type=click.STRING,
@@ -262,7 +282,9 @@ def cancel_job(
     help="The command to run entry script. Currently, only 'torchrun' supported",
 )
 @click.option(
-    "--script-args", type=click.STRING, help="The arguments list for entry script"
+    "--script-args", 
+    type=click.STRING, 
+    help="The arguments list for entry script"
 )
 @click.option(
     "--results-dir",
@@ -301,8 +323,16 @@ def cancel_job(
     default="Kueue",
     help="The Kubernetes scheduler type. Currently only support Kueue",
 )
-@click.option("--queue-name", type=click.STRING, help="The name of the Kueue")
-@click.option("--priority", type=click.STRING, help="The priority of the training job")
+@click.option(
+    "--queue-name", 
+    type=click.STRING, 
+    help="The name of the Kueue"
+)
+@click.option(
+    "--priority", 
+    type=click.STRING, 
+    help="The priority of the training job"
+)
 @click.option(
     "--auto-resume",
     type=click.BOOL,
@@ -346,7 +376,11 @@ def cancel_job(
     help="add temp directory for container to store data in the hosts"
     " <volume_name>:</host/mount/path>:</container/mount/path>,<volume_name>:</host/mount/path1>:</container/mount/path1>",
 )
-@click.option("--debug", is_flag=True, help="Enable debug mode")
+@click.option(
+    "--debug", 
+    is_flag=True, 
+    help="Enable debug mode"
+)
 def start_job(
     config_file: Optional[str],
     job_name: Optional[str],
@@ -375,7 +409,6 @@ def start_job(
     volumes: Optional[str],
     debug: bool,
 ):
-    # TODO: Support more job kinds and command
     if debug:
         set_logging_level(logger, logging.DEBUG)
 
@@ -486,7 +519,7 @@ def start_job(
                 )
 
             if auto_resume:
-                # Set max_retryn default to 1
+                # Set max_retry default to 1
                 if max_retry is None:
                     max_retry = 1
 

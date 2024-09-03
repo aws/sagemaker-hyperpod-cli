@@ -46,9 +46,7 @@ from hyperpod_cli.utils import (
 )
 from hyperpod_cli.validators.cluster_validator import ClusterValidator
 
-# Best guess of EKS describeCluster and SageMaker listCluster
-# rate limit as 5tps. So Ratelimit to 4 to avoid throttling
-# TODO: Need to test out the rate limit
+
 RATE_LIMIT = 4
 RATE_LIMIT_PERIOD = 1  # 1 second
 
@@ -77,9 +75,16 @@ logger = setup_logger(__name__)
     help="Config the output format, default is JSON. Table output format is also supported",
 )
 @click.option(
-    "--clusters", type=click.STRING, required=False, help="The list of clusters to show"
+    "--clusters", 
+    type=click.STRING, 
+    required=False, 
+    help="The list of clusters to show"
 )
-@click.option("--debug", is_flag=True, help="Enable debug mode")
+@click.option(
+    "--debug", 
+    is_flag=True, 
+    help="Enable debug mode"
+)
 def list_clusters(
     region: Optional[str],
     orchestrator: Optional[str],
@@ -147,7 +152,6 @@ def list_clusters(
         if len(cluster_capacities) > current_cluster_capacities_size:
             counter += 1
         # Currently only support list <= 50 clusters
-        # TODO: Support pagination and list more clusters
         if counter >= 50:
             logger.debug(
                 "'list-clusters' reached maximum number of Hyperpod EKS clusters."
@@ -296,13 +300,17 @@ def _aggregate_nodes_info(nodes: List[client.V1Node]) -> Dict[str, Dict[str, Any
     required=False,
     help="The region HyperPod EKS cluster resides",
 )
-@click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.option(
     "--namespace",
     type=click.STRING,
     required=False,
     help="The namespace connect to",
     default="default",
+)
+@click.option(
+    "--debug", 
+    is_flag=True, 
+    help="Enable debug mode"
 )
 def connect_cluster(
     cluster_name: str,

@@ -44,7 +44,11 @@ logger = setup_logger(__name__)
     required=False,
     help="The namespace where training job was submitted",
 )
-@click.option("--debug", is_flag=True, help="Enable debug mode")
+@click.option(
+    "--debug", 
+    is_flag=True, 
+    help="Enable debug mode"
+)
 def get_log(
     job_name: str,
     pod: str,
@@ -120,8 +124,16 @@ def _exec_command_required_option_pod_and_all_pods():
     required=False,
     help="The name of the pod you want to view logs",
 )
-@click.option("--debug", is_flag=True, help="Enable debug mode")
-@click.argument("bash_command", nargs=-1, type=click.UNPROCESSED)
+@click.argument(
+    "bash_command", 
+    nargs=-1, 
+    type=click.UNPROCESSED
+)
+@click.option(
+    "--debug", 
+    is_flag=True, 
+    help="Enable debug mode"
+)
 def exec(
     job_name: str,
     namespace: Optional[str],

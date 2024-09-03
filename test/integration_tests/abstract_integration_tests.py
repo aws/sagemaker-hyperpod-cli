@@ -30,6 +30,7 @@ class AbstractIntegrationTests:
     hyperpod_cli_cluster_name = "hyperpod-cli-cluster-" + suffix
     vpc_eks_stack_name = "hyperpod-cli-stack-" + suffix
     s3_roles_stack_name = "hyperpod-cli-resource-stack"
+    vpc_stack_name = "hyperpod-cli-vpc-stack"
     eks_cluster_name = "hyperpod-cli-cluster-" + suffix
     bucket_name = "hyperpod-cli-s3-" + suffix
 
@@ -42,6 +43,9 @@ class AbstractIntegrationTests:
 
         # Get static resources from static-resource stack
         self.describe_constant_resources_stack_and_set_values(cfn)
+
+        # Get static resources from static-resource stack
+        self.describe_vpc_stack_and_set_values(cfn)
 
         # Create VPC, EKS cluster and roles
         with open("test/integration_tests/cloudformation/resources.yaml", "r") as fh:
@@ -59,6 +63,21 @@ class AbstractIntegrationTests:
                     {
                         "ParameterKey": "EKSClusterRoleArn",
                         "ParameterValue": self.cfn_output_map.get("EKSClusterRoleArn"),
+                        "ResolvedValue": "string",
+                    },
+                    {
+                        "ParameterKey": "SubnetId1",
+                        "ParameterValue": self.cfn_output_map.get("PrivateSubnet1"),
+                        "ResolvedValue": "string",
+                    },
+                    {
+                        "ParameterKey": "SubnetId2",
+                        "ParameterValue": self.cfn_output_map.get("PrivateSubnet2"),
+                        "ResolvedValue": "string",
+                    },
+                    {
+                        "ParameterKey": "SecurityGroupId",
+                        "ParameterValue": self.cfn_output_map.get("SecurityGroup"),
                         "ResolvedValue": "string",
                     },
                 ],
@@ -118,7 +137,7 @@ class AbstractIntegrationTests:
                 }
             ],
             VpcConfig={
-                "SecurityGroupIds": [self.cfn_output_map.get("NoIngressSecurityGroup")],
+                "SecurityGroupIds": [self.cfn_output_map.get("SecurityGroup")],
                 "Subnets": [self.cfn_output_map.get("PrivateSubnet1")],
             },
         )
@@ -181,6 +200,18 @@ class AbstractIntegrationTests:
                         "OutputValue"
                     )
 
+    def describe_vpc_stack_and_set_values(self, cfn_client):
+        describe_vpc_stack = cfn_client.describe_stacks(
+            StackName=self.vpc_stack_name
+        )
+        if describe_vpc_stack:
+            cfn_output = describe_vpc_stack.get("Stacks")[0]
+            if cfn_output and cfn_output.get("Outputs"):
+                for output in cfn_output.get("Outputs"):
+                    self.cfn_output_map[output.get("OutputKey")] = output.get(
+                        "OutputValue"
+                    )
+
     def update_cluster_auth(self):
         with open(
             "test/integration_tests/charts/hp-node-auth.yaml", "r"
@@ -228,7 +259,6 @@ class AbstractIntegrationTests:
     def setup(self):
         self.new_session = self._create_session()
         self.create_test_resorces(self.new_session)
-        self.upload_lifecycle_script(self.new_session)
         self.create_kube_context()
         self.update_cluster_auth()
         self.create_hyperpod_cluster(self.new_session)

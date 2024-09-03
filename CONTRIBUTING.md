@@ -1,5 +1,4 @@
 # Contributing Guidelines
-
 Thank you for your interest in contributing to our project. Whether it's a bug report, new feature, correction, or additional
 documentation, we greatly value feedback and contributions from our community.
 
@@ -8,7 +7,6 @@ information to effectively respond to your bug report or contribution.
 
 
 ## Reporting Bugs/Feature Requests
-
 We welcome you to use the GitHub issue tracker to report bugs or suggest features.
 
 When filing an issue, please check existing open, or recently closed, issues to make sure somebody else hasn't already
@@ -40,6 +38,13 @@ GitHub provides additional document on [forking a repository](https://help.githu
 [creating a pull request](https://help.github.com/articles/creating-a-pull-request/).
 
 
+## Run the Unit Tests
+Install tox using `pip install tox`
+Run the following tox command and verify that all code checks and unit tests pass: `tox`. It will run test for Python 3.8, 3.9, 3.10, 3.11
+You can also run a test suit with a single python version with the following command: `tox -e py311/py310/py39/py38`
+You can also just run unit tests with command: `tox -e unit`
+
+
 ## Finding contributions to work on
 Looking at the existing issues is a great way to find something to contribute on. As our projects, by default, use the default GitHub issue labels (enhancement/bug/duplicate/help wanted/invalid/question/wontfix), looking at any 'help wanted' issues is a great place to start.
 
@@ -55,14 +60,8 @@ If you discover a potential security issue in this project we ask that you notif
 
 
 ## Licensing
-
 See the [LICENSE](LICENSE) file for our project's licensing. We will ask you to confirm the licensing of your contribution.
 
-## Run the Unit Tests
-
-Install tox using `pip install tox`
-Run the following tox command and verify that all code checks and unit tests pass: `tox`. It will run test for Python 3.8, 3.9, 3.10
-You can also run a test suit with a single python version with the following command: `tox -e py310/py39/py38`
 
 ## Troubleshooting
 ### pytest 'start_job' related Unit Test failures
