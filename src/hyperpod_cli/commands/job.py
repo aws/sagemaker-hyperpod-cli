@@ -58,14 +58,14 @@ logger = setup_logger(__name__)
     "--job-name",
     type=click.STRING,
     required=True,
-    help="The name of the training job you want to get details",
+    help="Required. The name of the job to see the details of.",
 )
 @click.option(
     "--namespace",
     "-n",
     type=click.STRING,
     required=False,
-    help="The namespace where training job was submitted",
+    help="Optional. The namespace to describe the job in. If not provided, the CLI will try to describe the job in the namespace set by the user while connecting to the cluster. If provided, and the user has access to the namespace, the CLI will describe the job from the specified namespace.",
 )
 @click.option(
     "--verbose",
@@ -73,7 +73,7 @@ logger = setup_logger(__name__)
     is_flag=True,
     default=False,
     required=False,
-    help="List training jobs from all namespaces",
+    help="Optional. If set to `True`, the command enables verbose mode and prints out more detailed output with additional fields.",
 )
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 def get_job(
@@ -107,7 +107,7 @@ def get_job(
     "-n",
     type=click.STRING,
     required=False,
-    help="The namespace where from where to list training jobs",
+    help="Optional. The namespace to list the jobs in. If not provided, this command lists the jobs in the namespace specified during connecting to the cluster. If the namespace is provided and if the user has access to the namespace, this command lists the jobs from the specified namespace.",
 )
 @click.option(
     "--all-namespaces",
@@ -116,14 +116,14 @@ def get_job(
     is_flag=True,
     default=False,
     required=False,
-    help="List training jobs from all namespaces",
+    help="Optional. If set, this command lists jobs from all namespaces the data scientist users have access to. The namespace in the current AWS account credentials will be ignored, even if specified with the `--namespace` option.",
 )
 @click.option(
     "--selector",
     "-l",
     type=click.STRING,
     required=False,
-    help="Filter training jobs based on labels provided",
+    help="Optional. A label selector to filter the listed jobs. The selector supports the '=', '==', and '!=' operators (e.g., `-l key1=value1,key2=value2`).",
 )
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 def list_jobs(
@@ -152,14 +152,14 @@ def list_jobs(
     "--job-name",
     type=click.STRING,
     required=True,
-    help="The name of the training job you want to describe",
+    help="Required. The name of the job to list pods for.",
 )
 @click.option(
     "--namespace",
     "-n",
     type=click.STRING,
     required=False,
-    help="The namespace where training job was submitted",
+    help="Optional. The namespace to list the pods in. If not provided, the CLI will list the pods in the namespace set by the user while connecting to the cluster. If provided, and the user has access to the namespace, the CLI will list the pods from the specified namespace.",
 )
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 def list_pods(
@@ -190,14 +190,14 @@ def list_pods(
     "--job-name",
     type=click.STRING,
     required=True,
-    help="The name of the training job you want to cancel",
+    help="Required. The name of the job to cancel.",
 )
 @click.option(
     "--namespace",
     "-n",
     type=click.STRING,
     required=False,
-    help="The namespace where training job was submitted",
+    help="Optional. The namespace to cancel the job in. If not provided, the CLI will try to cancel the job in the namespace set by the user while connecting to the cluster. If provided, and the user has access to the namespace, the CLI will cancel the job from the specified namespace.",
 )
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 def cancel_job(
@@ -225,125 +225,125 @@ def cancel_job(
 @click.option(
     "--config-file",
     type=click.Path(),
-    help="Config file to submit training job. Please provide absolute path to the file or a file under current folder",
+    help="Optional. Specify the K8s job config file to submit a training job. You should pass the absolute path to the file or the file in the current folder. If you use this, you don't need to specify any other options.",
 )
 @click.option("--job-name", type=click.STRING, help="The name of the training job")
 @click.option(
     "--namespace",
     type=click.STRING,
-    help="The cluster's namespace to run training job",
+    help="Optional. The namespace to use. If not specified, this command uses the [Kubernetes namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) of the Amazon EKS cluster associated with the SageMaker HyperPod cluster in your AWS account.",
 )
 @click.option(
     "--job-kind",
     type=click.STRING,
     default="kubeflow/PyTorchJob",
-    help="The type of training job, currently only kubeflow/PytorchJob supported",
+    help="Optional. The training job kind. The job types currently supported are `kubeflow` and `PyTorchJob`.",
 )
 @click.option(
     "--image",
     type=click.STRING,
-    help="The docker container image used for training job",
+    help="Required. The image used when creating the training job.",
 )
 @click.option(
     "--pull-policy",
     type=click.Choice([c.value for c in PullPolicy]),
     default=PullPolicy.IF_NOT_PRESENT.value,
-    help="Policy to pull container image",
+    help="Optional. The policy to pull the container image. Valid values are `Always`, `IfNotPresent`, and `Never`, as available from the PyTorchJob. The default is `Always`.",
 )
 @click.option(
     "--entry-script",
     type=click.STRING,
-    help="The training docker container entry script",
+    help="Required. The path to the training script.",
 )
 @click.option(
     "--command",
     type=click.STRING,
     default="torchrun",
-    help="The command to run entry script. Currently, only 'torchrun' supported",
+    help="Optional. The command to run the entrypoint script. Currently, only `torchrun` is supported.",
 )
 @click.option(
-    "--script-args", type=click.STRING, help="The arguments list for entry script"
+    "--script-args", type=click.STRING, help="The list of arguments for entryscripts."
 )
 @click.option(
     "--results-dir",
     type=click.STRING,
     default="./results",
-    help="The location to store the results, checkpoints and logs.",
+    help="Optional. The location to store the results, checkpoints, and logs. The cluster admin users should set this up and provide it to the data scientist users. The default value is `./results`.",
 )
 @click.option(
     "--environment",
     type=click.STRING,
-    help="The environment variables for training docker container",
+    help="Optional. The environment variables (key-value pairs) to set in the containers.",
 )
 @click.option(
     "--instance-type",
     type=click.STRING,
-    help="The instance type for the node to run the training job",
+    help="Required. The instance type to launch the job on. Note that the instance types you can use are the available instances within your SageMaker quotas for instances prefixed with `ml`.",
 )
 @click.option(
     "--node-count",
     type=click.INT,
-    help="The number of nodes to run distributed training job",
+    help="red. The number of nodes (instances) to launch the jobs on.",
 )
 @click.option(
     "--tasks-per-node",
     type=click.INT,
-    help="The number of tasks per node when running training job",
+    help="Optional. The number of devices to use per instance.",
 )
 @click.option(
     "--label-selector",
     type=click.STRING,
-    help="Customize node label selection rules for training job",
+    help="Optional. A dictionary of labels and their values that will override the predefined node selection rules based on the HyperPod `node-health-status` label and values. If users provide this field, the CLI will launch the job with this customized label selection.",
 )
 @click.option(
     "--scheduler-type",
     type=click.STRING,
     default="Kueue",
-    help="The Kubernetes scheduler type. Currently only support Kueue",
+    help="Optional. The scheduler type to use. Currently, only `Kueue` is supported.",
 )
-@click.option("--queue-name", type=click.STRING, help="The name of the Kueue")
-@click.option("--priority", type=click.STRING, help="The priority of the training job")
+@click.option("--queue-name", type=click.STRING, help="Optional. The name of the queue to submit the job to, which is created by the cluster admin users in your AWS account.")
+@click.option("--priority", type=click.STRING, help="Optional. The priority for the job, which needs to be created by the cluster admin users and match the name in the cluster.")
 @click.option(
     "--auto-resume",
     type=click.BOOL,
     default=False,
-    help="Whether enable auto-resume for the training job",
+    help="Optional. If set to `true`, the job will automatically resume after a failure. Note that `auto-resume` currently only works in the `kubeflow` namespace or the namespace prefixed with `aws-hyperpod`. To enable `auto-resume`, you also should set `restart-policy` to `OnFailure`.",
 )
 @click.option(
     "--max-retry",
     type=click.INT,
-    help="The max retry configured for auto-resume training job",
+    help="Optional. The maximum number of retries if `auto-resume` is `true`. If `auto-resume` is set to true and `max-retry` is not specified, the default value is 1.",
 )
 @click.option(
     "--restart-policy",
     type=click.Choice([c.value for c in RestartPolicy]),
     default=RestartPolicy.ON_FAILURE.value,
-    help="The PyTorchJob restart policy",
+    help="Optional. The PyTorchJob restart policy, which can be `Always`, `OnFailure`, `Never`, or `ExitCode`. The default is `OnFailure`. To enable `auto-resume`, `restart-policy` should be set to `OnFailure`.",
 )
 @click.option(
     "--deep-health-check-passed-nodes-only",
     type=click.BOOL,
     default=False,
-    help="Start job only on the nodes that passed deep health check",
+    help="Optional. If set to `true`, the job will be launched only on nodes that have the `deep-health-check-status` label with the value `passed`.",
 )
 @click.option(
     "--service-account-name",
     type=click.STRING,
     required=False,
-    help="Service account name to give permissions to call aws services",
+    help="Optional. The Kubernetes service account that allows Pods to access resources based on the permissions granted to that service account. The cluster admin users should create the Kubernetes service account.",
 )
 @click.option(
     "--persistent-volume-claims",
     type=click.STRING,
     required=False,
-    help="A pod can have more than one claims to mounts, provide them in comma seperated format without spaces"
+    help="Optional. The pre-created persistent volume claims (PVCs) that the data scientist can choose to mount to the containers. The cluster admin users should create PVCs and provide it to the data scientist users."
     " claimName:<container/mount/path>,claimName1:<container/mount/path1>",
 )
 @click.option(
     "--volumes",
     type=click.STRING,
     required=False,
-    help="add temp directory for container to store data in the hosts"
+    help="Optional. Add a temp directory for containers to store data in the hosts."
     " <volume_name>:</host/mount/path>:</container/mount/path>,<volume_name>:</host/mount/path1>:</container/mount/path1>",
 )
 @click.option("--debug", is_flag=True, help="Enable debug mode")

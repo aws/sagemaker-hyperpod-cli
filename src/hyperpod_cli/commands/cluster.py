@@ -60,24 +60,24 @@ logger = setup_logger(__name__)
     "--region",
     type=click.STRING,
     required=False,
-    help="The region HyperPod EKS cluster resides",
+    help="Optional. The region that the HyperPod and EKS clusters are located. If not specified, it will be set to the region from the current AWS account credentials.",
 )
 @click.option(
     "--orchestrator",
     type=click.Choice([c.value for c in Orchestrator]),
     required=False,
     default=Orchestrator.EKS.value,
-    help="The orchestrator for the cluster, currently only support 'eks'",
+    help="Optional. The orchestrator type for the cluster. Currently, `'eks'` is the only available option.",
 )
 @click.option(
     "--output",
     type=click.Choice([c.value for c in OutputFormat]),
     required=False,
     default=OutputFormat.JSON.value,
-    help="Config the output format, default is JSON. Table output format is also supported",
+    help="Optional. The output format. Available values are `TABLE` and `JSON`. The default value is `JSON`.",
 )
 @click.option(
-    "--clusters", type=click.STRING, required=False, help="The list of clusters to show"
+    "--clusters", type=click.STRING, required=False, help="Optional. A list of HyperPod cluster names that users want to check the capacity for. This is useful for users who know some of their most commonly used clusters and want to check the capacity status of the clusters in the AWS account."
 )
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 def list_clusters(
@@ -104,18 +104,18 @@ def list_clusters(
 
     session = boto3.Session(region_name=region) if region else boto3.Session()
     if not validator.validate_aws_credential(session):
-        logger.error("Cannot list clusters capacity due to AWS credentials issue")
+        logger.error("Failed to list clusters capacity due to invalid AWS credentials.")
         sys.exit(1)
 
     try:
         sm_client = get_sagemaker_client(session, botocore_config)
     except botocore.exceptions.NoRegionError:
         logger.error(
-            f"Please ensure you configured AWS default region or use '--region' argument to specify the region"
+            f"Please ensure you have configured the AWS default region or use the '--region' argument to specify the region."
         )
         sys.exit(1)
     except Exception as e:
-        logger.error(f"Failed to initialize SageMaker Client: {e}")
+        logger.error(f"Failed to initialize the SageMaker client: {e}")
         sys.exit(1)
 
     if clusters:
@@ -124,7 +124,7 @@ def list_clusters(
         try:
             cluster_names = _get_hyperpod_clusters(sm_client)
         except Exception as e:
-            logger.error(f"Failed to list HyperPod clusters with error: {e}")
+            logger.error(f"Failed to list HyperPod clusters due to an error: {e}")
             sys.exit(1)
 
     cluster_capacities: List[List[str]] = []
@@ -150,7 +150,7 @@ def list_clusters(
         # TODO: Support pagination and list more clusters
         if counter >= 50:
             logger.debug(
-                "'list-clusters' reached maximum number of Hyperpod EKS clusters."
+                "The 'list-clusters' command has reached the maximum number of HyperPod clusters that can be listed, which is 50."
             )
             break
 
@@ -288,20 +288,20 @@ def _aggregate_nodes_info(nodes: List[client.V1Node]) -> Dict[str, Dict[str, Any
     "--cluster-name",
     type=click.STRING,
     required=True,
-    help="The name of the HyperPod EKS cluster you want to connect to.",
+    help="Required. The HyperPod cluster name to configure with.",
 )
 @click.option(
     "--region",
     type=click.STRING,
     required=False,
-    help="The region HyperPod EKS cluster resides",
+    help="Optional. The region that the HyperPod and EKS clusters are located. If not specified, it will be set to the region from the current AWS account credentials.",
 )
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.option(
     "--namespace",
     type=click.STRING,
     required=False,
-    help="The namespace connect to",
+    help="Optional. The namespace that you want to connect to. If not specified, this command uses the [Kubernetes namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) of the Amazon EKS cluster associated with the SageMaker HyperPod cluster in your AWS account.",
     default="default",
 )
 def connect_cluster(

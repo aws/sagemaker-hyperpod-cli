@@ -1,7 +1,7 @@
 
 # SageMaker HyperPod command-line interface
 
-The Amazon SageMaker HyperPod command-line interface (HyperPod CLI) is a tool that helps data scientists manage training jobs on the SageMaker HyperPod clusters orchestrated by Amazon EKS.
+The Amazon SageMaker HyperPod command-line interface (HyperPod CLI) is a tool that helps manage training jobs on the SageMaker HyperPod clusters orchestrated by Amazon EKS.
 
 This documentation serves as a reference for the available HyperPod CLI commands. For a comprehensive user guide, see [Orchestrating HyperPod clusters with Amazon EKS](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks.html) in the *Amazon SageMaker Developer Guide*.
 
@@ -24,7 +24,7 @@ This documentation serves as a reference for the available HyperPod CLI commands
 
 ## Overview
 
-The SageMaker HyperPod CLI is a tool that helps data scientists submit training jobs to the Amazon SageMaker HyperPod clusters orchestrated by Amazon EKS. It provides a set of commands for managing the full lifecycle of training jobs, including submitting, describing, listing, and canceling jobs, as well as accessing logs and executing commands within the job's containers. The CLI is designed to abstract away the complexity of working directly with Kubernetes for these core actions of managing jobs on SageMaker HyperPod clusters orchestrated by Amazon EKS.
+The SageMaker HyperPod CLI is a tool that helps submit training jobs to the Amazon SageMaker HyperPod clusters orchestrated by Amazon EKS. It provides a set of commands for managing the full lifecycle of training jobs, including submitting, describing, listing, and canceling jobs, as well as accessing logs and executing commands within the job's containers. The CLI is designed to abstract away the complexity of working directly with Kubernetes for these core actions of managing jobs on SageMaker HyperPod clusters orchestrated by Amazon EKS.
 
 ## Installation
 
@@ -96,7 +96,7 @@ This command configures the local Kubectl environment to interact with the speci
 hyperpod connect-cluster --cluster-name <cluster-name> [--region <region>] [--namespace <namespace>]
 ```
 
-* `cluster-name` (string) - Required. The cluster name to connect to.
+* `cluster-name` (string) - Required. The HyperPod cluster name to configure with.
 * `region` (string) - Optional. The region that the HyperPod and EKS clusters are located. If not specified, it will be set to the region from the current AWS account credentials.
 * `namespace` (string) - Optional. The namespace that you want to connect to. If not specified, this command uses the [Kubernetes namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) of the Amazon EKS cluster associated with the SageMaker HyperPod cluster in your AWS account.
 
@@ -113,17 +113,17 @@ hyperpod start-job --job-name <job-name> [--namespace <namespace>] [--job-kind <
 * `namespace` (string) - Optional. The namespace to use. If not specified, this command uses the [Kubernetes namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) of the Amazon EKS cluster associated with the SageMaker HyperPod cluster in your AWS account.
 * `image` (string) - Required. The image used when creating the training job.
 * `pull-policy` (enum) - Optional. The policy to pull the container image. Valid values are `Always`, `IfNotPresent`, and `Never`, as available from the PyTorchJob. The default is `Always`.
-* `command` (string) - Optional. The command to run the entrypoint script. Currently, only `torchrun` is supported, and the CLI will restrict it to only `torchrun`.
+* `command` (string) - Optional. The command to run the entrypoint script. Currently, only `torchrun` is supported.
 * `entry-script` (string) - Required. The path to the training script.
-* `script-args` (list[string]) - Optional. The list of script arguments.
+* `script-args` (list[string]) - Optional. The list of arguments for entryscripts.
 * `environment` (dict[string, string]) - Optional. The environment variables (key-value pairs) to set in the containers.
 * `node-count` (int) - Required. The number of nodes (instances) to launch the jobs on.
-* `instance-type` (string) - Required. The instance type to launch the job on. Note that the instance types you can use are the available instances within your SageMaker quotas for instances prefixed with `ml`. 
+* `instance-type` (string) - Required. The instance type to launch the job on. Note that the instance types you can use are the available instances within your SageMaker quotas for instances prefixed with `ml`.
 * `tasks-per-node` (int) - Optional. The number of devices to use per instance.
 * `label-selector` (dict[string, list[string]]) - Optional. A dictionary of labels and their values that will override the predefined node selection rules based on the HyperPod `node-health-status` label and values. If users provide this field, the CLI will launch the job with this customized label selection.
 * `deep-health-check-passed-nodes-only` (bool) - Optional. If set to `true`, the job will be launched only on nodes that have the `deep-health-check-status` label with the value `passed`.
 * `scheduler-type` (enum) - Optional. The scheduler type to use. Currently, only `Kueue` is supported.
-* `queue-name` (string) - Optional. The queue to submit the job to, which is created by the cluster admin users in your AWS account.
+* `queue-name` (string) - Optional. The name of the queue to submit the job to, which is created by the cluster admin users in your AWS account.
 * `priority` (string) - Optional. The priority for the job, which needs to be created by the cluster admin users and match the name in the cluster.
 * `auto-resume` (bool) - Optional. If set to `true`, the job will automatically resume after a failure. Note that `auto-resume` currently only works in the `kubeflow` namespace or the namespace prefixed with `aws-hyperpod`. To enable `auto-resume`, you also should set `restart-policy` to `OnFailure`.
 * `max-retry` (int) - Optional. The maximum number of retries if `auto-resume` is `true`. If `auto-resume` is set to true and `max-retry` is not specified, the default value is 1.
@@ -143,7 +143,7 @@ hyperpod get-job --job-name <job-name> [--namespace <namespace>] [--verbose]
 ```
 
 * `job-name` (string) - Required. The name of the job.
-* `namespace` (string) - Optional. The namespace to describe the job in. If not provided, the CLI will try to describe the job in the namespace set by the customer while connecting to the cluster. If provided, and the customer has access to the namespace, the CLI will describe the job from the specified namespace.
+* `namespace` (string) - Optional. The namespace to describe the job in. If not provided, the CLI will try to describe the job in the namespace set by the user while connecting to the cluster. If provided, and the user has access to the namespace, the CLI will describe the job from the specified namespace.
 * `verbose` (flag) - Optional. If set to `True`, the command enables verbose mode and prints out more detailed output with additional fields.
 
 ### Listing Jobs
@@ -154,7 +154,7 @@ This command lists all the training jobs in the connected HyperPod cluster or na
 hyperpod list-jobs [--namespace <namespace>] [--all-namespaces] [--selector <key=value>]
 ```
 
-* `namespace` (string) - Optional. The namespace to list the jobs in. If not provided, this command lists the jobs in the namespace specified during connecting to the cluster. If the namespace is provided and if the data scientist users have access to the namespace, this command lists the jobs from the specified namespace.
+* `namespace` (string) - Optional. The namespace to list the jobs in. If not provided, this command lists the jobs in the namespace specified during connecting to the cluster. If the namespace is provided and if the user has access to the namespace, this command lists the jobs from the specified namespace.
 * `all-namespaces` (flag) - Optional. If set, this command lists jobs from all namespaces the data scientist users have access to. The namespace in the current AWS account credentials will be ignored, even if specified with the `--namespace` option.
 * `selector` (string) - Optional. A label selector to filter the listed jobs. The selector supports the '=', '==', and '!=' operators (e.g., `-l key1=value1,key2=value2`).
 
@@ -167,7 +167,7 @@ hyperpod cancel-job --job-name <job-name> [--namespace <namespace>]
 ```
 
 * `job-name` (string) - Required. The name of the job to cancel.
-* `namespace` (string) - Optional. The namespace to cancel the job in. If not provided, the CLI will try to cancel the job in the namespace set by the customer while connecting to the cluster. If provided, and the customer has access to the namespace, the CLI will cancel the job from the specified namespace.
+* `namespace` (string) - Optional. The namespace to cancel the job in. If not provided, the CLI will try to cancel the job in the namespace set by the user while connecting to the cluster. If provided, and the user has access to the namespace, the CLI will cancel the job from the specified namespace.
 
 ### Listing Pods
 
@@ -178,7 +178,7 @@ hyperpod list-pods --job-name <job-name> [--namespace <namespace>]
 ```
 
 * `job-name` (string) - Required. The name of the job to list pods for.
-* `namespace` (string) - Optional. The namespace to list the pods in. If not provided, the CLI will list the pods in the namespace set by the customer while connecting to the cluster. If provided, and the customer has access to the namespace, the CLI will list the pods from the specified namespace.
+* `namespace` (string) - Optional. The namespace to list the pods in. If not provided, the CLI will list the pods in the namespace set by the user while connecting to the cluster. If provided, and the user has access to the namespace, the CLI will list the pods from the specified namespace.
 
 ### Accessing Logs
 
@@ -190,7 +190,7 @@ hyperpod get-log --job-name <job-name> --pod <pod-name> [--namespace <namespace>
 
 * `job-name` (string) - Required. The name of the job to get the log for.
 * `pod` (string) - Required. The name of the pod to get the log from.
-* `namespace` (string) - Optional. The namespace to get the log from. If not provided, the CLI will get the log from the pod in the namespace set by the customer while connecting to the cluster. If provided, and the customer has access to the namespace, the CLI will get the log from the pod in the specified namespace.
+* `namespace` (string) - Optional. The namespace to get the log from. If not provided, the CLI will get the log from the pod in the namespace set by the user while connecting to the cluster. If provided, and the user has access to the namespace, the CLI will get the log from the pod in the specified namespace.
 
 ### Executing Commands
 
@@ -200,8 +200,8 @@ This command executes a specified command within the container of a pod associat
 hyperpod exec --job-name <job-name> [-p <pod-name>] [--all-pods] -- <command>
 ```
 
-* `job-name` (string) - Required. The name of the job to execute the command on.
-* `bash-command` (string) - Required. The command(s) to run.
-* `namespace` (string) - Optional. The namespace to execute the command in. If not provided, the CLI will try to execute the command in the pod in the namespace set by the customer while connecting to the cluster. If provided, and the customer has access to the namespace, the CLI will execute the command in the pod from the specified namespace.
+* `job-name` (string) - Required. The name of the job to execute the command within the container of a pod associated with a training job.
+* `bash-command` (string) - Required. The bash command(s) to run.
+* `namespace` (string) - Optional. The namespace to execute the command in. If not provided, the CLI will try to execute the command in the pod in the namespace set by the user while connecting to the cluster. If provided, and the user has access to the namespace, the CLI will execute the command in the pod from the specified namespace.
 * `pod` (string) - Optional. The name of the pod to execute the command in. You must provide either `--pod` or `--all-pods`.
 * `all-pods` (flag) - Optional. If set, the command will be executed in all pods associated with the job.
