@@ -11,7 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import click
-import pkg_resources
+import importlib.metadata
 
 from hyperpod_cli.commands.cluster import connect_cluster, list_clusters
 from hyperpod_cli.commands.job import (
@@ -46,7 +46,7 @@ Usage:
 Use "hyperpod <command> --help" for more information about a given command.
 """
 
-VERSION = pkg_resources.get_distribution("hyperpod").version
+VERSION = importlib.metadata.version("hyperpod")
 
 
 class HyperPodCommandGroup(click.Group):

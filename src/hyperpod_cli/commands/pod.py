@@ -120,8 +120,8 @@ def _exec_command_required_option_pod_and_all_pods():
     required=False,
     help="Optional. If set, the command will be executed in all pods associated with the job. You must provide either `--pod` or `--all-pods`.",
 )
-@click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.argument("bash_command", nargs=-1, type=click.UNPROCESSED)
+@click.option("--debug", is_flag=True, help="Enable debug mode")
 def exec(
     job_name: str,
     namespace: Optional[str],

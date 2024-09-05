@@ -375,9 +375,13 @@ def start_job(
     volumes: Optional[str],
     debug: bool,
 ):
-    # TODO: Support more job kinds and command
     if debug:
         set_logging_level(logger, logging.DEBUG)
+
+    # Perform Post-Processing parameter validations
+    # TODO: refactor validate_start_job_args to use Click ctx
+    ctx = click.get_current_context()
+    validate_only_config_file_argument(ctx)
 
     validator = JobValidator()
     if not validator.validate_aws_credential(boto3.Session()):
@@ -486,7 +490,7 @@ def start_job(
                 )
 
             if auto_resume:
-                # Set max_retryn default to 1
+                # Set max_retry default to 1
                 if max_retry is None:
                     max_retry = 1
 
@@ -609,3 +613,22 @@ class suppress_standard_output_context:
         if "stdout" not in kwargs:
             kwargs["stdout"] = open(os.devnull, "w")
         return self._original_popen(*args, **kwargs)
+
+
+def validate_only_config_file_argument(ctx):
+    # Get all the arguments passed to the command
+    all_args = ctx.params
+
+    # Filter out None values and arguments that has default values
+    provided_args = {
+        k: v
+        for k, v in all_args.items()
+        if v is not None
+        and ctx.get_parameter_source(k) != click.core.ParameterSource.DEFAULT
+    }
+
+    # If config-file provided with other arguments, raise an error
+    if len(provided_args) > 1 and "config_file" in provided_args:
+        raise click.BadParameter(
+            f"Please only provide 'config-file' argument if you want to start job with .yaml file."
+        )

@@ -36,8 +36,8 @@ class JobValidator(Validator):
 
     def validate_start_job_args(
         self,
-        config_name: Optional[str],
-        name: Optional[str],
+        config_file: Optional[str],
+        job_name: Optional[str],
         node_count: Optional[int],
         instance_type: Optional[str],
         image: Optional[str],
@@ -53,7 +53,6 @@ class JobValidator(Validator):
         namespace: Optional[str],
         entry_script: Optional[str],
     ):
-        # Hard coded validations. TODO: support more options for following fields
         if job_kind is not None and job_kind != "kubeflow/PyTorchJob":
             logger.error("The only supported 'job-kind' is 'kubeflow/PyTorchJob'.")
             return False
@@ -66,19 +65,19 @@ class JobValidator(Validator):
             logger.error("The only supported 'scheduler_type' is 'Kueue'.")
             return False
 
-        if config_name is not None and name is not None:
+        if config_file is not None and job_name is not None:
             logger.error(
-                "Please provide only 'config-name' to submit job using config file or 'name' to submit job via CLI arguments"
+                "Please provide only 'config-file' to submit job using config file or 'job-name' to submit job via CLI arguments"
             )
             return False
 
-        if config_name is None and name is None:
+        if config_file is None and job_name is None:
             logger.error(
-                "Please provide either 'config-name' to submit job using config file or 'name' to submit job via CLI arguments"
+                "Please provide either 'config-file' to submit job using config file or 'job-name' to submit job via CLI arguments"
             )
             return False
 
-        if name is not None:
+        if job_name is not None:
             if entry_script is None:
                 logger.error("Please provide 'entry-script' for the training job")
                 return False
@@ -223,7 +222,7 @@ def validate_hyperpod_related_fields(
 
     if auto_resume and not _is_hyperpod_monitored_namespaces(namespace):
         logger.error(
-            "Please ensure submit job to 'kubeflow' namespace or namespace with 'hyperpod' prefix to make 'auto-resume' work as expected "
+            "Please ensure submit job to 'kubeflow' namespace or namespace with 'aws-hyperpod' prefix to make 'auto-resume' work as expected "
         )
         return False
 

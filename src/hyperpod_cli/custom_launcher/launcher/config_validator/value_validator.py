@@ -107,6 +107,8 @@ def _validate_volume_arguments(config: DictConfig) -> None:
     exception_message: str = "hostPath, mountPath, volumeName should be provided for volumes"
     if cluster_config is not None and volumes_argument_name in cluster_config:
         volume_arguments = cluster_config.get(volumes_argument_name)
+        if volume_arguments is None:
+            return
         host_path = "hostPath"
         mount_path = "mountPath"
         volume_name = "volumeName"
@@ -116,7 +118,7 @@ def _validate_volume_arguments(config: DictConfig) -> None:
             host_path_argument = volume_argument.get(host_path)
             mount_path_argument = volume_argument.get(mount_path)
             volume_name_argument = volume_argument.get(volume_name)
-            if volume_name_argument is None or mount_path_argument is None or volume_name_argument is None:
+            if host_path_argument is None or mount_path_argument is None or volume_name_argument is None:
                 raise ValueError(exception_message)
 
 def _validate_pull_policy_argument(config: DictConfig) -> None:

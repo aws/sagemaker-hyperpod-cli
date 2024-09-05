@@ -57,9 +57,7 @@ class TestHappyCase(AbstractIntegrationTests):
 
     @pytest.mark.order(2)
     def test_start_job(self):
-        config_path = os.path.expanduser(
-            "./test/integration_tests/data/basicJob.yaml"
-        )
+        config_path = os.path.expanduser("./test/integration_tests/data/basicJob.yaml")
         command = [
             "hyperpod",
             "start-job",

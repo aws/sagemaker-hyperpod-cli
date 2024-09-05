@@ -14,7 +14,7 @@
 
 from __future__ import absolute_import
 
-import pkg_resources
+import importlib.metadata
 
 
 CLI_PREFIX = "AWS-SageMaker-Hyperpod-CLI"
@@ -28,6 +28,6 @@ def get_user_agent_extra_suffix():
     Returns:
         str: The user agent extra suffix string to be appended
     """
-    suffix = "cli/{}#{}".format(CLI_PREFIX, pkg_resources.get_distribution("hyperpod").version)
+    suffix = "cli/{}#{}".format(CLI_PREFIX, importlib.metadata.version("hyperpod"))
 
     return suffix

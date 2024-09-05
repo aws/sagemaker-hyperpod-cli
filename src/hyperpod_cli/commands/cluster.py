@@ -46,9 +46,7 @@ from hyperpod_cli.utils import (
 )
 from hyperpod_cli.validators.cluster_validator import ClusterValidator
 
-# Best guess of EKS describeCluster and SageMaker listCluster
-# rate limit as 5tps. So Ratelimit to 4 to avoid throttling
-# TODO: Need to test out the rate limit
+
 RATE_LIMIT = 4
 RATE_LIMIT_PERIOD = 1  # 1 second
 
@@ -147,7 +145,6 @@ def list_clusters(
         if len(cluster_capacities) > current_cluster_capacities_size:
             counter += 1
         # Currently only support list <= 50 clusters
-        # TODO: Support pagination and list more clusters
         if counter >= 50:
             logger.debug(
                 "The 'list-clusters' command has reached the maximum number of HyperPod clusters that can be listed, which is 50."
@@ -296,7 +293,6 @@ def _aggregate_nodes_info(nodes: List[client.V1Node]) -> Dict[str, Dict[str, Any
     required=False,
     help="Optional. The region that the HyperPod and EKS clusters are located. If not specified, it will be set to the region from the current AWS account credentials.",
 )
-@click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.option(
     "--namespace",
     type=click.STRING,
@@ -304,6 +300,7 @@ def _aggregate_nodes_info(nodes: List[client.V1Node]) -> Dict[str, Dict[str, Any
     help="Optional. The namespace that you want to connect to. If not specified, this command uses the [Kubernetes namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) of the Amazon EKS cluster associated with the SageMaker HyperPod cluster in your AWS account.",
     default="default",
 )
+@click.option("--debug", is_flag=True, help="Enable debug mode")
 def connect_cluster(
     cluster_name: str,
     region: Optional[str],

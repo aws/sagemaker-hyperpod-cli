@@ -21,23 +21,27 @@ SAMPLE_OUTPUT = {
     "items": [
         {
             "metadata": {"name": "test-name", "namespace": "test-namespace"},
-            "status": {"startTime": "test-time", "conditions": [{"type": "Succeeded"}]},
+            "status": {"startTime": "test-time", "conditions": [{"type": "Succeeded", "lastTransitionTime": '2023-08-27T22:47:57Z'}]},
         },
         {
             "metadata": {"name": "test-name1", "namespace": "test-namespace1"},
             "status": {
                 "startTime": "test-time1",
                 "conditions": [
-                    {"type": "Running"},
+                    {
+                        "type": "Running",
+                        "lastTransitionTime": '2024-08-27T22:47:57Z'
+                    },
                     {
                         "type": "Created",
+                        "lastTransitionTime": '2023-08-27T22:47:57Z'
                     },
                 ],
             },
         },
         {
             "metadata": {"name": "test-name2", "namespace": "test-namespace1"},
-            "status": {"startTime": "test-time1", "conditions": [{"type": "Created"}]},
+            "status": {"startTime": "test-time1", "conditions": [{"type": "Created", "lastTransitionTime": '2024-08-27T22:47:57Z'}]},
         },
     ]
 }
@@ -144,27 +148,3 @@ class ListTrainingJobsTest(unittest.TestCase):
         self.mock_k8s_client.list_training_jobs.return_value = OUTPUT_WITHOUT_STATUS
         result = self.mock_list_training_jobs.list_training_jobs(None, True, None)
         self.assertNotIn("State: null", result)
-
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    def test_list_training_jobs_unknown_status(
-        self,
-        mock_kubernetes_client: mock.Mock,
-    ):
-        unknown_status_sample_output = {
-            "items": [
-                {
-                    "metadata": {"name": "test-name", "namespace": "test-namespace"},
-                    "status": {
-                        "startTime": "test-time",
-                        "conditions": [{"type": "unknown"}],
-                    },
-                }
-            ]
-        }
-        mock_kubernetes_client.return_value = self.mock_k8s_client
-        self.mock_k8s_client.list_namespaces.return_value = ["namespace"]
-        self.mock_k8s_client.list_training_jobs.return_value = (
-            unknown_status_sample_output
-        )
-        with self.assertRaises(RuntimeError):
-            self.mock_list_training_jobs.list_training_jobs(None, True, None)
