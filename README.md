@@ -3,7 +3,7 @@
 
 The Amazon SageMaker HyperPod command-line interface (HyperPod CLI) is a tool that helps manage training jobs on the SageMaker HyperPod clusters orchestrated by Amazon EKS.
 
-This documentation serves as a reference for the available HyperPod CLI commands. For a comprehensive user guide, see [Orchestrating HyperPod clusters with Amazon EKS](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks.html) in the *Amazon SageMaker Developer Guide*.
+This documentation serves as a reference for the available HyperPod CLI commands. For a comprehensive user guide, see [Orchestrating SageMaker HyperPod clusters with Amazon EKS](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks.html) in the *Amazon SageMaker Developer Guide*.
 
 ## Table of Contents
 - [Overview](#overview)
@@ -65,7 +65,7 @@ The SageMaker HyperPod CLI is a tool that helps submit training jobs to the Amaz
 
 The HyperPod CLI provides the following commands:
 
-- [Listing Clusters](#listing-clusters)
+- [Listing Clusters](#getting-cluster-information)
 - [Connecting to a Cluster](#connecting-to-a-cluster)
 - [Submitting a Job](#submitting-a-job)
 - [Getting Job Details](#getting-job-details)
@@ -75,34 +75,34 @@ The HyperPod CLI provides the following commands:
 - [Accessing Logs](#accessing-logs)
 - [Executing Commands](#executing-commands)
 
-### Listing Clusters
+### Getting Cluster information
 
-This command lists the available HyperPod clusters and their capacity information.
+This command lists the available SageMaker HyperPod clusters and their capacity information.
 
 ```
-hyperpod list-clusters [--region <region>] [--clusters <cluster1,cluster2>] [--orchestrator <eks>] [--output <json|table>]
+hyperpod get-clusters [--region <region>] [--clusters <cluster1,cluster2>] [--orchestrator <eks>] [--output <json|table>]
 ```
 
-* `region` (string) - Optional. The region that the HyperPod and EKS clusters are located. If not specified, it will be set to the region from the current AWS account credentials.
-* `clusters` (list[string]) - Optional. A list of HyperPod cluster names that users want to check the capacity for. This is useful for users who know some of their most commonly used clusters and want to check the capacity status of the clusters in the AWS account.
+* `region` (string) - Optional. The region that the SageMaker HyperPod and EKS clusters are located. If not specified, it will be set to the region from the current AWS account credentials.
+* `clusters` (list[string]) - Optional. A list of SageMaker HyperPod cluster names that users want to check the capacity for. This is useful for users who know some of their most commonly used clusters and want to check the capacity status of the clusters in the AWS account.
 * `orchestrator` (enum) - Optional. The orchestrator type for the cluster. Currently, `'eks'` is the only available option.
 * `output` (enum) - Optional. The output format. Available values are `TABLE` and `JSON`. The default value is `JSON`.
 
 ### Connecting to a Cluster
 
-This command configures the local Kubectl environment to interact with the specified HyperPod cluster and namespace.
+This command configures the local Kubectl environment to interact with the specified SageMaker HyperPod cluster and namespace.
 
 ```
 hyperpod connect-cluster --cluster-name <cluster-name> [--region <region>] [--namespace <namespace>]
 ```
 
-* `cluster-name` (string) - Required. The HyperPod cluster name to configure with.
-* `region` (string) - Optional. The region that the HyperPod and EKS clusters are located. If not specified, it will be set to the region from the current AWS account credentials.
+* `cluster-name` (string) - Required. The SageMaker HyperPod cluster name to configure with.
+* `region` (string) - Optional. The region that the SageMaker HyperPod and EKS clusters are located. If not specified, it will be set to the region from the current AWS account credentials.
 * `namespace` (string) - Optional. The namespace that you want to connect to. If not specified, this command uses the [Kubernetes namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) of the Amazon EKS cluster associated with the SageMaker HyperPod cluster in your AWS account.
 
 ### Submitting a Job
 
-This command submits a new training job to the connected HyperPod cluster.
+This command submits a new training job to the connected SageMaker HyperPod cluster.
 
 ```
 hyperpod start-job --job-name <job-name> [--namespace <namespace>] [--job-kind <kubeflow/PyTorchJob>] [--image <image>] [--command <command>] [--entry-script <script>] [--script-args <arg1 arg2>] [--environment <key=value>] [--pull-policy <Always|IfNotPresent|Never>] [--instance-type <instance-type>] [--node-count <count>] [--tasks-per-node <count>] [--label-selector <key=value>] [--deep-health-check-passed-nodes-only] [--scheduler-type <Kueue>] [--queue-name <queue-name>] [--priority <priority>] [--auto-resume] [--max-retry <count>] [--restart-policy <Always|OnFailure|Never|ExitCode>] [--volumes <volume1,volume2>] [--persistent-volume-claims <claim1:/mount/path,claim2:/mount/path>] [--results-dir <dir>] [--service-account-name <account>]
@@ -120,7 +120,7 @@ hyperpod start-job --job-name <job-name> [--namespace <namespace>] [--job-kind <
 * `node-count` (int) - Required. The number of nodes (instances) to launch the jobs on.
 * `instance-type` (string) - Required. The instance type to launch the job on. Note that the instance types you can use are the available instances within your SageMaker quotas for instances prefixed with `ml`.
 * `tasks-per-node` (int) - Optional. The number of devices to use per instance.
-* `label-selector` (dict[string, list[string]]) - Optional. A dictionary of labels and their values that will override the predefined node selection rules based on the HyperPod `node-health-status` label and values. If users provide this field, the CLI will launch the job with this customized label selection.
+* `label-selector` (dict[string, list[string]]) - Optional. A dictionary of labels and their values that will override the predefined node selection rules based on the SageMaker HyperPod `node-health-status` label and values. If users provide this field, the CLI will launch the job with this customized label selection.
 * `deep-health-check-passed-nodes-only` (bool) - Optional. If set to `true`, the job will be launched only on nodes that have the `deep-health-check-status` label with the value `passed`.
 * `scheduler-type` (enum) - Optional. The scheduler type to use. Currently, only `Kueue` is supported.
 * `queue-name` (string) - Optional. The name of the queue to submit the job to, which is created by the cluster admin users in your AWS account.
@@ -148,7 +148,7 @@ hyperpod get-job --job-name <job-name> [--namespace <namespace>] [--verbose]
 
 ### Listing Jobs
 
-This command lists all the training jobs in the connected HyperPod cluster or namespace.
+This command lists all the training jobs in the connected SageMaker HyperPod cluster or namespace.
 
 ```
 hyperpod list-jobs [--namespace <namespace>] [--all-namespaces] [--selector <key=value>]
