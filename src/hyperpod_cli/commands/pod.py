@@ -28,21 +28,21 @@ logger = setup_logger(__name__)
     "--job-name",
     type=click.STRING,
     required=True,
-    help="The name of the training job you want to view logs",
+    help="Required. The name of the job to get the log for.",
 )
 @click.option(
     "--pod",
     "-p",
     type=click.STRING,
     required=True,
-    help="The name of the pod you want to view logs",
+    help="Required. The name of the pod to get the log from.",
 )
 @click.option(
     "--namespace",
     "-n",
     type=click.STRING,
     required=False,
-    help="The namespace where training job was submitted",
+    help="Optional. The namespace to get the log from. If not provided, the CLI will get the log from the pod in the namespace set by the user while connecting to the cluster. If provided, and the user has access to the namespace, the CLI will get the log from the pod in the specified namespace.",
 )
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 def get_log(
@@ -95,7 +95,7 @@ def _exec_command_required_option_pod_and_all_pods():
     "--job-name",
     type=click.STRING,
     required=True,
-    help="The name of the training job you want to view logs",
+    help="Required. The name of the job to execute the command on.",
 )
 @click.option(
     "--namespace",
@@ -103,7 +103,7 @@ def _exec_command_required_option_pod_and_all_pods():
     type=click.STRING,
     nargs=1,
     required=False,
-    help="The namespace where training job was submitted",
+    help="Optional. The namespace to execute the command in. If not provided, the CLI will try to execute the command in the pod in the namespace set by the user while connecting to the cluster. If provided, and the user has access to the namespace, the CLI will execute the command in the pod from the specified namespace.",
 )
 @click.option(
     "--pod",
@@ -111,14 +111,14 @@ def _exec_command_required_option_pod_and_all_pods():
     type=click.STRING,
     nargs=1,
     required=False,
-    help="The name of the pod you want to view logs",
+    help="Optional. The name of the pod to execute the command in. You must provide either `--pod` or `--all-pods`.",
 )
 @click.option(
     "--all-pods",
     type=click.BOOL,
     is_flag=True,
     required=False,
-    help="The name of the pod you want to view logs",
+    help="Optional. If set, the command will be executed in all pods associated with the job. You must provide either `--pod` or `--all-pods`.",
 )
 @click.argument("bash_command", nargs=-1, type=click.UNPROCESSED)
 @click.option("--debug", is_flag=True, help="Enable debug mode")
