@@ -30,10 +30,11 @@ dependencies:
   - name: mlflow
     version: "0.1.0"
     repository: "file://charts/mlflow"
+    condition: mlflow.enabled
   - name: nvidia-device-plugin
     version: "0.16.1"
     repository: https://nvidia.github.io/k8s-device-plugin
-    condition: nvidia-device-plugin.devicePlugin.enabled    
+    condition: nvidia-device-plugin.devicePlugin.enabled
   - name: aws-efa-k8s-device-plugin
     version: "0.5.3"
     repository: https://aws.github.io/eks-charts/
@@ -41,10 +42,36 @@ dependencies:
   - name: neuron-device-plugin
     version: "0.1.0"
     repository: "file://charts/neuron-device-plugin"
-    condition: neuron-device-plugin.devicePlugin.enabled  
+    condition: neuron-device-plugin.devicePlugin.enabled
   - name: kueue
     version: "0.1.0"
     repository: "file://charts/kueue"
+    condition: kueue.enabled
   - name: storage
     version: "0.1.0"
-    repository: "file://charts/storage"      
+    repository: "file://charts/storage"
+    condition: storage.enabled
+  - name: health-monitoring-agent
+    version: "0.1.0"
+    repository: "file://charts/health-monitoring-agent"
+    condition: health-monitoring-agent.enabled
+  - name: mpi-operator
+    version: "0.1.0"
+    repository: "file://charts/mpi-operator"
+    condition: mpi-operator.enabled
+  - name: deep-health-check
+    version: "0.1.0"
+    repository: "file://charts/deep-health-check"
+    condition: deep-health-check.enabled
+  - name: job-auto-restart
+    version: "0.1.0"
+    repository: "file://charts/job-auto-restart"
+    condition: job-auto-restart.enabled
+  - name: cluster-role-and-bindings
+    version: "0.1.0"
+    repository: "file://charts/cluster-role-and-bindings"
+    condition: cluster-role-and-bindings.enabled
+  - name: namespaced-role-and-bindings
+    version: "0.1.0"
+    repository: "file://charts/namespaced-role-and-bindings"
+    condition: namespaced-role-and-bindings.enabled

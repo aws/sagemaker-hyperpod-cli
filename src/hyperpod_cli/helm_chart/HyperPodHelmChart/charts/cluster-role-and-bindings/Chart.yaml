@@ -1,0 +1,5 @@
+apiVersion: v2
+name: cluster-role-and-bindings
+version: 0.1.0
+appVersion: 1.0
+description: A Helm chart for setting up Hyperpod cluster role and role bindings for cluster role
