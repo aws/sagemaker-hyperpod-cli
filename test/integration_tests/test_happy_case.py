@@ -67,7 +67,7 @@ class TestHappyCase(AbstractIntegrationTests):
 
         result = self._execute_test_command(command)
         # wait for job to complete creation
-        time.sleep(60)
+        time.sleep(120)
         assert result.returncode == 0
         logger.info(result.stdout)
 

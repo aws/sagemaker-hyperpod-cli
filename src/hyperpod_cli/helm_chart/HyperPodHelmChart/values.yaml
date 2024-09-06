@@ -111,10 +111,22 @@ namespace:
   name: aws-hyperpod
 
 mlflow:
-  enabled: true
+  enabled: false
 
 trainingOperators:
   enabled: true
+
+kueue:
+  enabled: false
+
+storage:
+  enabled: false
+
+cluster-role-and-bindings:
+  enabled: false
+
+namespaced-role-and-bindings:
+  enable: false
 
 nvidia-device-plugin:
   devicePlugin:
@@ -124,7 +136,7 @@ nvidia-device-plugin:
   affinity:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
-        nodeSelectorTerms: 
+        nodeSelectorTerms:
         - matchExpressions:
           # nvidia plugin needs at least one node selector. Below label exists for all hyperpod nodes
           - key: kubernetes.io/os
@@ -171,3 +183,12 @@ aws-efa-k8s-device-plugin:
       operator: "Equal"
       value: "Unschedulable"
       effect: "NoSchedule"
+
+mpi-operator:
+  enabled: true
+health-monitoring-agent:
+  enabled: true
+deep-health-check:
+  enabled: true
+job-auto-restart:
+  enabled: true

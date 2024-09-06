@@ -1,0 +1,41 @@
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: {{ .Values.namespace }}
+  name: {{ .Values.roleName }}
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["create", "get"]
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["pods/exec"]
+  verbs: ["get", "create"]
+- apiGroups: ["kubeflow.org"]
+  resources: ["pytorchjobs", "pytorchjobs/status"]
+  verbs: ["get", "list", "create", "delete", "update", "describe"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["create", "update", "get", "delete", "list"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["create", "get", "list", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: kubeflow
+  name: {{ .Values.roleName }}-binding
+subjects:
+- kind: Group
+  name: {{ .Values.roleName }}-{{ .Values.namespace }}-level
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: {{ .Values.roleName }} # this must match the name of the Role or ClusterRole you wish to bind to
+  apiGroup: rbac.authorization.k8s.io
