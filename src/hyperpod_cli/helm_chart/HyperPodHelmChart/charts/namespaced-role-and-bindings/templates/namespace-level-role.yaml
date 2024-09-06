@@ -3,11 +3,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   namespace: {{ .Values.namespace }}
   name: {{ .Values.roleName }}
-###
-#  1) add/list/describe/delete pods
-#  2) get/list/watch/create/patch/update/delete/describe kubeflow pytroch job
-#  3) get pod log
-###
 rules:
 - apiGroups: [""]
   resources: ["pods"]
