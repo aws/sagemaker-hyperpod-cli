@@ -13,7 +13,9 @@
 import unittest
 from unittest.mock import patch, mock_open
 
-from hyperpod_cli.constants.command_constants import RestartPolicy
+from hyperpod_cli.constants.command_constants import (
+    RestartPolicy,
+)
 from hyperpod_cli.validators.job_validator import (
     JobValidator,
     verify_and_load_yaml,
@@ -26,7 +28,9 @@ class TestJobValidator(unittest.TestCase):
     def setUp(self):
         self.validator = JobValidator()
 
-    def test_validate_start_job_args_job_valid(self):
+    def test_validate_start_job_args_job_valid(
+        self,
+    ):
         name = "test-job"
         job_kind = "kubeflow/PyTorchJob"
         command = "torchrun"
@@ -330,14 +334,14 @@ class TestJobValidator(unittest.TestCase):
             auto_resume,
             restart_policy,
             max_retry,
-            "aws-hyperpod-1",
+            "hyperpod-1",
             "/opt/train/src/train.py",
         )
 
         self.assertTrue(result)
 
     @patch("hyperpod_cli.validators.job_validator.logger")
-    def test_validate_start_job_args_auto_resume_in_wrong_namespace(self, mock_logger):
+    def test_validate_start_job_args_auto_resume_in_any_namespace(self, mock_logger):
         name = "test-job"
         node_count = 1
         instance_type = "ml.p4d.24xlarge"
@@ -363,14 +367,11 @@ class TestJobValidator(unittest.TestCase):
             auto_resume,
             restart_policy,
             max_retry,
-            "hyperpod",
+            "any-hyperpod",
             "/opt/train/src/train.py",
         )
 
-        self.assertFalse(result)
-        mock_logger.error.assert_called_once_with(
-            "Please ensure submit job to 'kubeflow' namespace or namespace with 'aws-hyperpod' prefix to make 'auto-resume' work as expected "
-        )
+        self.assertTrue(result)
 
     @patch("hyperpod_cli.validators.job_validator.logger")
     def test_validate_start_job_args_no_auto_resume_has_max_retry(self, mock_logger):
@@ -515,7 +516,9 @@ class TestJobValidator(unittest.TestCase):
             "Please provide 'image' to specify the training image for training job"
         )
 
-    def test_validate_start_job_args_valid_args(self):
+    def test_validate_start_job_args_valid_args(
+        self,
+    ):
         config_file = None
         name = "job-name"
         node_count = "2"
@@ -546,7 +549,9 @@ class TestJobValidator(unittest.TestCase):
 
         self.assertTrue(result)
 
-    def test_validate_start_job_args_invalid_json_label_selector(self):
+    def test_validate_start_job_args_invalid_json_label_selector(
+        self,
+    ):
         config_file = None
         name = "job-name"
         node_count = "2"
@@ -577,7 +582,9 @@ class TestJobValidator(unittest.TestCase):
 
         self.assertFalse(result)
 
-    def test_validate_start_job_args_invalid_values_label_selector(self):
+    def test_validate_start_job_args_invalid_values_label_selector(
+        self,
+    ):
         config_file = None
         name = "job-name"
         node_count = "2"
@@ -608,7 +615,9 @@ class TestJobValidator(unittest.TestCase):
 
         self.assertFalse(result)
 
-    def test_validate_start_job_args_invalid_values_type_label_selector(self):
+    def test_validate_start_job_args_invalid_values_type_label_selector(
+        self,
+    ):
         config_file = None
         name = "job-name"
         node_count = "2"
@@ -639,7 +648,9 @@ class TestJobValidator(unittest.TestCase):
 
         self.assertFalse(result)
 
-    def test_validate_start_job_args_invalid_key_label_selector(self):
+    def test_validate_start_job_args_invalid_key_label_selector(
+        self,
+    ):
         config_file = None
         name = "job-name"
         node_count = "2"
@@ -703,7 +714,9 @@ class TestJobValidator(unittest.TestCase):
 
         self.assertFalse(result)
 
-    def test_validate_start_job_args_wrong_scheduler_type(self):
+    def test_validate_start_job_args_wrong_scheduler_type(
+        self,
+    ):
         config_file = None
         name = "job-name"
         node_count = "2"
@@ -733,7 +746,9 @@ class TestJobValidator(unittest.TestCase):
 
         self.assertFalse(result)
 
-    def test_validate_start_job_args_kueue_fields_error(self):
+    def test_validate_start_job_args_kueue_fields_error(
+        self,
+    ):
         config_file = None
         name = "job-name"
         node_count = "2"
@@ -763,7 +778,9 @@ class TestJobValidator(unittest.TestCase):
 
         self.assertFalse(result)
 
-    def test_validate_start_job_args_auto_resume_restart_policy_unexpected(self):
+    def test_validate_start_job_args_auto_resume_restart_policy_unexpected(
+        self,
+    ):
         config_file = None
         name = "job-name"
         node_count = "2"
@@ -800,10 +817,13 @@ class TestJobValidator(unittest.TestCase):
 
     @patch("os.path.exists", return_value=True)
     @patch(
-        "hyperpod_cli.validators.job_validator.verify_and_load_yaml", return_value=None
+        "hyperpod_cli.validators.job_validator.verify_and_load_yaml",
+        return_value=None,
     )
     def test_validate_start_job_config_yaml_invalid_yaml(
-        self, mock_verify_and_load_yaml, mock_exists
+        self,
+        mock_verify_and_load_yaml,
+        mock_exists,
     ):
         result = self.validator.validate_start_job_config_yaml("test.yaml")
         self.assertFalse(result)
@@ -811,12 +831,21 @@ class TestJobValidator(unittest.TestCase):
     @patch("os.path.exists", return_value=True)
     @patch("hyperpod_cli.validators.job_validator.verify_and_load_yaml")
     @patch(
-        "hyperpod_cli.validators.job_validator.validate_yaml_content", return_value=True
+        "hyperpod_cli.validators.job_validator.validate_yaml_content",
+        return_value=True,
     )
     def test_validate_start_job_config_yaml_valid(
-        self, mock_validate_yaml_content, mock_verify_and_load_yaml, mock_exists
+        self,
+        mock_validate_yaml_content,
+        mock_verify_and_load_yaml,
+        mock_exists,
     ):
-        mock_data = {"cluster": {"cluster_type": "k8s", "cluster_config": {}}}
+        mock_data = {
+            "cluster": {
+                "cluster_type": "k8s",
+                "cluster_config": {},
+            }
+        }
         mock_verify_and_load_yaml.return_value = mock_data
         result = self.validator.validate_start_job_config_yaml("test.yaml")
         self.assertTrue(result)
@@ -829,11 +858,20 @@ class TestJobValidator(unittest.TestCase):
     def test_verify_and_load_yaml_valid(self, mock_exists):
         result = verify_and_load_yaml("test.yaml")
         self.assertEqual(
-            result, {"cluster": {"cluster_type": "k8s", "cluster_config": {}}}
+            result,
+            {
+                "cluster": {
+                    "cluster_type": "k8s",
+                    "cluster_config": {},
+                }
+            },
         )
 
     @patch("os.path.exists", return_value=True)
-    @patch("builtins.open", mock_open(read_data="{invalid yaml"))
+    @patch(
+        "builtins.open",
+        mock_open(read_data="{invalid yaml"),
+    )
     def test_verify_and_load_yaml_invalid(self, mock_exists):
         result = verify_and_load_yaml("test.yaml")
         self.assertIsNone(result)
@@ -852,12 +890,16 @@ class TestJobValidator(unittest.TestCase):
         result = validate_yaml_content(mock_data)
         self.assertTrue(result)
 
-    def test_validate_yaml_content_error_no_cluster(self):
+    def test_validate_yaml_content_error_no_cluster(
+        self,
+    ):
         mock_data = {"invalid": "invalid"}
         result = validate_yaml_content(mock_data)
         self.assertFalse(result)
 
-    def test_validate_yaml_content_error_invalid_cluster_type(self):
+    def test_validate_yaml_content_error_invalid_cluster_type(
+        self,
+    ):
         mock_data = {
             "cluster": {
                 "cluster_type": "slurm",
@@ -871,7 +913,9 @@ class TestJobValidator(unittest.TestCase):
         result = validate_yaml_content(mock_data)
         self.assertFalse(result)
 
-    def test_validate_yaml_content_error_no_cluster_config(self):
+    def test_validate_yaml_content_error_no_cluster_config(
+        self,
+    ):
         mock_data = {
             "cluster": {
                 "cluster_type": "k8s",
@@ -881,7 +925,9 @@ class TestJobValidator(unittest.TestCase):
         result = validate_yaml_content(mock_data)
         self.assertFalse(result)
 
-    def test_validate_yaml_content_valid_with_queue_name_and_priority(self):
+    def test_validate_yaml_content_valid_with_queue_name_and_priority(
+        self,
+    ):
         mock_data = {
             "cluster": {
                 "cluster_type": "k8s",
@@ -897,7 +943,9 @@ class TestJobValidator(unittest.TestCase):
         result = validate_yaml_content(mock_data)
         self.assertTrue(result)
 
-    def test_validate_yaml_content_valid_with_auto_resume(self):
+    def test_validate_yaml_content_valid_with_auto_resume(
+        self,
+    ):
         mock_data = {
             "cluster": {
                 "cluster_type": "k8s",
@@ -924,7 +972,7 @@ class TestJobValidator(unittest.TestCase):
                 "cluster_type": "k8s",
                 "instance_type": "ml.g5.xlarge",
                 "cluster_config": {
-                    "namespace": "aws-hyperpod",
+                    "namespace": "hyperpod",
                     "pullPolicy": "IfNotPresent",
                     "restartPolicy": "OnFailure",
                     "annotations": {
@@ -937,7 +985,7 @@ class TestJobValidator(unittest.TestCase):
         result = validate_yaml_content(mock_data)
         self.assertTrue(result)
 
-    def test_validate_yaml_content_valid_with_auto_resume_wrong_default_namespace(self):
+    def test_validate_yaml_content_valid_with_auto_resume_default_namespace(self):
         mock_data = {
             "cluster": {
                 "cluster_type": "k8s",
@@ -954,9 +1002,9 @@ class TestJobValidator(unittest.TestCase):
             }
         }
         result = validate_yaml_content(mock_data)
-        self.assertFalse(result)
+        self.assertTrue(result)
 
-    def test_validate_yaml_content_valid_with_auto_resume_wrong_hyperpod_namespace(
+    def test_validate_yaml_content_valid_with_auto_resume_any_hyperpod_namespace(
         self,
     ):
         mock_data = {
@@ -964,7 +1012,7 @@ class TestJobValidator(unittest.TestCase):
                 "cluster_type": "k8s",
                 "instance_type": "ml.g5.xlarge",
                 "cluster_config": {
-                    "namespace": "hyperpod",
+                    "namespace": "any-namespace",
                     "pullPolicy": "IfNotPresent",
                     "restartPolicy": "OnFailure",
                     "annotations": {
@@ -975,9 +1023,11 @@ class TestJobValidator(unittest.TestCase):
             }
         }
         result = validate_yaml_content(mock_data)
-        self.assertFalse(result)
+        self.assertTrue(result)
 
-    def test_validate_yaml_content_error_only_auto_resume_no_max_retry(self):
+    def test_validate_yaml_content_error_only_auto_resume_no_max_retry(
+        self,
+    ):
         mock_data = {
             "cluster": {
                 "cluster_type": "k8s",
@@ -995,7 +1045,9 @@ class TestJobValidator(unittest.TestCase):
         result = validate_yaml_content(mock_data)
         self.assertFalse(result)
 
-    def test_validate_yaml_content_error_with_wrong_restart_policy(self):
+    def test_validate_yaml_content_error_with_wrong_restart_policy(
+        self,
+    ):
         mock_data = {
             "cluster": {
                 "cluster_type": "k8s",
@@ -1014,7 +1066,9 @@ class TestJobValidator(unittest.TestCase):
         result = validate_yaml_content(mock_data)
         self.assertFalse(result)
 
-    def test_validate_yaml_content_error_only_max_retry(self):
+    def test_validate_yaml_content_error_only_max_retry(
+        self,
+    ):
         mock_data = {
             "cluster": {
                 "cluster_type": "k8s",
@@ -1032,7 +1086,9 @@ class TestJobValidator(unittest.TestCase):
         result = validate_yaml_content(mock_data)
         self.assertFalse(result)
 
-    def test_validate_hyperpod_related_fields_valid(self):
+    def test_validate_hyperpod_related_fields_valid(
+        self,
+    ):
         result = validate_hyperpod_related_fields(
             instance_type="ml.g5.xlarge",
             queue_name="test-queue",
@@ -1044,7 +1100,9 @@ class TestJobValidator(unittest.TestCase):
         )
         self.assertTrue(result)
 
-    def test_validate_hyperpod_related_fields_invalid_instance_type(self):
+    def test_validate_hyperpod_related_fields_invalid_instance_type(
+        self,
+    ):
         result = validate_hyperpod_related_fields(
             instance_type="invalid-instance-type",
             queue_name="test-queue",
@@ -1056,7 +1114,9 @@ class TestJobValidator(unittest.TestCase):
         )
         self.assertFalse(result)
 
-    def test_validate_hyperpod_related_fields_invalid_auto_resume(self):
+    def test_validate_hyperpod_related_fields_invalid_auto_resume(
+        self,
+    ):
         result = validate_hyperpod_related_fields(
             instance_type="ml.g5.xlarge",
             queue_name="test-queue",
@@ -1068,7 +1128,9 @@ class TestJobValidator(unittest.TestCase):
         )
         self.assertFalse(result)
 
-    def test_validate_hyperpod_related_fields_invalid_max_retry(self):
+    def test_validate_hyperpod_related_fields_invalid_max_retry(
+        self,
+    ):
         result = validate_hyperpod_related_fields(
             instance_type="ml.g5.xlarge",
             queue_name="test-queue",
@@ -1080,7 +1142,9 @@ class TestJobValidator(unittest.TestCase):
         )
         self.assertFalse(result)
 
-    def test_validate_hyperpod_related_fields_invalid_queue_and_priority(self):
+    def test_validate_hyperpod_related_fields_invalid_queue_and_priority(
+        self,
+    ):
         result = validate_hyperpod_related_fields(
             instance_type="ml.g5.xlarge",
             queue_name=None,

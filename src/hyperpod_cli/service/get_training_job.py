@@ -14,9 +14,12 @@ from typing import Optional
 
 import json
 
-from hyperpod_cli.clients.kubernetes_client import KubernetesClient
+from hyperpod_cli.clients.kubernetes_client import (
+    KubernetesClient,
+)
 
 from hyperpod_cli import utils
+from kubernetes.client.rest import ApiException
 
 
 class GetTrainingJob:
@@ -24,7 +27,10 @@ class GetTrainingJob:
         return
 
     def get_training_job(
-        self, job_name: str, namespace: Optional[str], verbose: Optional[bool]
+        self,
+        job_name: str,
+        namespace: Optional[str],
+        verbose: Optional[bool],
     ):
         """
         Describe training job provided by the user in the speified namespace.
@@ -35,8 +41,13 @@ class GetTrainingJob:
 
         if not namespace:
             namespace = k8s_client.get_current_context_namespace()
-
-        result = k8s_client.get_job(job_name=job_name, namespace=namespace)
+        try:
+            result = k8s_client.get_job(
+                job_name=job_name,
+                namespace=namespace,
+            )
+        except ApiException as e:
+            raise RuntimeError(f"Unexpected API error: {e.reason} ({e.status})")
 
         if not verbose:
             return self._format_output_to_keep_needed_fields(result)
@@ -51,12 +62,12 @@ class GetTrainingJob:
                     "Name": output.get("metadata").get("name"),
                     "Namespace": output.get("metadata").get("namespace"),
                     "Label": output.get("metadata").get("labels"),
-                    "Creation Timestamp": output.get("metadata").get(
+                    "CreationTimestamp": output.get("metadata").get(
                         "creationTimestamp"
                     ),
                 }
             result.update({"Status": output.get("status")})
-            result.update({"Console URL": utils.get_cluster_console_url()})
+            result.update({"ConsoleURL": utils.get_cluster_console_url()})
         return json.dumps(result, indent=1, sort_keys=False)
 
     def _format_verbose_output(self, output):
@@ -69,19 +80,19 @@ class GetTrainingJob:
                     "Label": output.get("metadata").get("labels"),
                     "Annotations": output.get("metadata").get("annotations"),
                     "Metadata": {
-                        "Creation Timestamp": output.get("metadata").get(
+                        "CreationTimestamp": output.get("metadata").get(
                             "creationTimestamp"
                         ),
                         "Generation": output.get("metadata").get("generation"),
-                        "Resource Version": output.get("metadata").get(
+                        "ResourceVersion": output.get("metadata").get(
                             "resourceVersion"
                         ),
                         "UID": output.get("metadata").get("uid"),
                     },
                 }
             result.update({"Kind": output.get("kind")})
-            result.update({"API Version": output.get("apiVersion")})
+            result.update({"ApiVersion": output.get("apiVersion")})
             result.update({"Spec": output.get("spec")})
             result.update({"Status": output.get("status")})
-            result.update({"Console URL": utils.get_cluster_console_url()})
+            result.update({"ConsoleURL": utils.get_cluster_console_url()})
         return json.dumps(result, indent=1, sort_keys=False)

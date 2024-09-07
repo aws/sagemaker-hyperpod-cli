@@ -28,6 +28,9 @@ def get_user_agent_extra_suffix():
     Returns:
         str: The user agent extra suffix string to be appended
     """
-    suffix = "cli/{}#{}".format(CLI_PREFIX, importlib.metadata.version("hyperpod"))
+    suffix = "cli/{}#{}".format(
+        CLI_PREFIX,
+        importlib.metadata.version("hyperpod"),
+    )
 
     return suffix

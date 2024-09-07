@@ -17,7 +17,9 @@ import time
 import pytest
 
 from hyperpod_cli.utils import setup_logger
-from test.integration_tests.abstract_integration_tests import AbstractIntegrationTests
+from test.integration_tests.abstract_integration_tests import (
+    AbstractIntegrationTests,
+)
 
 logger = setup_logger(__name__)
 
@@ -34,7 +36,12 @@ class TestHappyCase(AbstractIntegrationTests):
     def _execute_test_command(self, command):
         try:
             # Execute the command to update kubeconfig
-            return subprocess.run(command, check=True, capture_output=True, text=True)
+            return subprocess.run(
+                command,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failed to execute command: {command} Exception {e}")
 
@@ -73,7 +80,12 @@ class TestHappyCase(AbstractIntegrationTests):
 
     @pytest.mark.order(3)
     def test_get_job(self):
-        command = ["hyperpod", "get-job", "--job-name", "hyperpod-cli-test"]
+        command = [
+            "hyperpod",
+            "get-job",
+            "--job-name",
+            "hyperpod-cli-test",
+        ]
 
         result = self._execute_test_command(command)
         assert result.returncode == 0
@@ -91,7 +103,12 @@ class TestHappyCase(AbstractIntegrationTests):
 
     @pytest.mark.order(5)
     def test_list_pods(self):
-        command = ["hyperpod", "list-pods", "--job-name", "hyperpod-cli-test"]
+        command = [
+            "hyperpod",
+            "list-pods",
+            "--job-name",
+            "hyperpod-cli-test",
+        ]
 
         result = self._execute_test_command(command)
         assert result.returncode == 0
@@ -115,7 +132,12 @@ class TestHappyCase(AbstractIntegrationTests):
 
     @pytest.mark.order(7)
     def test_cancel_job(self):
-        command = ["hyperpod", "cancel-job", "--job-name", "hyperpod-cli-test"]
+        command = [
+            "hyperpod",
+            "cancel-job",
+            "--job-name",
+            "hyperpod-cli-test",
+        ]
 
         result = self._execute_test_command(command)
         assert result.returncode == 0

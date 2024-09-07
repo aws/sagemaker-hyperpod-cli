@@ -12,7 +12,12 @@
 # language governing permissions and limitations under the License.
 import os
 import unittest
-from unittest.mock import MagicMock, Mock, mock_open, patch
+from unittest.mock import (
+    MagicMock,
+    Mock,
+    mock_open,
+    patch,
+)
 
 import yaml
 from kubernetes import client
@@ -26,9 +31,13 @@ from kubernetes.client import (
     V1Pod,
     V1PodList,
 )
-from kubernetes.config import KUBE_CONFIG_DEFAULT_LOCATION
+from kubernetes.config import (
+    KUBE_CONFIG_DEFAULT_LOCATION,
+)
 
-from hyperpod_cli.clients.kubernetes_client import KubernetesClient
+from hyperpod_cli.clients.kubernetes_client import (
+    KubernetesClient,
+)
 
 KUBECONFIG_DATA = {
     "contexts": [
@@ -68,7 +77,9 @@ pods_with_next_token: V1PodList = V1PodList(
     items=[
         V1Pod(
             metadata=V1ObjectMeta(
-                name="test-name", namespace="kubeflow", creation_timestamp="timestamp"
+                name="test-name",
+                namespace="kubeflow",
+                creation_timestamp="timestamp",
             )
         )
     ],
@@ -81,7 +92,9 @@ pods_no_next_token: V1PodList = V1PodList(
     items=[
         V1Pod(
             metadata=V1ObjectMeta(
-                name="test-name", namespace="kubeflow", creation_timestamp="timestamp"
+                name="test-name",
+                namespace="kubeflow",
+                creation_timestamp="timestamp",
             )
         )
     ],
@@ -94,7 +107,9 @@ nodes_with_next_token: V1NodeList = V1NodeList(
     items=[
         V1Node(
             metadata=V1ObjectMeta(
-                name="test-name", namespace="kubeflow", creation_timestamp="timestamp"
+                name="test-name",
+                namespace="kubeflow",
+                creation_timestamp="timestamp",
             )
         )
     ],
@@ -107,7 +122,9 @@ nodes_no_next_token: V1NodeList = V1NodeList(
     items=[
         V1Node(
             metadata=V1ObjectMeta(
-                name="test-name", namespace="kubeflow", creation_timestamp="timestamp"
+                name="test-name",
+                namespace="kubeflow",
+                creation_timestamp="timestamp",
             )
         )
     ],
@@ -127,7 +144,9 @@ class TestKubernetesClient(unittest.TestCase):
     @patch("yaml.safe_dump")
     @patch("yaml.safe_load")
     @patch(
-        "builtins.open", new_callable=mock_open, read_data=yaml.dump(KUBECONFIG_DATA)
+        "builtins.open",
+        new_callable=mock_open,
+        read_data=yaml.dump(KUBECONFIG_DATA),
     )
     def test_set_context_success(
         self,
@@ -144,7 +163,8 @@ class TestKubernetesClient(unittest.TestCase):
         test_client = KubernetesClient()
         test_client.set_context("context2", "default")
         mock_open_file.assert_called_with(
-            os.path.expanduser(KUBE_CONFIG_DEFAULT_LOCATION), "w"
+            os.path.expanduser(KUBE_CONFIG_DEFAULT_LOCATION),
+            "w",
         )
 
     @patch("kubernetes.client.ApiClient")
@@ -152,7 +172,9 @@ class TestKubernetesClient(unittest.TestCase):
     @patch("yaml.safe_dump")
     @patch("yaml.safe_load")
     @patch(
-        "builtins.open", new_callable=mock_open, read_data=yaml.dump(KUBECONFIG_DATA)
+        "builtins.open",
+        new_callable=mock_open,
+        read_data=yaml.dump(KUBECONFIG_DATA),
     )
     def test_set_context_failure(
         self,
@@ -175,7 +197,9 @@ class TestKubernetesClient(unittest.TestCase):
     @patch("yaml.safe_dump")
     @patch("yaml.safe_load")
     @patch(
-        "builtins.open", new_callable=mock_open, read_data=yaml.dump(KUBECONFIG_DATA)
+        "builtins.open",
+        new_callable=mock_open,
+        read_data=yaml.dump(KUBECONFIG_DATA),
     )
     def test_set_context_success_other_namespace(
         self,
@@ -192,7 +216,8 @@ class TestKubernetesClient(unittest.TestCase):
         test_client = KubernetesClient()
         test_client.set_context("context2", "kubeflow")
         mock_open_file.assert_called_with(
-            os.path.expanduser(KUBE_CONFIG_DEFAULT_LOCATION), "w"
+            os.path.expanduser(KUBE_CONFIG_DEFAULT_LOCATION),
+            "w",
         )
 
     @patch("kubernetes.client.ApiClient")
@@ -251,7 +276,11 @@ class TestKubernetesClient(unittest.TestCase):
 
     @patch("kubernetes.client.ApiClient")
     @patch("kubernetes.config.load_kube_config")
-    def test_get_core_v1_api(self, mock_kube_config: Mock, mock_client: Mock):
+    def test_get_core_v1_api(
+        self,
+        mock_kube_config: Mock,
+        mock_client: Mock,
+    ):
         mock_kube_config.return_value = None
         mock_client.return_value = MagicMock()
         test_client = KubernetesClient()
@@ -261,7 +290,11 @@ class TestKubernetesClient(unittest.TestCase):
 
     @patch("kubernetes.client.ApiClient")
     @patch("kubernetes.config.load_kube_config")
-    def test_get_apps_v1_api(self, mock_kube_config: Mock, mock_client: Mock):
+    def test_get_apps_v1_api(
+        self,
+        mock_kube_config: Mock,
+        mock_client: Mock,
+    ):
         mock_kube_config.return_value = None
         mock_client.return_value = MagicMock()
         test_client = KubernetesClient()
@@ -292,7 +325,10 @@ class TestKubernetesClient(unittest.TestCase):
             test_client.get_apps_v1_api()
 
     @patch("kubernetes.config.load_kube_config")
-    @patch("kubernetes.client.CoreV1Api.list_node", return_value=nodes_no_next_token)
+    @patch(
+        "kubernetes.client.CoreV1Api.list_node",
+        return_value=nodes_no_next_token,
+    )
     def test_list_node_with_temp_config_no_next_token(
         self,
         mock_core_client: Mock,
@@ -305,7 +341,10 @@ class TestKubernetesClient(unittest.TestCase):
     @patch("kubernetes.config.load_kube_config")
     @patch(
         "kubernetes.client.CoreV1Api.list_node",
-        side_effect=[nodes_with_next_token, nodes_no_next_token],
+        side_effect=[
+            nodes_with_next_token,
+            nodes_no_next_token,
+        ],
     )
     def test_list_node_with_temp_config_no_next_token_with_pagination(
         self,
@@ -413,7 +452,10 @@ class TestKubernetesClient(unittest.TestCase):
 
     @patch(
         "kubernetes.client.CoreV1Api.list_pod_for_all_namespaces",
-        side_effect=[pods_with_next_token, pods_no_next_token],
+        side_effect=[
+            pods_with_next_token,
+            pods_no_next_token,
+        ],
     )
     def test_list_pods_in_all_namespaces_with_labels_with_pagination(
         self, mock_method: Mock

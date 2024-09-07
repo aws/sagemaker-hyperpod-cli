@@ -20,15 +20,19 @@ from unittest.mock import MagicMock, mock_open
 from click.testing import CliRunner
 from kubernetes import client
 
-from hyperpod_cli.clients.kubernetes_client import KubernetesClient
+from hyperpod_cli.clients.kubernetes_client import (
+    KubernetesClient,
+)
 from hyperpod_cli.commands.cluster import (
     DEEP_HEALTH_CHECK_STATUS_LABEL,
     HP_HEALTH_STATUS_LABEL,
     INSTANCE_TYPE_LABEL,
     connect_cluster,
-    list_clusters,
+    get_clusters,
 )
-from hyperpod_cli.validators.validator import Validator
+from hyperpod_cli.validators.validator import (
+    Validator,
+)
 
 
 class ClusterTest(unittest.TestCase):
@@ -69,7 +73,10 @@ class ClusterTest(unittest.TestCase):
         self.mock_k8s_client.set_context.return_value = None
         mock_kubernetes_client.return_value = self.mock_k8s_client
         mock_subprocess_run.return_value = MagicMock(returncode=0)
-        result = self.runner.invoke(connect_cluster, ["--cluster-name", "my-cluster"])
+        result = self.runner.invoke(
+            connect_cluster,
+            ["--cluster-name", "my-cluster"],
+        )
         self.assertEqual(result.exit_code, 0)
 
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
@@ -105,7 +112,12 @@ class ClusterTest(unittest.TestCase):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         mock_subprocess_run.return_value = MagicMock(returncode=0)
         result = self.runner.invoke(
-            connect_cluster, ["--cluster-name", "my-cluster", "--debug"]
+            connect_cluster,
+            [
+                "--cluster-name",
+                "my-cluster",
+                "--debug",
+            ],
         )
         self.assertEqual(result.exit_code, 0)
         mock_debug.assert_called()
@@ -141,7 +153,13 @@ class ClusterTest(unittest.TestCase):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         mock_subprocess_run.return_value = MagicMock(returncode=0)
         result = self.runner.invoke(
-            connect_cluster, ["--cluster-name", "my-cluster", "--region", "us-east-1"]
+            connect_cluster,
+            [
+                "--cluster-name",
+                "my-cluster",
+                "--region",
+                "us-east-1",
+            ],
         )
         self.assertEqual(result.exit_code, 0)
 
@@ -163,7 +181,10 @@ class ClusterTest(unittest.TestCase):
             "Failed to describe cluster"
         )
 
-        result = self.runner.invoke(connect_cluster, ["--cluster-name", "my-cluster"])
+        result = self.runner.invoke(
+            connect_cluster,
+            ["--cluster-name", "my-cluster"],
+        )
         self.assertEqual(result.exit_code, 1)
 
     @mock.patch("boto3.Session")
@@ -180,7 +201,10 @@ class ClusterTest(unittest.TestCase):
         mock_validate_aws_credentials.validate_aws_credential.return_value = None
         self.mock_session.client.side_effect = botocore.exceptions.NoRegionError()
         mock_session.return_value = self.mock_session
-        result = self.runner.invoke(connect_cluster, ["--cluster-name", "my-cluster"])
+        result = self.runner.invoke(
+            connect_cluster,
+            ["--cluster-name", "my-cluster"],
+        )
         self.assertEqual(result.exit_code, 1)
 
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
@@ -208,9 +232,17 @@ class ClusterTest(unittest.TestCase):
         self.mock_k8s_client.set_context.return_value = None
         mock_kubernetes_client.return_value = self.mock_k8s_client
         mock_subprocess_run.side_effect = subprocess.CalledProcessError(
-            returncode=1, cmd=["aws", "eks", "update-kubeconfig"]
+            returncode=1,
+            cmd=[
+                "aws",
+                "eks",
+                "update-kubeconfig",
+            ],
         )
-        result = self.runner.invoke(connect_cluster, ["--cluster-name", "my-cluster"])
+        result = self.runner.invoke(
+            connect_cluster,
+            ["--cluster-name", "my-cluster"],
+        )
         self.assertEqual(result.exit_code, 1)
 
     @mock.patch("hyperpod_cli.commands.cluster.ClusterValidator")
@@ -219,7 +251,10 @@ class ClusterTest(unittest.TestCase):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = False
 
-        result = self.runner.invoke(connect_cluster, ["--cluster-name", "my-cluster"])
+        result = self.runner.invoke(
+            connect_cluster,
+            ["--cluster-name", "my-cluster"],
+        )
         self.assertEqual(result.exit_code, 1)
 
     @mock.patch("kubernetes.config.load_kube_config")
@@ -232,7 +267,7 @@ class ClusterTest(unittest.TestCase):
     )
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("subprocess.run")
-    def test_list_clusters(
+    def test_get_clusters(
         self,
         mock_subprocess_run: mock.Mock,
         mock_kubernetes_client: mock.Mock,
@@ -262,12 +297,12 @@ class ClusterTest(unittest.TestCase):
             }
         }
         self.mock_sm_client.list_clusters.return_value = (
-            _generate_list_clusters_response()
+            _generate_get_clusters_response()
         )
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(list_clusters)
+        result = self.runner.invoke(get_clusters)
         self.assertEqual(result.exit_code, 0)
         self.assertIn("cluster-1", result.output)
         self.assertIn("cluster-2", result.output)
@@ -285,7 +320,7 @@ class ClusterTest(unittest.TestCase):
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("subprocess.run")
     @mock.patch("logging.Logger.debug")
-    def test_list_clusters_debug_mode(
+    def test_get_clusters_debug_mode(
         self,
         mock_debug: mock.Mock,
         mock_subprocess_run: mock.Mock,
@@ -316,12 +351,12 @@ class ClusterTest(unittest.TestCase):
             }
         }
         self.mock_sm_client.list_clusters.return_value = (
-            _generate_list_clusters_response()
+            _generate_get_clusters_response()
         )
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(list_clusters, ["--debug"])
+        result = self.runner.invoke(get_clusters, ["--debug"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("cluster-1", result.output)
         self.assertIn("cluster-2", result.output)
@@ -339,7 +374,7 @@ class ClusterTest(unittest.TestCase):
     )
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("subprocess.run")
-    def test_list_clusters_maximum_number(
+    def test_get_clusters_maximum_number(
         self,
         mock_subprocess_run: mock.Mock,
         mock_kubernetes_client: mock.Mock,
@@ -375,12 +410,12 @@ class ClusterTest(unittest.TestCase):
         ]
         self.mock_sm_client.describe_cluster.side_effect = sm_cluster_details
         self.mock_sm_client.list_clusters.return_value = (
-            _generate_list_clusters_response_over_maximum()
+            _generate_get_clusters_response_over_maximum()
         )
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(list_clusters)
+        result = self.runner.invoke(get_clusters)
         self.assertEqual(result.exit_code, 0)
         self.assertIn("cluster-1", result.output)
         self.assertIn("cluster-2", result.output)
@@ -399,7 +434,7 @@ class ClusterTest(unittest.TestCase):
     )
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("subprocess.run")
-    def test_list_clusters_no_cluster_summary(
+    def test_get_clusters_no_cluster_summary(
         self,
         mock_subprocess_run: mock.Mock,
         mock_kubernetes_client: mock.Mock,
@@ -432,7 +467,7 @@ class ClusterTest(unittest.TestCase):
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(list_clusters)
+        result = self.runner.invoke(get_clusters)
         self.assertEqual(result.exit_code, 0)
         self.assertNotIn("cluster-1", result.output)
         self.assertNotIn("cluster-2", result.output)
@@ -449,7 +484,7 @@ class ClusterTest(unittest.TestCase):
     )
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("subprocess.run")
-    def test_list_clusters_table_output(
+    def test_get_clusters_table_output(
         self,
         mock_subprocess_run: mock.Mock,
         mock_kubernetes_client: mock.Mock,
@@ -479,12 +514,12 @@ class ClusterTest(unittest.TestCase):
             }
         }
         self.mock_sm_client.list_clusters.return_value = (
-            _generate_list_clusters_response()
+            _generate_get_clusters_response()
         )
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(list_clusters, ["--output", "table"])
+        result = self.runner.invoke(get_clusters, ["--output", "table"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("cluster-1", result.output)
         self.assertIn("cluster-2", result.output)
@@ -505,7 +540,7 @@ class ClusterTest(unittest.TestCase):
     @mock.patch(
         "hyperpod_cli.service.list_pods.ListPods.list_pods_and_get_requested_resources_group_by_node_name"
     )
-    def test_list_clusters_with_deep_health_check_enabled_and_gpu_devices(
+    def test_get_clusters_with_deep_health_check_enabled_and_gpu_devices(
         self,
         mock_list_pods: mock.Mock,
         mock_subprocess_run: mock.Mock,
@@ -515,7 +550,10 @@ class ClusterTest(unittest.TestCase):
         mock_session: mock.Mock,
         mock_load_kube_config: mock.Mock,
     ):
-        mock_list_pods.return_value = {"node-name-1": 1, "node-name-2": 2}
+        mock_list_pods.return_value = {
+            "node-name-1": 1,
+            "node-name-2": 2,
+        }
         self.mock_k8s_client.list_node_with_temp_config.return_value = (
             _generate_deep_health_check_nodes_list()
         )
@@ -537,12 +575,12 @@ class ClusterTest(unittest.TestCase):
             }
         }
         self.mock_sm_client.list_clusters.return_value = (
-            _generate_list_clusters_response()
+            _generate_get_clusters_response()
         )
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(list_clusters)
+        result = self.runner.invoke(get_clusters)
         self.assertEqual(result.exit_code, 0)
         self.assertIn("cluster-1", result.output)
         self.assertIn("cluster-2", result.output)
@@ -560,7 +598,7 @@ class ClusterTest(unittest.TestCase):
     @mock.patch(
         "hyperpod_cli.service.list_pods.ListPods.list_pods_and_get_requested_resources_group_by_node_name"
     )
-    def test_list_clusters_with_unexpected_health_status(
+    def test_get_clusters_with_unexpected_health_status(
         self,
         mock_list_pods: mock.Mock,
         mock_subprocess_run: mock.Mock,
@@ -570,7 +608,10 @@ class ClusterTest(unittest.TestCase):
         mock_session: mock.Mock,
         mock_load_kube_config: mock.Mock,
     ):
-        mock_list_pods.return_value = {"node-name-1": 1, "node-name-2": 2}
+        mock_list_pods.return_value = {
+            "node-name-1": 1,
+            "node-name-2": 2,
+        }
         self.mock_k8s_client.list_node_with_temp_config.return_value = (
             _generate_nodes_list_unexpected_label()
         )
@@ -592,12 +633,12 @@ class ClusterTest(unittest.TestCase):
             }
         }
         self.mock_sm_client.list_clusters.return_value = (
-            _generate_list_clusters_response()
+            _generate_get_clusters_response()
         )
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(list_clusters)
+        result = self.runner.invoke(get_clusters)
         self.assertEqual(result.exit_code, 0)
         self.assertNotIn("cluster-1", result.output)
         self.assertNotIn("cluster-2", result.output)
@@ -615,7 +656,7 @@ class ClusterTest(unittest.TestCase):
     @mock.patch(
         "hyperpod_cli.service.list_pods.ListPods.list_pods_and_get_requested_resources_group_by_node_name"
     )
-    def test_list_clusters_with_no_status(
+    def test_get_clusters_with_no_status(
         self,
         mock_list_pods: mock.Mock,
         mock_subprocess_run: mock.Mock,
@@ -625,7 +666,10 @@ class ClusterTest(unittest.TestCase):
         mock_session: mock.Mock,
         mock_load_kube_config: mock.Mock,
     ):
-        mock_list_pods.return_value = {"node-name-1": 1, "node-name-2": 2}
+        mock_list_pods.return_value = {
+            "node-name-1": 1,
+            "node-name-2": 2,
+        }
         self.mock_k8s_client.list_node_with_temp_config.return_value = (
             _generate_nodes_list_no_status()
         )
@@ -647,26 +691,26 @@ class ClusterTest(unittest.TestCase):
             }
         }
         self.mock_sm_client.list_clusters.return_value = (
-            _generate_list_clusters_response()
+            _generate_get_clusters_response()
         )
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(list_clusters)
+        result = self.runner.invoke(get_clusters)
         self.assertEqual(result.exit_code, 0)
         self.assertIn("cluster-1", result.output)
 
     @mock.patch("hyperpod_cli.commands.cluster.ClusterValidator")
-    def test_list_clusters_credentials_failure(self, mock_validator_cls):
+    def test_get_clusters_credentials_failure(self, mock_validator_cls):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = False
 
-        result = self.runner.invoke(list_clusters)
+        result = self.runner.invoke(get_clusters)
         self.assertEqual(result.exit_code, 1)
 
     @mock.patch("hyperpod_cli.commands.cluster.ClusterValidator")
     @mock.patch("boto3.Session")
-    def test_list_clusters_sm_client_no_region_error(
+    def test_get_clusters_sm_client_no_region_error(
         self,
         mock_session: mock.Mock,
         mock_validator_cls,
@@ -675,12 +719,12 @@ class ClusterTest(unittest.TestCase):
         mock_validator.validate_aws_credential.return_value = True
         self.mock_session.client.side_effect = botocore.exceptions.NoRegionError()
         mock_session.return_value = self.mock_session
-        result = self.runner.invoke(list_clusters)
+        result = self.runner.invoke(get_clusters)
         self.assertEqual(result.exit_code, 1)
 
     @mock.patch("hyperpod_cli.commands.cluster.ClusterValidator")
     @mock.patch("boto3.Session")
-    def test_list_clusters_sm_client_unexpected_error(
+    def test_get_clusters_sm_client_unexpected_error(
         self,
         mock_session: mock.Mock,
         mock_validator_cls,
@@ -689,7 +733,7 @@ class ClusterTest(unittest.TestCase):
         mock_validator.validate_aws_credential.return_value = True
         self.mock_session.client.side_effect = Exception("Unexpected error")
         mock_session.return_value = self.mock_session
-        result = self.runner.invoke(list_clusters)
+        result = self.runner.invoke(get_clusters)
         self.assertEqual(result.exit_code, 1)
 
     @mock.patch("kubernetes.config.load_kube_config")
@@ -732,12 +776,15 @@ class ClusterTest(unittest.TestCase):
             }
         }
         self.mock_sm_client.list_clusters.return_value = (
-            _generate_list_clusters_response()
+            _generate_get_clusters_response()
         )
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(list_clusters, ["--clusters", "cluster-3"])
+        result = self.runner.invoke(
+            get_clusters,
+            ["--clusters", "cluster-3"],
+        )
         self.assertEqual(result.exit_code, 0)
         self.assertNotIn("cluster-1", result.output)
         self.assertNotIn("cluster-2", result.output)
@@ -786,7 +833,7 @@ class ClusterTest(unittest.TestCase):
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(list_clusters)
+        result = self.runner.invoke(get_clusters)
         self.assertEqual(result.exit_code, 1)
         # clusters got skipped because exception encounter during processing clusters
         self.assertNotIn("cluster-1", result.output)
@@ -832,12 +879,12 @@ class ClusterTest(unittest.TestCase):
             }
         }
         self.mock_sm_client.list_clusters.return_value = (
-            _generate_list_clusters_response()
+            _generate_get_clusters_response()
         )
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(list_clusters)
+        result = self.runner.invoke(get_clusters)
         self.assertEqual(result.exit_code, 0)
         # clusters got skipped because exception encounter during processing clusters
         self.assertNotIn("cluster-1", result.output)
@@ -881,12 +928,12 @@ class ClusterTest(unittest.TestCase):
             }
         }
         self.mock_sm_client.list_clusters.return_value = (
-            _generate_list_clusters_response()
+            _generate_get_clusters_response()
         )
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(list_clusters)
+        result = self.runner.invoke(get_clusters)
         self.assertEqual(result.exit_code, 0)
         # clusters got skipped because exception encounter during processing clusters
         self.assertNotIn("cluster-1", result.output)
@@ -990,12 +1037,15 @@ def _generate_nodes_list_no_status():
     ]
 
 
-def _generate_list_clusters_response():
+def _generate_get_clusters_response():
     return {
-        "ClusterSummaries": [{"ClusterName": "cluster-1"}, {"ClusterName": "cluster-2"}]
+        "ClusterSummaries": [
+            {"ClusterName": "cluster-1"},
+            {"ClusterName": "cluster-2"},
+        ]
     }
 
 
-def _generate_list_clusters_response_over_maximum():
+def _generate_get_clusters_response_over_maximum():
     cluster_list = [{"ClusterName": f"cluster-{i+1}"} for i in range(100)]
     return {"ClusterSummaries": cluster_list}

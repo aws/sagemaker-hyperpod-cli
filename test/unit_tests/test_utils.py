@@ -171,7 +171,10 @@ class TestUtils(unittest.TestCase):
     def test_store_current_hyperpod_context(self):
         with patch("builtins.open") as mock_write:
             store_current_hyperpod_context(DATA_JSON)
-        mock_write.assert_called_once_with("/tmp/hyperpod_current_context.json", "w")
+        mock_write.assert_called_once_with(
+            "/tmp/hyperpod_current_context.json",
+            "w",
+        )
 
     def test_get_cluster_console_url(self):
         mock_read = mock_open(read_data=DATA)
@@ -181,67 +184,115 @@ class TestUtils(unittest.TestCase):
             result,
             "https://us-west-2.console.aws.amazon.com/sagemaker/home?region=us-west-2#/cluster-management/hyperpod-eks-test",
         )
-        mock_read.assert_called_once_with("/tmp/hyperpod_current_context.json", "r")
+        mock_read.assert_called_once_with(
+            "/tmp/hyperpod_current_context.json",
+            "r",
+        )
 
-    def test_get_cluster_console_url_invalid_data(self):
+    def test_get_cluster_console_url_invalid_data(
+        self,
+    ):
         mock_read = mock_open(read_data=INVALID_DATA)
         with patch("builtins.open", mock_read):
             result = get_cluster_console_url()
         self.assertIsNone(result)
-        mock_read.assert_called_once_with("/tmp/hyperpod_current_context.json", "r")
+        mock_read.assert_called_once_with(
+            "/tmp/hyperpod_current_context.json",
+            "r",
+        )
 
-    def test_get_cluster_console_url_longer_region_prefix(self):
+    def test_get_cluster_console_url_longer_region_prefix(
+        self,
+    ):
         mock_read = mock_open(read_data=INVALID_DATA_LONGER_REGION_PREFIX)
         with patch("builtins.open", mock_read):
             result = get_cluster_console_url()
         self.assertIsNone(result)
-        mock_read.assert_called_once_with("/tmp/hyperpod_current_context.json", "r")
+        mock_read.assert_called_once_with(
+            "/tmp/hyperpod_current_context.json",
+            "r",
+        )
 
-    def test_get_cluster_console_url_shorter_region_prefix(self):
+    def test_get_cluster_console_url_shorter_region_prefix(
+        self,
+    ):
         mock_read = mock_open(read_data=INVALID_DATA_SHORT_REGION_PREFIX)
         with patch("builtins.open", mock_read):
             result = get_cluster_console_url()
         self.assertIsNone(result)
-        mock_read.assert_called_once_with("/tmp/hyperpod_current_context.json", "r")
+        mock_read.assert_called_once_with(
+            "/tmp/hyperpod_current_context.json",
+            "r",
+        )
 
-    def test_get_cluster_console_url_short_region(self):
+    def test_get_cluster_console_url_short_region(
+        self,
+    ):
         mock_read = mock_open(read_data=INVALID_DATA_SHORT_REGION)
         with patch("builtins.open", mock_read):
             result = get_cluster_console_url()
         self.assertIsNone(result)
-        mock_read.assert_called_once_with("/tmp/hyperpod_current_context.json", "r")
+        mock_read.assert_called_once_with(
+            "/tmp/hyperpod_current_context.json",
+            "r",
+        )
 
-    def test_get_cluster_console_url_long_region(self):
+    def test_get_cluster_console_url_long_region(
+        self,
+    ):
         mock_read = mock_open(read_data=INVALID_DATA_LONGER_REGION)
         with patch("builtins.open", mock_read):
             result = get_cluster_console_url()
         self.assertIsNone(result)
-        mock_read.assert_called_once_with("/tmp/hyperpod_current_context.json", "r")
+        mock_read.assert_called_once_with(
+            "/tmp/hyperpod_current_context.json",
+            "r",
+        )
 
-    def test_get_cluster_console_url_invalid_char_region_suffix(self):
+    def test_get_cluster_console_url_invalid_char_region_suffix(
+        self,
+    ):
         mock_read = mock_open(read_data=INVALID_DATA_REGION_SUFFIX)
         with patch("builtins.open", mock_read):
             result = get_cluster_console_url()
         self.assertIsNone(result)
-        mock_read.assert_called_once_with("/tmp/hyperpod_current_context.json", "r")
+        mock_read.assert_called_once_with(
+            "/tmp/hyperpod_current_context.json",
+            "r",
+        )
 
-    def test_get_cluster_console_url_longer_region_suffix(self):
+    def test_get_cluster_console_url_longer_region_suffix(
+        self,
+    ):
         mock_read = mock_open(read_data=INVALID_DATA_LONGER_REGION_SUFFIX)
         with patch("builtins.open", mock_read):
             result = get_cluster_console_url()
         self.assertIsNone(result)
-        mock_read.assert_called_once_with("/tmp/hyperpod_current_context.json", "r")
+        mock_read.assert_called_once_with(
+            "/tmp/hyperpod_current_context.json",
+            "r",
+        )
 
-    def test_get_cluster_console_url_longer_cluster_name(self):
+    def test_get_cluster_console_url_longer_cluster_name(
+        self,
+    ):
         mock_read = mock_open(read_data=INVALID_DATA_LONGER_CLUSTER_NAME)
         with patch("builtins.open", mock_read):
             result = get_cluster_console_url()
         self.assertIsNone(result)
-        mock_read.assert_called_once_with("/tmp/hyperpod_current_context.json", "r")
+        mock_read.assert_called_once_with(
+            "/tmp/hyperpod_current_context.json",
+            "r",
+        )
 
-    def test_get_cluster_console_url_longer_cluster_name_null(self):
+    def test_get_cluster_console_url_longer_cluster_name_null(
+        self,
+    ):
         mock_read = mock_open(read_data=INVALID_DATA_NONE_NAME)
         with patch("builtins.open", mock_read):
             result = get_cluster_console_url()
         self.assertIsNone(result)
-        mock_read.assert_called_once_with("/tmp/hyperpod_current_context.json", "r")
+        mock_read.assert_called_once_with(
+            "/tmp/hyperpod_current_context.json",
+            "r",
+        )

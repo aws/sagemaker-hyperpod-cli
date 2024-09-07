@@ -20,12 +20,15 @@ from hyperpod_cli.constants.command_constants import (
     RestartPolicy,
     KUEUE_QUEUE_NAME_LABEL_KEY,
     HYPERPOD_AUTO_RESUME_ANNOTATION_KEY,
-    HYPERPOD_MAX_RETRY_ANNOTATION_KEY,
-    HYPERPOD_NAMESPACE_PREFIX,
+    HYPERPOD_MAX_RETRY_ANNOTATION_KEY
 )
-from hyperpod_cli.constants.hyperpod_instance_types import HyperpodInstanceType
+from hyperpod_cli.constants.hyperpod_instance_types import (
+    HyperpodInstanceType,
+)
 from hyperpod_cli.utils import setup_logger
-from hyperpod_cli.validators.validator import Validator
+from hyperpod_cli.validators.validator import (
+    Validator,
+)
 
 logger = setup_logger(__name__)
 
@@ -220,12 +223,6 @@ def validate_hyperpod_related_fields(
         )
         return False
 
-    if auto_resume and not _is_hyperpod_monitored_namespaces(namespace):
-        logger.error(
-            "Please ensure submit job to 'kubeflow' namespace or namespace with 'aws-hyperpod' prefix to make 'auto-resume' work as expected "
-        )
-        return False
-
     if (queue_name is None and priority is not None) or (
         queue_name is not None and priority is None
     ):
@@ -279,12 +276,3 @@ def _validate_json_str(
         logger.error(f"An unexpected error occurred: {e}")
         return False
 
-
-def _is_hyperpod_monitored_namespaces(
-    namespace: Optional[str],
-):
-    if namespace is not None:
-        if namespace.startswith(HYPERPOD_NAMESPACE_PREFIX) or namespace == "kubeflow":
-            return True
-
-    return False

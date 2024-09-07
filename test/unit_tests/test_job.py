@@ -28,10 +28,18 @@ from hyperpod_cli.commands.job import (
     suppress_standard_output_context,
     validate_only_config_file_argument,
 )
-from hyperpod_cli.service.cancel_training_job import CancelTrainingJob
-from hyperpod_cli.service.get_training_job import GetTrainingJob
-from hyperpod_cli.service.list_pods import ListPods
-from hyperpod_cli.service.list_training_jobs import ListTrainingJobs
+from hyperpod_cli.service.cancel_training_job import (
+    CancelTrainingJob,
+)
+from hyperpod_cli.service.get_training_job import (
+    GetTrainingJob,
+)
+from hyperpod_cli.service.list_pods import (
+    ListPods,
+)
+from hyperpod_cli.service.list_training_jobs import (
+    ListTrainingJobs,
+)
 
 VALID_CONFIG_FILE_DATA = "cluster:\n  cluster_type: k8s\n  instance_type: ml.g5.xlarge\n  cluster_config: {pullPolicy: IfNotPresent}"
 
@@ -83,7 +91,13 @@ class JobTest(unittest.TestCase):
         mock_get_training_job_service.return_value = self.mock_get_job
         mock_get_training_job_service_and_get_job.return_value = {"Name": "example-job"}
         result = self.runner.invoke(
-            get_job, ["--job-name", "example-job", "--namespace", "kubeflow"]
+            get_job,
+            [
+                "--job-name",
+                "example-job",
+                "--namespace",
+                "kubeflow",
+            ],
         )
         self.assertEqual(result.exit_code, 0)
         self.assertIn("example-job", result.output)
@@ -99,14 +113,25 @@ class JobTest(unittest.TestCase):
         mock_get_training_job_service_and_get_job.return_value = {"Name": "example-job"}
         result = self.runner.invoke(
             get_job,
-            ["--job-name", "example-job", "--namespace", "kubeflow", "--verbose"],
+            [
+                "--job-name",
+                "example-job",
+                "--namespace",
+                "kubeflow",
+                "--verbose",
+            ],
         )
         self.assertEqual(result.exit_code, 0)
         self.assertIn("example-job", result.output)
 
-    def test_get_job_error_missing_name_option(self):
+    def test_get_job_error_missing_name_option(
+        self,
+    ):
         result = self.runner.invoke(get_job, ["example-job"])
-        self.assertIn("Missing option '--job-name'", result.output)
+        self.assertIn(
+            "Missing option '--job-name'",
+            result.output,
+        )
 
     @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob")
     @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob.get_training_job")
@@ -120,7 +145,8 @@ class JobTest(unittest.TestCase):
         result = self.runner.invoke(get_job, ["--job-name", "example-job"])
         self.assertEqual(result.exit_code, 1)
         self.assertIn(
-            "Unexpected error happens when trying to get training job", result.output
+            "Unexpected error happens when trying to get training job",
+            result.output,
         )
 
     @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs")
@@ -229,7 +255,8 @@ class JobTest(unittest.TestCase):
         result = self.runner.invoke(list_jobs)
         self.assertEqual(result.exit_code, 1)
         self.assertIn(
-            "Unexpected error happens when trying to list training job", result.output
+            "Unexpected error happens when trying to list training job",
+            result.output,
         )
 
     @mock.patch("hyperpod_cli.service.list_pods.ListPods")
@@ -241,7 +268,10 @@ class JobTest(unittest.TestCase):
     ):
         mock_list_training_job_service.return_value = self.list_pods
         mock_list_training_job_service_and_list_jobs.return_value = "{}"
-        result = self.runner.invoke(list_pods, ["--job-name", "example-job"])
+        result = self.runner.invoke(
+            list_pods,
+            ["--job-name", "example-job"],
+        )
         self.assertEqual(result.exit_code, 0)
 
     @mock.patch("hyperpod_cli.service.list_pods.ListPods")
@@ -255,7 +285,14 @@ class JobTest(unittest.TestCase):
     ):
         mock_list_training_job_service.return_value = self.list_pods
         mock_list_training_job_service_and_list_jobs.return_value = "{}"
-        result = self.runner.invoke(list_pods, ["--job-name", "example-job", "--debug"])
+        result = self.runner.invoke(
+            list_pods,
+            [
+                "--job-name",
+                "example-job",
+                "--debug",
+            ],
+        )
         self.assertEqual(result.exit_code, 0)
         mock_debug.assert_called()
 
@@ -269,14 +306,25 @@ class JobTest(unittest.TestCase):
         mock_list_training_job_service.return_value = self.list_pods
         mock_list_training_job_service_and_list_jobs.return_value = "{}"
         result = self.runner.invoke(
-            list_pods, ["--job-name", "example-job", "--namespace", "kubeflow"]
+            list_pods,
+            [
+                "--job-name",
+                "example-job",
+                "--namespace",
+                "kubeflow",
+            ],
         )
         self.assertEqual(result.exit_code, 0)
 
-    def test_list_pods_error_missing_name_option(self):
+    def test_list_pods_error_missing_name_option(
+        self,
+    ):
         result = self.runner.invoke(list_pods, ["example-job"])
         self.assertEqual(2, result.exit_code)
-        self.assertIn("Missing option '--job-name'", result.output)
+        self.assertIn(
+            "Missing option '--job-name'",
+            result.output,
+        )
 
     @mock.patch("hyperpod_cli.service.list_pods.ListPods")
     @mock.patch("hyperpod_cli.service.list_pods.ListPods.list_pods_for_training_job")
@@ -287,7 +335,10 @@ class JobTest(unittest.TestCase):
     ):
         mock_list_training_job_service.return_value = self.list_pods
         mock_list_training_job_service_and_list_jobs.side_effect = Exception("Boom!")
-        result = self.runner.invoke(list_pods, ["--job-name", "example-job"])
+        result = self.runner.invoke(
+            list_pods,
+            ["--job-name", "example-job"],
+        )
         self.assertEqual(result.exit_code, 1)
         self.assertIn(
             "Unexpected error happens when trying to list pods for training job",
@@ -305,7 +356,10 @@ class JobTest(unittest.TestCase):
     ):
         mock_cancel_training_job_service.return_value = self.mock_cancel_job
         mock_cancel_training_job_service_and_cancel_job.return_value = "{}"
-        result = self.runner.invoke(cancel_job, ["--job-name", "example-job"])
+        result = self.runner.invoke(
+            cancel_job,
+            ["--job-name", "example-job"],
+        )
         self.assertEqual(result.exit_code, 0)
         self.assertIn("{}\n", result.output)
 
@@ -323,7 +377,12 @@ class JobTest(unittest.TestCase):
         mock_cancel_training_job_service.return_value = self.mock_cancel_job
         mock_cancel_training_job_service_and_cancel_job.return_value = "{}"
         result = self.runner.invoke(
-            cancel_job, ["--job-name", "example-job", "--debug"]
+            cancel_job,
+            [
+                "--job-name",
+                "example-job",
+                "--debug",
+            ],
         )
         self.assertEqual(result.exit_code, 0)
         self.assertIn("{}\n", result.output)
@@ -341,14 +400,25 @@ class JobTest(unittest.TestCase):
         mock_cancel_training_job_service.return_value = self.mock_cancel_job
         mock_cancel_training_job_service_and_cancel_job.return_value = "{}"
         result = self.runner.invoke(
-            cancel_job, ["--job-name", "example-job", "--namespace", "kubeflow"]
+            cancel_job,
+            [
+                "--job-name",
+                "example-job",
+                "--namespace",
+                "kubeflow",
+            ],
         )
         self.assertEqual(result.exit_code, 0)
         self.assertIn("{}\n", result.output)
 
-    def test_cancel_job_error_missing_name_option(self):
+    def test_cancel_job_error_missing_name_option(
+        self,
+    ):
         result = self.runner.invoke(cancel_job, ["example-job"])
-        self.assertIn("Missing option '--job-name'", result.output)
+        self.assertIn(
+            "Missing option '--job-name'",
+            result.output,
+        )
 
     @mock.patch("hyperpod_cli.service.cancel_training_job.CancelTrainingJob")
     @mock.patch(
@@ -361,16 +431,23 @@ class JobTest(unittest.TestCase):
     ):
         mock_cancel_training_job_service.return_value = self.mock_cancel_job
         mock_cancel_training_job_service_and_cancel_job.side_effect = Exception("Boom!")
-        result = self.runner.invoke(cancel_job, ["--job-name", "example-job"])
+        result = self.runner.invoke(
+            cancel_job,
+            ["--job-name", "example-job"],
+        )
         self.assertEqual(result.exit_code, 1)
         self.assertIn(
-            "Unexpected error happens when trying to cancel training job", result.output
+            "Unexpected error happens when trying to cancel training job",
+            result.output,
         )
 
     @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
     @mock.patch("hyperpod_cli.commands.job.compose")
     @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch(
+        "builtins.open",
+        new_callable=mock.mock_open,
+    )
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -420,7 +497,10 @@ class JobTest(unittest.TestCase):
     @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
     @mock.patch("hyperpod_cli.commands.job.compose")
     @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch(
+        "builtins.open",
+        new_callable=mock.mock_open,
+    )
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -469,7 +549,10 @@ class JobTest(unittest.TestCase):
     @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
     @mock.patch("hyperpod_cli.commands.job.compose")
     @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch(
+        "builtins.open",
+        new_callable=mock.mock_open,
+    )
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -523,7 +606,10 @@ class JobTest(unittest.TestCase):
     @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
     @mock.patch("hyperpod_cli.commands.job.compose")
     @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch(
+        "builtins.open",
+        new_callable=mock.mock_open,
+    )
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -573,7 +659,10 @@ class JobTest(unittest.TestCase):
     @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
     @mock.patch("hyperpod_cli.commands.job.compose")
     @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch(
+        "builtins.open",
+        new_callable=mock.mock_open,
+    )
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -622,7 +711,10 @@ class JobTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
-    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch(
+        "builtins.open",
+        new_callable=mock.mock_open,
+    )
     @mock.patch("yaml.dump")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("hyperpod_cli.commands.job.JobValidator")
@@ -658,7 +750,10 @@ class JobTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 1)
 
-    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch(
+        "builtins.open",
+        new_callable=mock.mock_open,
+    )
     @mock.patch("yaml.dump")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("hyperpod_cli.commands.job.JobValidator")
@@ -698,12 +793,24 @@ class JobTest(unittest.TestCase):
     @mock.patch("hyperpod_cli.commands.job.compose")
     @mock.patch("hyperpod_cli.commands.job.customer_launcher")
     @mock.patch("os.path.exists", return_value=True)
-    @mock.patch("builtins.open", mock_open(read_data=VALID_CONFIG_FILE_DATA))
+    @mock.patch(
+        "builtins.open",
+        mock_open(read_data=VALID_CONFIG_FILE_DATA),
+    )
     @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("os.path.abspath", return_value="/absolute/path/to/file.yaml")
+    @mock.patch(
+        "os.path.abspath",
+        return_value="/absolute/path/to/file.yaml",
+    )
     @mock.patch("os.path.isabs", return_value=False)
-    @mock.patch("os.path.split", return_value=("/absolute/path/to", "file.yaml"))
+    @mock.patch(
+        "os.path.split",
+        return_value=(
+            "/absolute/path/to",
+            "file.yaml",
+        ),
+    )
     @mock.patch("hyperpod_cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_config_file(
@@ -737,11 +844,20 @@ class JobTest(unittest.TestCase):
     @mock.patch("hyperpod_cli.commands.job.compose")
     @mock.patch("hyperpod_cli.commands.job.customer_launcher")
     @mock.patch("os.path.exists", return_value=True)
-    @mock.patch("builtins.open", mock_open(read_data=VALID_CONFIG_FILE_DATA))
+    @mock.patch(
+        "builtins.open",
+        mock_open(read_data=VALID_CONFIG_FILE_DATA),
+    )
     @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("os.path.isabs", return_value=True)
-    @mock.patch("os.path.split", return_value=("/absolute/path/to", "file.yaml"))
+    @mock.patch(
+        "os.path.split",
+        return_value=(
+            "/absolute/path/to",
+            "file.yaml",
+        ),
+    )
     @mock.patch("hyperpod_cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_config_file_absolute_path(
@@ -766,7 +882,10 @@ class JobTest(unittest.TestCase):
         mock_initialize_config_dir.return_value.__enter__.return_value = None
         result = self.runner.invoke(
             start_job,
-            ["--config-file", "/absolute/path/to/file.yaml"],
+            [
+                "--config-file",
+                "/absolute/path/to/file.yaml",
+            ],
         )
         self.assertEqual(result.exit_code, 0)
 
@@ -831,7 +950,13 @@ class JobTest(unittest.TestCase):
     @mock.patch("os.path.exists", return_value=False)
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("os.path.isabs", return_value=True)
-    @mock.patch("os.path.split", return_value=("/absolute/path/to", "file.yaml"))
+    @mock.patch(
+        "os.path.split",
+        return_value=(
+            "/absolute/path/to",
+            "file.yaml",
+        ),
+    )
     @mock.patch("hyperpod_cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_invalid_config_file_path(
@@ -848,7 +973,10 @@ class JobTest(unittest.TestCase):
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         result = self.runner.invoke(
             start_job,
-            ["--config-file", "/absolute/path/to/file.yaml"],
+            [
+                "--config-file",
+                "/absolute/path/to/file.yaml",
+            ],
         )
         self.assertNotEqual(result.exit_code, 0)
 
@@ -856,7 +984,13 @@ class JobTest(unittest.TestCase):
     @mock.patch("os.path.join")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("os.path.isabs", return_value=True)
-    @mock.patch("os.path.split", return_value=("/absolute/path/to", "file.yaml"))
+    @mock.patch(
+        "os.path.split",
+        return_value=(
+            "/absolute/path/to",
+            "file.yaml",
+        ),
+    )
     @mock.patch("hyperpod_cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_invalid_config_file(
@@ -876,14 +1010,20 @@ class JobTest(unittest.TestCase):
         mock_exists.side_effect = lambda path: path != "/path/to/config/invalid.yaml"
         result = self.runner.invoke(
             start_job,
-            ["--config-file", "/absolute/path/to/file.yaml"],
+            [
+                "--config-file",
+                "/absolute/path/to/file.yaml",
+            ],
         )
         self.assertNotEqual(result.exit_code, 0)
 
     @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
     @mock.patch("hyperpod_cli.commands.job.compose")
     @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch(
+        "builtins.open",
+        new_callable=mock.mock_open,
+    )
     @mock.patch("yaml.dump")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("hyperpod_cli.commands.job.JobValidator")
@@ -944,7 +1084,10 @@ class JobTest(unittest.TestCase):
     @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
     @mock.patch("hyperpod_cli.commands.job.compose")
     @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch(
+        "builtins.open",
+        new_callable=mock.mock_open,
+    )
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -996,7 +1139,10 @@ class JobTest(unittest.TestCase):
     @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
     @mock.patch("hyperpod_cli.commands.job.compose")
     @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch(
+        "builtins.open",
+        new_callable=mock.mock_open,
+    )
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -1048,7 +1194,10 @@ class JobTest(unittest.TestCase):
     @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
     @mock.patch("hyperpod_cli.commands.job.compose")
     @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch(
+        "builtins.open",
+        new_callable=mock.mock_open,
+    )
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -1102,7 +1251,10 @@ class JobTest(unittest.TestCase):
     @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
     @mock.patch("hyperpod_cli.commands.job.compose")
     @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch(
+        "builtins.open",
+        new_callable=mock.mock_open,
+    )
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -1151,7 +1303,10 @@ class JobTest(unittest.TestCase):
     @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
     @mock.patch("hyperpod_cli.commands.job.compose")
     @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch(
+        "builtins.open",
+        new_callable=mock.mock_open,
+    )
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -1203,7 +1358,10 @@ class JobTest(unittest.TestCase):
     @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
     @mock.patch("hyperpod_cli.commands.job.compose")
     @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch(
+        "builtins.open",
+        new_callable=mock.mock_open,
+    )
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -1255,7 +1413,10 @@ class JobTest(unittest.TestCase):
     @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
     @mock.patch("hyperpod_cli.commands.job.compose")
     @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch(
+        "builtins.open",
+        new_callable=mock.mock_open,
+    )
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -1324,7 +1485,10 @@ class JobTest(unittest.TestCase):
                 # Check if 'stdout' is redirected to os.devnull
                 args, kwargs = mock_popen.call_args
                 self.assertIn("stdout", kwargs)
-                self.assertEqual(kwargs["stdout"].name, os.devnull)
+                self.assertEqual(
+                    kwargs["stdout"].name,
+                    os.devnull,
+                )
 
         # Outside the context, subprocess.Popen should be restored to its original implementation
         self.assertIs(subprocess.Popen, original_popen)
@@ -1346,7 +1510,10 @@ class JobTest(unittest.TestCase):
 
     @mock.patch("click.core.Context")
     def test_config_file_with_other_arguments(self, mock_ctx):
-        mock_ctx.params = {"config_file": "config.yaml", "other_arg": "value"}
+        mock_ctx.params = {
+            "config_file": "config.yaml",
+            "other_arg": "value",
+        }
         mock_ctx.get_parameter_source = mock.Mock(
             side_effect=[
                 click.core.ParameterSource.COMMANDLINE,

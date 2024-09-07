@@ -38,17 +38,34 @@ from hyperpod_cli.constants.command_constants import (
     PersistentVolumeClaim,
     Volume,
 )
-from hyperpod_cli.clients.kubernetes_client import KubernetesClient
-from hyperpod_cli.custom_launcher.main import main as customer_launcher
-from hyperpod_cli.service.cancel_training_job import CancelTrainingJob
-from hyperpod_cli.service.get_training_job import GetTrainingJob
-from hyperpod_cli.service.list_pods import ListPods
-from hyperpod_cli.service.list_training_jobs import ListTrainingJobs
+from hyperpod_cli.clients.kubernetes_client import (
+    KubernetesClient,
+)
+from hyperpod_cli.custom_launcher.main import (
+    main as customer_launcher,
+)
+from hyperpod_cli.service.cancel_training_job import (
+    CancelTrainingJob,
+)
+from hyperpod_cli.service.get_training_job import (
+    GetTrainingJob,
+)
+from hyperpod_cli.service.list_pods import (
+    ListPods,
+)
+from hyperpod_cli.service.list_training_jobs import (
+    ListTrainingJobs,
+)
 from hyperpod_cli.templates.k8s_pytorch_job_template import (
     KUBERNETES_PYTORCH_JOB_TEMPLATE,
 )
-from hyperpod_cli.utils import setup_logger, set_logging_level
-from hyperpod_cli.validators.job_validator import JobValidator
+from hyperpod_cli.utils import (
+    setup_logger,
+    set_logging_level,
+)
+from hyperpod_cli.validators.job_validator import (
+    JobValidator,
+)
 
 logger = setup_logger(__name__)
 
@@ -75,7 +92,11 @@ logger = setup_logger(__name__)
     required=False,
     help="Optional. If set to `True`, the command enables verbose mode and prints out more detailed output with additional fields.",
 )
-@click.option("--debug", is_flag=True, help="Enable debug mode")
+@click.option(
+    "--debug",
+    is_flag=True,
+    help="Enable debug mode",
+)
 def get_job(
     job_name: str,
     namespace: Optional[str],
@@ -125,7 +146,11 @@ def get_job(
     required=False,
     help="Optional. A label selector to filter the listed jobs. The selector supports the '=', '==', and '!=' operators (e.g., `-l key1=value1,key2=value2`).",
 )
-@click.option("--debug", is_flag=True, help="Enable debug mode")
+@click.option(
+    "--debug",
+    is_flag=True,
+    help="Enable debug mode",
+)
 def list_jobs(
     namespace: Optional[str],
     all_namespaces: Optional[bool],
@@ -161,7 +186,11 @@ def list_jobs(
     required=False,
     help="Optional. The namespace to list the pods in. If not provided, the CLI will list the pods in the namespace set by the user while connecting to the cluster. If provided, and the user has access to the namespace, the CLI will list the pods from the specified namespace.",
 )
-@click.option("--debug", is_flag=True, help="Enable debug mode")
+@click.option(
+    "--debug",
+    is_flag=True,
+    help="Enable debug mode",
+)
 def list_pods(
     job_name: str,
     namespace: Optional[str],
@@ -199,7 +228,11 @@ def list_pods(
     required=False,
     help="Optional. The namespace to cancel the job in. If not provided, the CLI will try to cancel the job in the namespace set by the user while connecting to the cluster. If provided, and the user has access to the namespace, the CLI will cancel the job from the specified namespace.",
 )
-@click.option("--debug", is_flag=True, help="Enable debug mode")
+@click.option(
+    "--debug",
+    is_flag=True,
+    help="Enable debug mode",
+)
 def cancel_job(
     job_name: str,
     namespace: Optional[str],
@@ -227,7 +260,11 @@ def cancel_job(
     type=click.Path(),
     help="Optional. Specify the K8s job config file to submit a training job. You should pass the absolute path to the file or the file in the current folder. If you use this, you don't need to specify any other options.",
 )
-@click.option("--job-name", type=click.STRING, help="The name of the training job")
+@click.option(
+    "--job-name",
+    type=click.STRING,
+    help="The name of the training job",
+)
 @click.option(
     "--namespace",
     type=click.STRING,
@@ -262,7 +299,9 @@ def cancel_job(
     help="Optional. The command to run the entrypoint script. Currently, only `torchrun` is supported.",
 )
 @click.option(
-    "--script-args", type=click.STRING, help="The list of arguments for entryscripts."
+    "--script-args",
+    type=click.STRING,
+    help="The list of arguments for entryscripts.",
 )
 @click.option(
     "--results-dir",
@@ -283,7 +322,7 @@ def cancel_job(
 @click.option(
     "--node-count",
     type=click.INT,
-    help="red. The number of nodes (instances) to launch the jobs on.",
+    help="Required. The number of nodes (instances) to launch the jobs on.",
 )
 @click.option(
     "--tasks-per-node",
@@ -301,8 +340,16 @@ def cancel_job(
     default="Kueue",
     help="Optional. The scheduler type to use. Currently, only `Kueue` is supported.",
 )
-@click.option("--queue-name", type=click.STRING, help="Optional. The name of the queue to submit the job to, which is created by the cluster admin users in your AWS account.")
-@click.option("--priority", type=click.STRING, help="Optional. The priority for the job, which needs to be created by the cluster admin users and match the name in the cluster.")
+@click.option(
+    "--queue-name",
+    type=click.STRING,
+    help="Optional. The name of the queue to submit the job to, which is created by the cluster admin users in your AWS account.",
+)
+@click.option(
+    "--priority",
+    type=click.STRING,
+    help="Optional. The priority for the job, which needs to be created by the cluster admin users and match the name in the cluster.",
+)
 @click.option(
     "--auto-resume",
     type=click.BOOL,
@@ -336,8 +383,7 @@ def cancel_job(
     "--persistent-volume-claims",
     type=click.STRING,
     required=False,
-    help="Optional. The pre-created persistent volume claims (PVCs) that the data scientist can choose to mount to the containers. The cluster admin users should create PVCs and provide it to the data scientist users."
-    " claimName:<container/mount/path>,claimName1:<container/mount/path1>",
+    help="Optional. The pre-created persistent volume claims (PVCs) that the data scientist can choose to mount to the containers. The cluster admin users should create PVCs and provide it to the data scientist users.",
 )
 @click.option(
     "--volumes",
@@ -346,7 +392,11 @@ def cancel_job(
     help="Optional. Add a temp directory for containers to store data in the hosts."
     " <volume_name>:</host/mount/path>:</container/mount/path>,<volume_name>:</host/mount/path1>:</container/mount/path1>",
 )
-@click.option("--debug", is_flag=True, help="Enable debug mode")
+@click.option(
+    "--debug",
+    is_flag=True,
+    help="Enable debug mode",
+)
 def start_job(
     config_file: Optional[str],
     job_name: Optional[str],

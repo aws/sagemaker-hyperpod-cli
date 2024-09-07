@@ -32,9 +32,8 @@ ENV_VARS_DICT = {"NCCL_DEBUG": "INFO"}
 SAGEMAKER_HYPERPOD_NAME_LABEL = "sagemaker.amazonaws.com/cluster-name"
 HP_HEALTH_STATUS_LABEL = "sagemaker.amazonaws.com/node-health-status"
 INSTANCE_TYPE_LABEL = "node.kubernetes.io/instance-type"
-DEEP_HEALTH_CHECK_STATUS_LABEL = "sagemaker.amazonaws.com/deep-health-check-status "
+DEEP_HEALTH_CHECK_STATUS_LABEL = "sagemaker.amazonaws.com/deep-health-check-status"
 TEMP_KUBE_CONFIG_FILE = "/tmp/kubeconfig"
-HYPERPOD_NAMESPACE_PREFIX = "aws-hyperpod"
 
 
 class PullPolicy(Enum):

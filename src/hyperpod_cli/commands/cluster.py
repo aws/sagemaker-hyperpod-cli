@@ -25,18 +25,24 @@ from kubernetes import client
 from ratelimit import limits, sleep_and_retry
 from tabulate import tabulate
 
-from hyperpod_cli.clients.kubernetes_client import KubernetesClient
+from hyperpod_cli.clients.kubernetes_client import (
+    KubernetesClient,
+)
 from hyperpod_cli.constants.command_constants import (
     DEEP_HEALTH_CHECK_STATUS_LABEL,
     HP_HEALTH_STATUS_LABEL,
     INSTANCE_TYPE_LABEL,
     SAGEMAKER_HYPERPOD_NAME_LABEL,
-    TEMP_KUBE_CONFIG_FILE,
     Orchestrator,
+    TEMP_KUBE_CONFIG_FILE,
     OutputFormat,
 )
-from hyperpod_cli.telemetry.user_agent import get_user_agent_extra_suffix
-from hyperpod_cli.service.list_pods import ListPods
+from hyperpod_cli.telemetry.user_agent import (
+    get_user_agent_extra_suffix,
+)
+from hyperpod_cli.service.list_pods import (
+    ListPods,
+)
 from hyperpod_cli.utils import (
     get_name_from_arn,
     get_sagemaker_client,
@@ -44,7 +50,9 @@ from hyperpod_cli.utils import (
     set_logging_level,
     store_current_hyperpod_context,
 )
-from hyperpod_cli.validators.cluster_validator import ClusterValidator
+from hyperpod_cli.validators.cluster_validator import (
+    ClusterValidator,
+)
 
 
 RATE_LIMIT = 4
@@ -75,17 +83,47 @@ logger = setup_logger(__name__)
     help="Optional. The output format. Available values are `TABLE` and `JSON`. The default value is `JSON`.",
 )
 @click.option(
-    "--clusters", type=click.STRING, required=False, help="Optional. A list of HyperPod cluster names that users want to check the capacity for. This is useful for users who know some of their most commonly used clusters and want to check the capacity status of the clusters in the AWS account."
+    "--clusters",
+    type=click.STRING,
+    required=False,
+    help="Optional. A list of HyperPod cluster names that users want to check the capacity for. This is useful for users who know some of their most commonly used clusters and want to check the capacity status of the clusters in the AWS account.",
 )
-@click.option("--debug", is_flag=True, help="Enable debug mode")
-def list_clusters(
+@click.option(
+    "--debug",
+    is_flag=True,
+    help="Enable debug mode",
+)
+def get_clusters(
     region: Optional[str],
     orchestrator: Optional[str],
     output: Optional[str],
     clusters: Optional[str],
     debug: bool,
 ):
-    """Get clusters capacity."""
+    """List SageMaker Hyperpod Clusters with cluster metadata.
+
+    Example Usage:
+    1. List clusters with JSON output: hyperpod get-clusters.
+
+    Output:
+        [
+            {
+                "Cluster": "hyperpod-eks-cluster-a",
+                "InstanceType": "ml.g5.2xlarge",
+                "TotalNodes": 2,
+                "AcceleratorDevicesAvailable": 1,
+                "NodeHealthStatus=Schedulable": 2,
+                "DeepHealthCheckStatus=Passed": "N/A"
+            }
+        ]
+
+    2. List clusters with table output: hyperpod get-clusters --output table.
+
+    Output:
+         Cluster                | InstanceType   |   TotalNodes | AcceleratorDevicesAvailable   |   NodeHealthStatus=Schedulable | DeepHealthCheckStatus=Passed
+         -----------------------+----------------+--------------+-------------------------------+--------------------------------+-----------------------------
+         hyperpod-eks-cluster-a | ml.g5.2xlarge  |            2 |                              1|                              2 |                          N/A
+    """
     if debug:
         set_logging_level(logger, logging.DEBUG)
     validator = ClusterValidator()
@@ -147,7 +185,7 @@ def list_clusters(
         # Currently only support list <= 50 clusters
         if counter >= 50:
             logger.debug(
-                "The 'list-clusters' command has reached the maximum number of HyperPod clusters that can be listed, which is 50."
+                "The 'get-clusters' command has reached the maximum number of HyperPod clusters that can be listed, which is 50."
             )
             break
 
@@ -187,7 +225,7 @@ def rate_limited_operation(
             return
         eks_cluster_name = get_name_from_arn(eks_cluster_arn)
         _update_kube_config(eks_cluster_name, region, temp_config_file)
-        k8s_client = KubernetesClient()
+        k8s_client = KubernetesClient(is_get_capacity=True)
         nodes = k8s_client.list_node_with_temp_config(
             temp_config_file, SAGEMAKER_HYPERPOD_NAME_LABEL
         )
@@ -219,7 +257,9 @@ def _get_hyperpod_clusters(sm_client: boto3.client) -> List[str]:
     return cluster_names
 
 
-def _aggregate_nodes_info(nodes: List[client.V1Node]) -> Dict[str, Dict[str, Any]]:
+def _aggregate_nodes_info(
+    nodes: List[client.V1Node],
+) -> Dict[str, Dict[str, Any]]:
     list_pods_service = ListPods()
     nodes_resource_allocated_dict = (
         list_pods_service.list_pods_and_get_requested_resources_group_by_node_name()
@@ -300,7 +340,11 @@ def _aggregate_nodes_info(nodes: List[client.V1Node]) -> Dict[str, Dict[str, Any
     help="Optional. The namespace that you want to connect to. If not specified, this command uses the [Kubernetes namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) of the Amazon EKS cluster associated with the SageMaker HyperPod cluster in your AWS account.",
     default="default",
 )
-@click.option("--debug", is_flag=True, help="Enable debug mode")
+@click.option(
+    "--debug",
+    is_flag=True,
+    help="Enable debug mode",
+)
 def connect_cluster(
     cluster_name: str,
     region: Optional[str],
@@ -358,7 +402,9 @@ def connect_cluster(
 
 
 def _update_kube_config(
-    eks_name: str, region: Optional[str], config_file: Optional[str]
+    eks_name: str,
+    region: Optional[str],
+    config_file: Optional[str],
 ) -> None:
     """
     Update the local kubeconfig with the specified EKS cluster details.

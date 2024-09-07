@@ -15,7 +15,9 @@ from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
 
-from hyperpod_cli.validators.cluster_validator import ClusterValidator
+from hyperpod_cli.validators.cluster_validator import (
+    ClusterValidator,
+)
 
 
 class TestClusterValidator(unittest.TestCase):

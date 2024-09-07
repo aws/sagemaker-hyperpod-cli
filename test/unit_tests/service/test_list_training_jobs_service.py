@@ -14,48 +14,85 @@ import unittest
 from unittest import mock
 from unittest.mock import MagicMock
 
-from hyperpod_cli.clients.kubernetes_client import KubernetesClient
-from hyperpod_cli.service.list_training_jobs import ListTrainingJobs
+from hyperpod_cli.clients.kubernetes_client import (
+    KubernetesClient,
+)
+from hyperpod_cli.service.list_training_jobs import (
+    ListTrainingJobs,
+)
+
+from kubernetes.client.rest import ApiException
 
 SAMPLE_OUTPUT = {
     "items": [
         {
-            "metadata": {"name": "test-name", "namespace": "test-namespace"},
-            "status": {"startTime": "test-time", "conditions": [{"type": "Succeeded", "lastTransitionTime": '2023-08-27T22:47:57Z'}]},
+            "metadata": {
+                "name": "test-name",
+                "namespace": "test-namespace",
+            },
+            "status": {
+                "startTime": "test-time",
+                "conditions": [
+                    {
+                        "type": "Succeeded",
+                        "lastTransitionTime": "2023-08-27T22:47:57Z",
+                    }
+                ],
+            },
         },
         {
-            "metadata": {"name": "test-name1", "namespace": "test-namespace1"},
+            "metadata": {
+                "name": "test-name1",
+                "namespace": "test-namespace1",
+            },
             "status": {
                 "startTime": "test-time1",
                 "conditions": [
                     {
                         "type": "Running",
-                        "lastTransitionTime": '2024-08-27T22:47:57Z'
+                        "lastTransitionTime": "2024-08-27T22:47:57Z",
                     },
                     {
                         "type": "Created",
-                        "lastTransitionTime": '2023-08-27T22:47:57Z'
+                        "lastTransitionTime": "2023-08-27T22:47:57Z",
                     },
                 ],
             },
         },
         {
-            "metadata": {"name": "test-name2", "namespace": "test-namespace1"},
-            "status": {"startTime": "test-time1", "conditions": [{"type": "Created", "lastTransitionTime": '2024-08-27T22:47:57Z'}]},
+            "metadata": {
+                "name": "test-name2",
+                "namespace": "test-namespace1",
+            },
+            "status": {
+                "startTime": "test-time1",
+                "conditions": [
+                    {
+                        "type": "Created",
+                        "lastTransitionTime": "2024-08-27T22:47:57Z",
+                    }
+                ],
+            },
         },
     ]
 }
 INVALID_OUTPUT = {
     "items": [
         {
-            "status": {"startTime": "test-time", "conditions": [{"type": "Succeeded"}]},
+            "status": {
+                "startTime": "test-time",
+                "conditions": [{"type": "Succeeded"}],
+            },
         }
     ]
 }
 OUTPUT_WITHOUT_STATUS = {
     "items": [
         {
-            "metadata": {"name": "test-name", "namespace": "test-namespace"},
+            "metadata": {
+                "name": "test-name",
+                "namespace": "test-namespace",
+            },
         }
     ]
 }
@@ -114,6 +151,19 @@ class ListTrainingJobsTest(unittest.TestCase):
         result = self.mock_list_training_jobs.list_training_jobs(None, True, None)
         self.assertIn("test-name", result)
         self.assertIn("test-name1", result)
+
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    def test_list_training_jobs_all_namespace_api_exception(
+        self,
+        mock_kubernetes_client: mock.Mock,
+    ):
+        mock_kubernetes_client.return_value = self.mock_k8s_client
+        self.mock_k8s_client.list_namespaces.return_value = ["namespace"]
+        self.mock_k8s_client.list_training_jobs.side_effect = ApiException(
+            status="Failed", reason="unexpected"
+        )
+        with self.assertRaises(RuntimeError):
+            self.mock_list_training_jobs.list_training_jobs(None, True, None)
 
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_list_training_jobs_all_namespace_no_jobs(

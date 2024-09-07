@@ -15,9 +15,17 @@ from typing import List, Optional
 
 import yaml
 from kubernetes import client, config, stream
-from kubernetes.client import V1Namespace, V1NamespaceList
-from kubernetes.config import KUBE_CONFIG_DEFAULT_LOCATION
+from kubernetes.client import (
+    V1Namespace,
+    V1NamespaceList,
+)
+from kubernetes.config import (
+    KUBE_CONFIG_DEFAULT_LOCATION,
+)
 
+from hyperpod_cli.constants.command_constants import (
+    TEMP_KUBE_CONFIG_FILE,
+)
 from hyperpod_cli.constants.pytorch_constants import (
     PYTORCH_CUSTOM_OBJECT_GROUP,
     PYTORCH_CUSTOM_OBJECT_PLURAL,
@@ -34,11 +42,11 @@ class KubernetesClient:
     _instance = None
     _kube_client = None
 
-    def __new__(cls) -> "KubernetesClient":
+    def __new__(cls, is_get_capacity: bool = False) -> "KubernetesClient":
         if cls._instance is None:
             cls._instance = super(KubernetesClient, cls).__new__(cls)
             config.load_kube_config(
-                config_file=KUBE_CONFIG_PATH
+                config_file=KUBE_CONFIG_PATH if not is_get_capacity else TEMP_KUBE_CONFIG_FILE
             )  # or config.load_incluster_config() for in-cluster config
             cls._instance._kube_client = client.ApiClient()
         return cls._instance
@@ -154,7 +162,9 @@ class KubernetesClient:
                 break
         return nodes
 
-    def get_current_context_namespace(self) -> str:
+    def get_current_context_namespace(
+        self,
+    ) -> str:
         """
         Returns current user namespace context
         """
@@ -175,7 +185,8 @@ class KubernetesClient:
 
     def list_pods_with_labels(self, namespace: str, label_selector: str):
         return client.CoreV1Api().list_namespaced_pod(
-            namespace=namespace, label_selector=label_selector
+            namespace=namespace,
+            label_selector=label_selector,
         )
 
     def list_pods_in_all_namespaces_with_labels(self, label_selector: str):
@@ -221,7 +232,11 @@ class KubernetesClient:
             name=job_name,
         )
 
-    def list_training_jobs(self, namespace: str, label_selector: Optional[str]):
+    def list_training_jobs(
+        self,
+        namespace: str,
+        label_selector: Optional[str],
+    ):
         return client.CustomObjectsApi().list_namespaced_custom_object(
             group=PYTORCH_CUSTOM_OBJECT_GROUP,
             version=PYTORCH_CUSTOM_OBJECT_VERSION,
@@ -230,7 +245,12 @@ class KubernetesClient:
             label_selector=label_selector,
         )
 
-    def exec_command_on_pod(self, pod: str, namespace: str, bash_command: str):
+    def exec_command_on_pod(
+        self,
+        pod: str,
+        namespace: str,
+        bash_command: str,
+    ):
         return stream.stream(
             client.CoreV1Api().connect_get_namespaced_pod_exec,
             stderr=True,
