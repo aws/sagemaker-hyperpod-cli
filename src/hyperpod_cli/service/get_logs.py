@@ -12,8 +12,13 @@
 # language governing permissions and limitations under the License.
 from typing import Optional
 
-from hyperpod_cli.clients.kubernetes_client import KubernetesClient
-from hyperpod_cli.service.list_pods import ListPods
+from hyperpod_cli.clients.kubernetes_client import (
+    KubernetesClient,
+)
+from hyperpod_cli.service.list_pods import (
+    ListPods,
+)
+from kubernetes.client.rest import ApiException
 
 
 class GetLogs:
@@ -21,7 +26,10 @@ class GetLogs:
         return
 
     def get_training_job_logs(
-        self, job_name: str, pod_name: str, namespace: Optional[str]
+        self,
+        job_name: str,
+        pod_name: str,
+        namespace: Optional[str],
     ):
         """
         Get logs for pod asscoited with the training job
@@ -32,12 +40,15 @@ class GetLogs:
         if not namespace:
             namespace = k8s_client.get_current_context_namespace()
 
-        pods_for_training_job = list_pods_service.list_pods_for_training_job(
-            job_name, namespace, False
-        )
-        if pod_name not in pods_for_training_job:
-            raise RuntimeError(
-                f"Given pod name {pod_name} is not associated with training job {job_name} in namespace {namespace}"
+        try:
+            pods_for_training_job = list_pods_service.list_pods_for_training_job(
+                job_name, namespace, False
             )
+            if pod_name not in pods_for_training_job:
+                raise RuntimeError(
+                    f"Given pod name {pod_name} is not associated with training job {job_name} in namespace {namespace}"
+                )
 
-        return k8s_client.get_logs_for_pod(pod_name, namespace)
+            return k8s_client.get_logs_for_pod(pod_name, namespace)
+        except ApiException as e:
+            raise RuntimeError(f"Unexpected API error: {e.reason} ({e.status})")

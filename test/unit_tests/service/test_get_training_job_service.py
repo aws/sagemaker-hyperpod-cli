@@ -14,8 +14,14 @@ import unittest
 from unittest import mock
 from unittest.mock import MagicMock
 
-from hyperpod_cli.clients.kubernetes_client import KubernetesClient
-from hyperpod_cli.service.get_training_job import GetTrainingJob
+from hyperpod_cli.clients.kubernetes_client import (
+    KubernetesClient,
+)
+from hyperpod_cli.service.get_training_job import (
+    GetTrainingJob,
+)
+
+from kubernetes.client.rest import ApiException
 
 
 SAMPLE_HYPERPOD_CLUSTER_URL = "https://us-west-2.console.aws.amazon.com/sagemaker/home?region=us-west-2#/cluster-management/cluster_name"
@@ -157,3 +163,19 @@ class GetTrainingJobTest(unittest.TestCase):
         result = self.mock_get_training_job.get_training_job("sample-job", None, True)
         print(result)
         self.assertIn("test_status", result)
+
+    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    def test_get_training_job_with_verbose_without_metadata_api_exception(
+        self,
+        mock_kubernetes_client: mock.Mock,
+        mock_current_hyperpod_context: mock.Mock,
+    ):
+        mock_kubernetes_client.return_value = self.mock_k8s_client
+        mock_current_hyperpod_context.return_value = SAMPLE_HYPERPOD_CLUSTER_URL
+        self.mock_k8s_client.get_current_context_namespace.return_value = "namespace"
+        self.mock_k8s_client.get_job.side_effect = ApiException(
+            status="Failed", reason="unexpected"
+        )
+        with self.assertRaises(RuntimeError):
+            self.mock_get_training_job.get_training_job("sample-job", None, True)

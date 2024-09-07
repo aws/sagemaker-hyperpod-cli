@@ -34,7 +34,7 @@ dependencies:
   - name: nvidia-device-plugin
     version: "0.16.1"
     repository: https://nvidia.github.io/k8s-device-plugin
-    condition: nvidia-device-plugin.devicePlugin.enabled
+    condition: nvidia-device-plugin.devicePlugin.enabled    
   - name: aws-efa-k8s-device-plugin
     version: "0.5.3"
     repository: https://aws.github.io/eks-charts/
@@ -42,23 +42,23 @@ dependencies:
   - name: neuron-device-plugin
     version: "0.1.0"
     repository: "file://charts/neuron-device-plugin"
-    condition: neuron-device-plugin.devicePlugin.enabled
-  - name: kueue
+    condition: neuron-device-plugin.devicePlugin.enabled  
+  - name: kueue  
     version: "0.1.0"
     repository: "file://charts/kueue"
-    condition: kueue.enabled
+    condition: kueue.enabled  
   - name: storage
     version: "0.1.0"
     repository: "file://charts/storage"
-    condition: storage.enabled
+    condition: storage.enabled 
   - name: health-monitoring-agent
     version: "0.1.0"
     repository: "file://charts/health-monitoring-agent"
-    condition: health-monitoring-agent.enabled
+    condition: health-monitoring-agent.enabled 
   - name: mpi-operator
     version: "0.1.0"
     repository: "file://charts/mpi-operator"
-    condition: mpi-operator.enabled
+    condition: mpi-operator.enabled 
   - name: deep-health-check
     version: "0.1.0"
     repository: "file://charts/deep-health-check"

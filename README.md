@@ -26,9 +26,15 @@ This documentation serves as a reference for the available HyperPod CLI commands
 
 The SageMaker HyperPod CLI is a tool that helps submit training jobs to the Amazon SageMaker HyperPod clusters orchestrated by Amazon EKS. It provides a set of commands for managing the full lifecycle of training jobs, including submitting, describing, listing, and canceling jobs, as well as accessing logs and executing commands within the job's containers. The CLI is designed to abstract away the complexity of working directly with Kubernetes for these core actions of managing jobs on SageMaker HyperPod clusters orchestrated by Amazon EKS.
 
+## Prerequisites
+
+HyperPod CLI currently only supports starting kubeflow/PyTorchJob. To start a job, you need to install Kubeflow Training Operator first. 
+- You can either follow [kubeflow public doc](https://www.kubeflow.org/docs/components/training/installation/) to install it.
+- Or you can follow the Readme under helm_chart to install Kubeflow Training Operator.
+
 ## Installation
 
-1. Make sure that your local python version is 3.8 or later.
+1. Make sure that your local python version is 3.8, 3.9, 3.10 or 3.11.
 
 1. Install ```helm```.
 

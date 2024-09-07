@@ -136,7 +136,7 @@ nvidia-device-plugin:
   affinity:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
-        nodeSelectorTerms:
+        nodeSelectorTerms: 
         - matchExpressions:
           # nvidia plugin needs at least one node selector. Below label exists for all hyperpod nodes
           - key: kubernetes.io/os
@@ -187,8 +187,8 @@ aws-efa-k8s-device-plugin:
 mpi-operator:
   enabled: true
 health-monitoring-agent:
-  enabled: true
+  enabled: true 
 deep-health-check:
   enabled: true
 job-auto-restart:
-  enabled: true
+  enabled: true   

@@ -9,9 +9,9 @@ persistentVolume:
   reclaimPolicy: Retain
   csi:
     driver: fsx.csi.aws.com
-    volumeHandle: fs-0199e5a63bd90f796
+    volumeHandle: ???
     volumeAttributes:
-      dnsname: fs-0199e5a63bd90f796.fsx.us-east-1.amazonaws.com
+      dnsname: ???
       mountname: fsx
 
 persistentVolumeClaim:

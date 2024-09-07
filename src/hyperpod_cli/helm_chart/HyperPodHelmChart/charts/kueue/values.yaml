@@ -2,13 +2,11 @@ priorityClasses:
   - name: priority3
     namespace: "kubeflow"
     value: 1000
-    preemptionPolicy: PreemptLowerPriority
     globalDefault: false
     description: "High priority class with preemption"
   - name: priority4
     namespace: "kubeflow"
     value: 100
-    preemptionPolicy: Never
     globalDefault: false
     description: "Low priority class without preemption"
 
@@ -19,11 +17,5 @@ clusterQueue:
 queues:
   - name: high-priority-queue2
     namespace: "kubeflow"
-    priority: 1000
-    preemption:
-      policy: PreemptLowerPriority
   - name: low-priority-queue2
     namespace: "kubeflow"
-    priority: 100
-    preemption:
-      policy: Never

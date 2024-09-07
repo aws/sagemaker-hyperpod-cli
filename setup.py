@@ -16,7 +16,15 @@ import subprocess
 from setuptools import find_packages, setup
 
 # Update submodules
-subprocess.call(["git", "submodule", "update", "--init", "--recursive"])
+subprocess.call(
+    [
+        "git",
+        "submodule",
+        "update",
+        "--init",
+        "--recursive",
+    ]
+)
 
 # Declare your non-python data files:
 # Files underneath configuration/ will be copied into the build preserving the
@@ -39,7 +47,8 @@ for root, dirs, files in os.walk(
     k8s_templates.append(
         (
             os.path.relpath(
-                root, "src/hyperpod_cli/custom_launcher/launcher/nemo/k8s_templates"
+                root,
+                "src/hyperpod_cli/custom_launcher/launcher/nemo/k8s_templates",
             ),
             [os.path.join(root, f) for f in files],
         )

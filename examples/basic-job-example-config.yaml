@@ -23,7 +23,10 @@ hydra:
 training_cfg:
  # entry_script: Required. Path to the entry script of training/fine-tuning, this path should be inside container
  entry_script: ./train.py
- # script_args: Optional. List of script arguments.
+ # script_args: Optional. List of script arguments. Example of usage:
+ # script_args:
+ #  - max_context_width: 1024
+ #  - num_layers: 16
  script_args: []
  run:
   # name: Required. Current Training Job name
@@ -43,11 +46,13 @@ cluster:
  cluster_config:
   # annotations: Optional. The annotations attached to the Training job.
   # To use SageMaker Hyperpod Job AutoResume feature, set annotations like following example:
-  #   annotations:
+  #  annotations:
   #    sagemaker.amazonaws.com/enable-job-auto-resume: True
   #    sagemaker.amazonaws.com/job-max-retry-count: 1
   annotations: null
-  # service_account_name: Optional. The name of service account associated with the namespace
+  # service_account_name: Optional. The name of service account associated with the namespace.
+  # Example of usage:
+  # service_account_name: mlflow_service_account_name
   service_account_name: null
   # persistent_volume_claims: Optional. The persistent volume claims, usually used to mount FSx
   persistent_volume_claims: null

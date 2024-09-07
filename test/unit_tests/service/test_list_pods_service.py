@@ -24,14 +24,23 @@ from kubernetes.client import (
     V1ResourceRequirements,
 )
 
-from hyperpod_cli.clients.kubernetes_client import KubernetesClient
-from hyperpod_cli.service.list_pods import ListPods
+from hyperpod_cli.clients.kubernetes_client import (
+    KubernetesClient,
+)
+from hyperpod_cli.service.list_pods import (
+    ListPods,
+)
+
+from kubernetes.client.rest import ApiException
+
 
 SAMPLE_OUTPUT: V1PodList = V1PodList(
     items=[
         V1Pod(
             metadata=V1ObjectMeta(
-                name="test-name", namespace="kubeflow", creation_timestamp="timestamp"
+                name="test-name",
+                namespace="kubeflow",
+                creation_timestamp="timestamp",
             ),
             spec=V1PodSpec(
                 node_name="test-node-name",
@@ -46,7 +55,10 @@ SAMPLE_OUTPUT: V1PodList = V1PodList(
             ),
         ),
         V1Pod(
-            metadata=V1ObjectMeta(name="test-name", namespace="kubeflow"),
+            metadata=V1ObjectMeta(
+                name="test-name",
+                namespace="kubeflow",
+            ),
             spec=V1PodSpec(
                 node_name="test-node-name",
                 containers=[
@@ -130,6 +142,19 @@ class TestListPods(unittest.TestCase):
         self.mock_k8s_client.list_pods_with_labels.return_value = SAMPLE_OUTPUT
         result = self.mock_list_pods.list_pods_for_training_job("test-job", None, False)
         self.assertEqual(2, len(result))
+
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    def test_list_pods_without_namespace_api_exception(
+        self,
+        mock_kubernetes_client: mock.Mock,
+    ):
+        mock_kubernetes_client.return_value = self.mock_k8s_client
+        self.mock_k8s_client.get_current_context_namespace.return_value = "kubeflow"
+        self.mock_k8s_client.list_pods_with_labels.side_effect = ApiException(
+            status="Failed", reason="unexpected"
+        )
+        with self.assertRaises(RuntimeError):
+            self.mock_list_pods.list_pods_for_training_job("test-job", None, False)
 
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_list_pods_with_namespace_pretty(

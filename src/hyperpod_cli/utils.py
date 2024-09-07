@@ -99,14 +99,16 @@ def get_sagemaker_client(
 
 def store_current_hyperpod_context(data):
     with open(
-        GENERATED_LAUNCHER_CONFIG_FILE_PATH + HYPERPOD_CLUSTER_CONTEXT_FILE_NAME, "w"
+        GENERATED_LAUNCHER_CONFIG_FILE_PATH + HYPERPOD_CLUSTER_CONTEXT_FILE_NAME,
+        "w",
     ) as hyperpod_current_context:
         hyperpod_current_context.write(json.dumps(data, indent=4, default=str))
 
 
 def _retrieve_current_hyperpod_context():
     file = open(
-        GENERATED_LAUNCHER_CONFIG_FILE_PATH + HYPERPOD_CLUSTER_CONTEXT_FILE_NAME, "r"
+        GENERATED_LAUNCHER_CONFIG_FILE_PATH + HYPERPOD_CLUSTER_CONTEXT_FILE_NAME,
+        "r",
     )
     return json.load(file)
 

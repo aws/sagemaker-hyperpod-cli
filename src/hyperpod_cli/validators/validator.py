@@ -11,7 +11,11 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import boto3
-from botocore.exceptions import ClientError, NoCredentialsError, PartialCredentialsError
+from botocore.exceptions import (
+    ClientError,
+    NoCredentialsError,
+    PartialCredentialsError,
+)
 
 from hyperpod_cli.utils import setup_logger
 

@@ -25,7 +25,10 @@ logger = setup_logger(__name__)
 
 class AbstractIntegrationTests:
     cfn_output_map = {}
-    hyperpod_cluster_terminal_state = ["Failed", "InService"]
+    hyperpod_cluster_terminal_state = [
+        "Failed",
+        "InService",
+    ]
     suffix = str(uuid.uuid4())[:8]
     hyperpod_cli_cluster_name = "hyperpod-cli-cluster-" + suffix
     vpc_eks_stack_name = "hyperpod-cli-stack-" + suffix
@@ -48,7 +51,10 @@ class AbstractIntegrationTests:
         self.describe_vpc_stack_and_set_values(cfn)
 
         # Create VPC, EKS cluster and roles
-        with open("test/integration_tests/cloudformation/resources.yaml", "r") as fh:
+        with open(
+            "test/integration_tests/cloudformation/resources.yaml",
+            "r",
+        ) as fh:
             template = fh.read()
             cfn.create_stack(
                 StackName=self.vpc_eks_stack_name,
@@ -85,7 +91,10 @@ class AbstractIntegrationTests:
         waiter = cfn.get_waiter("stack_create_complete")
         waiter.wait(
             StackName=self.vpc_eks_stack_name,
-            WaiterConfig={"Delay": 30, "MaxAttempts": 40},
+            WaiterConfig={
+                "Delay": 30,
+                "MaxAttempts": 40,
+            },
         )
         describe = cfn.describe_stacks(StackName=self.vpc_eks_stack_name)
         if describe:
@@ -180,7 +189,13 @@ class AbstractIntegrationTests:
     def create_kube_context(self):
         eks_cluster_name = self.cfn_output_map.get("ClusterArn").split(":")[-1]
         eks_cluster_name = eks_cluster_name.split("/")[-1]
-        command = ["aws", "eks", "update-kubeconfig", "--name", eks_cluster_name]
+        command = [
+            "aws",
+            "eks",
+            "update-kubeconfig",
+            "--name",
+            eks_cluster_name,
+        ]
 
         try:
             # Execute the command to update kubeconfig
@@ -212,7 +227,8 @@ class AbstractIntegrationTests:
 
     def update_cluster_auth(self):
         with open(
-            "test/integration_tests/charts/hp-node-auth.yaml", "r"
+            "test/integration_tests/charts/hp-node-auth.yaml",
+            "r",
         ) as hyperpod_current_context:
             template = hyperpod_current_context.read()
 
@@ -222,18 +238,30 @@ class AbstractIntegrationTests:
             template,
         )
         template = re.sub(
-            "SAGEMAKER_SERVICE_ROLE", self.cfn_output_map.get("ServiceRole"), template
+            "SAGEMAKER_SERVICE_ROLE",
+            self.cfn_output_map.get("ServiceRole"),
+            template,
         )
 
         with open("/tmp/hp-node-auth.yaml", "w") as hyperpod_current_context:
             hyperpod_current_context.write(template)
 
-        command = ["kubectl", "apply", "-f", "/tmp/hp-node-auth.yaml"]
+        command = [
+            "kubectl",
+            "apply",
+            "-f",
+            "/tmp/hp-node-auth.yaml",
+        ]
 
         try:
             # Execute the command to update kubeconfig
             logger.info(
-                subprocess.run(command, check=True, capture_output=True, text=True)
+                subprocess.run(
+                    command,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
             )
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failed to apply auth charts: {e}")
@@ -249,7 +277,12 @@ class AbstractIntegrationTests:
         try:
             # Execute the command to update kubeconfig
             logger.info(
-                subprocess.run(command, check=True, capture_output=True, text=True)
+                subprocess.run(
+                    command,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
             )
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failed to install training operator: {e}")

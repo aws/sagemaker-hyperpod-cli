@@ -13,7 +13,10 @@
 from typing import Optional
 import subprocess
 
-from hyperpod_cli.clients.kubernetes_client import KubernetesClient
+from hyperpod_cli.clients.kubernetes_client import (
+    KubernetesClient,
+)
+from kubernetes.client.rest import ApiException
 
 
 class CancelTrainingJob:
@@ -30,8 +33,13 @@ class CancelTrainingJob:
 
         if not namespace:
             namespace = k8s_client.get_current_context_namespace()
+        try:
+            result = k8s_client.delete_training_job(
+                job_name=job_name, namespace=namespace
+            )
+        except ApiException as e:
+            raise RuntimeError(f"Unexpected API error: {e.reason} ({e.status})")
 
-        result = k8s_client.delete_training_job(job_name=job_name, namespace=namespace)
         helm_chart_cleanup_command = [
             "helm",
             "uninstall",

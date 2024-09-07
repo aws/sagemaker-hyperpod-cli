@@ -13,7 +13,10 @@
 import click
 import importlib.metadata
 
-from hyperpod_cli.commands.cluster import connect_cluster, list_clusters
+from hyperpod_cli.commands.cluster import (
+    connect_cluster,
+    get_clusters,
+)
 from hyperpod_cli.commands.job import (
     cancel_job,
     get_job,
@@ -21,13 +24,16 @@ from hyperpod_cli.commands.job import (
     list_pods,
     start_job,
 )
-from hyperpod_cli.commands.pod import exec, get_log
+from hyperpod_cli.commands.pod import (
+    exec,
+    get_log,
+)
 
 HELP_TEXT = """
 Find more information at: https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod.html
 
 Basic Commands:
-  * list-clusters   List clusters information for HyperPod EKS clusters.
+  * get-clusters    Get clusters information for HyperPod EKS clusters.
   * connect-cluster Creates a connection from users local terminal to the HyperPod cluster 
                     allowing user to start and preform other basic operations with training jobs.
   * start-job       Start a training job from a file on HyperPod cluster.
@@ -60,7 +66,7 @@ def cli():
     pass
 
 
-cli.add_command(list_clusters)
+cli.add_command(get_clusters)
 cli.add_command(connect_cluster)
 cli.add_command(start_job)
 cli.add_command(get_job)

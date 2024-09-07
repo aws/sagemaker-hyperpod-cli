@@ -1,67 +1,4 @@
 # rbac.yaml
-# SLR
----
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: deep-health-check
-rules:
-  - apiGroups:
-      - ""
-    resources:
-      - nodes
-    verbs:
-      - get
-      - list
-      - patch
-  - apiGroups:
-      - ""
-    resources:
-      - pods
-    verbs:
-      - get
-      - list
-  - apiGroups:
-      - batch
-    resources:
-      - jobs
-    verbs:
-      - get
-      - list
-      - watch
-      - create
-      - delete
-      - patch
-      - update
-      - describe
-  - apiGroups:
-      - kubeflow.org
-    resources:
-      - mpijobs
-      - mpijobs/status
-    verbs:
-      - get
-      - list
-      - watch
-      - create
-      - delete
-      - patch
-      - update
-      - describe 
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: deep-health-check
-  namespace: {{ .Values.namespace }}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: deep-health-check
-subjects:
-  - kind: User
-    name: hyperpod-system
-    namespace: {{ .Values.namespace }}
 # service account
 ---
 apiVersion: v1
@@ -95,7 +32,7 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: deep-health-check-service-account-role-binding
-  namespace: hyperpod-system
+  namespace: {{ .Values.namespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -103,4 +40,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: deep-health-check-service-account
-    namespace: hyperpod-system
+    namespace: {{ .Values.namespace }}

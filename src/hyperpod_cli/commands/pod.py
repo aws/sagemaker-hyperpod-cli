@@ -16,9 +16,14 @@ from typing import Optional
 
 import click
 
-from hyperpod_cli.service.exec_command import ExecCommand
+from hyperpod_cli.service.exec_command import (
+    ExecCommand,
+)
 from hyperpod_cli.service.get_logs import GetLogs
-from hyperpod_cli.utils import setup_logger, set_logging_level
+from hyperpod_cli.utils import (
+    setup_logger,
+    set_logging_level,
+)
 
 logger = setup_logger(__name__)
 
@@ -44,7 +49,11 @@ logger = setup_logger(__name__)
     required=False,
     help="Optional. The namespace to get the log from. If not provided, the CLI will get the log from the pod in the namespace set by the user while connecting to the cluster. If provided, and the user has access to the namespace, the CLI will get the log from the pod in the specified namespace.",
 )
-@click.option("--debug", is_flag=True, help="Enable debug mode")
+@click.option(
+    "--debug",
+    is_flag=True,
+    help="Enable debug mode",
+)
 def get_log(
     job_name: str,
     pod: str,
@@ -89,7 +98,10 @@ def _exec_command_required_option_pod_and_all_pods():
 
 @click.command(
     cls=_exec_command_required_option_pod_and_all_pods(),
-    context_settings={"ignore_unknown_options": True, "allow_extra_args": False},
+    context_settings={
+        "ignore_unknown_options": True,
+        "allow_extra_args": False,
+    },
 )
 @click.option(
     "--job-name",
@@ -120,8 +132,16 @@ def _exec_command_required_option_pod_and_all_pods():
     required=False,
     help="Optional. If set, the command will be executed in all pods associated with the job. You must provide either `--pod` or `--all-pods`.",
 )
-@click.argument("bash_command", nargs=-1, type=click.UNPROCESSED)
-@click.option("--debug", is_flag=True, help="Enable debug mode")
+@click.argument(
+    "bash_command",
+    nargs=-1,
+    type=click.UNPROCESSED,
+)
+@click.option(
+    "--debug",
+    is_flag=True,
+    help="Enable debug mode",
+)
 def exec(
     job_name: str,
     namespace: Optional[str],
@@ -139,7 +159,11 @@ def exec(
     try:
         logger.debug("Executing command for the training job")
         result = exec_command_service.exec_command(
-            job_name, pod, namespace, all_pods, bash_command
+            job_name,
+            pod,
+            namespace,
+            all_pods,
+            bash_command,
         )
         click.echo(result)
     except Exception as e:

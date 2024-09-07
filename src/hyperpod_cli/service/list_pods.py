@@ -16,7 +16,10 @@ import json
 
 from kubernetes.client import V1Pod, V1PodList
 
-from hyperpod_cli.clients.kubernetes_client import KubernetesClient
+from hyperpod_cli.clients.kubernetes_client import (
+    KubernetesClient,
+)
+from kubernetes.client.rest import ApiException
 
 
 class ListPods:
@@ -24,7 +27,10 @@ class ListPods:
         return
 
     def list_pods_for_training_job(
-        self, job_name: str, namespace: Optional[str], pretty: Optional[bool]
+        self,
+        job_name: str,
+        namespace: Optional[str],
+        pretty: Optional[bool],
     ):
         """
         List pods associated with a training job
@@ -35,14 +41,20 @@ class ListPods:
             namespace = k8s_client.get_current_context_namespace()
 
         label_filter = f"training.kubeflow.org/job-name={job_name}"
-        _pods: V1PodList = k8s_client.list_pods_with_labels(namespace, label_filter)
+
+        try:
+            _pods: V1PodList = k8s_client.list_pods_with_labels(namespace, label_filter)
+        except ApiException as e:
+            raise RuntimeError(f"Unexpected API error: {e.reason} ({e.status})")
 
         if pretty:
             return self._generate_list_pods_output(_pods)
         else:
             return self._generate_pods_list(_pods)
 
-    def list_pods_and_get_requested_resources_group_by_node_name(self):
+    def list_pods_and_get_requested_resources_group_by_node_name(
+        self,
+    ):
         """
         List pods for all namespaces and initialized by kubeflow.
         Group by the node_name of the pod and the value is the
@@ -94,10 +106,10 @@ class ListPods:
                         creation_timestamp = str(_pod.metadata.creation_timestamp)
                     output_pods["pods"].append(
                         {
-                            "Pod Name": name,
+                            "PodName": name,
                             "Namespace": namespace,
                             "Status": status,
-                            "Creation Time": creation_timestamp,
+                            "CreationTime": creation_timestamp,
                         }
                     )
 
