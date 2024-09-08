@@ -30,7 +30,7 @@ To send us a pull request, please:
 1. Fork the repository.
 2. Modify the source; please focus on the specific change you are contributing. If you also reformat all the code, it will be hard for us to focus on your change.
 3. Ensure local tests pass.
-4. Commit to your fork using clear commit messages.
+4. Commit to your fork using clear commit messages. Also, you must [sign your commit using GPG](https://docs.github.com/en/authentication/managing-commit-signature-verification/about-commit-signature-verification).
 5. Send us a pull request, answering any default questions in the pull request interface.
 6. Pay attention to any automated CI failures reported in the pull request, and stay involved in the conversation.
 
@@ -72,7 +72,3 @@ See the [LICENSE](LICENSE) file for our project's licensing. We will ask you to 
 - double check whether ```pytest``` is running the same venv or global environment as your project by ```which pytest```.
 - If ```pytest``` is running in venv, ensure ```hyperpod``` is installed in venv.
 - Otherwise, if ```pytest``` is running globally, ensure ```hyperpod``` is installed globally.
-
-### Unit test in IDEA
-Check ```setup.cfg``` and comment out line 95 to make ```pytest``` not checking ```setup.cfg``` for extra arguments.
-This will make local IDEA unit tests working.
