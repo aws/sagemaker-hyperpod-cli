@@ -127,7 +127,6 @@ class AbstractIntegrationTests:
 
     def create_hyperpod_cluster(self, session):
         # Create HyperPod cluster using eks cluster from stack above
-        # TODO: removing dev endpoint
         sagemaker_client = session.client("sagemaker")
         sagemaker_client.create_cluster(
             ClusterName=self.hyperpod_cli_cluster_name,
@@ -166,7 +165,6 @@ class AbstractIntegrationTests:
 
     def delete_hyperpod_cluster(self, session):
         # delete HyperPod cluster using eks cluster from stack above
-        # TODO: removing dev endpoint
         sagemaker_client = session.client("sagemaker")
         sagemaker_client.delete_cluster(ClusterName=self.hyperpod_cli_cluster_name)
 

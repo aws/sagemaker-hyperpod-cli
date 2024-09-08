@@ -37,140 +37,85 @@ helm lint src/hyperpod_cli/helm_chart/HyperPodHelmChart
 
 ## 4. Deployment
 
-Prerequisites:
-To use the resiliency feature of Compass, run the following command to install the necessary permissions before executing the create-cluster command for the Hyperpod Cluster.
-
-Additionally, note that Kueue, MLflow, and other optional components are disabled by default. If you wish to enable them, you'll need to manually update the values.yaml file in the main chart by setting the corresponding feature flags to true.
-
 Notes:
+1. To use the resiliency feature in SageMaker HyperPod cluster with Amazon EKS, you need to first install this HelmChart to EKS cluster to install the necessary permissions before creating HyperPod cluster.
 
-1. If you plan to use Kueue, please run ./install_dependencies.sh. This script installs certain CRDs directly via commands, rather than using Helm charts.
+2. Kueue, MLflow, and other optional components are disabled by default. If you wish to enable them, you'll need to manually update the values.yaml file in the main chart by setting the corresponding feature flags to true.
 
-2. Below dependencies is the default release name. helm install <dependencies> is the example.
+3. If you plan to use Kueue, please first run ./install_dependencies.sh. This script installs certain CRDs directly via commands. Then follow below steps to install helm charts.
+
+4. Below <dependencies> is the default release name. helm install <dependencies> is the example.
 
 ### Step Zero:
 
-* update helm chart dependencies. 
+* Update helm chart dependencies. It ensures that all the sub-charts required by the main chart are fetched and properly set up before deploying the main chart. It doesn’t actually deploy the chart itself but prepares it by ensuring all dependencies are resolved.
 
-Command: 
-
-```
-helm dependencies update src/hyperpod_cli/helm_chart/HyperPodHelmChart
-```
-* It ensures that all the sub-charts required by the main chart are fetched and properly set up before deploying the main chart. It doesn’t actually deploy the chart itself but prepares it by ensuring all dependencies are resolved.
+  ```
+  helm dependencies update src/hyperpod_cli/helm_chart/HyperPodHelmChart
+  ```
 
 ### Step One:
 
-* Install the Helm chart that includes all the dependencies. 
-    * command: 
-```
-helm install dependencies src/hyperpod_cli/helm_chart/HyperPodHelmChart --dry-run
-```
-helm will output template which will apply to k8s cluster.
+* Simulate the installation process. Below command shows you what would be installed and the configuration that would be applied. 
+  ```
+  helm install dependencies src/hyperpod_cli/helm_chart/HyperPodHelmChart --dry-run
+  ```
 
-If the resource already exists, avoid running the install command again, as it may cause conflicts. Instead, use the following command to upgrade the existing release while preserving the current configuration. This ensures that your current settings are maintained without overwriting them:
-
-```
-helm upgrade <release_name> HyperPodHelmChart --reuse-values --namespace kube-system
-```
-
-To find your release name, run:
-
-```
-helm list --namespace kube-system
-```
-
-This is necessary to prevent resource duplication and configuration conflicts, ensuring a smooth upgrade process without disrupting existing resources.
+* If the resource already exists, avoid running the install command again, as it may cause conflicts. Instead, use the following command to upgrade the existing release while preserving the current configuration. This ensures that your current settings are maintained without overwriting them.
+  - To find all your releases deployed in one namespace (eg. kube-system), run:
+    ```
+    helm list --namespace kube-system
+    ```
+  - To upgrade the existing release deployed in one namespace (eg. kube-system), run:
+    ```
+    helm upgrade <release_name> HyperPodHelmChart --reuse-values --namespace kube-system
+    ```
 
 ### Step Two:
 
-Deploying a Helm Chart to Your Kubernetes Cluster
-To install and deploy the Helm chart to your Kubernetes cluster, use the following command:
+* Deploy a Helm Chart to Your Kubernetes Cluster. This command deploys the Helm chart to your cluster with custom configurations applied, as specified in the values.yaml file. Please note that only certain versions of dependencies will be deployed based on the configuration specified in the values.yaml.
+  ```
+  helm install dependencies src/hyperpod_cli/helm_chart/HyperPodHelmChart --namespace kube-system
+  ```
 
-```
-helm install dependencies src/hyperpod_cli/helm_chart/HyperPodHelmChart --namespace kube-system
-```
+## 5. Notes
+- If you intend to use the Health Monitoring Agent container image from another region, please see below list to find relevant region's URI.
+  ```
+  IAD 767398015722.dkr.ecr.us-east-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
+  PDX 905418368575.dkr.ecr.us-west-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
+  CMH 851725546812.dkr.ecr.us-east-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
+  SFO 011528288828.dkr.ecr.us-west-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
+  FRA 211125453373.dkr.ecr.eu-central-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
+  ARN 654654141839.dkr.ecr.eu-north-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
+  DUB 533267293120.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
+  LHR 011528288831.dkr.ecr.eu-west-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
+  NRT 533267052152.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
+  BOM 011528288864.dkr.ecr.ap-south-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
+  SIN 905418428165.dkr.ecr.ap-southeast-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
+  SYD 851725636348.dkr.ecr.ap-southeast-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
+  GRU 025066253954.dkr.ecr.sa-east-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
+  ```
 
-This command deploys the Helm chart to your cluster with custom configurations applied, as specified in the values.yaml file. Please note that only certain versions of dependencies will be deployed based on the configuration specified in the values.yaml.
+## 6. Troubleshooting
 
-3. An important thing to note here is the Health Monitoring Agent container image URI. If you intend to use the iamge from another region, please see below list to find relevant region's URI.
-```
-IAD 767398015722.dkr.ecr.us-east-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
-PDX 905418368575.dkr.ecr.us-west-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
-CMH 851725546812.dkr.ecr.us-east-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
-SFO 011528288828.dkr.ecr.us-west-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
-FRA 211125453373.dkr.ecr.eu-central-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
-ARN 654654141839.dkr.ecr.eu-north-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
-DUB 533267293120.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
-LHR 011528288831.dkr.ecr.eu-west-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
-NRT 533267052152.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
-BOM 011528288864.dkr.ecr.ap-south-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
-SIN 905418428165.dkr.ecr.ap-southeast-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
-SYD 851725636348.dkr.ecr.ap-southeast-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
-GRU 025066253954.dkr.ecr.sa-east-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.277.0_1.0.27.0
-```
+#### ServiceAccount "neuron-device-plugin" in namespace "kube-system" exists and cannot be imported into the current release
+- This means dependencies already installed. You can change the name of the dependencies if you want another dependencies. To see dependencies already existed or not
+  ```
+  kubectl get serviceaccount neuron-device-plugin -n kube-system
 
-### FAQ
+  NAME                   SECRETS   AGE
+  neuron-device-plugin   0         9m48s
+  ```
 
-* ServiceAccount "neuron-device-plugin" in namespace "kube-system" exists and cannot be imported into the current release
-
-```
-This means dependencies already installed. You can change the name of the dependencies if you want another dependencies
-```
-To see dependencies already existed or not
-
-```
-kubectl get serviceaccount neuron-device-plugin -n kube-system
-
-NAME                   SECRETS   AGE
-neuron-device-plugin   0         9m48s
-```
-
-* add new dependencies subchart
-
-1. Make sure you run 
-
-```
-helm lint HyperPodHelmChart
-```
-
-2. Add chart metadata in the main Chart.yaml
-
-```
-  - name: storage
-    version: "0.1.0"
-    repository: "file://charts/storage"
-    condition: storage.enabled  
-```
-
-version here should points to subchart major version.
-
-*  invalid ownership metadata; label validation error: missing key "app.kubernetes.io/managed-by": must be set to "Helm"; annotation validation error: missing key "meta.helm.sh/release-name": must be set to "new-release"; annotation validation error: missing key "meta.helm.sh/release-namespace": must be set to "kubesystem"
-
-this means that some of the resource is manually installed without helm control. You need to manual label the resource 
-
-```
-kubectl label pod training-operator-64c768746c-d6zjz -n kubeflow app.kubernetes.io/managed-by=Helm
-kubectl annotate pod training-operator-64c768746c-d6zjz -n kubeflow meta.helm.sh/release-name=dependencies
-kubectl annotate pod training-operator-64c768746c-d6zjz -n kubeflow meta.helm.sh/release-namespace=kubeflow
-
-pod/training-operator-64c768746c-d6zjz labeled
-pod/training-operator-64c768746c-d6zjz annotated
-pod/training-operator-64c768746c-d6zjz annotated
-```
-
-* if the resource still exists
-
-run to delete the namespace and rerun the command. Notes: some resource is cluster level, you might manual delete it.
-
-```
-kubectl delete namespace kubeflow
-```
-
-* Check the resource applies to K8s cluster
-
-```
-helm template dependencies HyperPodHelmChart --namespace kubeflow
-
-```
-it will return the resource yaml generated by helm chart
+#### Add new dependencies subchart
+- Make sure you run 
+  ```
+  helm lint HyperPodHelmChart
+  ```
+- Add chart metadata in the main Chart.yaml. Version should points to subchart major version.
+  ```
+  name: storage
+  version: "0.1.0"
+  repository: "file://charts/storage"
+  condition: storage.enabled
+  ```

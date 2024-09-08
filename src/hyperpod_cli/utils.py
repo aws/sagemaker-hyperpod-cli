@@ -90,7 +90,6 @@ def set_logging_level(
 def get_sagemaker_client(
     session: boto3.Session, config: Config = None
 ) -> botocore.client.BaseClient:
-    # TODO: change to use public endpoint when release
     return session.client(
         service_name="sagemaker",
         config=config,

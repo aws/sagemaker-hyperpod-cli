@@ -18,9 +18,6 @@ This documentation serves as a reference for the available HyperPod CLI commands
   - [Listing Pods](#listing-pods)
   - [Accessing Logs](#accessing-logs)
   - [Executing Commands](#executing-commands)
-- [Configuration](#configuration)
-- [Contributing](#contributing)
-- [License](#license)
 
 ## Overview
 
@@ -28,9 +25,10 @@ The SageMaker HyperPod CLI is a tool that helps submit training jobs to the Amaz
 
 ## Prerequisites
 
-HyperPod CLI currently only supports starting kubeflow/PyTorchJob. To start a job, you need to install Kubeflow Training Operator first. 
-- You can either follow [kubeflow public doc](https://www.kubeflow.org/docs/components/training/installation/) to install it.
-- Or you can follow the Readme under helm_chart to install Kubeflow Training Operator.
+- HyperPod CLI currently only supports starting kubeflow/PyTorchJob. To start a job, you need to install Kubeflow Training Operator first. 
+  - You can either follow [kubeflow public doc](https://www.kubeflow.org/docs/components/training/installation/) to install it.
+  - Or you can follow the [Readme under helm_chart folder](https://github.com/aws/sagemaker-hyperpod-cli/blob/main/src/hyperpod_cli/helm_chart/readme.md) to install Kubeflow Training Operator.
+- You also need to configure [aws cli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) to point to the correct region where your HyperPod clusters are located. 
 
 ## Installation
 
@@ -47,10 +45,10 @@ HyperPod CLI currently only supports starting kubeflow/PyTorchJob. To start a jo
     rm -f ./get_helm.sh  
     ```
 
-1. Clone and install the [SageMaker HyperPod CLI](https://github.com/aws/sagemaker-hyperpod-cli) package.
+1. Clone and install the sagemaker-hyperpod-cli package.
 
     ```
-    git clone https://github.com/aws/sagemaker-hyperpod-cli
+    git clone git@github.com:aws/sagemaker-hyperpod-cli.git
     cd sagemaker-hyperpod-cli
     pip install .
     ```
@@ -61,17 +59,25 @@ HyperPod CLI currently only supports starting kubeflow/PyTorchJob. To start a jo
     hyperpod --help
     ```
 
-1. Try to run a training job using the sample configuration file provided at ```/examples/basic-job-example-config.yaml```.
-
-    ```
-    hyperpod start-job --config-file ./examples/basic-job-example-config.yaml
-    ```
+1. If you have a running HyperPod cluster, you can try to run a training job using the sample configuration file provided at ```/examples/basic-job-example-config.yaml```.
+    - Get your HyperPod clusters to show their capacities.
+      ```
+      hyperpod get-clusters
+      ```
+    - Connect to one HyperPod cluster.
+      ```
+      hyperpod connect-cluster --cluster-name <cluster-name>
+      ```
+    - Start a job in that cluster.
+      ```
+      hyperpod start-job --config-file ./examples/basic-job-example-config.yaml
+      ```
 
 ## Usage
 
 The HyperPod CLI provides the following commands:
 
-- [Listing Clusters](#getting-cluster-information)
+- [Getting Clusters](#getting-cluster-information)
 - [Connecting to a Cluster](#connecting-to-a-cluster)
 - [Submitting a Job](#submitting-a-job)
 - [Getting Job Details](#getting-job-details)
