@@ -335,6 +335,7 @@ def _aggregate_nodes_info(
 )
 @click.option(
     "--namespace",
+    "-n",
     type=click.STRING,
     required=False,
     help="Optional. The namespace that you want to connect to. If not specified, this command uses the [Kubernetes namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) of the Amazon EKS cluster associated with the SageMaker HyperPod cluster in your AWS account.",

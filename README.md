@@ -28,7 +28,8 @@ The SageMaker HyperPod CLI is a tool that helps submit training jobs to the Amaz
 - HyperPod CLI currently only supports starting kubeflow/PyTorchJob. To start a job, you need to install Kubeflow Training Operator first. 
   - You can either follow [kubeflow public doc](https://www.kubeflow.org/docs/components/training/installation/) to install it.
   - Or you can follow the [Readme under helm_chart folder](https://github.com/aws/sagemaker-hyperpod-cli/blob/main/src/hyperpod_cli/helm_chart/readme.md) to install Kubeflow Training Operator.
-- You also need to configure [aws cli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) to point to the correct region where your HyperPod clusters are located. 
+- And HyperPod CLI currently only supports `torchrun` command, you need to install [PyTorch](https://github.com/pytorch/pytorch?tab=readme-ov-file#installation) in your cluster or include in your docker file.
+- Configure [aws cli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) to point to the correct region where your HyperPod clusters are located. 
 
 ## Installation
 
@@ -64,11 +65,11 @@ The SageMaker HyperPod CLI is a tool that helps submit training jobs to the Amaz
       ```
       hyperpod get-clusters
       ```
-    - Connect to one HyperPod cluster.
+    - Connect to one HyperPod cluster and specify a namespace you have access to.
       ```
       hyperpod connect-cluster --cluster-name <cluster-name>
       ```
-    - Start a job in that cluster.
+    - Start a job in your cluster. Change the `instance_type` in the yaml file to be same as the one in your HyperPod cluster. Also change the `namespace` you want to submit a job to, the example uses kubeflow namespace. You need to have installed PyTorch in your cluster.
       ```
       hyperpod start-job --config-file ./examples/basic-job-example-config.yaml
       ```

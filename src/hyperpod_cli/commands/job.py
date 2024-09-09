@@ -267,6 +267,7 @@ def cancel_job(
 )
 @click.option(
     "--namespace",
+    "-n",
     type=click.STRING,
     help="Optional. The namespace to use. If not specified, this command uses the [Kubernetes namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) of the Amazon EKS cluster associated with the SageMaker HyperPod cluster in your AWS account.",
 )
@@ -604,7 +605,7 @@ def start_job(
         launcher_config_file_name = str(config_name)
 
     logger.debug(
-        f"Starting job with config {launcher_config_path}/{launcher_config_file_name}"
+        f"Starting job with config {launcher_config_path}{launcher_config_file_name}"
     )
 
     # Initialize Hydra and call custom launcher with Hydra config to submit job
