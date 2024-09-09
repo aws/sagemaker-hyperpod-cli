@@ -27,7 +27,7 @@ The SageMaker HyperPod CLI is a tool that helps submit training jobs to the Amaz
 
 - HyperPod CLI currently only supports starting kubeflow/PyTorchJob. To start a job, you need to install Kubeflow Training Operator first. 
   - You can either follow [kubeflow public doc](https://www.kubeflow.org/docs/components/training/installation/) to install it.
-  - Or you can follow the [Readme under helm_chart folder](https://github.com/aws/sagemaker-hyperpod-cli/blob/main/src/hyperpod_cli/helm_chart/readme.md) to install Kubeflow Training Operator.
+  - Or you can follow the [Readme under helm_chart folder](https://github.com/aws/sagemaker-hyperpod-cli/blob/main/helm_chart/readme.md) to install Kubeflow Training Operator.
 - Configure [aws cli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) to point to the correct region where your HyperPod clusters are located. 
 
 ## Installation
