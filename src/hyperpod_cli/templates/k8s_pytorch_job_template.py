@@ -64,7 +64,7 @@ cluster:
         #  - volumeName: data1
         #    hostPath: "/data"
         #    mountPath: "/data"              
-        volumes: ???
+        volumes: null
 
 base_results_dir: ???  # Location to store the results, checkpoints and logs.
 container: ??? # container to use
