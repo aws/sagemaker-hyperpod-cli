@@ -20,7 +20,7 @@ from hyperpod_cli.constants.command_constants import (
     RestartPolicy,
     KUEUE_QUEUE_NAME_LABEL_KEY,
     HYPERPOD_AUTO_RESUME_ANNOTATION_KEY,
-    HYPERPOD_MAX_RETRY_ANNOTATION_KEY
+    HYPERPOD_MAX_RETRY_ANNOTATION_KEY,
 )
 from hyperpod_cli.constants.hyperpod_instance_types import (
     HyperpodInstanceType,
@@ -275,4 +275,3 @@ def _validate_json_str(
         # Catch any other exceptions
         logger.error(f"An unexpected error occurred: {e}")
         return False
-
