@@ -7,6 +7,9 @@ This documentation serves as a reference for the available HyperPod CLI commands
 
 ## Table of Contents
 - [Overview](#overview)
+- [Prerequisites](#prerequisites)
+- [Platform Support](#platform-support)
+- [ML Framework Support](#ml-framework-support)
 - [Installation](#installation)
 - [Usage](#usage)
   - [Listing Clusters](#listing-clusters)
@@ -29,6 +32,15 @@ The SageMaker HyperPod CLI is a tool that helps submit training jobs to the Amaz
   - You can either follow [kubeflow public doc](https://www.kubeflow.org/docs/components/training/installation/) to install it.
   - Or you can follow the [Readme under helm_chart folder](https://github.com/aws/sagemaker-hyperpod-cli/blob/main/helm_chart/readme.md) to install Kubeflow Training Operator.
 - Configure [aws cli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) to point to the correct region where your HyperPod clusters are located. 
+
+## Platform Support
+
+SageMaker HyperPod CLI currently supports Linux and MacOS platforms. Windows platform support is working in progress
+
+## ML Framework Support
+
+SageMaker HyperPod CLI currently supports start training job with:
+- PyTorch ML Framework. Version requirements: PyTorch > 1.10
 
 ## Installation
 
@@ -98,7 +110,7 @@ hyperpod get-clusters [--region <region>] [--clusters <cluster1,cluster2>] [--or
 * `region` (string) - Optional. The region that the SageMaker HyperPod and EKS clusters are located. If not specified, it will be set to the region from the current AWS account credentials.
 * `clusters` (list[string]) - Optional. A list of SageMaker HyperPod cluster names that users want to check the capacity for. This is useful for users who know some of their most commonly used clusters and want to check the capacity status of the clusters in the AWS account.
 * `orchestrator` (enum) - Optional. The orchestrator type for the cluster. Currently, `'eks'` is the only available option.
-* `output` (enum) - Optional. The output format. Available values are `TABLE` and `JSON`. The default value is `JSON`.
+* `output` (enum) - Optional. The output format. Available values are `table` and `json`. The default value is `json`.
 
 ### Connecting to a Cluster
 
@@ -121,13 +133,13 @@ hyperpod start-job --job-name <job-name> [--namespace <namespace>] [--job-kind <
 ```
 
 * `job-name` (string) - Required. The name of the job.
-* `job-kind` (string) - Optional. The training job kind. The job types currently supported are `kubeflow` and `PyTorchJob`.
+* `job-kind` (string) - Optional. The training job kind. The job type currently supported is `kubeflow/PyTorchJob`.
 * `namespace` (string) - Optional. The namespace to use. If not specified, this command uses the [Kubernetes namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) of the Amazon EKS cluster associated with the SageMaker HyperPod cluster in your AWS account.
 * `image` (string) - Required. The image used when creating the training job.
 * `pull-policy` (enum) - Optional. The policy to pull the container image. Valid values are `Always`, `IfNotPresent`, and `Never`, as available from the PyTorchJob. The default is `Always`.
 * `command` (string) - Optional. The command to run the entrypoint script. Currently, only `torchrun` is supported.
 * `entry-script` (string) - Required. The path to the training script.
-* `script-args` (list[string]) - Optional. The list of arguments for entryscripts.
+* `script-args` (list[string]) - Optional. The list of arguments for entry scripts.
 * `environment` (dict[string, string]) - Optional. The environment variables (key-value pairs) to set in the containers.
 * `node-count` (int) - Required. The number of nodes (instances) to launch the jobs on.
 * `instance-type` (string) - Required. The instance type to launch the job on. Note that the instance types you can use are the available instances within your SageMaker quotas for instances prefixed with `ml`.
