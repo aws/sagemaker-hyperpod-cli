@@ -355,12 +355,12 @@ def cancel_job(
     "--auto-resume",
     type=click.BOOL,
     default=False,
-    help="Optional. If set to `true`, the job will automatically resume after a failure. Note that `auto-resume` currently only works in the `kubeflow` namespace or the namespace prefixed with `aws-hyperpod`. To enable `auto-resume`, you also should set `restart-policy` to `OnFailure`.",
+    help="Optional. The flag to enable HyperPod resilience job auto resume. If set to `true`, the job will automatically resume after pod or node failure. To enable `auto-resume`, you also should set `restart-policy` to `OnFailure`.",
 )
 @click.option(
     "--max-retry",
     type=click.INT,
-    help="Optional. The maximum number of retries if `auto-resume` is `true`. If `auto-resume` is set to true and `max-retry` is not specified, the default value is 1.",
+    help="Optional. The maximum number of retries for HyperPod resilience job auto resume. If `auto-resume` is set to true and `max-retry` is not specified, the default value is 1.",
 )
 @click.option(
     "--restart-policy",
