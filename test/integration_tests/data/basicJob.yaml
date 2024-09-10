@@ -19,7 +19,7 @@ hydra:
  output_subdir: null
 
 training_cfg:
- entry_script: ./train.py
+ entry_script: /opt/pytorch-mnist/mnist.py
  script_args: []
  run:
   name: hyperpod-cli-test # Current run name
@@ -49,7 +49,7 @@ cluster:
   restartPolicy: OnFailure # restart policy
 
 base_results_dir: ./result # Location to store the results, checkpoints and logs.
-container: docker.io/kubeflowkatib/pytorch-mnist:v1beta1-45c5727 # container to use
+container: docker.io/kubeflowkatib/pytorch-mnist-cpu:v1beta1-bc09cfd # container to use
 
 env_vars:
  NCCL_DEBUG: INFO # Logging level for NCCL. Set to "INFO" for debug information

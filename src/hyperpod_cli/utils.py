@@ -105,11 +105,11 @@ def store_current_hyperpod_context(data):
 
 
 def _retrieve_current_hyperpod_context():
-    file = open(
+    with open(
         GENERATED_LAUNCHER_CONFIG_FILE_PATH + HYPERPOD_CLUSTER_CONTEXT_FILE_NAME,
         "r",
-    )
-    return json.load(file)
+    ) as file:
+        return json.load(file)
 
 
 def _validate_link(console_url):
