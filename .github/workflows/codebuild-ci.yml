@@ -64,6 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [wait-for-approval]
     strategy:
+        fail-fast: false
         matrix:
           python-version: ["38", "39", "310", "311"]
     steps:
@@ -73,7 +74,7 @@ jobs:
           role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
           aws-region: us-west-2
           role-duration-seconds: 3600
-      - name: Run Unit Tests in Python ${{ matrix.python-version }}
+      - name: Run Integration Tests in Python ${{ matrix.python-version }}
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
           project-name: ${{ secrets.INTEGRATION_TEST_PROJECT_PREFIX }}${{ matrix.python-version }}
