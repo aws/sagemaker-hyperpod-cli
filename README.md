@@ -137,8 +137,8 @@ hyperpod start-job --job-name <job-name> [--namespace <namespace>] [--job-kind <
 * `scheduler-type` (enum) - Optional. The scheduler type to use. Currently, only `Kueue` is supported.
 * `queue-name` (string) - Optional. The name of the queue to submit the job to, which is created by the cluster admin users in your AWS account.
 * `priority` (string) - Optional. The priority for the job, which needs to be created by the cluster admin users and match the name in the cluster.
-* `auto-resume` (bool) - Optional. If set to `true`, the job will automatically resume after a failure. Note that `auto-resume` currently only works in the `kubeflow` namespace or the namespace prefixed with `aws-hyperpod`. To enable `auto-resume`, you also should set `restart-policy` to `OnFailure`.
-* `max-retry` (int) - Optional. The maximum number of retries if `auto-resume` is `true`. If `auto-resume` is set to true and `max-retry` is not specified, the default value is 1.
+* `auto-resume` (bool) - Optional. The flag to enable HyperPod resilience job auto resume. If set to `true`, the job will automatically resume after pod or node failure. To enable `auto-resume`, you also should set `restart-policy` to `OnFailure`.
+* `max-retry` (int) - Optional. The maximum number of retries for HyperPod resilience job auto resume. If `auto-resume` is set to true and `max-retry` is not specified, the default value is 1.
 * `restart-policy` (enum) - Optional. The PyTorchJob restart policy, which can be `Always`, `OnFailure`, `Never`, or `ExitCode`. The default is `OnFailure`. To enable `auto-resume`, `restart-policy` should be set to `OnFailure`.
 * `volumes` (list[string]) - Optional. Add a temp directory for containers to store data in the hosts.
 * `persistent-volume-claims` (list[string]) - Optional. The pre-created persistent volume claims (PVCs) that the data scientist can choose to mount to the containers. The cluster admin users should create PVCs and provide it to the data scientist users.
