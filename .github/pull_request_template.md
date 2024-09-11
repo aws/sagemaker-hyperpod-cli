@@ -8,18 +8,13 @@
 2. Security requirements
     - [ ] Ensure that a Pull Request (PR) does not expose passwords and other sensitive information by using git-secrets and upload relevant evidence: https://github.com/awslabs/git-secrets
     - [ ] Ensure commit has GitHub Commit Signature
-3. Automatic checks in GitHub Workflow
-    - [ ] collab-check : Check if the owner of PR belongs is collaborator of this repo or not
-    - [ ] wait-for-approval : Since the owner of PR does not belong to this repo, manual approval from corresponding GitHub team is required
-    - [ ] unit-tests : Run unit tests based on python version from 3.8 to 3.11. If any unit test failed, PR will be blocked here.
-    - [ ] integ-tests : Run integ tests based on python version from 3.8 to 3.11. If any unit test failed, PR will be blocked here.
-4. Manual review
+3. Manual review
     1. Click on the Files changed tab to see the code changes. Review the changes thoroughly:
         - [ ] Code Quality: Check for coding standards, naming conventions, and readability.
         - [ ] Functionality: Ensure that the changes meet the requirements and that all necessary code paths are tested.
         - [ ] Security: Check for any security issues or vulnerabilities.
         - [ ] Documentation: Confirm that any necessary documentation (code comments, README updates, etc.) has been updated.
-5. Check for Merge Conflicts:
+4. Check for Merge Conflicts:
     - [ ] Verify if there are any merge conflicts with the base branch. GitHub will usually highlight this. If there are conflicts, you should resolve them.
       
 ## For Reviewer
