@@ -67,7 +67,7 @@ jobs:
 
   put-metric-data:
     runs-on: ubuntu-latest
-    needs: [check-dependabot-alerts]
+    needs: [check-dependabot-alerts, check-code-scanning-alerts]
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@12e3392609eaaceb7ae6191b3f54bbcb85b5002b

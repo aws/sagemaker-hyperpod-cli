@@ -223,36 +223,16 @@ class AbstractIntegrationTests:
                         "OutputValue"
                     )
 
-    def update_cluster_auth(self):
-        with open(
-            "test/integration_tests/charts/hp-node-auth.yaml",
-            "r",
-        ) as hyperpod_current_context:
-            template = hyperpod_current_context.read()
-
-        template = re.sub(
-            "SAGEMAKER_EXECUTION_ROLE",
-            self.cfn_output_map.get("ExecutionRole"),
-            template,
-        )
-        template = re.sub(
-            "SAGEMAKER_SERVICE_ROLE",
-            self.cfn_output_map.get("ServiceRole"),
-            template,
-        )
-
-        with open("/tmp/hp-node-auth.yaml", "w") as hyperpod_current_context:
-            hyperpod_current_context.write(template)
-
+    def apply_helm_charts(self):
         command = [
-            "kubectl",
-            "apply",
-            "-f",
-            "/tmp/hp-node-auth.yaml",
+            "helm",
+            "dependencies",
+            "update",
+            "helm_chart/HyperPodHelmChart"
         ]
 
         try:
-            # Execute the command to update kubeconfig
+            # Execute the command to update helm charts
             logger.info(
                 subprocess.run(
                     command,
@@ -262,36 +242,37 @@ class AbstractIntegrationTests:
                 )
             )
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Failed to apply auth charts: {e}")
+            raise RuntimeError(f"Failed to update helm charts: {e}")
 
-    def install_training_operator(self):
-        command = [
-            "kubectl",
-            "apply",
-            "-k",
-            "github.com/kubeflow/training-operator/manifests/overlays/standalone?ref=v1.7.0",
+        apply_commanmd = [
+            "helm",
+            "install",
+            "dependencies",
+            "helm_chart/HyperPodHelmChart",
+            "--namespace",
+            "kube-system"
         ]
 
         try:
-            # Execute the command to update kubeconfig
+            # Execute the command to apply helm charts
             logger.info(
                 subprocess.run(
-                    command,
+                    apply_commanmd,
                     check=True,
                     capture_output=True,
                     text=True,
                 )
             )
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Failed to install training operator: {e}")
+            raise RuntimeError(f"Failed to apply helm charts: {e}")
+
 
     def setup(self):
         self.new_session = self._create_session()
         self.create_test_resorces(self.new_session)
         self.create_kube_context()
-        self.update_cluster_auth()
+        self.apply_helm_charts()
         self.create_hyperpod_cluster(self.new_session)
-        self.install_training_operator()
 
     def tearDown(self):
         self.delete_hyperpod_cluster(self.new_session)
