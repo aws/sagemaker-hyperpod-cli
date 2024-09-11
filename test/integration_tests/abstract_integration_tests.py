@@ -266,26 +266,6 @@ class AbstractIntegrationTests:
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failed to apply helm charts: {e}")
 
-    def install_training_operator(self):
-        command = [
-            "kubectl",
-            "apply",
-            "-k",
-            "github.com/kubeflow/training-operator/manifests/overlays/standalone?ref=v1.7.0",
-        ]
-
-        try:
-            # Execute the command to update kubeconfig
-            logger.info(
-                subprocess.run(
-                    command,
-                    check=True,
-                    capture_output=True,
-                    text=True,
-                )
-            )
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Failed to install training operator: {e}")
 
     def setup(self):
         self.new_session = self._create_session()
@@ -293,7 +273,6 @@ class AbstractIntegrationTests:
         self.create_kube_context()
         self.apply_helm_charts()
         self.create_hyperpod_cluster(self.new_session)
-        self.install_training_operator()
 
     def tearDown(self):
         self.delete_hyperpod_cluster(self.new_session)
