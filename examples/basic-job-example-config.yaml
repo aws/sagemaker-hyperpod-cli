@@ -22,7 +22,7 @@ hydra:
 
 training_cfg:
   # entry_script: Required. Path to the entry script of training/fine-tuning, this path should be inside container
-  entry_script: ./train.py
+  entry_script: /opt/pytorch-mnist/mnist.py
   # script_args: Optional. List of script arguments. Example of usage:
   # script_args:
   #  - --max_context_width: 4096
@@ -90,7 +90,7 @@ cluster:
 # base_results_dir: Optional. Location to store the results, checkpoints and logs.
 base_results_dir: ./result
 # container: Required. Docker image to be used for Training Job
-container: docker.io/kubeflowkatib/pytorch-mnist:v1beta1-45c5727
+container: docker.io/kubeflowkatib/pytorch-mnist-cpu:v1beta1-bc09cfd
 
 # env_vars: Optional. Environment variables passed to the training job.
 env_vars:
