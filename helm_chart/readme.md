@@ -60,7 +60,7 @@ Notes:
 * Update helm chart dependencies. It ensures that all the sub-charts required by the main chart are fetched and properly set up before deploying the main chart. It doesn’t actually deploy the chart itself but prepares it by ensuring all dependencies are resolved.
 
   ```
-  helm dependencies update src/hyperpod_cli/helm_chart/HyperPodHelmChart
+  helm dependencies update helm_chart/HyperPodHelmChart
   ```
 
 ### Step Two:
@@ -84,7 +84,7 @@ Notes:
 
 * Deploy a Helm Chart to Your Kubernetes Cluster. This command deploys the Helm chart to your cluster with custom configurations applied, as specified in the values.yaml file. Please note that only certain versions of dependencies will be deployed based on the configuration specified in the values.yaml.
   ```
-  helm install dependencies src/hyperpod_cli/helm_chart/HyperPodHelmChart --namespace kube-system
+  helm install dependencies helm_chart/HyperPodHelmChart --namespace kube-system
   ```
 
 ### Step Four (only required for installing Kueue):
