@@ -269,6 +269,7 @@ def _aggregate_nodes_info(
     for node in nodes:
         labels = node.metadata.labels
         node_name = node.metadata.name
+        logger.debug(f"node_name is {node_name} and labels are {labels}")
         instance_type = labels[INSTANCE_TYPE_LABEL]
         nodes_summary[instance_type]["total_nodes"] += 1
         if DEEP_HEALTH_CHECK_STATUS_LABEL in labels:
