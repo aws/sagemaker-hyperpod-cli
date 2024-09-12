@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Dict, List
 
 import omegaconf
+from urllib.parse import urlparse
 from nemo_launcher.core.stages import Training
 from nemo_launcher.utils.job_utils import JobPaths
 from omegaconf import OmegaConf
@@ -280,7 +281,9 @@ class SMTraining(Training):
         """
         Insert git token to git repo url. Currently only support github repo
         """
-        if "github.com" in repo_url:
+
+        host_name = urlparse(repo_url).hostname
+        if "github.com" == host_name:
             splitted_url = repo_url.split("github.com", 1)
             repo_url = splitted_url[0] + self.cfg.git.token + "@github.com" + splitted_url[1]
         return repo_url

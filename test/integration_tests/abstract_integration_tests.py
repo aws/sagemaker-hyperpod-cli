@@ -224,12 +224,7 @@ class AbstractIntegrationTests:
                     )
 
     def apply_helm_charts(self):
-        command = [
-            "helm",
-            "dependencies",
-            "update",
-            "helm_chart/HyperPodHelmChart"
-        ]
+        command = ["helm", "dependencies", "update", "helm_chart/HyperPodHelmChart"]
 
         try:
             # Execute the command to update helm charts
@@ -250,7 +245,7 @@ class AbstractIntegrationTests:
             "dependencies",
             "helm_chart/HyperPodHelmChart",
             "--namespace",
-            "kube-system"
+            "kube-system",
         ]
 
         try:
@@ -265,7 +260,6 @@ class AbstractIntegrationTests:
             )
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failed to apply helm charts: {e}")
-
 
     def setup(self):
         self.new_session = self._create_session()

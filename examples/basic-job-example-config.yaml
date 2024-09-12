@@ -21,26 +21,29 @@ hydra:
   output_subdir: null
 
 training_cfg:
-  # entry_script: Required. Path to the entry script of training/fine-tuning, this path should be inside container
+  # entry_script: Required. Path to the entry script of training/fine-tuning, this path should be inside container.
+  # Mapping to '--entry-script' argument in 'start-job' command.
   entry_script: /opt/pytorch-mnist/mnist.py
-  # script_args: Optional. List of script arguments. Example of usage:
+  # script_args: Optional. List of script arguments. Mapping to '--script-args' argument in 'start-job' command.
+  # Example of usage:
   # script_args:
   #  - --max_context_width: 4096
   #  - --num_layers: 32
   script_args: []
   run:
-    # name: Required. Current Training Job name
+    # name: Required. Current Training Job name. Mapping to '--job-name' argument in 'start-job' command.
     name: hyperpod-cli-test
-    # nodes: Required. Number of nodes to use for current training
+    # nodes: Required. Number of nodes to use for current training. Mapping to '--node-count' argument in 'start-job' command.
     nodes: 2
     # ntasks_per_node: Optional. Number of devices to use per node.
     # For CPU instances, default value will be 8; For GPU or TRN instances, default value
-    # will be the accelerator cores number on the instance
+    # will be the accelerator cores number on the instance. Mapping to '--tasks-per-node' argument in 'start-job' command.
     ntasks_per_node: 1
 cluster:
-  # cluster_type: Required. Currently, only support k8s cluster type
+  # cluster_type: Required. Currently, only support k8s cluster type.
   cluster_type: k8s
   # instance_type: Required. SageMaker Hyperpod supported instance type only.
+  # Mapping to '--instance-type' argument in 'start-job' command.
   instance_type: ml.c5.2xlarge
   # cluster_config: Required. Fields related to cluster configuration for each Training job run.
   cluster_config:
@@ -51,19 +54,24 @@ cluster:
     #    sagemaker.amazonaws.com/job-max-retry-count: 1
     annotations: null
     # service_account_name: Optional. The name of service account associated with the namespace.
+    # Mapping to '--service-account-name' argument in 'start-job' command.
     service_account_name: null
-    # persistent_volume_claims: Optional. The persistent volume claims, usually used to mount FSx
+    # persistent_volume_claims: Optional. The persistent volume claims, usually used to mount FSx.
+    # Mapping to '--persistent-volume-claims' argument in 'start-job' command.
     persistent_volume_claims: null
     # namespace: Optional. The namespace to submit job. If not specify, Training job will submit to
     # the current namespace from Kubernetes context.
+    # Mapping to '--namespace' argument in 'start-job' command.
     namespace: kubeflow
     # custom_labels: Optional. Used to specify the name of the queue, which is created by the cluster admin users.
     # custom_labels:
     #   kueue.x-k8s.io/queue-name: low-priority-queue2
     custom_labels: null
     # priority_class_name: Optional. The priority for the job, which is created by the cluster admin users.
+    # Mapping to '--priority' argument in 'start-job' command.
     priority_class_name: null
-    # volumes: Optional. Used to mount temp path to container. Example of usage:
+    # volumes: Optional. Used to mount temp path to container. Mapping to '--volumes' argument in 'start-job' command.
+    # Example of usage:
     # volumes:
     #  - volumeName: v1
     #    hostPath: /data
@@ -71,7 +79,7 @@ cluster:
     volumes: null
     # labal_selector: Optional. Defines Kubernetes node affinity to select nodes with labels. Following
     # config will choose SageMaker HyperPod health labels and prefer nodes with SageMaker Hyperpod burn-in
-    # test passed label.
+    # test passed label. Mapping to '--label-selector' argument in 'start-job' command.
     label_selector:
       required:
         sagemaker.amazonaws.com/node-health-status:
@@ -81,17 +89,22 @@ cluster:
           - Passed
       weights:
         - 100
-    # pullPolicy: Required. Kubernetes PyTorchJob pull policy to pull container, can be Always, IfNotPresent and Never
+    # pullPolicy: Required. Kubernetes PyTorchJob pull policy to pull container, can be Always, IfNotPresent and Never.
+    # Mapping to '--pull-policy' argument in 'start-job' command.
     pullPolicy: IfNotPresent
     # restartPolicy: Required. Kubernetes PyTorchJob restart policy. Can be OnFailure, Always or Never.
     # To use SageMaker Hyperpod AutoResume functionality, please set it to OnFailure.
+    # Mapping to '--restart-policy' argument in 'start-job' command.
     restartPolicy: OnFailure
 
 # base_results_dir: Optional. Location to store the results, checkpoints and logs.
+# Mapping to '--results-dir' argument in 'start-job' command.
 base_results_dir: ./result
 # container: Required. Docker image to be used for Training Job
+# Mapping to '--image' argument in 'start-job' command.
 container: docker.io/kubeflowkatib/pytorch-mnist-cpu:v1beta1-bc09cfd
 
 # env_vars: Optional. Environment variables passed to the training job.
+# Mapping to '--environment' argument in 'start-job' command.
 env_vars:
   NCCL_DEBUG: INFO # Logging level for NCCL. Set to "INFO" for debug information
