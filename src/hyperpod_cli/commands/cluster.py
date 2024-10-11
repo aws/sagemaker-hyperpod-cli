@@ -290,7 +290,9 @@ def _aggregate_nodes_info(
         elif health_status == "Schedulable":
             nodes_summary[instance_type]["schedulable"] += 1
         else:
-            raise ValueError("Unexpected node health status")
+            logger.error(f"Unexpected value {health_status} for node health status label, set node {node_name} as Unschedulable.")
+            nodes_summary[instance_type]["unschedulable"] += 1
+            continue
 
         # Calculate accelerator devices available
         if (
