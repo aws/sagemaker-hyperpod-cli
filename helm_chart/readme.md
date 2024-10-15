@@ -93,6 +93,11 @@ Notes:
   ```
   helm upgrade dependencies src/hyperpod_cli/helm_chart/HyperPodHelmChart --values src/hyperpod_cli/helm_chart/HyperPodHelmChart/charts/kueue/values.yaml --namespace kube-system
   ```
+### Step Five (only required for changing the health monitoring agent installation on your cluster- version upgrade):
+* This command is required to change the version of the Health Monitoring Agent running on your Hyperpod cluster.
+```
+helm upgrade dependencies helm_chart/HyperPodHelmChart/charts/health-monitoring-agent --namespace kube-system -f helm_chart/HyperPodHelmChart/charts/health-monitoring-agent/values.yaml
+```
 
 ## 5. Notes
 - If you intend to use the Health Monitoring Agent container image from another region, please see below list to find relevant region's URI.
