@@ -17,6 +17,7 @@ import json
 import os
 import sys
 import subprocess
+import shlex
 from typing import Any, Dict, Optional, List, Tuple
 
 import click
@@ -456,7 +457,7 @@ def start_job(
     persistent_volume_claims: Optional[str],
     volumes: Optional[str],
     recipe: Optional[str],
-    override_parameters: Tuple[str],
+    override_parameters: Optional[Tuple[str]],
     debug: bool,
 ):
     if debug:
@@ -739,7 +740,7 @@ def start_training_job(recipe, override_parameters, job_name, config_file, launc
             f'base_results_dir={os.path.abspath(os.path.join(os.getcwd(), "results"))}'
         ]
         if override_parameters:
-            cmd.extend(shlex.split(override_parameters))
+            cmd.extend(override_parameters)
         
         logger.debug(f"Executing command: {' '.join(cmd)}")
         execute_command(cmd, env)
