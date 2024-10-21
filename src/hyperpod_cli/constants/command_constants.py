@@ -34,6 +34,7 @@ HP_HEALTH_STATUS_LABEL = "sagemaker.amazonaws.com/node-health-status"
 INSTANCE_TYPE_LABEL = "node.kubernetes.io/instance-type"
 DEEP_HEALTH_CHECK_STATUS_LABEL = "sagemaker.amazonaws.com/deep-health-check-status"
 TEMP_KUBE_CONFIG_FILE = "/tmp/kubeconfig"
+SAGEMAKER_TRAINING_LAUNCHER_DIR = "./src/hyperpod_cli/private_sagemaker_training_launcher"
 
 
 class PullPolicy(Enum):
