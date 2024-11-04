@@ -17,11 +17,11 @@ import json
 import os
 import sys
 import subprocess
-from typing import Any, Dict, Optional, List
+import shlex
+from typing import Any, Dict, Optional, List, Tuple
 
 import click
 import yaml
-from hydra import compose, initialize_config_dir
 from hyperpod_cli import utils
 
 from hyperpod_cli.constants.command_constants import (
@@ -33,6 +33,7 @@ from hyperpod_cli.constants.command_constants import (
     KUEUE_QUEUE_NAME_LABEL_KEY,
     NODE_AFFINITY_DICT,
     DEEP_HEALTH_CHECK_PASSED_ONLY_NODE_AFFINITY_DICT,
+    SAGEMAKER_TRAINING_LAUNCHER_DIR,
     PullPolicy,
     RestartPolicy,
     PersistentVolumeClaim,
@@ -41,9 +42,17 @@ from hyperpod_cli.constants.command_constants import (
 from hyperpod_cli.clients.kubernetes_client import (
     KubernetesClient,
 )
-from hyperpod_cli.custom_launcher.main import (
-    main as customer_launcher,
-)
+
+# Add the private sagemaker training launcher to the sys path
+if 'SAGEMAKER_TRAINING_LAUNCHER_DIR' not in os.environ:
+    os.environ['SAGEMAKER_TRAINING_LAUNCHER_DIR'] = SAGEMAKER_TRAINING_LAUNCHER_DIR
+
+launcher_dir = os.environ['SAGEMAKER_TRAINING_LAUNCHER_DIR']
+if launcher_dir not in sys.path:
+    sys.path.append(launcher_dir)
+
+from main import main as customer_launcher
+
 from hyperpod_cli.service.cancel_training_job import (
     CancelTrainingJob,
 )
@@ -69,12 +78,11 @@ from hyperpod_cli.validators.job_validator import (
 
 logger = setup_logger(__name__)
 
-
 @click.command()
 @click.option(
     "--job-name",
     type=click.STRING,
-    required=True,
+    required=False,
     help="Required. The name of the job to see the details of.",
 )
 @click.option(
@@ -394,6 +402,51 @@ def cancel_job(
     " <volume_name>:</host/mount/path>:</container/mount/path>,<volume_name>:</host/mount/path1>:</container/mount/path1>",
 )
 @click.option(
+    "--recipe",
+    type=click.STRING,
+    required=False,
+    help = """Optional. Recipe which accelerates distributed training jobs.
+            Current supported recipes are as follows: \n
+            fine-tuning/llama/hf_llama3_8b_seq8192_gpu \n
+            fine-tuning/llama/hf_llama3_8b_seq8192_gpu_lora \n
+            fine-tuning/llama/hf_llama3_70b_seq8192_gpu_lora \n
+            fine-tuning/llama/hf_llama3_405b_seq8192_gpu_qlora \n
+            fine-tuning/llama/hf_llama3_405b_seq131072_gpu_qlora \n
+            training/llama/hf_llama3_7B_config_trainium \n
+            training/llama/hf_llama3_8b_seq8192_gpu \n
+            training/llama/llama2_7b_nemo \n
+            training/llama/megatron_llama_7B_config \n
+            training/mistral/hf_mistral_gpu \n
+            training/mixtral/hf_mixtral_gpu \n
+            """
+)
+@click.option(
+    "--override-parameters",
+    type=click.STRING,
+    help="""Optional. Override parameters for the recipe. Format: 'key1=value1 key2=value2 ...'
+    hyperpod start-job --recipe fine-tuning/llama/hf_llama3_8b_seq8192_gpu --override-parameters \
+'{
+  "+cluster.persistent_volume_claims.0.claimName":"fsx-claim",
+  "+cluster.persistent_volume_claims.0.mountPath":"data",
+  "recipes.run.name": "name",
+  "recipes.exp_manager.exp_dir": "/data/llama8b",
+  "recipes.trainer.num_nodes": 1,
+  "recipes.model.num_hidden_layers": 4,
+  "recipes.model.num_attention_heads": 8,
+  "recipes.model.max_context_width": 8192,
+  "recipes.model.max_position_embeddings": 8192,
+  "recipes.model.train_batch_size": 1,
+  "recipes.model.data.use_synthetic_data": true,
+  "instance_type": "g5.48xlarge",
+  "cluster": "k8s",
+  "cluster_type": "k8s",
+  "container": "container link",
+  "recipes.model.data.train_dir": "/data/datasets/wikicorpus_llama3_tokenized_8k/",
+  "recipes.model.data.val_dir": "/data/datasets/wikicorpus_llama3_tokenized_8k_val/",
+}'
+    """,
+)
+@click.option(
     "--debug",
     is_flag=True,
     help="Enable debug mode",
@@ -424,10 +477,13 @@ def start_job(
     service_account_name: Optional[str],
     persistent_volume_claims: Optional[str],
     volumes: Optional[str],
+    recipe: Optional[str],
+    override_parameters: Optional[str],
     debug: bool,
 ):
     if debug:
         set_logging_level(logger, logging.DEBUG)
+        os.environ['HYDRA_FULL_ERROR'] = '1'
 
     # Perform Post-Processing parameter validations
     # TODO: refactor validate_start_job_args to use Click ctx
@@ -439,9 +495,12 @@ def start_job(
         logger.error("Cannot start Training job due to AWS credentials issue")
         sys.exit(1)
 
-    if not namespace and config_file is None:
-        k8s_client = KubernetesClient()
-        namespace = k8s_client.get_current_context_namespace()
+    #if not namespace and config_file is None:
+    #    k8s_client = KubernetesClient()
+    #    namespace = k8s_client.get_current_context_namespace()
+    
+    launcher_config_path = None
+    launcher_config_file_name = None
 
     if not validator.validate_start_job_args(
         config_file,
@@ -460,6 +519,7 @@ def start_job(
         max_retry,
         namespace,
         entry_script,
+        recipe,
     ):
         sys.exit(1)
 
@@ -591,9 +651,8 @@ def start_job(
         )
         launcher_config_path = GENERATED_LAUNCHER_CONFIG_FILE_PATH
         launcher_config_file_name = filename
-    else:
-        """Start job with the provided configuration file or directly with CLI
-        arguments"""
+    elif config_file is not None:
+        """Start job with the provided configuration file"""
         if os.path.isabs(config_file):
             abs_config_file_path = config_file
         else:
@@ -604,29 +663,10 @@ def start_job(
         launcher_config_path = str(config_path)
         launcher_config_file_name = str(config_name)
 
-    logger.debug(
-        f"Starting job with config {launcher_config_path}{launcher_config_file_name}"
-    )
+    start_training_job(recipe, override_parameters, job_name, config_file, launcher_config_path, launcher_config_file_name)
 
-    # Initialize Hydra and call custom launcher with Hydra config to submit job
-    try:
-        with initialize_config_dir(config_dir=launcher_config_path, version_base="1.2"):
-            cfg = compose(config_name=launcher_config_file_name)
-            with suppress_standard_output_context():
-                customer_launcher(cfg)
-    except Exception as e:
-        logger.error(f"Starting job failed due to: {e}")
-        sys.exit(1)
-    finally:
-        # Remove temporary created Launcher config file for submit via CLI argument case
-        if job_name is not None and config_file is None:
-            file_to_delete = os.path.join(
-                launcher_config_path, launcher_config_file_name
-            )
-            if os.path.exists(file_to_delete):
-                os.remove(file_to_delete)
-    console_link = utils.get_cluster_console_url()
-    print(json.dumps({"Console URL": console_link}, indent=1, sort_keys=False))
+    #console_link = utils.get_cluster_console_url()
+    #print(json.dumps({"Console URL": console_link}, indent=1, sort_keys=False))
 
 
 def _override_or_remove(
@@ -683,3 +723,68 @@ def validate_only_config_file_argument(ctx):
         raise click.BadParameter(
             f"Please only provide 'config-file' argument if you want to start job with .yaml file."
         )
+
+
+def execute_command(cmd, env=None):
+    try:
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True, env=env)
+        logger.info(result.stdout)
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Command failed with exit code {e.returncode}")
+        logger.error(e.stderr)
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"An error occurred: {str(e)}")
+        sys.exit(1)
+
+
+def start_training_job(recipe, override_parameters, job_name, config_file, launcher_config_path=None, launcher_config_file_name=None):
+    env = os.environ.copy()
+    env['HYDRA_FULL_ERROR'] = '1'
+
+    if recipe is None:
+        logger.debug(f"Starting job with config {launcher_config_path}{launcher_config_file_name}")
+        cmd = [
+            'python3',
+            f'{SAGEMAKER_TRAINING_LAUNCHER_DIR}/main.py',
+            f'--config-path={launcher_config_path}',
+            f'--config-name={launcher_config_file_name}',
+        ]
+        execute_command(cmd, env)
+    else:
+        cmd = [
+            'python3',
+            f'{SAGEMAKER_TRAINING_LAUNCHER_DIR}/main.py',
+            f'recipes={recipe}',
+            'cluster=k8s',
+            'cluster_type=k8s',
+            f'base_results_dir={os.path.abspath(os.path.join(os.getcwd(), "results"))}'
+        ]
+        print(override_parameters)
+        if override_parameters:
+            try:
+                # Parse the JSON string into a dictionary
+                override_dict = json.loads(override_parameters)
+                
+                # Convert the dictionary into key=value pairs
+                for key, value in override_dict.items():
+                    if isinstance(value, str):
+                        # Ensure strings are properly quoted
+                        cmd.append(f'{key}="{value}"')
+                    else:
+                        cmd.append(f'{key}={value}')
+            except json.JSONDecodeError as e:
+                print(f"Invalid JSON format: {e}")
+                return
+        
+        # For debugging: Print out the final command to check formatting
+        print(f"Final command: {' '.join(cmd)}")
+        
+        execute_command(cmd, env)
+
+    if job_name is not None and config_file is None:
+        file_to_delete = os.path.join(launcher_config_path, launcher_config_file_name)
+        if os.path.exists(file_to_delete):
+            os.remove(file_to_delete)
+
+
