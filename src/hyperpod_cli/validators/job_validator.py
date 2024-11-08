@@ -57,7 +57,7 @@ class JobValidator(Validator):
         max_retry: Optional[int],
         namespace: Optional[str],
         entry_script: Optional[str],
-        recipe: Optional[str],
+        recipe: Optional[str] = None,
     ):
         if job_kind is not None and job_kind != "kubeflow/PyTorchJob":
             logger.error("The only supported 'job-kind' is 'kubeflow/PyTorchJob'.")
@@ -71,9 +71,15 @@ class JobValidator(Validator):
             logger.error("The only supported 'scheduler_type' is 'Kueue'.")
             return False
 
-        if config_file is not None and job_name is not None and recipe is not None:
+        if config_file is not None and job_name is not None:
             logger.error(
-                "Please provide only 'recipe' for recipe-based jobs or 'config-file' to submit job using custom script or 'job-name' to submit job via CLI arguments"
+                "Please provide only 'config-file' to submit job using custom script or 'job-name' to submit job via CLI arguments"
+            )
+            return False
+        
+        if config_file is not None and recipe is not None:
+            logger.error(
+                "Please provide only 'config-file' to submit job using custom script or 'recipe' for recipe-based jobs"
             )
             return False
 
@@ -208,6 +214,7 @@ def validate_hyperpod_related_fields(
     max_retry: Optional[int],
     namespace: Optional[str]
 ):
+    logger.info(f"instance_type: {instance_type}, queue_name: {queue_name}, priority: {priority}, auto_resume: {auto_resume}, restart_policy: {restart_policy}, max_retry: {max_retry}, namespace: {namespace}")
     if instance_type is None:
         logger.error(
             "Please provide 'instance-type' to specify instance type for training job"
@@ -244,3 +251,46 @@ def validate_recipe_file(recipe: str):
     
     logger.error(f"Recipe file '{recipe}.yaml' not found in {RECIPES_DIR}")
     return False
+
+def is_dict_str_list_str(data: dict) -> bool:
+    """
+    Check if the given dictionary is of type Dict[str, List[str]].
+
+    Parameters:
+    data (dict): The dictionary to check.
+
+    Returns:
+    bool: True if the dictionary is of type Dict[str, List[str]], False otherwise.
+    """
+    for key, value in data.items():
+        if not isinstance(value, list) and not isinstance(value, str):
+            return False
+        elif isinstance(value, list) and not all(
+            isinstance(item, str) for item in value
+        ):
+            return False
+    return True
+def _validate_json_str(
+    json_str: str,
+):
+    """
+    Convert a JSON string to a dictionary.
+
+    Parameters:
+    json_string (str): A string in JSON format.
+
+    Returns:
+    dict: A dictionary representation of the JSON string.
+    """
+    try:
+        # Attempt to convert the JSON string to a dictionary
+        json.loads(json_str)
+        return True
+    except json.JSONDecodeError as e:
+        # Handle JSON decoding errors
+        logger.error(f"JSON decoding failed: {e}")
+        return False
+    except Exception as e:
+        # Catch any other exceptions
+        logger.error(f"An unexpected error occurred: {e}")
+        return False

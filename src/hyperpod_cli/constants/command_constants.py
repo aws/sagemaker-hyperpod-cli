@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from enum import Enum
+from pathlib import Path
 
 GENERATED_LAUNCHER_CONFIG_FILE_PATH = "/tmp/"
 HYPERPOD_KUBERNETES_JOB_PREFIX = "hyperpod-k8s-job"
@@ -34,7 +35,7 @@ HP_HEALTH_STATUS_LABEL = "sagemaker.amazonaws.com/node-health-status"
 INSTANCE_TYPE_LABEL = "node.kubernetes.io/instance-type"
 DEEP_HEALTH_CHECK_STATUS_LABEL = "sagemaker.amazonaws.com/deep-health-check-status"
 TEMP_KUBE_CONFIG_FILE = "/tmp/kubeconfig"
-SAGEMAKER_TRAINING_LAUNCHER_DIR = "./src/hyperpod_cli/private_sagemaker_training_launcher"
+SAGEMAKER_TRAINING_LAUNCHER_DIR = str(Path("./src/hyperpod_cli/sagemaker_hyperpod_recipes").resolve())
 
 
 class PullPolicy(Enum):

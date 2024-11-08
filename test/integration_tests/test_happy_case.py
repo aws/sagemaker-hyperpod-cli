@@ -142,3 +142,82 @@ class TestHappyCase(AbstractIntegrationTests):
         result = self._execute_test_command(command)
         assert result.returncode == 0
         logger.info(result.stdout)
+
+    @pytest.mark.order(8)
+    def test_start_job_with_recipe(self):
+        command = [
+            "hyperpod",
+            "start-job",
+            "--recipe",
+            "fine-tuning/llama/hf_llama3_8b_seq8192_gpu",
+        ]
+
+        result = self._execute_test_command(command)
+        # wait for job to complete creation
+        time.sleep(240)
+        assert result.returncode == 0
+        logger.info(result.stdout)
+
+    @pytest.mark.order(9)
+    def test_start_job_with_recipe_and_override_parameters(self):
+        override_params = '''{
+            "recipes.run.name": "test-recipe-run",
+            "recipes.trainer.num_nodes": 1,
+            "instance_type": "g5.48xlarge"
+        }'''
+
+        command = [
+            "hyperpod",
+            "start-job",
+            "--recipe",
+            "fine-tuning/llama/hf_llama3_8b_seq8192_gpu",
+            "--override-parameters",
+            override_params,
+        ]
+
+        result = self._execute_test_command(command)
+        # wait for job to complete creation
+        time.sleep(240)
+        assert result.returncode == 0
+        logger.info(result.stdout)
+
+    @pytest.mark.order(10)
+    def test_get_job_with_recipe(self):
+        command = [
+            "hyperpod",
+            "get-job",
+            "--job-name",
+            "test-recipe-run",
+        ]
+
+        result = self._execute_test_command(command)
+        assert result.returncode == 0
+        assert "test-recipe-run" in str(result.stdout)
+        logger.info(result.stdout)
+
+    @pytest.mark.order(11)
+    def test_list_pods_with_recipe(self):
+        command = [
+            "hyperpod",
+            "list-pods",
+            "--job-name",
+            "test-recipe-run",
+        ]
+
+        result = self._execute_test_command(command)
+        assert result.returncode == 0
+        assert "test-recipe-run" in str(result.stdout)
+        logger.info(result.stdout)
+
+    @pytest.mark.order(12)
+    def test_cancel_job_with_recipe(self):
+        command = [
+            "hyperpod",
+            "cancel-job",
+            "--job-name",
+            "test-recipe-run",
+        ]
+
+        result = self._execute_test_command(command)
+        assert result.returncode == 0
+        logger.info(result.stdout)

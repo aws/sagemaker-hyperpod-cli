@@ -55,6 +55,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertTrue(result)
@@ -75,7 +76,6 @@ class TestJobValidator(unittest.TestCase):
             instance_type,
             image,
             job_kind,
-            command,
             None,
             None,
             None,
@@ -85,6 +85,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -119,6 +120,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -155,11 +157,12 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
         mock_logger.error.assert_called_once_with(
-            "Please provide only 'config-file' to submit job using config file or 'job-name' to submit job via CLI arguments"
+            "Please provide only 'config-file' to submit job using custom script or 'job-name' to submit job via CLI arguments"
         )
 
     @patch("hyperpod_cli.validators.job_validator.logger")
@@ -191,11 +194,12 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
         mock_logger.error.assert_called_once_with(
-            "Please provide either 'config-file' to submit job using config file or 'job-name' to submit job via CLI arguments"
+            "Please provide either 'recipe' for recipe-based jobs or 'config-file' to submit job using config file or 'job-name' to submit job via CLI arguments"
         )
 
     @patch("hyperpod_cli.validators.job_validator.logger")
@@ -227,6 +231,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -263,6 +268,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -298,6 +304,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             None,
             "kubeflow",
+            None,
             None,
         )
 
@@ -336,6 +343,7 @@ class TestJobValidator(unittest.TestCase):
             max_retry,
             "hyperpod-1",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertTrue(result)
@@ -369,6 +377,7 @@ class TestJobValidator(unittest.TestCase):
             max_retry,
             "any-hyperpod",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertTrue(result)
@@ -401,6 +410,7 @@ class TestJobValidator(unittest.TestCase):
             max_retry,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -439,6 +449,7 @@ class TestJobValidator(unittest.TestCase):
             max_retry,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -475,6 +486,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -509,6 +521,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -545,6 +558,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertTrue(result)
@@ -578,6 +592,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -611,6 +626,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -644,6 +660,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -677,6 +694,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -710,6 +728,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -742,6 +761,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -774,6 +794,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -806,6 +827,7 @@ class TestJobValidator(unittest.TestCase):
             1,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)

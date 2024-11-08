@@ -51,8 +51,6 @@ launcher_dir = os.environ['SAGEMAKER_TRAINING_LAUNCHER_DIR']
 if launcher_dir not in sys.path:
     sys.path.append(launcher_dir)
 
-from main import main as customer_launcher
-
 from hyperpod_cli.service.cancel_training_job import (
     CancelTrainingJob,
 )
@@ -485,8 +483,6 @@ def start_job(
         set_logging_level(logger, logging.DEBUG)
         os.environ['HYDRA_FULL_ERROR'] = '1'
 
-    # Perform Post-Processing parameter validations
-    # TODO: refactor validate_start_job_args to use Click ctx
     ctx = click.get_current_context()
     validate_only_config_file_argument(ctx)
 
@@ -495,9 +491,9 @@ def start_job(
         logger.error("Cannot start Training job due to AWS credentials issue")
         sys.exit(1)
 
-    #if not namespace and config_file is None:
-    #    k8s_client = KubernetesClient()
-    #    namespace = k8s_client.get_current_context_namespace()
+    if not namespace and config_file is None:
+        k8s_client = KubernetesClient()
+        namespace = k8s_client.get_current_context_namespace()
     
     launcher_config_path = None
     launcher_config_file_name = None
@@ -526,6 +522,7 @@ def start_job(
     """Submit job with the provided configuration file or directly with CLI
     arguments."""
     if job_name is not None:
+        logger.info(f"job_name: {job_name}")
         config = yaml.safe_load(KUBERNETES_PYTORCH_JOB_TEMPLATE)
         try:
             # Update the configuration with provided arguments
@@ -665,8 +662,8 @@ def start_job(
 
     start_training_job(recipe, override_parameters, job_name, config_file, launcher_config_path, launcher_config_file_name)
 
-    #console_link = utils.get_cluster_console_url()
-    #print(json.dumps({"Console URL": console_link}, indent=1, sort_keys=False))
+    console_link = utils.get_cluster_console_url()
+    print(json.dumps({"Console URL": console_link}, indent=1, sort_keys=False))
 
 
 def _override_or_remove(
@@ -728,7 +725,7 @@ def validate_only_config_file_argument(ctx):
 def execute_command(cmd, env=None):
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True, env=env)
-        logger.info(result.stdout)
+        print(result.stdout)
     except subprocess.CalledProcessError as e:
         logger.error(f"Command failed with exit code {e.returncode}")
         logger.error(e.stderr)
@@ -739,6 +736,7 @@ def execute_command(cmd, env=None):
 
 
 def start_training_job(recipe, override_parameters, job_name, config_file, launcher_config_path=None, launcher_config_file_name=None):
+    logger.info(f"recipe: {recipe}, override_parameters: {override_parameters}, job_name: {job_name}, config_file: {config_file}, launcher_config_path: {launcher_config_path}, launcher_config_file_name: {launcher_config_file_name}")
     env = os.environ.copy()
     env['HYDRA_FULL_ERROR'] = '1'
 
@@ -749,7 +747,10 @@ def start_training_job(recipe, override_parameters, job_name, config_file, launc
             f'{SAGEMAKER_TRAINING_LAUNCHER_DIR}/main.py',
             f'--config-path={launcher_config_path}',
             f'--config-name={launcher_config_file_name}',
+            f'base_results_dir={os.path.abspath(os.path.join(os.getcwd(), "results"))}'
+            'cluster.cluster_type=k8s',
         ]
+        print(f"Final command: {' '.join(cmd)}")
         execute_command(cmd, env)
     else:
         cmd = [
@@ -760,7 +761,7 @@ def start_training_job(recipe, override_parameters, job_name, config_file, launc
             'cluster_type=k8s',
             f'base_results_dir={os.path.abspath(os.path.join(os.getcwd(), "results"))}'
         ]
-        print(override_parameters)
+        logger.info(f"override_parameters: {override_parameters}")
         if override_parameters:
             try:
                 # Parse the JSON string into a dictionary
@@ -774,10 +775,9 @@ def start_training_job(recipe, override_parameters, job_name, config_file, launc
                     else:
                         cmd.append(f'{key}={value}')
             except json.JSONDecodeError as e:
-                print(f"Invalid JSON format: {e}")
-                return
+                logger.error(f"Invalid JSON format: {e}")
+                sys.exit(1)
         
-        # For debugging: Print out the final command to check formatting
         print(f"Final command: {' '.join(cmd)}")
         
         execute_command(cmd, env)
