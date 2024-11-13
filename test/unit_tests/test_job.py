@@ -680,7 +680,6 @@ class JobTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
-    @mock.patch('subprocess.run')
     @mock.patch("yaml.dump")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("hyperpod_cli.commands.job.JobValidator")
@@ -691,18 +690,11 @@ class JobTest(unittest.TestCase):
         mock_validator_cls,
         mock_kubernetes_client,
         mock_yaml_dump,
-        mock_subprocess_run,
     ):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_yaml_dump.return_value = None
-        mock_subprocess_run.return_value = subprocess.CompletedProcess(
-            args=['some_command'],  # Simulate the command arguments
-            returncode=0,           # Simulate a successful command
-            stdout='Command executed successfully',  # Simulate standard output
-            stderr=''               # Simulate no errors
-        )
         result = self.runner.invoke(
             start_job,
             [
@@ -722,7 +714,6 @@ class JobTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 1)
 
-    @mock.patch('subprocess.run')
     @mock.patch("yaml.dump")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("hyperpod_cli.commands.job.JobValidator")
@@ -733,18 +724,11 @@ class JobTest(unittest.TestCase):
         mock_validator_cls,
         mock_kubernetes_client,
         mock_yaml_dump,
-        mock_subprocess_run,
     ):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_yaml_dump.return_value = None
-        mock_subprocess_run.return_value = subprocess.CompletedProcess(
-            args=['some_command'],  # Simulate the command arguments
-            returncode=0,           # Simulate a successful command
-            stdout='Command executed successfully',  # Simulate standard output
-            stderr=''               # Simulate no errors
-        )
         result = self.runner.invoke(
             start_job,
             [

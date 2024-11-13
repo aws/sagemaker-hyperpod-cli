@@ -4,7 +4,7 @@
 
 ### Features
 
-- feature: Add Distributed Training Recipesfor SageMaker HyperPod CLI
+- feature: Add Distributed Training Recipes for SageMaker HyperPod CLI
 
 ## v1.0.0 (2024-09-09)
 

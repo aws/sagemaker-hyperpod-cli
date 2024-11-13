@@ -81,7 +81,7 @@ logger = setup_logger(__name__)
     "--job-name",
     type=click.STRING,
     required=False,
-    help="Required. The name of the job to see the details of.",
+    help="Optional. The name of the job to see the details of.",
 )
 @click.option(
     "--namespace",
@@ -436,8 +436,6 @@ def cancel_job(
   "recipes.model.train_batch_size": 1,
   "recipes.model.data.use_synthetic_data": true,
   "instance_type": "g5.48xlarge",
-  "cluster": "k8s",
-  "cluster_type": "k8s",
   "container": "container link",
   "recipes.model.data.train_dir": "/data/datasets/wikicorpus_llama3_tokenized_8k/",
   "recipes.model.data.val_dir": "/data/datasets/wikicorpus_llama3_tokenized_8k_val/",
@@ -660,7 +658,25 @@ def start_job(
         launcher_config_path = str(config_path)
         launcher_config_file_name = str(config_name)
 
-    start_training_job(recipe, override_parameters, job_name, config_file, launcher_config_path, launcher_config_file_name)
+    start_training_job(
+        recipe=recipe,
+        override_parameters=override_parameters,
+        job_name=job_name,
+        config_file=config_file,
+        launcher_config_path=launcher_config_path,
+        launcher_config_file_name=launcher_config_file_name,
+        pull_policy=pull_policy,
+        restart_policy=restart_policy,
+        namespace=namespace,
+        service_account_name=service_account_name,
+        priority_class_name=queue_name,
+        volumes=volumes,
+        persistent_volume_claims=persistent_volume_claims,
+        auto_resume=auto_resume,
+        label_selector=label_selector,
+        max_retry=max_retry,
+        deep_health_check_passed_nodes_only=deep_health_check_passed_nodes_only,
+    )
 
     console_link = utils.get_cluster_console_url()
     print(json.dumps({"Console URL": console_link}, indent=1, sort_keys=False))
@@ -735,7 +751,11 @@ def execute_command(cmd, env=None):
         sys.exit(1)
 
 
-def start_training_job(recipe, override_parameters, job_name, config_file, launcher_config_path=None, launcher_config_file_name=None):
+def start_training_job(recipe, override_parameters, job_name, config_file, launcher_config_path=None, launcher_config_file_name=None,
+                      pull_policy=None, restart_policy=None, namespace=None,
+                      service_account_name=None, priority_class_name=None, volumes=None, persistent_volume_claims=None,
+                      auto_resume=None, label_selector=None, max_retry=None, deep_health_check_passed_nodes_only=None):
+    
     logger.info(f"recipe: {recipe}, override_parameters: {override_parameters}, job_name: {job_name}, config_file: {config_file}, launcher_config_path: {launcher_config_path}, launcher_config_file_name: {launcher_config_file_name}")
     env = os.environ.copy()
     env['HYDRA_FULL_ERROR'] = '1'
@@ -757,16 +777,69 @@ def start_training_job(recipe, override_parameters, job_name, config_file, launc
             'python3',
             f'{SAGEMAKER_TRAINING_LAUNCHER_DIR}/main.py',
             f'recipes={recipe}',
-            'cluster=k8s',
             'cluster_type=k8s',
+            'cluster=k8s',
             f'base_results_dir={os.path.abspath(os.path.join(os.getcwd(), "results"))}'
         ]
+
+        # Add pull policy if provided
+        if pull_policy:
+            cmd.append(f'cluster.pullPolicy="{pull_policy}"')
+
+        # Add restart policy if provided
+        if restart_policy:
+            cmd.append(f'cluster.restartPolicy="{restart_policy}"')
+
+        # Add namespace if provided
+        if namespace:
+            cmd.append(f'cluster.namespace="{namespace}"')
+
+        # Add service account name if provided
+        if service_account_name:
+            cmd.append(f'cluster.service_account_name="{service_account_name}"')
+
+        # Add priority class name if provided
+        if priority_class_name:
+            cmd.append(f'cluster.priority_class_name="{priority_class_name}"')
+
+        # Add volumes if provided (expecting format: "volumeName1:hostPath1:mountPath1,volumeName2:hostPath2:mountPath2")
+        if volumes:
+            for idx, volume in enumerate(volumes.split(',')):
+                vol_name, host_path, mount_path = volume.split(':')
+                cmd.append(f'+cluster.volumes.{idx}.volumeName="{vol_name}"')
+                cmd.append(f'+cluster.volumes.{idx}.hostPath="{host_path}"')
+                cmd.append(f'+cluster.volumes.{idx}.mountPath="{mount_path}"')
+
+        # Add persistent volume claims if provided (expecting format: "claimName1:mountPath1,claimName2:mountPath2")
+        if persistent_volume_claims:
+            for idx, pvc in enumerate(persistent_volume_claims.split(',')):
+                claim_name, mount_path = pvc.split(':')
+                cmd.append(f'+cluster.persistent_volume_claims.{idx}.claimName="{claim_name}"')
+                cmd.append(f'+cluster.persistent_volume_claims.{idx}.mountPath="{mount_path}"')
+
+        if label_selector:
+            cmd.append(f'+cluster.label_selector="{label_selector}"')
+        elif deep_health_check_passed_nodes_only:
+            cmd.append(f'+cluster.label_selector="{DEEP_HEALTH_CHECK_PASSED_ONLY_NODE_AFFINITY_DICT}"')
+        else:
+            cmd.append(f'+cluster.label_selector="{NODE_AFFINITY_DICT}"')
+
+        if auto_resume:
+            # Set max_retry default to 1
+            if max_retry is None:
+                max_retry = 1
+            annotations = {
+                HYPERPOD_AUTO_RESUME_ANNOTATION_KEY: auto_resume,
+                HYPERPOD_MAX_RETRY_ANNOTATION_KEY: max_retry,
+            }
+            cmd.append(f'+cluster.annotations="{annotations}"')
+        
         logger.info(f"override_parameters: {override_parameters}")
         if override_parameters:
             try:
                 # Parse the JSON string into a dictionary
                 override_dict = json.loads(override_parameters)
-                
+
                 # Convert the dictionary into key=value pairs
                 for key, value in override_dict.items():
                     if isinstance(value, str):
@@ -777,9 +850,8 @@ def start_training_job(recipe, override_parameters, job_name, config_file, launc
             except json.JSONDecodeError as e:
                 logger.error(f"Invalid JSON format: {e}")
                 sys.exit(1)
-        
+
         print(f"Final command: {' '.join(cmd)}")
-        
         execute_command(cmd, env)
 
     if job_name is not None and config_file is None:
