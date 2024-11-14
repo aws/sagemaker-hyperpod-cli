@@ -14,9 +14,10 @@ import json
 import os
 import yaml
 from yaml.loader import SafeLoader
-from typing import Optional
+from typing import Optional, List
 
 from hyperpod_cli.constants.command_constants import (
+    SAGEMAKER_TRAINING_LAUNCHER_DIR,
     RestartPolicy,
     KUEUE_QUEUE_NAME_LABEL_KEY,
     HYPERPOD_AUTO_RESUME_ANNOTATION_KEY,
@@ -32,6 +33,7 @@ from hyperpod_cli.validators.validator import (
 
 logger = setup_logger(__name__)
 
+RECIPES_DIR = os.path.join(SAGEMAKER_TRAINING_LAUNCHER_DIR, "recipes_collection/recipes")
 
 class JobValidator(Validator):
     def __init__(self):
@@ -55,6 +57,7 @@ class JobValidator(Validator):
         max_retry: Optional[int],
         namespace: Optional[str],
         entry_script: Optional[str],
+        recipe: Optional[str] = None,
     ):
         if job_kind is not None and job_kind != "kubeflow/PyTorchJob":
             logger.error("The only supported 'job-kind' is 'kubeflow/PyTorchJob'.")
@@ -70,13 +73,19 @@ class JobValidator(Validator):
 
         if config_file is not None and job_name is not None:
             logger.error(
-                "Please provide only 'config-file' to submit job using config file or 'job-name' to submit job via CLI arguments"
+                "Please provide only 'config-file' to submit job using custom script or 'job-name' to submit job via CLI arguments"
+            )
+            return False
+        
+        if config_file is not None and recipe is not None:
+            logger.error(
+                "Please provide only 'config-file' to submit job using custom script or 'recipe' for recipe-based jobs"
             )
             return False
 
-        if config_file is None and job_name is None:
+        if config_file is None and job_name is None and recipe is None:
             logger.error(
-                "Please provide either 'config-file' to submit job using config file or 'job-name' to submit job via CLI arguments"
+                "Please provide either 'recipe' for recipe-based jobs or 'config-file' to submit job using config file or 'job-name' to submit job via CLI arguments"
             )
             return False
 
@@ -113,8 +122,10 @@ class JobValidator(Validator):
                 auto_resume,
                 restart_policy,
                 max_retry,
-                namespace,
+                namespace
             )
+        if recipe is not None:
+            return validate_recipe_file(recipe)
 
         return True
 
@@ -201,8 +212,9 @@ def validate_hyperpod_related_fields(
     auto_resume: bool,
     restart_policy: Optional[RestartPolicy],
     max_retry: Optional[int],
-    namespace: Optional[str],
+    namespace: Optional[str]
 ):
+    logger.info(f"instance_type: {instance_type}, queue_name: {queue_name}, priority: {priority}, auto_resume: {auto_resume}, restart_policy: {restart_policy}, max_retry: {max_retry}, namespace: {namespace}")
     if instance_type is None:
         logger.error(
             "Please provide 'instance-type' to specify instance type for training job"
@@ -230,6 +242,15 @@ def validate_hyperpod_related_fields(
         return False
     return True
 
+def validate_recipe_file(recipe: str):
+    full_recipe_path = os.path.join(RECIPES_DIR, f"{recipe}.yaml")
+    
+    if os.path.exists(full_recipe_path) and os.path.isfile(full_recipe_path):
+        logger.info(f"Recipe file found: {full_recipe_path}")
+        return True
+    
+    logger.error(f"Recipe file '{recipe}.yaml' not found in {RECIPES_DIR}")
+    return False
 
 def is_dict_str_list_str(data: dict) -> bool:
     """
@@ -249,8 +270,6 @@ def is_dict_str_list_str(data: dict) -> bool:
         ):
             return False
     return True
-
-
 def _validate_json_str(
     json_str: str,
 ):
