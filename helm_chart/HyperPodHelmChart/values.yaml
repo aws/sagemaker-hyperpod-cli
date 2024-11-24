@@ -138,11 +138,57 @@ nvidia-device-plugin:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms: 
         - matchExpressions:
-          # nvidia plugin needs at least one node selector. Below label exists for all hyperpod nodes
-          - key: kubernetes.io/os
+          - key: node.kubernetes.io/instance-type
             operator: In
             values:
-            - "linux"
+            - ml.g4dn.12xlarge
+            - ml.g4dn.16xlarge
+            - ml.g4dn.2xlarge
+            - ml.g4dn.4xlarge
+            - ml.g4dn.8xlarge
+            - ml.g4dn.metal
+            - ml.g4dn.xlarge
+            - ml.g5.12xlarge
+            - ml.g5.16xlarge
+            - ml.g5.24xlarge
+            - ml.g5.2xlarge
+            - ml.g5.48xlarge
+            - ml.g5.4xlarge
+            - ml.g5.8xlarge
+            - ml.g5.xlarge
+            - ml.g5g.16xlarge
+            - ml.g5g.2xlarge
+            - ml.g5g.4xlarge
+            - ml.g5g.8xlarge
+            - ml.g5g.metal
+            - ml.g5g.xlarge
+            - ml.g6.12xlarge
+            - ml.g6.16xlarge
+            - ml.g6.24xlarge
+            - ml.g6.2xlarge
+            - ml.g6.48xlarge
+            - ml.g6.4xlarge
+            - ml.g6.8xlarge
+            - ml.g6.xlarge
+            - ml.g6e.12xlarge
+            - ml.g6e.16xlarge
+            - ml.g6e.24xlarge
+            - ml.g6e.2xlarge
+            - ml.g6e.48xlarge
+            - ml.g6e.4xlarge
+            - ml.g6e.8xlarge
+            - ml.g6e.xlarge
+            - ml.gr6.4xlarge
+            - ml.gr6.8xlarge
+            - ml.p2.16xlarge
+            - ml.p2.8xlarge
+            - ml.p2.xlarge
+            - ml.p3.16xlarge
+            - ml.p3.2xlarge
+            - ml.p3.8xlarge
+            - ml.p3dn.24xlarge
+            - ml.p4d.24xlarge
+            - ml.p5.48xlarge
   tolerations:
     - key: nvidia.com/gpu
       operator: Exists
