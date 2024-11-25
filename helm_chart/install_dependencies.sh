@@ -8,8 +8,6 @@ check_status() {
   fi
 }
 
-echo "Installing kueue......"
-kubectl apply --server-side -f https://github.com/kubernetes-sigs/kueue/releases/download/v0.8.0/manifests.yaml
 check_status
 
 # Add additional dependencies below as needed

@@ -42,11 +42,7 @@ dependencies:
   - name: neuron-device-plugin
     version: "0.1.0"
     repository: "file://charts/neuron-device-plugin"
-    condition: neuron-device-plugin.devicePlugin.enabled  
-  - name: kueue  
-    version: "0.1.0"
-    repository: "file://charts/kueue"
-    condition: kueue.enabled  
+    condition: neuron-device-plugin.devicePlugin.enabled
   - name: storage
     version: "0.1.0"
     repository: "file://charts/storage"
@@ -75,3 +71,7 @@ dependencies:
     version: "0.1.0"
     repository: "file://charts/namespaced-role-and-bindings"
     condition: namespaced-role-and-bindings.enabled
+  - name: team-role-and-bindings
+    version: "0.1.0"
+    repository: "file://charts/team-role-and-bindings"
+    condition: team-role-and-bindings.enabled

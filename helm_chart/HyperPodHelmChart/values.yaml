@@ -116,9 +116,6 @@ mlflow:
 trainingOperators:
   enabled: true
 
-kueue:
-  enabled: false
-
 storage:
   enabled: false
 
@@ -127,6 +124,9 @@ cluster-role-and-bindings:
 
 namespaced-role-and-bindings:
   enable: false
+
+team-role-and-bindings:
+  enabled: false
 
 nvidia-device-plugin:
   devicePlugin:
