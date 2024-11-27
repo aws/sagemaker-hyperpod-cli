@@ -71,7 +71,7 @@ for root, dirs, files in os.walk(
 setup(
     data_files=examples + k8s_templates + nemo_framework_launcher,
     name="hyperpod",
-    version="1.0.0",
+    version="2.0.0",
     packages=find_packages(where="src", exclude=("test",)),
     install_requires=[
         "click==8.1.7",

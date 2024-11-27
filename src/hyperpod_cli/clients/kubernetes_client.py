@@ -22,9 +22,18 @@ from kubernetes.client import (
 from kubernetes.config import (
     KUBE_CONFIG_DEFAULT_LOCATION,
 )
-
+from kubernetes.client.rest import ApiException
 from hyperpod_cli.constants.command_constants import (
+    SAGEMAKER_MANAGED_QUEUE_LABEL,
     TEMP_KUBE_CONFIG_FILE,
+)
+from hyperpod_cli.constants.exception_constants import RESOURCE_NOT_FOUND_CODE
+from hyperpod_cli.constants.kueue_constants import (
+    CLUSTER_QUEUE_PRIORITY_CLASS_CUSTOM_OBJECT_PLURAL,
+    KUEUE_CUSTOM_OBJECT_GROUP, 
+    KUEUE_CUSTOM_OBJECT_VERSION, 
+    WORKLOAD_CUSTOM_OBJECT_PLURAL,
+    WORKLOAD_PRIORITY_CLASS_CUSTOM_OBJECT_PLURAL,
 )
 from hyperpod_cli.constants.pytorch_constants import (
     PYTORCH_CUSTOM_OBJECT_GROUP,
@@ -56,7 +65,7 @@ class KubernetesClient:
     def set_context(
         self,
         context_name: str,
-        namespace: str,
+        namespace: Optional[str],
     ) -> None:
         """
         Set the current context in the kubeconfig file.
@@ -68,13 +77,16 @@ class KubernetesClient:
         with open(KUBE_CONFIG_PATH, "r") as file:
             kubeconfig = yaml.safe_load(file)
 
-        # Check if the context exists in the kubeconfig
-        # and update the context namespace
+        # Check if the context exists in the kubeconfig and update the context namespace
+        # when namespace is specified in command line
         exist = False
         for context in kubeconfig["contexts"]:
             if context["name"] == context_name:
-                context["context"]["namespace"] = namespace
-                logger.debug(f"updated the namespace to {namespace}")
+                if namespace is not None:
+                    context["context"]["namespace"] = namespace
+                    logger.debug(f"updated the namespace to {namespace}")
+                else:
+                    context["context"].pop("namespace", None)
                 exist = True
 
         if not exist:
@@ -116,6 +128,20 @@ class KubernetesClient:
                 "Kubernetes client is not initialized. Call set_context() first."
             )
         return client.AppsV1Api(self._kube_client)
+
+    def get_auth_v1_api(self) -> client.AuthorizationV1Api:
+        """
+        Get the AuthorizationV1Api client.
+
+        Returns:
+            client.AuthorizationV1Api: The AuthorizationV1Api client.
+        """
+
+        if self._kube_client is None:
+            raise RuntimeError(
+                "Kubernetes client is not initialized. Call set_context() first."
+            )
+        return client.AuthorizationV1Api(self._kube_client)
 
     def context_exists(self, context: str) -> bool:
         """
@@ -171,7 +197,7 @@ class KubernetesClient:
         Returns current user namespace context
         """
         contexts, active_context = config.list_kube_config_contexts()
-        return active_context["context"]["namespace"]
+        return active_context["context"]["namespace"] if "namespace" in active_context["context"] else None
 
     def list_namespaces(self) -> List[str]:
         """
@@ -184,6 +210,31 @@ class KubernetesClient:
             if namespace.metadata and namespace.metadata.name:
                 result.append(namespace.metadata.name)
         return result
+
+    def get_sagemaker_managed_namespace(self, namespace: Optional[str]):
+        """
+        Verify if a namespace is sagemaker managed. SageMaker created namespaces have custom label
+        attached, indicating that the namespace is SageMaker managed.
+
+        Args:
+            namespace (Optional[str]): The input namespace that will be checked.
+
+        Returns:
+            Optional[V1Namespace]: V1Namespace response if namespace exists and it is verified being managed by SageMaker. Otherwise return None.
+        """
+        if namespace is None:
+            return None
+        try:
+            response = client.CoreV1Api().read_namespace(name=namespace)
+            labels = response.metadata.labels
+            if labels and SAGEMAKER_MANAGED_QUEUE_LABEL in labels and labels[SAGEMAKER_MANAGED_QUEUE_LABEL] == "true":
+                return response
+        except ApiException as e:
+            if e.status == RESOURCE_NOT_FOUND_CODE:
+                return None
+            else:
+                raise e
+        return None
 
     def list_pods_with_labels(self, namespace: str, label_selector: str):
         return client.CoreV1Api().list_namespaced_pod(
@@ -262,4 +313,37 @@ class KubernetesClient:
             command=bash_command,
         )
 
+    def patch_workload(self, workload_name: str, namespace: str, patch_body: str):
+        return client.CustomObjectsApi().patch_namespaced_custom_object(
+            group=KUEUE_CUSTOM_OBJECT_GROUP,
+            version=KUEUE_CUSTOM_OBJECT_VERSION,
+            namespace=namespace,
+            plural=WORKLOAD_CUSTOM_OBJECT_PLURAL,
+            name=workload_name,
+            body=patch_body
+        )
+
+    def get_workload_by_label(self, label_selector: str, namespace: str):
+        return client.CustomObjectsApi().list_namespaced_custom_object(
+            group=KUEUE_CUSTOM_OBJECT_GROUP,
+            version=KUEUE_CUSTOM_OBJECT_VERSION,
+            namespace=namespace,
+            plural=WORKLOAD_CUSTOM_OBJECT_PLURAL,
+            label_selector=label_selector,
+        )
+    
+    def list_workload_priority_classes(self):
+        return client.CustomObjectsApi().list_cluster_custom_object(
+            group=KUEUE_CUSTOM_OBJECT_GROUP,
+            version=KUEUE_CUSTOM_OBJECT_VERSION,
+            plural=WORKLOAD_PRIORITY_CLASS_CUSTOM_OBJECT_PLURAL,
+        )
+    
+    def get_cluster_queue(self, cluster_queue_name: str):
+        return client.CustomObjectsApi().get_cluster_custom_object(
+            group=KUEUE_CUSTOM_OBJECT_GROUP,
+            version=KUEUE_CUSTOM_OBJECT_VERSION,
+            plural=CLUSTER_QUEUE_PRIORITY_CLASS_CUSTOM_OBJECT_PLURAL,
+            name=cluster_queue_name
+        )
     # Add more methods to access other APIs as needed

@@ -17,6 +17,7 @@ from unittest.mock import (
     Mock,
     mock_open,
     patch,
+    ANY,
 )
 
 import yaml
@@ -167,6 +168,32 @@ class TestKubernetesClient(unittest.TestCase):
             "w",
         )
 
+        updated_kube_config_data = {
+            "contexts": [
+                {
+                    "name": "context1",
+                    "context": {
+                        "cluster": "cluster-1",
+                        "user": "user-1",
+                    },
+                },
+                {
+                    "name": "context2",
+                    "context": {
+                        "cluster": "cluster-2",
+                        "user": "user-2",
+                        "namespace": "default"
+                    },
+                },
+            ],
+            "current-context": "context2",
+        }
+
+        mock_safe_dump.assert_called_with(
+            updated_kube_config_data,
+            ANY,
+        )
+
     @patch("kubernetes.client.ApiClient")
     @patch("kubernetes.config.load_kube_config")
     @patch("yaml.safe_dump")
@@ -218,6 +245,59 @@ class TestKubernetesClient(unittest.TestCase):
         mock_open_file.assert_called_with(
             os.path.expanduser(KUBE_CONFIG_DEFAULT_LOCATION),
             "w",
+        )
+
+    @patch("kubernetes.client.ApiClient")
+    @patch("kubernetes.config.load_kube_config")
+    @patch("yaml.safe_dump")
+    @patch("yaml.safe_load")
+    @patch(
+        "builtins.open",
+        new_callable=mock_open,
+        read_data=yaml.dump(KUBECONFIG_DATA),
+    )
+    def test_set_context_success_no_default(
+        self,
+        mock_open_file: Mock,
+        mock_safe_load: Mock,
+        mock_safe_dump: Mock,
+        mock_kube_config: Mock,
+        mock_client: Mock,
+    ):
+        mock_safe_load.return_value = KUBECONFIG_DATA
+        mock_safe_dump.return_value = None
+        mock_kube_config.return_value = None
+        mock_client.return_value = MagicMock()
+        test_client = KubernetesClient()
+        test_client.set_context("context2", None)
+        mock_open_file.assert_called_with(
+            os.path.expanduser(KUBE_CONFIG_DEFAULT_LOCATION),
+            "w",
+        )
+
+        updated_kube_config_data = {
+            "contexts": [
+                {
+                    "name": "context1",
+                    "context": {
+                        "cluster": "cluster-1",
+                        "user": "user-1",
+                    },
+                },
+                {
+                    "name": "context2",
+                    "context": {
+                        "cluster": "cluster-2",
+                        "user": "user-2",
+                    },
+                },
+            ],
+            "current-context": "context2",
+        }
+
+        mock_safe_dump.assert_called_with(
+            updated_kube_config_data,
+            ANY,
         )
 
     @patch("kubernetes.client.ApiClient")
@@ -323,6 +403,20 @@ class TestKubernetesClient(unittest.TestCase):
         test_client._kube_client = None
         with self.assertRaises(RuntimeError):
             test_client.get_apps_v1_api()
+
+    @patch("kubernetes.client.ApiClient")
+    @patch("kubernetes.config.load_kube_config")
+    def test_get_auth_v1_api(
+        self,
+        mock_kube_config: Mock,
+        mock_client: Mock,
+    ):
+        mock_kube_config.return_value = None
+        mock_client.return_value = MagicMock()
+        test_client = KubernetesClient()
+        test_client._kube_client = mock_client
+        auth_v1_api = test_client.get_auth_v1_api()
+        self.assertIsInstance(auth_v1_api, client.AuthorizationV1Api)
 
     @patch("kubernetes.config.load_kube_config")
     @patch(
@@ -463,3 +557,98 @@ class TestKubernetesClient(unittest.TestCase):
         test_client = KubernetesClient()
         result = test_client.list_pods_in_all_namespaces_with_labels("kubeflow")
         self.assertEqual(2, len(result))
+
+    @patch("kubernetes.client.CoreV1Api.read_namespace")
+    def test_get_sagemaker_managed_namespace(
+        self,
+        mock_read_namespace
+    ):
+        test_client = KubernetesClient()
+        sm_managed_namespace = V1Namespace(
+            metadata=V1ObjectMeta(
+                name="test-sm-namespace", 
+                labels={
+                    "sagemaker.amazonaws.com/sagemaker-managed-queue": "true"
+                }
+            )
+        )
+        usr_managed_namespace = V1Namespace(
+            metadata=V1ObjectMeta(
+                name="test-ur-namespace", 
+            )
+        )
+        mock_read_namespace.side_effect = [sm_managed_namespace, usr_managed_namespace]
+
+        # verify SageMaker managed namespace would return
+        test_result = test_client.get_sagemaker_managed_namespace("test-sm-namespace")
+        self.assertEqual(test_result, sm_managed_namespace)
+
+        # verify user created namespace would return None
+        test_result = test_client.get_sagemaker_managed_namespace("test-ur-namespace")
+        self.assertIsNone(test_result)
+
+        # verify user created namespace would return None
+        test_result = test_client.get_sagemaker_managed_namespace(None)
+        self.assertIsNone(test_result)
+
+    @patch("kubernetes.client.CustomObjectsApi.patch_namespaced_custom_object")
+    def test_patch_workload(
+        self,
+        mock_patch_namespaced_custom_object,
+    ):
+        test_client = KubernetesClient()
+        test_client.patch_workload("test-workload", "test-namespace", "patch-body")
+
+        mock_patch_namespaced_custom_object.assert_called_with(
+            group="kueue.x-k8s.io",
+            version="v1beta1",
+            namespace="test-namespace",
+            plural="workloads",
+            name="test-workload",
+            body="patch-body"
+        )
+
+    @patch("kubernetes.client.CustomObjectsApi.list_namespaced_custom_object")
+    def test_get_workload_by_label(
+        self,
+        mock_list_namespaced_custom_object,
+    ):
+        test_client = KubernetesClient()
+        test_client.get_workload_by_label("label-selector", "test-namespace")
+
+        mock_list_namespaced_custom_object.assert_called_with(
+            group="kueue.x-k8s.io",
+            version="v1beta1",
+            namespace="test-namespace",
+            plural="workloads",
+            label_selector="label-selector",
+        )
+
+    @patch("kubernetes.client.CustomObjectsApi.list_cluster_custom_object")
+    def test_list_workload_priority_classes(
+        self,
+        mock_list_cluster_custom_object,
+    ):
+        test_client = KubernetesClient()
+        test_client.list_workload_priority_classes()
+
+        mock_list_cluster_custom_object.assert_called_with(
+            group="kueue.x-k8s.io",
+            version="v1beta1",
+            plural="workloadpriorityclasses",
+        )
+    
+    @patch("kubernetes.client.CustomObjectsApi.get_cluster_custom_object")
+    def test_get_cluster_queue(
+        self,
+        mock_get_cluster_custom_object,
+    ):
+        test_client = KubernetesClient()
+        test_client.get_cluster_queue("test-cluster-queue")
+
+        mock_get_cluster_custom_object.assert_called_with(
+            group="kueue.x-k8s.io",
+            version="v1beta1",
+            plural="clusterqueues",
+            name="test-cluster-queue",
+        )

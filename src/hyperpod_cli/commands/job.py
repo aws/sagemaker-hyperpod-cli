@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from collections import defaultdict
 import boto3
 import datetime
 import logging
@@ -17,8 +18,7 @@ import json
 import os
 import sys
 import subprocess
-import shlex
-from typing import Any, Dict, Optional, List, Tuple
+from typing import Any, Dict, Optional, List
 
 import click
 import yaml
@@ -30,18 +30,28 @@ from hyperpod_cli.constants.command_constants import (
     HYPERPOD_AUTO_RESUME_ANNOTATION_KEY,
     HYPERPOD_KUBERNETES_JOB_PREFIX,
     HYPERPOD_MAX_RETRY_ANNOTATION_KEY,
+    HYPERPOD_NAMESPACE_PREFIX,
+    KUEUE_JOB_UID_LABEL_KEY,
     KUEUE_QUEUE_NAME_LABEL_KEY,
+    KUEUE_WORKLOAD_PRIORITY_CLASS_LABEL_KEY,
     NODE_AFFINITY_DICT,
     DEEP_HEALTH_CHECK_PASSED_ONLY_NODE_AFFINITY_DICT,
+    SAGEMAKER_MANAGED_LOCAL_QUEUE_SUFFIX,
+    SAGEMAKER_QUOTA_ALLOCATION_LABEL,
+    JobPatchType,
     SAGEMAKER_TRAINING_LAUNCHER_DIR,
     PullPolicy,
     RestartPolicy,
     PersistentVolumeClaim,
+    SchedulerType,
     Volume,
 )
 from hyperpod_cli.clients.kubernetes_client import (
     KubernetesClient,
 )
+from hyperpod_cli.constants.kueue_constants import KUEUE_CUSTOM_OBJECT_GROUP, WORKLOAD_CUSTOM_OBJECT_PLURAL
+from hyperpod_cli.constants.pytorch_constants import PYTORCH_CUSTOM_OBJECT_GROUP, PYTORCH_CUSTOM_OBJECT_PLURAL
+
 
 # Add the private sagemaker training launcher to the sys path
 if 'SAGEMAKER_TRAINING_LAUNCHER_DIR' not in os.environ:
@@ -54,6 +64,7 @@ if launcher_dir not in sys.path:
 from hyperpod_cli.service.cancel_training_job import (
     CancelTrainingJob,
 )
+from hyperpod_cli.service.discover_namespaces import DiscoverNamespaces
 from hyperpod_cli.service.get_training_job import (
     GetTrainingJob,
 )
@@ -72,6 +83,11 @@ from hyperpod_cli.utils import (
 )
 from hyperpod_cli.validators.job_validator import (
     JobValidator,
+    validate_yaml_content,
+    verify_and_load_yaml,
+)
+from kubernetes.client import (
+    V1ResourceAttributes
 )
 
 logger = setup_logger(__name__)
@@ -88,7 +104,8 @@ logger = setup_logger(__name__)
     "-n",
     type=click.STRING,
     required=False,
-    help="Optional. The namespace to describe the job in. If not provided, the CLI will try to describe the job in the namespace set by the user while connecting to the cluster. If provided, and the user has access to the namespace, the CLI will describe the job from the specified namespace.",
+    help="Optional. The namespace to use. If not specified, this command will first use the namespace wh connecting the cluster."
+    "Otherwise if namespace is not configured when connecting to the cluster, a namespace that is managed by SageMaker will be auto discovered.",
 )
 @click.option(
     "--verbose",
@@ -134,7 +151,8 @@ def get_job(
     "-n",
     type=click.STRING,
     required=False,
-    help="Optional. The namespace to list the jobs in. If not provided, this command lists the jobs in the namespace specified during connecting to the cluster. If the namespace is provided and if the user has access to the namespace, this command lists the jobs from the specified namespace.",
+    help="Optional. The namespace to use. If not specified, this command will first use the namespace wh connecting the cluster."
+    "Otherwise if namespace is not configured when connecting to the cluster, a namespace that is managed by SageMaker will be auto discovered.",
 )
 @click.option(
     "--all-namespaces",
@@ -190,7 +208,8 @@ def list_jobs(
     "-n",
     type=click.STRING,
     required=False,
-    help="Optional. The namespace to list the pods in. If not provided, the CLI will list the pods in the namespace set by the user while connecting to the cluster. If provided, and the user has access to the namespace, the CLI will list the pods from the specified namespace.",
+    help="Optional. The namespace to use. If not specified, this command will first use the namespace wh connecting the cluster."
+    "Otherwise if namespace is not configured when connecting to the cluster, a namespace that is managed by SageMaker will be auto discovered.",
 )
 @click.option(
     "--debug",
@@ -232,7 +251,8 @@ def list_pods(
     "-n",
     type=click.STRING,
     required=False,
-    help="Optional. The namespace to cancel the job in. If not provided, the CLI will try to cancel the job in the namespace set by the user while connecting to the cluster. If provided, and the user has access to the namespace, the CLI will cancel the job from the specified namespace.",
+    help="Optional. The namespace to use. If not specified, this command will first use the namespace wh connecting the cluster."
+    "Otherwise if namespace is not configured when connecting to the cluster, a namespace that is managed by SageMaker will be auto discovered.",
 )
 @click.option(
     "--debug",
@@ -275,7 +295,8 @@ def cancel_job(
     "--namespace",
     "-n",
     type=click.STRING,
-    help="Optional. The namespace to use. If not specified, this command uses the [Kubernetes namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) of the Amazon EKS cluster associated with the SageMaker HyperPod cluster in your AWS account.",
+    help="Optional. The namespace to use. If not specified, this command will first use the namespace wh connecting the cluster."
+    "Otherwise if namespace is not configured when connecting to the cluster, a namespace that is managed by SageMaker will be auto discovered.",
 )
 @click.option(
     "--job-kind",
@@ -343,9 +364,9 @@ def cancel_job(
 )
 @click.option(
     "--scheduler-type",
-    type=click.STRING,
-    default="Kueue",
-    help="Optional. The scheduler type to use. Currently, only `Kueue` is supported.",
+    type=click.Choice(SchedulerType.get_values()),
+    default=SchedulerType.get_default().value,
+    help="Optional. The scheduler type to use which can be `SageMaker`, `Kueue` or `None`. Default value is `SageMaker`.",
 )
 @click.option(
     "--queue-name",
@@ -525,9 +546,8 @@ def start_job(
         logger.error("Cannot start Training job due to AWS credentials issue")
         sys.exit(1)
 
-    if not namespace and config_file is None:
-        k8s_client = KubernetesClient()
-        namespace = k8s_client.get_current_context_namespace()
+    if namespace is None and config_file is None:
+        namespace = _get_auto_fill_namespace_for_create_job()
     
     launcher_config_path = None
     launcher_config_file_name = None
@@ -553,8 +573,10 @@ def start_job(
     ):
         sys.exit(1)
 
-    """Submit job with the provided configuration file or directly with CLI
-    arguments."""
+    """
+    Submit job with the provided configuration file or directly with CLI arguments.
+    """
+
     if job_name is not None:
         logger.info(f"job_name: {job_name}")
         config = yaml.safe_load(KUBERNETES_PYTORCH_JOB_TEMPLATE)
@@ -566,7 +588,7 @@ def start_job(
             config["training_cfg"]["run"]["name"] = job_name
             config["training_cfg"]["run"]["nodes"] = node_count
             config["env_vars"] = ENV_VARS_DICT if environment is None else environment
-
+            
             if (
                 not _is_accelerator_instance_type(str(instance_type))
                 and tasks_per_node is None
@@ -644,17 +666,33 @@ def start_job(
             else:
                 config["cluster"]["cluster_config"].pop("annotations")
 
+            custom_labels = {}
             _override_or_remove(
                 config["cluster"]["cluster_config"], "pullPolicy", pull_policy
             )
             _override_or_remove(
                 config["cluster"]["cluster_config"], "restartPolicy", restart_policy
             )
+            if queue_name is None:
+                queue_name = _get_auto_fill_queue_name(namespace, scheduler_type)
+                _override_or_remove(
+                    custom_labels, 
+                    KUEUE_QUEUE_NAME_LABEL_KEY,
+                    queue_name,
+                )
+
+            # When scheduler type is SageMaker, we should use WorkloadPriorityClass instead which
+            # should be passed as a custom label. Thus we create a custom label here and map the
+            # priority to 'None'
+            if scheduler_type == SchedulerType.SAGEMAKER.value and priority is not None:
+                custom_labels[KUEUE_WORKLOAD_PRIORITY_CLASS_LABEL_KEY] = priority
+                priority = None
+
             _override_or_remove(
                 config["cluster"]["cluster_config"],
                 "custom_labels",
-                {KUEUE_QUEUE_NAME_LABEL_KEY: queue_name}
-                if queue_name is not None
+                custom_labels
+                if custom_labels
                 else None,
             )
             _override_or_remove(
@@ -669,31 +707,56 @@ def start_job(
             logger.error(f"Config template has unexpected error: {e}")
             sys.exit(1)
 
-        now = datetime.datetime.now()
-        timestamp = now.strftime("%Y%m%d-%H%M%S")
-        filename = f"{HYPERPOD_KUBERNETES_JOB_PREFIX}-{timestamp}.yaml"
-        with open(
-            os.path.join(GENERATED_LAUNCHER_CONFIG_FILE_PATH, filename), "w"
-        ) as file:
-            yaml.dump(config, file, default_flow_style=False)
-
-        logger.debug(
-            f"Configuration file generated in: {GENERATED_LAUNCHER_CONFIG_FILE_PATH + filename}"
-        )
-        launcher_config_path = GENERATED_LAUNCHER_CONFIG_FILE_PATH
-        launcher_config_file_name = filename
+        launcher_config_path, launcher_config_file_name = _generate_launcher_config_file(config)
     elif config_file is not None:
         """Start job with the provided configuration file"""
         if os.path.isabs(config_file):
             abs_config_file_path = config_file
         else:
             abs_config_file_path = os.path.abspath(config_file)
-        if not validator.validate_start_job_config_yaml(abs_config_file_path):
-            sys.exit(1)
-        config_path, config_name = os.path.split(abs_config_file_path)
-        launcher_config_path = str(config_path)
-        launcher_config_file_name = str(config_name)
 
+        # Load the yaml configuration file provided by user
+        config = verify_and_load_yaml(abs_config_file_path)
+        if config is None:
+            sys.exit(1)
+
+        cluster_config = config.get("cluster").get("cluster_config")
+        namespace = cluster_config.get("namespace", None)
+        scheduler_type = cluster_config.get("scheduler_type", SchedulerType.get_default().value)
+        custom_labels = cluster_config.get("custom_labels", {})
+        custom_labels = {} if custom_labels is None else custom_labels
+        queue_name = custom_labels.get(KUEUE_QUEUE_NAME_LABEL_KEY, None)
+        # Autofill namespace
+        if namespace is None:
+            namespace = _get_auto_fill_namespace_for_create_job()
+            _override_or_remove(
+                config["cluster"]["cluster_config"], "namespace", namespace
+            )
+        
+        # Validate the content of the yaml file
+        if not validate_yaml_content(config):
+            sys.exit(1)
+
+        # Autofill queue name
+        if queue_name is None:
+            queue_name = _get_auto_fill_queue_name(namespace, scheduler_type)
+            _override_or_remove(
+                custom_labels, 
+                KUEUE_QUEUE_NAME_LABEL_KEY,
+                queue_name,
+            )
+        # Re-fill the custom_labels
+        _override_or_remove(
+            config["cluster"]["cluster_config"],
+            "custom_labels",
+            custom_labels
+            if custom_labels
+            else None,
+        )
+        # Remove scheduler type from the config
+        _override_or_remove(config["cluster"]["cluster_config"], "scheduler_type", None)
+        launcher_config_path, launcher_config_file_name = _generate_launcher_config_file(config)
+    
     start_training_job(
         recipe=recipe,
         override_parameters=override_parameters,
@@ -718,6 +781,74 @@ def start_job(
     print(json.dumps({"Console URL": console_link}, indent=1, sort_keys=False))
 
 
+@click.command()
+@click.argument("patch_type", nargs=1)
+@click.option(
+    "--job-name",
+    type=click.STRING,
+    required=True,
+    help="Required. The name of the job to be patched.",
+)
+@click.option(
+    "--namespace",
+    "-n",
+    type=click.STRING,
+    help="Optional. The namespace to use. If not specified, this command will first use the namespace wh connecting the cluster."
+    "Otherwise if namespace is not configured when connecting to the cluster, a namespace that is managed by SageMaker will be auto discovered.",
+)
+def patch_job(patch_type: str, job_name: str, namespace: Optional[str]):
+
+    if patch_type not in JobPatchType.get_values():
+        logger.error(f"Unsupported patch type: '{patch_type}'")
+        exit(1)
+    
+    if namespace is None:
+        resource_attributes_template = V1ResourceAttributes(
+            verb="patch",
+            group=KUEUE_CUSTOM_OBJECT_GROUP,
+            resource=WORKLOAD_CUSTOM_OBJECT_PLURAL,
+        )
+        namespace = DiscoverNamespaces().discover_accessible_namespace(resource_attributes_template)
+
+    
+    patch_type_enum = JobPatchType(patch_type)
+    k8s_client = KubernetesClient()
+
+    # Step 1: get the pytorch job definition, UID in metadata is what we need to fetch
+    # the corresponding workload managed by kueue
+    training_job = k8s_client.get_job(job_name, namespace)
+    uid = training_job.get("metadata", defaultdict()).get("uid", None)
+    
+    if uid is None:
+        logger.error("Cannot patch the job because uid cannot be found in metadata.")
+        exit(1)
+    
+    # Step 2: get the workload by apply filtering with uid retrieved in step 1. Only one workload
+    # is expected to be returned, otherwise throw error and exit because which workload should be
+    # patched is uncertain. But this should not ever happen.
+    workload_label_selector = KUEUE_JOB_UID_LABEL_KEY + "=" + uid
+    workloads = k8s_client.get_workload_by_label(workload_label_selector, namespace).get("items", [])
+
+    if len(workloads) == 0:
+        logger.error(f"No workload found for the job to be patched: '{job_name}'")
+        exit(1)
+    if len(workloads) > 1:
+        logger.error(f"Only exact one workload is expected to be found for job: '{job_name}', but found {len(workloads)}")
+        exit(1)
+    workload_name = workloads[0].get('metadata', {}).get('name')
+    # Step 3: Decide the patch body based on the job patch type specified in command
+    patch_body = ""
+    if patch_type_enum == JobPatchType.SUSPEND:
+        patch_body = {"spec": {"active": False}}
+        k8s_client.patch_workload(workload_name, namespace, patch_body)
+        logger.info(f"Job {job_name} is suspended.")
+    elif patch_type_enum == JobPatchType.UNSUSPEND:
+        patch_body = {"spec": {"active": True}}
+        k8s_client.patch_workload(workload_name, namespace, patch_body)
+        logger.info(f"Job {job_name} is unsuspended.")
+    else:
+        logger.info("Found unsupported patch type. No operation is performed.")
+
 def _override_or_remove(
     config: Dict,
     key: str,
@@ -726,7 +857,7 @@ def _override_or_remove(
     if value is not None:
         config[key] = value
     else:
-        config.pop(key)
+        config.pop(key, None)
 
 
 def _is_accelerator_instance_type(
@@ -740,6 +871,39 @@ def _is_accelerator_instance_type(
         return True
     return False
 
+def _generate_launcher_config_file(config):
+    now = datetime.datetime.now()
+    timestamp = now.strftime("%Y%m%d-%H%M%S")
+    filename = f"{HYPERPOD_KUBERNETES_JOB_PREFIX}-{timestamp}.yaml"
+    with open(
+        os.path.join(GENERATED_LAUNCHER_CONFIG_FILE_PATH, filename), "w"
+    ) as file:
+        yaml.dump(config, file, default_flow_style=False)
+
+    logger.debug(
+        f"Configuration file generated in: {GENERATED_LAUNCHER_CONFIG_FILE_PATH + filename}"
+    )
+    return (GENERATED_LAUNCHER_CONFIG_FILE_PATH, filename)
+
+def _get_auto_fill_namespace_for_create_job():
+    namespace = None
+    resource_attributes_template = V1ResourceAttributes(
+        verb="create",
+        group=PYTORCH_CUSTOM_OBJECT_GROUP,
+        resource=PYTORCH_CUSTOM_OBJECT_PLURAL,
+    )
+    namespace = DiscoverNamespaces().discover_accessible_namespace(resource_attributes_template)
+    return namespace
+
+def _get_auto_fill_queue_name(namespace, scheduler_type):
+    k8s_client = KubernetesClient()
+    sm_managed_namespace = k8s_client.get_sagemaker_managed_namespace(namespace)
+    queue_name = None
+    # Provide queue name if not provided and scheduler type is SageMaker
+    if sm_managed_namespace and scheduler_type == SchedulerType.SAGEMAKER.value:
+        quota_allocation_id = sm_managed_namespace.metadata.labels[SAGEMAKER_QUOTA_ALLOCATION_LABEL]
+        queue_name = HYPERPOD_NAMESPACE_PREFIX + quota_allocation_id + SAGEMAKER_MANAGED_LOCAL_QUEUE_SUFFIX
+    return queue_name
 
 class suppress_standard_output_context:
     def __enter__(self):
@@ -803,10 +967,9 @@ def start_training_job(recipe, override_parameters, job_name, config_file, launc
             f'{SAGEMAKER_TRAINING_LAUNCHER_DIR}/main.py',
             f'--config-path={launcher_config_path}',
             f'--config-name={launcher_config_file_name}',
-            f'base_results_dir={os.path.abspath(os.path.join(os.getcwd(), "results"))}'
+            f'base_results_dir={os.path.abspath(os.path.join(os.getcwd(), "results"))}',
             'cluster.cluster_type=k8s',
         ]
-        print(f"Final command: {' '.join(cmd)}")
         execute_command(cmd, env)
     else:
         cmd = [
@@ -815,7 +978,7 @@ def start_training_job(recipe, override_parameters, job_name, config_file, launc
             f'recipes={recipe}',
             'cluster_type=k8s',
             'cluster=k8s',
-            f'base_results_dir={os.path.abspath(os.path.join(os.getcwd(), "results"))}'
+            f'base_results_dir={os.path.abspath(os.path.join(os.getcwd(), "results"))}',
         ]
 
         # Add pull policy if provided

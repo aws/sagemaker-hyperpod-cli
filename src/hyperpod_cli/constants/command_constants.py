@@ -27,6 +27,8 @@ DEEP_HEALTH_CHECK_PASSED_ONLY_NODE_AFFINITY_DICT = {
     },
 }
 KUEUE_QUEUE_NAME_LABEL_KEY = "kueue.x-k8s.io/queue-name"
+KUEUE_WORKLOAD_PRIORITY_CLASS_LABEL_KEY = "kueue.x-k8s.io/priority-class"
+KUEUE_JOB_UID_LABEL_KEY = "kueue.x-k8s.io/job-uid"
 HYPERPOD_AUTO_RESUME_ANNOTATION_KEY = "sagemaker.amazonaws.com/enable-job-auto-resume"
 HYPERPOD_MAX_RETRY_ANNOTATION_KEY = "sagemaker.amazonaws.com/job-max-retry-count"
 ENV_VARS_DICT = {"NCCL_DEBUG": "INFO"}
@@ -34,9 +36,16 @@ SAGEMAKER_HYPERPOD_NAME_LABEL = "sagemaker.amazonaws.com/cluster-name"
 HP_HEALTH_STATUS_LABEL = "sagemaker.amazonaws.com/node-health-status"
 INSTANCE_TYPE_LABEL = "node.kubernetes.io/instance-type"
 DEEP_HEALTH_CHECK_STATUS_LABEL = "sagemaker.amazonaws.com/deep-health-check-status"
+SAGEMAKER_MANAGED_QUEUE_LABEL= "sagemaker.amazonaws.com/sagemaker-managed-queue"
+SAGEMAKER_QUOTA_ALLOCATION_LABEL = "sagemaker.amazonaws.com/quota-allocation-id"
 TEMP_KUBE_CONFIG_FILE = "/tmp/kubeconfig"
+HYPERPOD_NAMESPACE_PREFIX = "hyperpod-ns-"
+SAGEMAKER_MANAGED_LOCAL_QUEUE_SUFFIX = "-localqueue"
+SAGEMAKER_MANAGED_CLUSTER_QUEUE_SUFFIX = "-clusterqueue"
 SAGEMAKER_TRAINING_LAUNCHER_DIR = str(Path("./src/hyperpod_cli/sagemaker_hyperpod_recipes").resolve())
-
+NVIDIA_GPU_RESOURCE_LIMIT_KEY = "nvidia.com/gpu"
+AVAILABLE_ACCELERATOR_DEVICES_KEY = "AvailableAcceleratorDevices"
+TOTAL_ACCELERATOR_DEVICES_KEY = "TotalAcceleratorDevices"
 
 class PullPolicy(Enum):
     ALWAYS = "Always"
@@ -67,6 +76,25 @@ class PersistentVolumeClaim:
     def __init__(self, claim_name, mount_path):
         self.claim_name = claim_name
         self.mount_path = mount_path
+
+
+class SchedulerType(Enum):
+    KUEUE = "Kueue"
+    SAGEMAKER = "SageMaker"
+    NONE = "None"
+
+    def get_values():
+        return [scheduler_type.value for scheduler_type in SchedulerType]
+
+    def get_default():
+        return SchedulerType.SAGEMAKER
+
+class JobPatchType(Enum):
+    SUSPEND = "suspend"
+    UNSUSPEND = "unsuspend"
+
+    def get_values():
+        return [type.value for type in JobPatchType]
 
 
 class Volume:

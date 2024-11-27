@@ -29,10 +29,16 @@ from hyperpod_cli.clients.kubernetes_client import (
     KubernetesClient,
 )
 from hyperpod_cli.constants.command_constants import (
+    AVAILABLE_ACCELERATOR_DEVICES_KEY,
     DEEP_HEALTH_CHECK_STATUS_LABEL,
     HP_HEALTH_STATUS_LABEL,
+    HYPERPOD_NAMESPACE_PREFIX,
     INSTANCE_TYPE_LABEL,
+    NVIDIA_GPU_RESOURCE_LIMIT_KEY,
     SAGEMAKER_HYPERPOD_NAME_LABEL,
+    SAGEMAKER_MANAGED_CLUSTER_QUEUE_SUFFIX,
+    SAGEMAKER_QUOTA_ALLOCATION_LABEL,
+    TOTAL_ACCELERATOR_DEVICES_KEY,
     Orchestrator,
     TEMP_KUBE_CONFIG_FILE,
     OutputFormat,
@@ -93,17 +99,26 @@ logger = setup_logger(__name__)
     is_flag=True,
     help="Enable debug mode",
 )
+@click.option(
+    "--namespace",
+    "-n",
+    type=click.STRING,
+    required=False,
+    multiple=True,
+    help="Optional. The namespace that you want to check the capacity for. Only SageMaker managed namespaces are supported.",
+)
 def get_clusters(
     region: Optional[str],
     orchestrator: Optional[str],
     output: Optional[str],
     clusters: Optional[str],
     debug: bool,
+    namespace: Optional[List]
 ):
     """List SageMaker Hyperpod Clusters with cluster metadata.
 
     Example Usage:
-    1. List clusters with JSON output: hyperpod get-clusters.
+    1. List clusters with JSON output: hyperpod get-clusters -n hyperpod-ns-test-team
 
     Output:
         [
@@ -113,16 +128,22 @@ def get_clusters(
                 "TotalNodes": 2,
                 "AcceleratorDevicesAvailable": 1,
                 "NodeHealthStatus=Schedulable": 2,
-                "DeepHealthCheckStatus=Passed": "N/A"
+                "DeepHealthCheckStatus=Passed": "N/A",
+                "Namespaces": {
+                    "hyperpod-ns-test-team": {
+                        "AvailableAcceleratorDevices": 1,
+                        "TotalAcceleratorDevices": 1
+                    }
+                }
             }
         ]
 
-    2. List clusters with table output: hyperpod get-clusters --output table.
+    2. List clusters with table output: hyperpod get-clusters -n hyperpod-ns-test-team --output table
 
     Output:
-         Cluster                | InstanceType   |   TotalNodes | AcceleratorDevicesAvailable   |   NodeHealthStatus=Schedulable | DeepHealthCheckStatus=Passed
-         -----------------------+----------------+--------------+-------------------------------+--------------------------------+-----------------------------
-         hyperpod-eks-cluster-a | ml.g5.2xlarge  |            2 |                              1|                              2 |                          N/A
+         Cluster                | InstanceType   |   TotalNodes | AcceleratorDevicesAvailable   |   NodeHealthStatus=Schedulable | DeepHealthCheckStatus=Passed | hyperpod-ns-test-teamTotalAcceleratorDevices   | hyperpod-ns-test-teamAvailableAcceleratorDevices
+         -----------------------+----------------+--------------+-------------------------------+--------------------------------+------------------------------+------------------------------------------------+----------------------------------------------------
+         hyperpod-eks-cluster-a | ml.g5.2xlarge  |            2 |                              1|                              2 |                          N/A | 1                                              | 1
     """
     if debug:
         set_logging_level(logger, logging.DEBUG)
@@ -175,6 +196,7 @@ def get_clusters(
             region=region,
             temp_config_file=TEMP_KUBE_CONFIG_FILE,
             cluster_capacities=cluster_capacities,
+            namespace=namespace,
         )
         # cluster_capacities will only be updated when the cluster
         # is a valid Hyperpod EKS cluster. This check avoid
@@ -197,10 +219,16 @@ def get_clusters(
         "NodeHealthStatus=Schedulable",
         "DeepHealthCheckStatus=Passed",
     ]
+
+    if namespace is not None:
+        for ns in namespace:
+            headers.append(ns + TOTAL_ACCELERATOR_DEVICES_KEY)
+            headers.append(ns + AVAILABLE_ACCELERATOR_DEVICES_KEY)
     if output == OutputFormat.TABLE.value:
         print(tabulate(cluster_capacities, headers=headers, tablefmt="presto"))
     elif output == OutputFormat.JSON.value:
         json_list = [dict(zip(headers, value)) for value in cluster_capacities]
+        _restructure_output(json_list, namespace)
         print(json.dumps(json_list, indent=4))
 
 
@@ -213,6 +241,7 @@ def rate_limited_operation(
     region: Optional[str],
     temp_config_file: str,
     cluster_capacities: List[List[str]],
+    namespace: Optional[List[str]],
 ) -> None:
     try:
         eks_cluster_arn = validator.validate_cluster_and_get_eks_arn(
@@ -231,19 +260,89 @@ def rate_limited_operation(
         )
         nodes_info = _aggregate_nodes_info(nodes)
 
+        ns_nominal_quota = {}
+        ns_quota_usage = {}
+
+        for ns in namespace:
+            sm_managed_namespace = k8s_client.get_sagemaker_managed_namespace(ns)
+            if sm_managed_namespace:
+                quota_allocation_id = sm_managed_namespace.metadata.labels[SAGEMAKER_QUOTA_ALLOCATION_LABEL]
+                cluster_queue_name = HYPERPOD_NAMESPACE_PREFIX + quota_allocation_id + SAGEMAKER_MANAGED_CLUSTER_QUEUE_SUFFIX
+                cluster_queue = k8s_client.get_cluster_queue(cluster_queue_name)
+                nominal_quota = _get_cluster_queue_nominal_quota(cluster_queue)
+                quota_usage = _get_cluster_queue_quota_usage(cluster_queue)
+                ns_nominal_quota[ns] = nominal_quota
+                ns_quota_usage[ns] = quota_usage
+            else:
+                ns_nominal_quota[ns] = {}
+                ns_quota_usage[ns] = {}
+
         for instance_type, nodes_summary in nodes_info.items():
-            cluster_capacities.append(
-                [
-                    cluster_name,
-                    instance_type,
-                    nodes_summary["total_nodes"],
-                    nodes_summary["accelerator_devices_available"],
-                    nodes_summary["schedulable"],
-                    nodes_summary["deep_health_check_passed"],
-                ]
-            )
+            capacities = [
+                cluster_name,
+                instance_type,
+                nodes_summary["total_nodes"],
+                nodes_summary["accelerator_devices_available"],
+                nodes_summary["schedulable"],
+                nodes_summary["deep_health_check_passed"],
+            ]
+            for ns in namespace:
+                capacities.append(ns_nominal_quota.get(ns).get(instance_type, {}).get(NVIDIA_GPU_RESOURCE_LIMIT_KEY, "N/A"))
+                capacities.append(_get_available_quota(ns_nominal_quota.get(ns), ns_quota_usage.get(ns), instance_type, NVIDIA_GPU_RESOURCE_LIMIT_KEY))
+            cluster_capacities.append(capacities)
     except Exception as e:
         logger.error(f"Error processing cluster {cluster_name}: {e}, continue...")
+
+
+def _get_cluster_queue_nominal_quota(cluster_queue):
+    nominal_quota = {}
+    resource_groups = cluster_queue.get("spec", {}).get("resourceGroups", [])
+    resource_group = resource_groups[0]
+
+    for flavor in resource_group.get("flavors", []):
+        flavor_name = flavor.get("name", "unknown")
+        resources = flavor.get("resources", [])
+        for resource in resources:
+            resource_name = resource.get("name")
+            quota = resource.get("nominalQuota")
+            if flavor_name not in nominal_quota:
+                nominal_quota[flavor_name] = {}
+            if resource_name == NVIDIA_GPU_RESOURCE_LIMIT_KEY:
+                quota = int(quota)
+            nominal_quota[flavor_name][resource_name] = quota
+    
+    return nominal_quota
+
+
+def _get_cluster_queue_quota_usage(cluster_queue):
+    quota_usage = {}
+    flavor_usage = cluster_queue.get("status", {}).get("flavorsUsage", [])
+
+    for flavor in flavor_usage:
+        flavor_name = flavor.get("name", "unknown")
+        resources = flavor.get("resources", [])
+        for resource in resources:
+            resource_name = resource.get("name")
+            usage = resource.get("total")
+            if flavor_name not in quota_usage:
+                quota_usage[flavor_name] = {}
+            if resource_name == NVIDIA_GPU_RESOURCE_LIMIT_KEY:
+                usage = int(usage)
+            quota_usage[flavor_name][resource_name] = usage
+
+    return quota_usage
+
+
+def _get_available_quota(nominal, usage, flavor, resource_name):
+    nominal_quota = nominal.get(flavor, {}).get(resource_name, None)
+    usage_quota = usage.get(flavor, {}).get(resource_name, None)
+
+    # Calculating available quota only supports numeric values right now.
+    # Some resources need to be further processed by parsing unit like memory, e.g 10Gi
+    if nominal_quota is not None and usage_quota is not None:
+        return int(nominal_quota) - int(usage_quota)
+    
+    return "N/A"
 
 
 def _get_hyperpod_clusters(sm_client: boto3.client) -> List[str]:
@@ -255,6 +354,24 @@ def _get_hyperpod_clusters(sm_client: boto3.client) -> List[str]:
         ]
 
     return cluster_names
+
+
+def _restructure_output(summary_list, namespaces):
+    if not namespaces:
+        return
+
+    for node_summary in summary_list:
+        node_summary["Namespaces"] = {}
+        for ns in namespaces:
+            available_accelerators = node_summary[ns + AVAILABLE_ACCELERATOR_DEVICES_KEY]
+            total_accelerators = node_summary[ns + TOTAL_ACCELERATOR_DEVICES_KEY]
+            quota_accelerator_info = {
+                AVAILABLE_ACCELERATOR_DEVICES_KEY: available_accelerators,
+                TOTAL_ACCELERATOR_DEVICES_KEY: total_accelerators,
+            }
+            node_summary["Namespaces"][ns] = quota_accelerator_info
+            node_summary.pop(ns + AVAILABLE_ACCELERATOR_DEVICES_KEY, None)
+            node_summary.pop(ns + TOTAL_ACCELERATOR_DEVICES_KEY, None)
 
 
 def _aggregate_nodes_info(
@@ -303,7 +420,7 @@ def _aggregate_nodes_info(
         else:
             if not node.status:
                 continue
-            gpu_allocatable = node.status.allocatable.get("nvidia.com/gpu")
+            gpu_allocatable = node.status.allocatable.get(NVIDIA_GPU_RESOURCE_LIMIT_KEY)
             neuron_allocatable = node.status.allocatable.get(
                 "aws.amazon.com/neurondevice"
             )
@@ -339,8 +456,7 @@ def _aggregate_nodes_info(
     "-n",
     type=click.STRING,
     required=False,
-    help="Optional. The namespace that you want to connect to. If not specified, this command uses the [Kubernetes namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) of the Amazon EKS cluster associated with the SageMaker HyperPod cluster in your AWS account.",
-    default="default",
+    help="Optional. The namespace that you want to connect to. If not specified, Hyperpod cli commands will auto discover the accessible namespace.",
 )
 @click.option(
     "--debug",
@@ -351,7 +467,7 @@ def connect_cluster(
     cluster_name: str,
     region: Optional[str],
     debug: bool,
-    namespace: str = "default",
+    namespace: str,
 ) -> None:
     """
     Connect to a HyperPod EKS cluster.

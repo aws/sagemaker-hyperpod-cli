@@ -17,6 +17,8 @@ from unittest.mock import MagicMock
 from hyperpod_cli.clients.kubernetes_client import (
     KubernetesClient,
 )
+from kubernetes.client import V1ResourceAttributes
+
 from hyperpod_cli.service.get_training_job import (
     GetTrainingJob,
 )
@@ -63,6 +65,38 @@ class GetTrainingJobTest(unittest.TestCase):
             "metadata": {"name": "pytorch-simple"}
         }
         result = self.mock_get_training_job.get_training_job("sample-job", None, None)
+        self.assertIn("pytorch-simple", result)
+
+    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
+    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    def test_get_training_job_namespace_auto_discover(
+        self,
+        mock_kubernetes_client: mock.Mock,
+        mock_current_hyperpod_context: mock.Mock,
+        mock_discover_accessible_namespace: mock.Mock,
+    ):
+        mock_kubernetes_client.return_value = self.mock_k8s_client
+        mock_current_hyperpod_context.return_value = SAMPLE_HYPERPOD_CLUSTER_URL
+        mock_discover_accessible_namespace.return_value = "discovered-namespace"
+
+        self.mock_k8s_client.get_current_context_namespace.return_value = None
+        self.mock_k8s_client.get_job.return_value = {
+            "metadata": {"name": "pytorch-simple"}
+        }
+        result = self.mock_get_training_job.get_training_job("sample-job", None, None)
+        # Ensure that we are using correct resource attributes for auto-discover
+        mock_discover_accessible_namespace.assert_called_once_with(
+            V1ResourceAttributes(
+                verb="get",
+                group="kubeflow.org",
+                resource="pytorchjobs",
+            )
+        )
+        self.mock_k8s_client.get_job.assert_called_once_with(
+            job_name="sample-job",
+            namespace="discovered-namespace",
+        )
         self.assertIn("pytorch-simple", result)
 
     @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
@@ -141,7 +175,6 @@ class GetTrainingJobTest(unittest.TestCase):
             "status": "test_status",
         }
         result = self.mock_get_training_job.get_training_job("sample-job", None, True)
-        print(result)
         self.assertIn("pytorch-simple", result)
 
     @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
@@ -161,7 +194,6 @@ class GetTrainingJobTest(unittest.TestCase):
             "status": "test_status",
         }
         result = self.mock_get_training_job.get_training_job("sample-job", None, True)
-        print(result)
         self.assertIn("test_status", result)
 
     @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
