@@ -1,10 +1,10 @@
 # Changelog
 
-## v1.1.0 (2024-11-08)
+## v2.0.0 (2024-12-04)
 
 ### Features
 
-- feature: Add Distributed Training Recipes for SageMaker HyperPod CLI
+- feature: The HyperPod CLI now support ([Hyperpod recipes](https://github.com/aws/sagemaker-hyperpod-recipes.git)). The HyperPod recipes enable customers to get started training and fine-tuning popular publicly-available foundation models like Llama 3.1 405B in minutes. Learn more ([here](https://github.com/aws/sagemaker-hyperpod-recipes.git)).
 
 ## v1.0.0 (2024-09-09)
 

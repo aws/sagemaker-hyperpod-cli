@@ -405,23 +405,59 @@ def cancel_job(
     required=False,
     help = """Optional. Recipe which accelerates distributed training jobs.
             Current supported recipes are as follows: \n
-            fine-tuning/llama/hf_llama3_8b_seq8192_gpu \n
-            fine-tuning/llama/hf_llama3_8b_seq8192_gpu_lora \n
-            fine-tuning/llama/hf_llama3_70b_seq8192_gpu_lora \n
-            fine-tuning/llama/hf_llama3_405b_seq8192_gpu_qlora \n
-            fine-tuning/llama/hf_llama3_405b_seq131072_gpu_qlora \n
-            training/llama/hf_llama3_7B_config_trainium \n
-            training/llama/hf_llama3_8b_seq8192_gpu \n
-            training/llama/llama2_7b_nemo \n
-            training/llama/megatron_llama_7B_config \n
-            training/mistral/hf_mistral_gpu \n
-            training/mixtral/hf_mixtral_gpu \n
+            For all the recipes, click [here](https://github.com/aws/sagemaker-hyperpod-recipes.git) to learn more. \n
+training/mixtral/hf_mixtral_8x7b_seq8k_gpu_p5x16_pretrain \n
+training/mixtral/hf_mixtral_8x7b_seq8k_gpu_p5x32_pretrain \n
+training/mixtral/hf_mixtral_8x22b_seq8k_gpu_p5x64_pretrain \n
+training/mixtral/hf_mixtral_8x22b_seq16k_gpu_p5x32_pretrain \n
+training/mixtral/hf_mixtral_8x7b_seq16k_gpu_p5x16_pretrain \n
+training/mixtral/hf_mixtral_8x22b_seq16k_gpu_p5x64_pretrain \n
+training/mixtral/hf_mixtral_8x22b_seq8k_gpu_p5x32_pretrain \n
+training/mixtral/hf_mixtral_8x7b_seq16k_gpu_p5x32_pretrain \n
+training/custom_model/falcon \n
+training/mistral/hf_mistral_7b_seq8k_gpu_p5x16_pretrain \n
+training/mistral/hf_mistral_7b_seq8k_gpu_p5x32_pretrain \n
+training/mistral/hf_mistral_7b_seq16k_gpu_p5x16_pretrain \n
+training/mistral/hf_mistral_7b_seq16k_gpu_p5x32_pretrain \n
+training/llama/hf_llama3_8b_seq8k_trn1x4_pretrain \n
+training/llama/hf_llama3_8b_seq8k_trn1_fine_tuning \n
+training/llama/hf_llama3_70b_seq8k_trn1x16_pretrain \n
+training/llama/hf_llama3_70b_seq16k_gpu_p5x32_pretrain \n
+training/llama/hf_llama3_70b_seq8k_gpu_p5x32_pretrain \n
+training/llama/hf_llama3_8b_seq8k_gpu_p5x16_pretrain \n
+training/llama/hf_llama3_8b_seq16k_gpu_p5x32_pretrain \n
+training/llama/hf_llama3_2_11b_seq8k_gpu_p5x4_pretrain \n
+training/llama/hf_llama3_8b_seq16k_gpu_p5x16_pretrain \n
+training/llama/hf_llama3_8b_seq8k_gpu_p5x32_pretrain \n
+training/llama/hf_llama3_2_90b_seq8k_gpu_p5x32_pretrain \n
+training/llama/hf_llama3_70b_seq8k_gpu_p5x64_pretrain \n
+training/llama/hf_llama3_70b_seq16k_gpu_p5x64_pretrain \n
+training/llama/llama2_7b_nemo \n
+training/llama/megatron_llama3_1_8b_nemo \n
+training/llama/p4_hf_llama3_70b_seq8k_gpu \n
+fine-tuning/llama/p4_hf_llama3_8b_seq8k_gpu_fine_tuning \n
+fine-tuning/llama/p4_hf_llama3_70b_seq8k_gpu_lora \n
+fine-tuning/llama/hf_llama3_405b_seq8k_gpu_lora \n
+fine-tuning/llama/hf_llama3_405b_seq16k_gpu_lora \n
+fine-tuning/llama/hf_llama3_405b_seq16k_gpu_qlora \n
+fine-tuning/llama/hf_llama3_8b_seq8k_gpu_fine_tuning \n
+fine-tuning/llama/hf_llama3_70b_seq8k_gpu_fine_tuning \n
+fine-tuning/llama/hf_llama3_8b_seq16k_gpu_lora \n
+fine-tuning/llama/hf_llama3_70b_seq16k_gpu_lora \n
+fine-tuning/llama/p4_hf_llama3_8b_seq8k_gpu_lora \n
+fine-tuning/llama/hf_llama3_70b_seq8k_gpu_lora \n
+fine-tuning/llama/hf_llama3_405b_seq8k_gpu_qlora \n
+fine-tuning/llama/p4_hf_llama3_70b_seq8k_gpu_fine_tuning \n
+fine-tuning/llama/hf_llama3_405b_seq128k_gpu_qlora \n
+fine-tuning/llama/hf_llama3_8b_seq16k_gpu_fine_tuning \n
+fine-tuning/llama/hf_llama3_8b_seq8k_gpu_lora \n
+fine-tuning/llama/hf_llama3_70b_seq16k_gpu_fine_tuning \n
             """
 )
 @click.option(
     "--override-parameters",
     type=click.STRING,
-    help="""Optional. Override parameters for the recipe. Format: 'key1=value1 key2=value2 ...'
+    help="""Optional. Override parameters for the recipe, Below are based on Hydra syntax. Format: 'key1=value1 key2=value2 ...'
     hyperpod start-job --recipe fine-tuning/llama/hf_llama3_8b_seq8192_gpu --override-parameters \
 '{
   "+cluster.persistent_volume_claims.0.claimName":"fsx-claim",
@@ -435,7 +471,7 @@ def cancel_job(
   "recipes.model.max_position_embeddings": 8192,
   "recipes.model.train_batch_size": 1,
   "recipes.model.data.use_synthetic_data": true,
-  "instance_type": "g5.48xlarge",
+  "instance_type": "p5.48xlarge",
   "container": "container link",
   "recipes.model.data.train_dir": "/data/datasets/wikicorpus_llama3_tokenized_8k/",
   "recipes.model.data.val_dir": "/data/datasets/wikicorpus_llama3_tokenized_8k_val/",
@@ -818,11 +854,9 @@ def start_training_job(recipe, override_parameters, job_name, config_file, launc
                 cmd.append(f'+cluster.persistent_volume_claims.{idx}.mountPath="{mount_path}"')
 
         if label_selector:
-            cmd.append(f'+cluster.label_selector="{label_selector}"')
+            cmd.append(f'+cluster.label_selector={label_selector}')
         elif deep_health_check_passed_nodes_only:
-            cmd.append(f'+cluster.label_selector="{DEEP_HEALTH_CHECK_PASSED_ONLY_NODE_AFFINITY_DICT}"')
-        else:
-            cmd.append(f'+cluster.label_selector="{NODE_AFFINITY_DICT}"')
+            cmd.append(f'+cluster.label_selector={DEEP_HEALTH_CHECK_PASSED_ONLY_NODE_AFFINITY_DICT}')
 
         if auto_resume:
             # Set max_retry default to 1
