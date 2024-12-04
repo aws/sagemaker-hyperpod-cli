@@ -18,6 +18,14 @@ from hyperpod_cli.clients.kubernetes_client import (
 )
 from kubernetes.client.rest import ApiException
 
+from hyperpod_cli.constants.pytorch_constants import (
+    PYTORCH_CUSTOM_OBJECT_GROUP,
+    PYTORCH_CUSTOM_OBJECT_PLURAL
+)
+from hyperpod_cli.service.discover_namespaces import DiscoverNamespaces
+from kubernetes.client import (
+    V1ResourceAttributes
+)
 
 class CancelTrainingJob:
     def __init__(self):
@@ -32,7 +40,14 @@ class CancelTrainingJob:
         k8s_client = KubernetesClient()
 
         if not namespace:
-            namespace = k8s_client.get_current_context_namespace()
+            resource_attributes_template = V1ResourceAttributes(
+                verb="delete",
+                group=PYTORCH_CUSTOM_OBJECT_GROUP,
+                resource=PYTORCH_CUSTOM_OBJECT_PLURAL,
+            )
+            namespace = DiscoverNamespaces().discover_accessible_namespace(
+                resource_attributes_template
+            )
         try:
             result = k8s_client.delete_training_job(
                 job_name=job_name, namespace=namespace

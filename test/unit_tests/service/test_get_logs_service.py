@@ -103,3 +103,25 @@ class TestGetLogs(unittest.TestCase):
         )
         with self.assertRaises(RuntimeError):
             self.mock_get_logs.get_training_job_logs("sample-job", "test-pod", None)
+
+    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.service.list_pods.ListPods")
+    @mock.patch("hyperpod_cli.service.list_pods.ListPods.list_pods_for_training_job")
+    def test_get_logs_auto_discover_namespace(
+        self,
+        mock_list_training_job_pods_service_with_list_pods: mock.Mock,
+        mock_list_training_job_pods_service: mock.Mock,
+        mock_kubernetes_client: mock.Mock,
+        mock_discover_accessible_namespace: mock.Mock,
+    ):
+        mock_kubernetes_client.return_value = self.mock_k8s_client
+        mock_list_training_job_pods_service.return_value = self.mock_list_pods_service
+        self.mock_k8s_client.get_current_context_namespace.return_value = None
+        mock_discover_accessible_namespace.return_value = "discovered-namespace"
+        mock_list_training_job_pods_service_with_list_pods.return_value = ["test-pod"]
+        self.mock_k8s_client.get_logs_for_pod.return_value = "test logs"
+        result = self.mock_get_logs.get_training_job_logs(
+            "sample-job", "test-pod", None
+        )
+        self.assertIn("test logs", result)

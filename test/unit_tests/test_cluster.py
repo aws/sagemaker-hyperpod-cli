@@ -19,7 +19,10 @@ from unittest.mock import MagicMock, mock_open
 
 from click.testing import CliRunner
 from kubernetes import client
-
+from kubernetes.client import (
+    V1Namespace, 
+    V1ObjectMeta,
+)
 from hyperpod_cli.clients.kubernetes_client import (
     KubernetesClient,
 )
@@ -939,6 +942,153 @@ class ClusterTest(unittest.TestCase):
         self.assertNotIn("cluster-1", result.output)
         self.assertNotIn("cluster-2", result.output)
 
+    @mock.patch("kubernetes.config.load_kube_config")
+    @mock.patch("boto3.Session")
+    @mock.patch(
+        "hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential"
+    )
+    @mock.patch(
+        "hyperpod_cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
+    )
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("subprocess.run")
+    def test_get_clusters_with_sm_managed_namespace(
+        self,
+        mock_subprocess_run: mock.Mock,
+        mock_kubernetes_client: mock.Mock,
+        mock_validate_cluster_and_get_eks_arn: mock.Mock,
+        mock_validate_aws_credentials: mock.Mock,
+        mock_session: mock.Mock,
+        mock_load_kube_config: mock.Mock,
+    ):
+        self.mock_k8s_client.list_node_with_temp_config.return_value = (
+            _generate_nodes_list()
+        )
+        mock_kubernetes_client.return_value = self.mock_k8s_client
+
+        mock_validate_aws_credentials.validate_aws_credential.return_value = None
+        mock_validate_cluster_and_get_eks_arn.return_value = (
+            "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
+        )
+
+        mock_load_kube_config.return_value = None
+        mock_subprocess_run.return_value = None
+        self.mock_k8s_client.get_sagemaker_managed_namespace.return_value = V1Namespace(
+            metadata=V1ObjectMeta(
+                name="test-namespace",
+                labels={
+                    "sagemaker.amazonaws.com/sagemaker-managed-queue": "true",
+                    "sagemaker.amazonaws.com/quota-allocation-id": "test-team",
+                },
+            ),
+        )
+        self.mock_k8s_client.get_cluster_queue.return_value = _generate_get_cluster_queue_response()
+
+        self.mock_sm_client.describe_cluster.return_value = {
+            "Orchestrator": {
+                "Eks": {
+                    "ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
+                }
+            }
+        }
+        self.mock_sm_client.list_clusters.return_value = (
+            {
+                "ClusterSummaries": [
+                    {"ClusterName": "cluster-1"},
+                ]
+            }
+        )
+        self.mock_session.client.return_value = self.mock_sm_client
+        mock_session.return_value = self.mock_session
+
+        result = self.runner.invoke(
+            get_clusters,
+            [
+                "-n",
+                "test-namespace",
+            ],
+            catch_exceptions=False,
+        )
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("cluster-1", result.output)
+        # For instance-type-1
+        self.assertIn("test-namespace", result.output)
+        self.assertIn('"TotalAcceleratorDevices": 1', result.output)
+        self.assertIn('"AvailableAcceleratorDevices": 0', result.output)
+        # For instance-type-2
+        self.assertIn('"TotalAcceleratorDevices": "N/A"', result.output)
+        self.assertIn('"AvailableAcceleratorDevices": "N/A"', result.output)
+        # Expect JSON output
+        json.loads(result.output)
+
+    @mock.patch("kubernetes.config.load_kube_config")
+    @mock.patch("boto3.Session")
+    @mock.patch(
+        "hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential"
+    )
+    @mock.patch(
+        "hyperpod_cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
+    )
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("subprocess.run")
+    def test_get_clusters_with_not_sm_managed_namespace(
+        self,
+        mock_subprocess_run: mock.Mock,
+        mock_kubernetes_client: mock.Mock,
+        mock_validate_cluster_and_get_eks_arn: mock.Mock,
+        mock_validate_aws_credentials: mock.Mock,
+        mock_session: mock.Mock,
+        mock_load_kube_config: mock.Mock,
+    ):
+        self.mock_k8s_client.list_node_with_temp_config.return_value = (
+            _generate_nodes_list()
+        )
+        mock_kubernetes_client.return_value = self.mock_k8s_client
+
+        mock_validate_aws_credentials.validate_aws_credential.return_value = None
+        mock_validate_cluster_and_get_eks_arn.return_value = (
+            "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
+        )
+
+        mock_load_kube_config.return_value = None
+        mock_subprocess_run.return_value = None
+        self.mock_k8s_client.get_sagemaker_managed_namespace.return_value = None
+
+        self.mock_sm_client.describe_cluster.return_value = {
+            "Orchestrator": {
+                "Eks": {
+                    "ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
+                }
+            }
+        }
+        self.mock_sm_client.list_clusters.return_value = (
+            {
+                "ClusterSummaries": [
+                    {"ClusterName": "cluster-1"},
+                ]
+            }
+        )
+        self.mock_session.client.return_value = self.mock_sm_client
+        mock_session.return_value = self.mock_session
+
+        result = self.runner.invoke(
+            get_clusters,
+            [
+                "-n",
+                "test-namespace",
+            ],
+            catch_exceptions=False,
+        )
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("cluster-1", result.output)
+
+        # For both instance-type-1 and instance-type-2
+        self.assertIn("test-namespace", result.output)
+        self.assertIn('"TotalAcceleratorDevices": "N/A"', result.output)
+        self.assertIn('"AvailableAcceleratorDevices": "N/A"', result.output)
+        # Expect JSON output
+        json.loads(result.output)
+
 
 def _generate_nodes_list():
     return [
@@ -1045,6 +1195,42 @@ def _generate_get_clusters_response():
         ]
     }
 
+def _generate_get_cluster_queue_response():
+    return {
+        "kind": "ClusterQueue",
+        "metadata": {
+            "name": "test-queue",
+        },
+        "spec": {
+            "resourceGroups": [
+                {
+                    "coveredResources": ["cpu", "memory", "nvidia.com/gpu"],
+                    "flavors": [
+                        {
+                            "name": "instance-type-1",
+                            "resources": [
+                                {"name": "cpu", "nominalQuota": 10},
+                                {"name": "memory", "nominalQuota": "10Gi"},
+                                {"name": "nvidia.com/gpu", "nominalQuota": 1},
+                            ]
+                        },
+                    ]
+                }
+            ],
+        },
+        "status": {
+            "flavorsUsage": [
+                {
+                    "name": "instance-type-1",
+                    "resources": [
+                        {"name": "cpu", "total": 5, "borrowed": 1},
+                        {"name": "memory", "total": "4Gi", "borrowed": "0Gi"},
+                        {"name": "nvidia.com/gpu", "total": 1, "borrowed": 0}
+                    ]
+                }
+            ]
+        }
+    }
 
 def _generate_get_clusters_response_over_maximum():
     cluster_list = [{"ClusterName": f"cluster-{i+1}"} for i in range(100)]

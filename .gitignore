@@ -17,3 +17,7 @@ __pycache__/
 
 /doc/_apidoc/
 /build
+
+# Ignore all contents of result and results directories
+/result/
+/results/

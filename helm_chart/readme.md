@@ -16,10 +16,10 @@ chmod 700 get_helm.sh
 | Chart Name                   | Usage                                                                                                                                                                                   | Enable by default |
 |------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|
 | Cluster role and binding     | Defines cluster-wide roles and bindings for Kubernetes resources, allowing cluster administrators to assign and manage permissions across the entire cluster.                           | No                |
+| Team role and binging        | Defines cluster and namespaced roles and bindings, allowing cluster administrators to create scientist roles with sufficient permissions to submit jobs to the accessible teams.        | No                |
 | Deep health check            | Implements advanced health checks for Kubernetes services and pods to ensure deep monitoring of resource status and functionality beyond basic liveness and readiness probes.           | Yes               |
 | Health monitoring agent      | Deploys an agent to continuously monitor the health of Kubernetes applications, providing detailed insights and alerting for potential issues.                                          | Yes               |
 | Job auto restart             | Configures automatic restart policies for Kubernetes jobs, ensuring failed or terminated jobs are restarted based on predefined conditions for high availability.                       | Yes               |
-| Kueue                        | Manages Kubernetes workloads using the Kueue scheduling framework, enabling resource queuing and prioritization for jobs across multiple clusters or queues.                            | No                |
 | MLflow                       | Installs the MLflow platform for managing machine learning experiments, tracking models, and storing model artifacts in a scalable manner within the Kubernetes cluster.                | No                |
 | MPI Operators                | Orchestrates MPI (Message Passing Interface) jobs on Kubernetes, providing an efficient way to manage distributed machine learning or high-performance computing (HPC) workloads.       | Yes               |
 | namespaced-role-and-bindings | Creates roles and role bindings within a specific namespace to manage fine-grained access control for Kubernetes resources in a limited scope.                                          | No                |
@@ -41,7 +41,7 @@ helm lint src/hyperpod_cli/helm_chart/HyperPodHelmChart
 Notes:
 1. To use the resiliency feature in SageMaker HyperPod cluster with Amazon EKS, you need to first install this HelmChart to EKS cluster before creating HyperPod cluster.
 
-2. Kueue, MLflow, and other optional components are disabled by default. If you wish to enable them, you'll need to manually update the values.yaml file in the main chart by setting the corresponding feature flags to true. Please note: Kueue need to be installed separately after installing other dependencies through this helm chart. See below Step Four for more details.
+2. MLflow, and other optional components are disabled by default. If you wish to enable them, you'll need to manually update the values.yaml file in the main chart by setting the corresponding feature flags to true.
 
 3. Below <dependencies> is the default release name. helm install <dependencies> is the example.
 
@@ -87,11 +87,11 @@ Notes:
   helm install dependencies helm_chart/HyperPodHelmChart --namespace kube-system
   ```
 
-### Step Four (only required for installing Kueue):
-* First run `./install_dependencies.sh` script under helm_chart folder. This script installs certain CRDs directly via commands.
-* Then run below command to complete installation.
+## 5. Create Team Role
+
+* To create role for hyperpod cluster users, please set the value for `computeQuotaTarget.targeId` when installing or upgrade the chart. This value is the same as the `targeId` of quota allocation.
   ```
-  helm upgrade dependencies src/hyperpod_cli/helm_chart/HyperPodHelmChart --values src/hyperpod_cli/helm_chart/HyperPodHelmChart/charts/kueue/values.yaml --namespace kube-system
+  helm install dependencies helm_chart/HyperPodHelmChart --namespace kube-system --set computeQuotaTarget.targetId=<target_id>
   ```
 ### Step Five (only required for changing the health monitoring agent installation on your cluster- version upgrade):
 * This command is required to change the version of the Health Monitoring Agent running on your Hyperpod cluster.
@@ -99,7 +99,17 @@ Notes:
 helm upgrade dependencies helm_chart/HyperPodHelmChart/charts/health-monitoring-agent --namespace kube-system -f helm_chart/HyperPodHelmChart/charts/health-monitoring-agent/values.yaml
 ```
 
-## 5. Notes
+* To install the sub-chart separately that only contains roles and role bindings
+  ```
+  helm install dependencies helm_chart/HyperPodHelmChart/charts/team-role-and-bindings --set computeQuotaTarget.targetId=<target_id>
+  ```
+### Step Five (only required for changing the health monitoring agent installation on your cluster- version upgrade):
+* This command is required to change the version of the Health Monitoring Agent running on your Hyperpod cluster.
+```
+helm upgrade dependencies helm_chart/HyperPodHelmChart/charts/health-monitoring-agent --namespace kube-system -f helm_chart/HyperPodHelmChart/charts/health-monitoring-agent/values.yaml
+```
+
+## 6. Notes
 - If you intend to use the Health Monitoring Agent container image from another region, please see below list to find relevant region's URI.
   ```
   IAD 767398015722.dkr.ecr.us-east-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.318.0_1.0.35.0
@@ -117,7 +127,7 @@ helm upgrade dependencies helm_chart/HyperPodHelmChart/charts/health-monitoring-
   GRU 025066253954.dkr.ecr.sa-east-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.318.0_1.0.35.0
   ```
 
-## 6. Troubleshooting
+## 7. Troubleshooting
 
 #### ServiceAccount "neuron-device-plugin" in namespace "kube-system" exists and cannot be imported into the current release
 - This means dependencies already installed. You can change the name of the dependencies if you want another dependencies. To see dependencies already existed or not

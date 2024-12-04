@@ -20,7 +20,12 @@ from hyperpod_cli.clients.kubernetes_client import (
 
 from hyperpod_cli import utils
 from kubernetes.client.rest import ApiException
+from kubernetes.client import (
+    V1ResourceAttributes
+)
 
+from hyperpod_cli.constants.pytorch_constants import PYTORCH_CUSTOM_OBJECT_GROUP, PYTORCH_CUSTOM_OBJECT_PLURAL
+from hyperpod_cli.service.discover_namespaces import DiscoverNamespaces
 
 class GetTrainingJob:
     def __init__(self):
@@ -33,14 +38,21 @@ class GetTrainingJob:
         verbose: Optional[bool],
     ):
         """
-        Describe training job provided by the user in the speified namespace.
+        Describe training job provided by the user in the specified namespace.
         If namespace is not provided job is described from the default namespace in user context
         """
 
         k8s_client = KubernetesClient()
-
         if not namespace:
-            namespace = k8s_client.get_current_context_namespace()
+            resource_attributes_template = V1ResourceAttributes(
+                verb="get",
+                group=PYTORCH_CUSTOM_OBJECT_GROUP,
+                resource=PYTORCH_CUSTOM_OBJECT_PLURAL,
+            )
+            namespace = DiscoverNamespaces().discover_accessible_namespace(
+                resource_attributes_template
+            )
+
         try:
             result = k8s_client.get_job(
                 job_name=job_name,

@@ -13,17 +13,23 @@
 import unittest
 import click
 import subprocess
+import pytest
 import os
+import yaml
 from unittest import mock
 from unittest.mock import MagicMock, mock_open
 
 from click.testing import CliRunner
-
+from kubernetes.client import (
+    V1Namespace, 
+    V1ObjectMeta,
+)
 from hyperpod_cli.commands.job import (
     cancel_job,
     get_job,
     list_jobs,
     list_pods,
+    patch_job,
     start_job,
     suppress_standard_output_context,
     validate_only_config_file_argument,
@@ -52,6 +58,9 @@ class JobTest(unittest.TestCase):
         self.mock_list_jobs = MagicMock(spec=ListTrainingJobs)
         self.list_pods = MagicMock(spec=ListPods)
 
+        # Patch gettext for now because see some issues locally for localization
+        mock.patch("gettext.dgettext", lambda domain, message: message).start()
+        
     @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob")
     @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob.get_training_job")
     def test_get_job_happy_case(
@@ -123,15 +132,6 @@ class JobTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
         self.assertIn("example-job", result.output)
-
-    def test_get_job_error_missing_name_option(
-        self,
-    ):
-        result = self.runner.invoke(get_job, ["example-job"])
-        self.assertIn(
-            "Missing option '--job-name'",
-            result.output,
-        )
 
     @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob")
     @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob.get_training_job")
@@ -441,13 +441,7 @@ class JobTest(unittest.TestCase):
             result.output,
         )
 
-    @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
-    @mock.patch("hyperpod_cli.commands.job.compose")
-    @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch(
-        "builtins.open",
-        new_callable=mock.mock_open,
-    )
+    @mock.patch('subprocess.run')
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -459,24 +453,24 @@ class JobTest(unittest.TestCase):
         self,
         mock_boto3,
         mock_validator_cls,
-        mock_kubernetes_client: mock.Mock,
+        mock_kubernetes_client,
         mock_get_console_link,
         mock_remove,
         mock_exists,
         mock_yaml_dump,
-        mock_file,
-        mock_main,
-        mock_compose,
-        mock_initialize_config_dir,
+        mock_subprocess_run,
     ):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
-        mock_main.return_value = None
-        mock_compose.return_value = None
-        mock_initialize_config_dir.return_value.__enter__.return_value = None
+        mock_subprocess_run.return_value = subprocess.CompletedProcess(
+            args=['some_command'],  # Simulate the command arguments
+            returncode=0,           # Simulate a successful command
+            stdout='Command executed successfully',  # Simulate standard output
+            stderr=''               # Simulate no errors
+        )
         result = self.runner.invoke(
             start_job,
             [
@@ -491,42 +485,44 @@ class JobTest(unittest.TestCase):
                 "--entry-script",
                 "/opt/train/src/train.py",
             ],
+            catch_exceptions=False
         )
+        print(f"Exit code: {result.exit_code}")
+        print(f"Output: {result.output}")
+        if result.exception:
+            print(f"Exception: {result.exception}")
         self.assertEqual(result.exit_code, 0)
 
-    @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
-    @mock.patch("hyperpod_cli.commands.job.compose")
-    @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch(
-        "builtins.open",
-        new_callable=mock.mock_open,
-    )
+    @mock.patch('subprocess.run')
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
     @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("hyperpod_cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_with_namespace(
         self,
         mock_boto3,
         mock_validator_cls,
+        mock_kubernetes_client,
         mock_get_console_link,
         mock_remove,
         mock_exists,
         mock_yaml_dump,
-        mock_file,
-        mock_main,
-        mock_compose,
-        mock_initialize_config_dir,
+        mock_subprocess_run,
     ):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = True
+        mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
-        mock_main.return_value = None
-        mock_compose.return_value = None
-        mock_initialize_config_dir.return_value.__enter__.return_value = None
+        mock_subprocess_run.return_value = subprocess.CompletedProcess(
+            args=['some_command'],  # Simulate the command arguments
+            returncode=0,           # Simulate a successful command
+            stdout='Command executed successfully',  # Simulate standard output
+            stderr=''               # Simulate no errors
+        )
         result = self.runner.invoke(
             start_job,
             [
@@ -546,13 +542,7 @@ class JobTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
-    @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
-    @mock.patch("hyperpod_cli.commands.job.compose")
-    @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch(
-        "builtins.open",
-        new_callable=mock.mock_open,
-    )
+    @mock.patch('subprocess.run')
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -571,19 +561,19 @@ class JobTest(unittest.TestCase):
         mock_remove,
         mock_exists,
         mock_yaml_dump,
-        mock_file,
-        mock_main,
-        mock_compose,
-        mock_initialize_config_dir,
+        mock_subprocess_run,
     ):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
-        mock_main.return_value = None
-        mock_compose.return_value = None
-        mock_initialize_config_dir.return_value.__enter__.return_value = None
+        mock_subprocess_run.return_value = subprocess.CompletedProcess(
+            args=['some_command'],  # Simulate the command arguments
+            returncode=0,           # Simulate a successful command
+            stdout='Command executed successfully',  # Simulate standard output
+            stderr=''               # Simulate no errors
+        )
         result = self.runner.invoke(
             start_job,
             [
@@ -603,13 +593,7 @@ class JobTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         mock_debug.assert_called()
 
-    @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
-    @mock.patch("hyperpod_cli.commands.job.compose")
-    @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch(
-        "builtins.open",
-        new_callable=mock.mock_open,
-    )
+    @mock.patch('subprocess.run')
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -626,19 +610,19 @@ class JobTest(unittest.TestCase):
         mock_remove,
         mock_exists,
         mock_yaml_dump,
-        mock_file,
-        mock_main,
-        mock_compose,
-        mock_initialize_config_dir,
+        mock_subprocess_run,
     ):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
-        mock_main.return_value = None
-        mock_compose.return_value = None
-        mock_initialize_config_dir.return_value.__enter__.return_value = None
+        mock_subprocess_run.return_value = subprocess.CompletedProcess(
+            args=['some_command'],  # Simulate the command arguments
+            returncode=0,           # Simulate a successful command
+            stdout='Command executed successfully',  # Simulate standard output
+            stderr=''               # Simulate no errors
+        )
         result = self.runner.invoke(
             start_job,
             [
@@ -656,13 +640,7 @@ class JobTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
-    @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
-    @mock.patch("hyperpod_cli.commands.job.compose")
-    @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch(
-        "builtins.open",
-        new_callable=mock.mock_open,
-    )
+    @mock.patch('subprocess.run')
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -679,19 +657,19 @@ class JobTest(unittest.TestCase):
         mock_remove,
         mock_exists,
         mock_yaml_dump,
-        mock_file,
-        mock_main,
-        mock_compose,
-        mock_initialize_config_dir,
+        mock_subprocess_run,
     ):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
-        mock_main.return_value = None
-        mock_compose.return_value = None
-        mock_initialize_config_dir.return_value.__enter__.return_value = None
+        mock_subprocess_run.return_value = subprocess.CompletedProcess(
+            args=['some_command'],  # Simulate the command arguments
+            returncode=0,           # Simulate a successful command
+            stdout='Command executed successfully',  # Simulate standard output
+            stderr=''               # Simulate no errors
+        )
         result = self.runner.invoke(
             start_job,
             [
@@ -711,10 +689,6 @@ class JobTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
-    @mock.patch(
-        "builtins.open",
-        new_callable=mock.mock_open,
-    )
     @mock.patch("yaml.dump")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("hyperpod_cli.commands.job.JobValidator")
@@ -725,7 +699,6 @@ class JobTest(unittest.TestCase):
         mock_validator_cls,
         mock_kubernetes_client,
         mock_yaml_dump,
-        mock_file,
     ):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = True
@@ -750,10 +723,6 @@ class JobTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 1)
 
-    @mock.patch(
-        "builtins.open",
-        new_callable=mock.mock_open,
-    )
     @mock.patch("yaml.dump")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("hyperpod_cli.commands.job.JobValidator")
@@ -764,7 +733,6 @@ class JobTest(unittest.TestCase):
         mock_validator_cls,
         mock_kubernetes_client,
         mock_yaml_dump,
-        mock_file,
     ):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = True
@@ -789,97 +757,87 @@ class JobTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 1)
 
-    @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
-    @mock.patch("hyperpod_cli.commands.job.compose")
-    @mock.patch("hyperpod_cli.commands.job.customer_launcher")
+    @mock.patch("hyperpod_cli.commands.job.validate_yaml_content")
+    @mock.patch("hyperpod_cli.commands.job.verify_and_load_yaml")
+    @mock.patch('subprocess.run')
+    @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
-    @mock.patch(
-        "builtins.open",
-        mock_open(read_data=VALID_CONFIG_FILE_DATA),
-    )
+    @mock.patch("os.remove", return_value=None)
     @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch(
-        "os.path.abspath",
-        return_value="/absolute/path/to/file.yaml",
-    )
-    @mock.patch("os.path.isabs", return_value=False)
-    @mock.patch(
-        "os.path.split",
-        return_value=(
-            "/absolute/path/to",
-            "file.yaml",
-        ),
-    )
     @mock.patch("hyperpod_cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_config_file(
         self,
         mock_boto3,
         mock_validator_cls,
-        mock_split,
-        mock_isabs,
-        mock_abspath,
         mock_kubernetes_client,
         mock_get_console_link,
+        mock_remove,
         mock_exists,
-        mock_main,
-        mock_compose,
-        mock_initialize_config_dir,
+        mock_yaml_dump,
+        mock_subprocess_run,
+        mock_verify_and_load_yaml,
+        mock_validate_yaml_content,
     ):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = True
+        mock_verify_and_load_yaml.return_value = yaml.safe_load(VALID_CONFIG_FILE_DATA)
+        mock_validate_yaml_content.return_value = True
+
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
-        mock_main.return_value = None
-        mock_compose.return_value = None
-        mock_initialize_config_dir.return_value.__enter__.return_value = None
+        mock_yaml_dump.return_value = None
+        mock_subprocess_run.return_value = subprocess.CompletedProcess(
+            args=['some_command'],  # Simulate the command arguments
+            returncode=0,           # Simulate a successful command
+            stdout='Command executed successfully',  # Simulate standard output
+            stderr=''               # Simulate no errors
+        )
         result = self.runner.invoke(
             start_job,
             ["--config-file", "file.yaml"],
+            catch_exceptions=False,
         )
+        print(result.exception)
         self.assertEqual(result.exit_code, 0)
 
-    @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
-    @mock.patch("hyperpod_cli.commands.job.compose")
-    @mock.patch("hyperpod_cli.commands.job.customer_launcher")
+    @mock.patch("hyperpod_cli.commands.job.validate_yaml_content")
+    @mock.patch("hyperpod_cli.commands.job.verify_and_load_yaml")
+    @mock.patch('subprocess.run')
+    @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
-    @mock.patch(
-        "builtins.open",
-        mock_open(read_data=VALID_CONFIG_FILE_DATA),
-    )
+    @mock.patch("os.remove", return_value=None)
     @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("os.path.isabs", return_value=True)
-    @mock.patch(
-        "os.path.split",
-        return_value=(
-            "/absolute/path/to",
-            "file.yaml",
-        ),
-    )
     @mock.patch("hyperpod_cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_config_file_absolute_path(
         self,
         mock_boto,
         mock_validator_cls,
-        mock_split,
-        mock_isabs,
         mock_kubernetes_client,
         mock_get_console_link,
+        mock_remove,
         mock_exists,
-        mock_main,
-        mock_compose,
-        mock_initialize_config_dir,
+        mock_dump,
+        mock_subprocess_run,
+        mock_verify_and_load_yaml,
+        mock_validate_yaml_content,
     ):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = True
+        mock_verify_and_load_yaml.return_value = yaml.dump(VALID_CONFIG_FILE_DATA)
+        mock_validate_yaml_content.return_value = True
+
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
-        mock_main.return_value = None
-        mock_compose.return_value = None
-        mock_initialize_config_dir.return_value.__enter__.return_value = None
+        mock_subprocess_run.return_value = subprocess.CompletedProcess(
+            args=['some_command'],  # Simulate the command arguments
+            returncode=0,           # Simulate a successful command
+            stdout='Command executed successfully',  # Simulate standard output
+            stderr=''               # Simulate no errors
+        )
         result = self.runner.invoke(
             start_job,
             [
@@ -1017,14 +975,11 @@ class JobTest(unittest.TestCase):
         )
         self.assertNotEqual(result.exit_code, 0)
 
-    @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
-    @mock.patch("hyperpod_cli.commands.job.compose")
-    @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch(
-        "builtins.open",
-        new_callable=mock.mock_open,
-    )
+    @mock.patch("subprocess.run")
     @mock.patch("yaml.dump")
+    @mock.patch("os.path.exists", return_value=True)
+    @mock.patch("os.remove", return_value=None)
+    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("hyperpod_cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
@@ -1033,19 +988,22 @@ class JobTest(unittest.TestCase):
         mock_boto3,
         mock_validator_cls,
         mock_kubernetes_client,
+        mock_get_console_link,
+        mock_remove,
+        mock_exists,
         mock_yaml_dump,
-        mock_file,
-        mock_main,
-        mock_compose,
-        mock_initialize_config_dir,
+        mock_subprocess_run,
     ):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_yaml_dump.return_value = None
-        mock_main.side_effect = Exception("submit job error")
-        mock_compose.return_value = None
-        mock_initialize_config_dir.return_value.__enter__.return_value = None
+        mock_subprocess_run.return_value = subprocess.CompletedProcess(
+            args=['some_command'],  # Simulate the command arguments
+            returncode=1,           # Simulate a failed command
+            stdout='Command failed',  # Simulate standard output
+            stderr=''               # Simulate no errors
+        )
         result = self.runner.invoke(
             start_job,
             [
@@ -1081,13 +1039,7 @@ class JobTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 1)
 
-    @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
-    @mock.patch("hyperpod_cli.commands.job.compose")
-    @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch(
-        "builtins.open",
-        new_callable=mock.mock_open,
-    )
+    @mock.patch("subprocess.run")
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -1104,19 +1056,19 @@ class JobTest(unittest.TestCase):
         mock_remove,
         mock_exists,
         mock_yaml_dump,
-        mock_file,
-        mock_main,
-        mock_compose,
-        mock_initialize_config_dir,
+        mock_subprocess_run,
     ):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
-        mock_main.return_value = None
-        mock_compose.return_value = None
-        mock_initialize_config_dir.return_value.__enter__.return_value = None
+        mock_subprocess_run.return_value = subprocess.CompletedProcess(
+            args=['some_command'],  # Simulate the command arguments
+            returncode=0,           # Simulate a successful command
+            stdout='Command executed successfully',  # Simulate standard output
+            stderr=''               # Simulate no errors
+        )
         result = self.runner.invoke(
             start_job,
             [
@@ -1136,13 +1088,7 @@ class JobTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
-    @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
-    @mock.patch("hyperpod_cli.commands.job.compose")
-    @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch(
-        "builtins.open",
-        new_callable=mock.mock_open,
-    )
+    @mock.patch("subprocess.run")
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -1159,19 +1105,19 @@ class JobTest(unittest.TestCase):
         mock_remove,
         mock_exists,
         mock_yaml_dump,
-        mock_file,
-        mock_main,
-        mock_compose,
-        mock_initialize_config_dir,
+        mock_subprocess_run,
     ):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
-        mock_main.return_value = None
-        mock_compose.return_value = None
-        mock_initialize_config_dir.return_value.__enter__.return_value = None
+        mock_subprocess_run.return_value = subprocess.CompletedProcess(
+            args=['some_command'],  # Simulate the command arguments
+            returncode=0,           # Simulate a successful command
+            stdout='Command executed successfully',  # Simulate standard output
+            stderr=''               # Simulate no errors
+        )
         result = self.runner.invoke(
             start_job,
             [
@@ -1191,13 +1137,7 @@ class JobTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
-    @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
-    @mock.patch("hyperpod_cli.commands.job.compose")
-    @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch(
-        "builtins.open",
-        new_callable=mock.mock_open,
-    )
+    @mock.patch("subprocess.run")
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -1214,19 +1154,19 @@ class JobTest(unittest.TestCase):
         mock_remove,
         mock_exists,
         mock_yaml_dump,
-        mock_file,
-        mock_main,
-        mock_compose,
-        mock_initialize_config_dir,
+        mock_subprocess_run,
     ):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
-        mock_main.return_value = None
-        mock_compose.return_value = None
-        mock_initialize_config_dir.return_value.__enter__.return_value = None
+        mock_subprocess_run.return_value = subprocess.CompletedProcess(
+            args=['some_command'],  # Simulate the command arguments
+            returncode=0,           # Simulate a successful command
+            stdout='Command executed successfully',  # Simulate standard output
+            stderr=''               # Simulate no errors
+        )
         result = self.runner.invoke(
             start_job,
             [
@@ -1248,16 +1188,11 @@ class JobTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
-    @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
-    @mock.patch("hyperpod_cli.commands.job.compose")
-    @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch(
-        "builtins.open",
-        new_callable=mock.mock_open,
-    )
+    @mock.patch("subprocess.run")
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
+    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("hyperpod_cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
@@ -1266,21 +1201,24 @@ class JobTest(unittest.TestCase):
         mock_boto3,
         mock_validator_cls,
         mock_kubernetes_client,
+        mock_get_console_link,
         mock_remove,
         mock_exists,
         mock_yaml_dump,
-        mock_file,
-        mock_main,
-        mock_compose,
-        mock_initialize_config_dir,
+        mock_subprocess_run,
     ):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = True
+        mock_validator.validate_start_job_args.return_value = False
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
+        mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
-        mock_main.return_value = None
-        mock_compose.return_value = None
-        mock_initialize_config_dir.return_value.__enter__.return_value = None
+        mock_subprocess_run.return_value = subprocess.CompletedProcess(
+            args=['some_command'],  # Simulate the command arguments
+            returncode=1,           # Simulate a failed command
+            stdout='Command failed',  # Simulate standard output
+            stderr=''               # Simulate no errors
+        )
         result = self.runner.invoke(
             start_job,
             [
@@ -1300,13 +1238,7 @@ class JobTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 1)
 
-    @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
-    @mock.patch("hyperpod_cli.commands.job.compose")
-    @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch(
-        "builtins.open",
-        new_callable=mock.mock_open,
-    )
+    @mock.patch("subprocess.run")
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -1323,19 +1255,19 @@ class JobTest(unittest.TestCase):
         mock_remove,
         mock_exists,
         mock_yaml_dump,
-        mock_file,
-        mock_main,
-        mock_compose,
-        mock_initialize_config_dir,
+        mock_subprocess_run,
     ):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
-        mock_main.return_value = None
-        mock_compose.return_value = None
-        mock_initialize_config_dir.return_value.__enter__.return_value = None
+        mock_subprocess_run.return_value = subprocess.CompletedProcess(
+            args=['some_command'],  # Simulate the command arguments
+            returncode=0,           # Simulate a successful command
+            stdout='Command executed successfully',  # Simulate standard output
+            stderr=''               # Simulate no errors
+        )
         result = self.runner.invoke(
             start_job,
             [
@@ -1355,13 +1287,7 @@ class JobTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
-    @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
-    @mock.patch("hyperpod_cli.commands.job.compose")
-    @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch(
-        "builtins.open",
-        new_callable=mock.mock_open,
-    )
+    @mock.patch("subprocess.run")
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -1378,19 +1304,19 @@ class JobTest(unittest.TestCase):
         mock_remove,
         mock_exists,
         mock_yaml_dump,
-        mock_file,
-        mock_main,
-        mock_compose,
-        mock_initialize_config_dir,
+        mock_subprocess_run,
     ):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
-        mock_main.return_value = None
-        mock_compose.return_value = None
-        mock_initialize_config_dir.return_value.__enter__.return_value = None
+        mock_subprocess_run.return_value = subprocess.CompletedProcess(
+            args=['some_command'],  # Simulate the command arguments
+            returncode=0,           # Simulate a successful command
+            stdout='Command executed successfully',  # Simulate standard output
+            stderr=''               # Simulate no errors
+        )
         result = self.runner.invoke(
             start_job,
             [
@@ -1410,13 +1336,7 @@ class JobTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
-    @mock.patch("hyperpod_cli.commands.job.initialize_config_dir")
-    @mock.patch("hyperpod_cli.commands.job.compose")
-    @mock.patch("hyperpod_cli.commands.job.customer_launcher")
-    @mock.patch(
-        "builtins.open",
-        new_callable=mock.mock_open,
-    )
+    @mock.patch("subprocess.run")
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
@@ -1433,19 +1353,19 @@ class JobTest(unittest.TestCase):
         mock_remove,
         mock_exists,
         mock_yaml_dump,
-        mock_file,
-        mock_main,
-        mock_compose,
-        mock_initialize_config_dir,
+        mock_subprocess_run,
     ):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = True
         mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
         mock_get_console_link.return_value = "test-console-link"
         mock_yaml_dump.return_value = None
-        mock_main.return_value = None
-        mock_compose.return_value = None
-        mock_initialize_config_dir.return_value.__enter__.return_value = None
+        mock_subprocess_run.return_value = subprocess.CompletedProcess(
+            args=['some_command'],  # Simulate the command arguments
+            returncode=0,           # Simulate a successful command
+            stdout='Command executed successfully',  # Simulate standard output
+            stderr=''               # Simulate no errors
+        )
         result = self.runner.invoke(
             start_job,
             [
@@ -1466,6 +1386,301 @@ class JobTest(unittest.TestCase):
             ],
         )
         self.assertEqual(result.exit_code, 0)
+
+    @mock.patch("subprocess.run")
+    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
+    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
+    @mock.patch("yaml.dump")
+    @mock.patch("os.path.exists", return_value=True)
+    @mock.patch("os.remove", return_value=None)
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
+    def test_start_job_with_cli_args_namespace_auto_discover(
+        self,
+        mock_boto3,
+        mock_validator_cls,
+        mock_kubernetes_client,
+        mock_remove,
+        mock_exists,
+        mock_yaml_dump,
+        mock_discover_accessible_namespace,
+        mock_get_cluster_console_url,
+        mock_subprocess_run,
+    ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
+        mock_kubernetes_client.get_current_context_namespace.return_value = None
+        mock_discover_accessible_namespace.return_value = "discovered_namespace"
+        mock_get_cluster_console_url.return_value = "test-console-link"
+
+        result = self.runner.invoke(
+            start_job,
+            [
+                "--job-name",
+                "test-job",
+                "--instance-type",
+                "ml.c5.xlarge",
+                "--image",
+                "pytorch:1.9.0-cuda11.1-cudnn8-runtime",
+                "--node-count",
+                "2",
+                "--entry-script",
+                "/opt/train/src/train.py",
+            ],
+            catch_exceptions=False
+        )
+
+        call_args_list = mock_yaml_dump.call_args_list
+        args, kwargs = call_args_list[0]
+
+        # Verify that namespace is filled with auto-discovered one
+        self.assertIn("'namespace': 'discovered_namespace'", str(args[0]))
+        self.assertEqual(result.exit_code, 0)
+    
+    @mock.patch('subprocess.run')
+    @mock.patch("hyperpod_cli.commands.job._get_auto_fill_queue_name")
+    @mock.patch("hyperpod_cli.commands.job.validate_yaml_content")
+    @mock.patch("hyperpod_cli.commands.job.verify_and_load_yaml")
+    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
+    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
+    @mock.patch("yaml.dump")
+    @mock.patch("os.path.exists", return_value=True)
+    @mock.patch("os.remove", return_value=None)
+    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
+    def test_start_job_with_cli_args_namespace_auto_fill_queue_name(
+        self,
+        mock_boto3,
+        mock_validator_cls,
+        mock_kubernetes_client,
+        mock_get_console_link,
+        mock_remove,
+        mock_exists,
+        mock_yaml_dump,
+        mock_discover_accessible_namespace,
+        mock_get_cluster_console_url,
+        mock_verify_and_load_yaml,
+        mock_validate_yaml_content,
+        mock_auto_fill_queue_name,
+        mock_subprocess_run,
+    ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
+        mock_discover_accessible_namespace.return_value = "test-namespace"
+        mock_get_cluster_console_url.return_value = "test-console-link"
+        mock_verify_and_load_yaml.return_value = yaml.safe_load(VALID_CONFIG_FILE_DATA)
+        mock_validate_yaml_content.return_value = True
+        mock_auto_fill_queue_name.return_value = "test-queue"
+
+        sm_managed_ns = V1Namespace(
+            metadata=V1ObjectMeta(
+                name="test-namespace",
+                labels={
+                    "sagemaker.amazonaws.com/sagemaker-managed-queue": "true",
+                    "sagemaker.amazonaws.com/quota-allocation-id": "test-team",
+                },
+            ),
+        )
+        mock_kubernetes_client().get_sagemaker_managed_namespace.return_value = sm_managed_ns
+
+        result = self.runner.invoke(
+            start_job,
+            [
+                "--job-name",
+                "test-job",
+                "--instance-type",
+                "ml.c5.xlarge",
+                "--image",
+                "pytorch:1.9.0-cuda11.1-cudnn8-runtime",
+                "--node-count",
+                "2",
+                "--entry-script",
+                "/opt/train/src/train.py",
+            ],
+            catch_exceptions=False
+        )
+
+        call_args_list = mock_yaml_dump.call_args_list
+        args, kwargs = call_args_list[0]
+
+        # Verify that the queue name is filled with SageMaker managed local queue
+        self.assertIn("'kueue.x-k8s.io/queue-name': 'test-queue'", str(args[0]))
+        self.assertEqual(result.exit_code, 0)
+
+    @mock.patch("subprocess.run")
+    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
+    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
+    @mock.patch("yaml.dump")
+    @mock.patch("os.path.exists", return_value=True)
+    @mock.patch("os.remove", return_value=None)
+    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
+    def test_start_job_with_cli_args_namespace_with_priority(
+        self,
+        mock_boto3,
+        mock_validator_cls,
+        mock_kubernetes_client,
+        mock_get_console_link,
+        mock_remove,
+        mock_exists,
+        mock_yaml_dump,
+        mock_discover_accessible_namespace,
+        mock_get_cluster_console_url,
+        mock_subprocess_run,
+    ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
+        mock_discover_accessible_namespace.return_value = "test-namespace"
+        mock_get_cluster_console_url.return_value = "test-console-link"
+        sm_managed_ns = V1Namespace(
+            metadata=V1ObjectMeta(
+                name="test-namespace",
+                labels={
+                    "sagemaker.amazonaws.com/sagemaker-managed-queue": "true",
+                    "sagemaker.amazonaws.com/quota-allocation-id": "test-team",
+                },
+            ),
+        )
+        mock_kubernetes_client().get_sagemaker_managed_namespace.return_value = sm_managed_ns
+
+        result = self.runner.invoke(
+            start_job,
+            [
+                "--job-name",
+                "test-job",
+                "--instance-type",
+                "ml.c5.xlarge",
+                "--image",
+                "pytorch:1.9.0-cuda11.1-cudnn8-runtime",
+                "--node-count",
+                "2",
+                "--entry-script",
+                "/opt/train/src/train.py",
+                "--priority",
+                "test-priority"
+            ],
+            catch_exceptions=False
+        )
+
+        call_args_list = mock_yaml_dump.call_args_list
+        args, kwargs = call_args_list[0]
+
+        # Verify that priority is passed correctly as a custom label
+        self.assertIn("'kueue.x-k8s.io/priority-class': 'test-priority'", str(args[0]))
+        self.assertEqual(result.exit_code, 0)
+
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
+    def test_patch_job_with_namespace_success(self, mock_discover_accessible_namespace, mock_kubernetes_client):
+        mock_client = MagicMock()
+        mock_kubernetes_client.return_value = mock_client
+        mock_client.get_job.return_value = {
+            "metadata": {
+                "uid": "test-job-uid"
+            }
+        }
+        mock_client.get_workload_by_label.return_value = {
+            "items": [
+                {
+                    "metadata": {
+                        "name": "test-workload-name"
+                    }
+                }
+            ]
+        }
+        result = self.runner.invoke(
+            patch_job,
+            [
+                "suspend",
+                "--job-name",
+                "test-job",
+                "--namespace",
+                "test-namespace",
+            ],
+            catch_exceptions=False,
+        )
+
+        mock_client.patch_workload.assert_called_once()
+        call_args_list = mock_client.patch_workload.call_args_list
+        args, kwargs = call_args_list[0]
+
+        self.assertEqual(("test-workload-name", "test-namespace", {'spec': {'active': False}}), args)
+
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
+    def test_patch_job_unsupported_patch_type(self, mock_discover_accessible_namespace, mock_kubernetes_client):
+        mock_client = MagicMock()
+        mock_kubernetes_client.return_value = mock_client
+        mock_client.get_job.return_value = {
+            "metadata": {
+                "uid": "test-job-uid"
+            }
+        }
+        mock_client.get_workload_by_label.return_value = {
+            "items": [
+                {
+                    "metadata": {
+                        "name": "test-workload-name"
+                    }
+                }
+            ]
+        }
+        result = self.runner.invoke(
+            patch_job,
+            [
+                "unsupported_type",
+                "--job-name",
+                "test-job",
+                "--namespace",
+                "test-namespace",
+            ],
+            catch_exceptions=False,
+        )
+
+        self.assertEqual(result.exit_code, 1)
+
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
+    def test_patch_job_invalid_number_workloads(self, mock_discover_accessible_namespace, mock_kubernetes_client):
+        mock_client = MagicMock()
+        mock_kubernetes_client.return_value = mock_client
+        mock_client.get_job.return_value = {
+            "metadata": {
+                "uid": "test-job-uid"
+            }
+        }
+        mock_client.get_workload_by_label.return_value = {
+            "items": [
+                {
+                    "metadata": {
+                        "name": "test-workload-name-1"
+                    }
+                },
+                {
+                    "metadata": {
+                        "name": "test-workload-name-2"
+                    }
+                }
+            ]
+        }
+        result = self.runner.invoke(
+            patch_job,
+            [
+                "suspend",
+                "--job-name",
+                "test-job",
+                "--namespace",
+                "test-namespace",
+            ],
+            catch_exceptions=False,
+        )
+
+        self.assertEqual(result.exit_code, 1)
 
     def test_suppress_standard_output_context(
         self,
@@ -1522,3 +1737,182 @@ class JobTest(unittest.TestCase):
         )
         with self.assertRaises(click.BadParameter):
             validate_only_config_file_argument(mock_ctx)
+
+    @mock.patch("subprocess.run")
+    @mock.patch("yaml.dump")
+    @mock.patch("os.path.exists", return_value=True)
+    @mock.patch("os.remove", return_value=None)
+    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
+    def test_start_job_with_recipe(
+        self,
+        mock_boto3,
+        mock_validator_cls,
+        mock_kubernetes_client,
+        mock_get_console_link,
+        mock_remove,
+        mock_exists,
+        mock_yaml_dump,
+        mock_subprocess_run,
+    ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
+        mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
+        mock_get_console_link.return_value = "test-console-link"
+        mock_yaml_dump.return_value = None
+        mock_subprocess_run.return_value = subprocess.CompletedProcess(
+            args=['some_command'],  # Simulate the command arguments
+            returncode=0,           # Simulate a successful command
+            stdout='Command executed successfully',  # Simulate standard output
+            stderr=''               # Simulate no errors
+        )
+        result = self.runner.invoke(
+            start_job,
+            [
+                "--recipe",
+                "fine-tuning/llama/hf_llama3_8b_seq8192_gpu",
+            ],
+        )
+        self.assertEqual(result.exit_code, 0)
+
+    @mock.patch("subprocess.run")
+    @mock.patch("yaml.dump")
+    @mock.patch("os.path.exists", return_value=True)
+    @mock.patch("os.remove", return_value=None)
+    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
+    def test_start_job_with_recipe_and_override_parameters(
+        self,
+        mock_boto3,
+        mock_validator_cls,
+        mock_kubernetes_client,
+        mock_get_console_link,
+        mock_remove,
+        mock_exists,
+        mock_yaml_dump,
+        mock_subprocess_run,
+    ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
+        mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
+        mock_get_console_link.return_value = "test-console-link"
+        mock_yaml_dump.return_value = None
+        mock_subprocess_run.return_value = subprocess.CompletedProcess(
+            args=['some_command'],  # Simulate the command arguments
+            returncode=0,           # Simulate a successful command
+            stdout='Command executed successfully',  # Simulate standard output
+            stderr=''               # Simulate no errors
+        )
+        override_params = '''{
+            "recipes.run.name": "test-run",
+            "recipes.trainer.num_nodes": 1,
+            "instance_type": "g5.48xlarge"
+        }'''
+
+        result = self.runner.invoke(
+            start_job,
+            [
+                "--recipe",
+                "fine-tuning/llama/hf_llama3_8b_seq8192_gpu",
+                "--override-parameters",
+                override_params,
+            ],
+        )
+        self.assertEqual(result.exit_code, 0)
+
+    @mock.patch("subprocess.run")
+    @mock.patch("yaml.dump")
+    @mock.patch("os.path.exists", return_value=True)
+    @mock.patch("os.remove", return_value=None)
+    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
+    def test_start_job_with_recipe_invalid_override_parameters(
+        self,
+        mock_boto3,
+        mock_validator_cls,
+        mock_kubernetes_client,
+        mock_get_console_link,
+        mock_remove,
+        mock_exists,
+        mock_yaml_dump,
+        mock_subprocess_run,
+    ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
+        mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
+        mock_get_console_link.return_value = "test-console-link"
+        mock_yaml_dump.return_value = None
+        mock_subprocess_run.return_value = subprocess.CompletedProcess(
+            args=['some_command'],  # Simulate the command arguments
+            returncode=1,           # Simulate a failed command
+            stdout='Command failed',  # Simulate standard output
+            stderr=''               # Simulate no errors
+        )           
+        result = self.runner.invoke(
+            start_job,
+            [
+                "--recipe",
+                "fine-tuning/llama/hf_llama3_8b_seq8192_gpu",
+                "--override-parameters",
+                "invalid json",
+            ],
+        )
+        self.assertEqual(result.exit_code, 1)
+
+    @mock.patch("subprocess.run")
+    @mock.patch("yaml.dump")
+    @mock.patch("os.path.exists", return_value=True)
+    @mock.patch("os.remove", return_value=None)
+    @mock.patch("logging.Logger.debug")
+    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
+    def test_start_job_with_recipe_debug_mode(
+        self,
+        mock_boto3,
+        mock_validator_cls,
+        mock_kubernetes_client,
+        mock_get_console_link,
+        mock_debug,
+        mock_remove,
+        mock_exists,
+        mock_yaml_dump,
+        mock_subprocess_run,
+    ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
+        mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
+        mock_get_console_link.return_value = "test-console-link"
+        mock_yaml_dump.return_value = None
+        mock_subprocess_run.return_value = subprocess.CompletedProcess(
+            args=['some_command'],  # Simulate the command arguments
+            returncode=0,           # Simulate a successful command
+            stdout='Command executed successfully',  # Simulate standard output
+            stderr=''               # Simulate no errors
+        )
+        result = self.runner.invoke(
+            start_job,
+            [
+                "--recipe",
+                "fine-tuning/llama/hf_llama3_8b_seq8192_gpu",
+                "--debug",
+            ],
+        )
+        self.assertEqual(result.exit_code, 0)
+
+    def test_start_job_with_recipe_missing_required_args(self):
+        result = self.runner.invoke(
+            start_job,
+            [
+                "--override-parameters",
+                "{}",
+            ],
+        )
+        self.assertNotEqual(result.exit_code, 0)

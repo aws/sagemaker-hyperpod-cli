@@ -15,11 +15,12 @@ from typing import Optional
 from hyperpod_cli.clients.kubernetes_client import (
     KubernetesClient,
 )
+from hyperpod_cli.service.discover_namespaces import DiscoverNamespaces
 from hyperpod_cli.service.list_pods import (
     ListPods,
 )
 from kubernetes.client.rest import ApiException
-
+from kubernetes.client import V1ResourceAttributes
 
 class GetLogs:
     def __init__(self):
@@ -38,7 +39,15 @@ class GetLogs:
         list_pods_service = ListPods()
 
         if not namespace:
-            namespace = k8s_client.get_current_context_namespace()
+            resource_attributes_template = V1ResourceAttributes(
+                verb="get",
+                group="",
+                resource="pods",
+                subresource="log",
+            )
+            namespace = DiscoverNamespaces().discover_accessible_namespace(
+                resource_attributes_template
+            )
 
         try:
             pods_for_training_job = list_pods_service.list_pods_for_training_job(

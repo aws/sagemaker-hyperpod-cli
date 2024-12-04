@@ -22,6 +22,7 @@ from hyperpod_cli.commands.job import (
     get_job,
     list_jobs,
     list_pods,
+    patch_job,
     start_job,
 )
 from hyperpod_cli.commands.pod import (
@@ -40,7 +41,7 @@ Basic Commands:
   * get-job         Show details of a specific training job submitted on HyperPod cluster.
   * list-jobs       List training job on a HyperPod cluster.
   * cancel-job      Cancel training job on a HyperPod cluster.
-
+  * patch-job       Patch a job with specific operation on a HyperPod cluster.
 Troubleshooting and Debugging Commands:
   * get-log         Get logs for a pod of training job running on HyperPod cluster.
   * list-pods       List all pods associated with a training job on HyperPod cluster.
@@ -72,6 +73,7 @@ cli.add_command(start_job)
 cli.add_command(get_job)
 cli.add_command(list_jobs)
 cli.add_command(cancel_job)
+cli.add_command(patch_job)
 cli.add_command(exec)
 cli.add_command(list_pods)
 cli.add_command(get_log)

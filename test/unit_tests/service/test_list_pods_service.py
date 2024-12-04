@@ -217,3 +217,17 @@ class TestListPods(unittest.TestCase):
         ]
         result = self.mock_list_pods.list_pods_and_get_requested_resources_group_by_node_name()
         self.assertEqual(len(result), 0)
+    
+    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    def test_list_pods_auto_discover_namespace(
+        self,
+        mock_kubernetes_client: mock.Mock,
+        mock_discover_accessible_namespace: mock.Mock,
+    ):
+        mock_kubernetes_client.return_value = self.mock_k8s_client
+        self.mock_k8s_client.get_current_context_namespace.return_value = None
+        mock_discover_accessible_namespace.return_value = "discovered-namespace"
+        self.mock_k8s_client.list_pods_with_labels.return_value = SAMPLE_OUTPUT
+        result = self.mock_list_pods.list_pods_for_training_job("test-job", None, False)
+        self.assertEqual(2, len(result))
