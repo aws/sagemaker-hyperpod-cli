@@ -93,6 +93,11 @@ Notes:
   ```
   helm install dependencies helm_chart/HyperPodHelmChart --namespace kube-system --set computeQuotaTarget.targetId=<target_id>
   ```
+### Step Five (only required for changing the health monitoring agent installation on your cluster- version upgrade):
+* This command is required to change the version of the Health Monitoring Agent running on your Hyperpod cluster.
+```
+helm upgrade dependencies helm_chart/HyperPodHelmChart/charts/health-monitoring-agent --namespace kube-system -f helm_chart/HyperPodHelmChart/charts/health-monitoring-agent/values.yaml
+```
 
 * To install the sub-chart separately that only contains roles and role bindings
   ```
