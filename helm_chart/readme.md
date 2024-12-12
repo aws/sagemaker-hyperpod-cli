@@ -32,7 +32,7 @@ chmod 700 get_helm.sh
 To ensure that your chart is properly defined, use the helm lint command:
 
 ```
-helm lint src/hyperpod_cli/helm_chart/HyperPodHelmChart
+helm lint helm_chart/HyperPodHelmChart
 
 ```
 
@@ -67,7 +67,7 @@ Notes:
 
 * Simulate the installation process. Below command shows you what would be installed and the configuration that would be applied. 
   ```
-  helm install dependencies src/hyperpod_cli/helm_chart/HyperPodHelmChart --dry-run
+  helm install dependencies helm_chart/HyperPodHelmChart --dry-run
   ```
 
 * If the resource already exists, avoid running the install command again, as it may cause conflicts. Instead, use the following command to upgrade the existing release while preserving the current configuration. This ensures that your current settings are maintained without overwriting them.
@@ -77,7 +77,7 @@ Notes:
     ```
   - To upgrade the existing release deployed in one namespace (eg. kube-system), run:
     ```
-    helm upgrade <release_name> src/hyperpod_cli/helm_chart/HyperPodHelmChart --reuse-values --namespace kube-system
+    helm upgrade <release_name> helm_chart/HyperPodHelmChart --reuse-values --namespace kube-system
     ```
 
 ### Step Three:
@@ -110,6 +110,7 @@ helm upgrade dependencies helm_chart/HyperPodHelmChart/charts/health-monitoring-
 ```
 
 ## 6. Notes
+- Training job auto resume is expected to work with Kubeflow training operator release v1.7.0, v1.8.0, v1.8.1 https://github.com/kubeflow/training-operator/releases
 - If you intend to use the Health Monitoring Agent container image from another region, please see below list to find relevant region's URI.
   ```
   IAD 767398015722.dkr.ecr.us-east-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.318.0_1.0.35.0
