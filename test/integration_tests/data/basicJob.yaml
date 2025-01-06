@@ -22,7 +22,7 @@ training_cfg:
  entry_script: /opt/pytorch-mnist/mnist.py
  script_args: []
  run:
-  name: hyperpod-cli-test # Current run name
+  name: ${JOB_NAME} # Current run name
   nodes: 1 # Number of nodes to use for current training
   ntasks_per_node: 1 # Number of devices to use per node
 cluster:
@@ -33,7 +33,7 @@ cluster:
   service_account_name: null
   # persistent volume, usually used to mount FSx
   persistent_volume_claims: null
-  namespace: hyperpod-ns-test-team
+  namespace: kubeflow
   # required node affinity to select nodes with HyperPod
   # labels and passed health check if burn-in enabled
   label_selector:
@@ -47,7 +47,7 @@ cluster:
           - 100
   pullPolicy: IfNotPresent # policy to pull container, can be Always, IfNotPresent and Never
   restartPolicy: OnFailure # restart policy
-  scheduler_type: Kueue
+  scheduler_type: None
 
 base_results_dir: ./result # Location to store the results, checkpoints and logs.
 container: docker.io/kubeflowkatib/pytorch-mnist-cpu:v1beta1-bc09cfd # container to use
