@@ -23,6 +23,7 @@ subprocess.call(
         "update",
         "--init",
         "--recursive",
+        "--remote",
     ]
 )
 
