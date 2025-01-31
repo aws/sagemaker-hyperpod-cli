@@ -161,6 +161,37 @@ hyperpod start-job --job-name <job-name> [--namespace <namespace>] [--job-kind <
 * `persistent-volume-claims` (list[string]) - Optional. The pre-created persistent volume claims (PVCs) that the data scientist can choose to mount to the containers. The cluster admin users should create PVCs and provide it to the data scientist users.
 * `results-dir` (string) - Optional. The location to store the results, checkpoints, and logs. The cluster admin users should set this up and provide it to the data scientist users. The default value is `./results`.
 * `service-account-name` - Optional. The Kubernetes service account that allows Pods to access resources based on the permissions granted to that service account. The cluster admin users should create the Kubernetes service account.
+* `recipe` (string) - Optional. The recipe to use for the job. The recipe is a predefined set of parameters for the job.
+* `override-parameters` (string) - Optional. The parameters to override for the job. The parameters are in JSON format.
+Example:
+```
+hyperpod start-job --recipe <recipe-name>
+```
+
+Below is an example of how to use the `override-parameters` option and deepseek recipe.
+
+```
+hyperpod start-job --recipe fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_8b_seq8k_gpu_fine_tuning --override-parameters \
+'{
+    "cluster":"k8s",
+    "cluster_type":"k8s",
+    "container":"658645717510.dkr.ecr.us-west-2.amazonaws.com/smdistributed-modelparallel:2.4.1-gpu-py311-cu121",
+    "+cluster.persistent_volume_claims.0.claimName":"fsx-claim-large",
+    "+cluster.persistent_volume_claims.0.mountPath":"data",
+    "cluster.service_account_name":"",
+    "recipes.run.name":"deepseek",
+    "recipes.model.train_batch_size":"1",
+    "instance_type":"p4d.24xlarge",
+    "recipes.model.data.use_synthetic_data":"True",
+    "recipes.model.fp8":"False",
+    "recipes.exp_manager.auto_checkpoint.enabled":"False",
+    "recipes.exp_manager.export_full_model.save_last":"False",
+    "recipes.exp_manager.checkpoint_callback_params.save_last":"False",
+    "recipes.model.hf_model_name_or_path":"deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+    "recipes.model.hf_access_token":"<your-access-token>",
+    "recipes.exp_manager.exp_dir":""   
+}'\
+```
 
 
 ### Getting Job Details

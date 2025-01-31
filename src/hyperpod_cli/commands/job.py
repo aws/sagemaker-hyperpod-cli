@@ -473,6 +473,14 @@ fine-tuning/llama/hf_llama3_405b_seq128k_gpu_qlora \n
 fine-tuning/llama/hf_llama3_8b_seq16k_gpu_fine_tuning \n
 fine-tuning/llama/hf_llama3_8b_seq8k_gpu_lora \n
 fine-tuning/llama/hf_llama3_70b_seq16k_gpu_fine_tuning \n
+fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_8b_seq16k_gpu_fine_tuning \n
+fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_8b_seq8k_gpu_fine_tuning \n
+fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_8b_seq8k_gpu_lora \n
+fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_8b_seq16k_gpu_lora \n
+fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_70b_seq16k_gpu_fine_tuning \n
+fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_70b_seq8k_gpu_fine_tuning \n
+fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_70b_seq8k_gpu_lora \n
+fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_70b_seq16k_gpu_lora \n
             """
 )
 @click.option(
@@ -776,7 +784,7 @@ def start_job(
         max_retry=max_retry,
         deep_health_check_passed_nodes_only=deep_health_check_passed_nodes_only,
     )
-
+    # TODO: Unblock this after fixing customer using EKS cluster.
     console_link = utils.get_cluster_console_url()
     print(json.dumps({"Console URL": console_link}, indent=1, sort_keys=False))
 
@@ -808,8 +816,9 @@ def patch_job(patch_type: str, job_name: str, namespace: Optional[str]):
             group=KUEUE_CUSTOM_OBJECT_GROUP,
             resource=WORKLOAD_CUSTOM_OBJECT_PLURAL,
         )
-        namespace = DiscoverNamespaces().discover_accessible_namespace(resource_attributes_template)
-
+        # TODO: Unblock this after better customer onboarding experience for Crescendo.
+        #namespace = DiscoverNamespaces().discover_accessible_namespace(resource_attributes_template)
+        namespace = "default"
     
     patch_type_enum = JobPatchType(patch_type)
     k8s_client = KubernetesClient()
