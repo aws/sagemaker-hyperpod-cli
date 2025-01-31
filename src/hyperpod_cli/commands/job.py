@@ -473,6 +473,14 @@ fine-tuning/llama/hf_llama3_405b_seq128k_gpu_qlora \n
 fine-tuning/llama/hf_llama3_8b_seq16k_gpu_fine_tuning \n
 fine-tuning/llama/hf_llama3_8b_seq8k_gpu_lora \n
 fine-tuning/llama/hf_llama3_70b_seq16k_gpu_fine_tuning \n
+fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_8b_seq16k_gpu_fine_tuning \n
+fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_8b_seq8k_gpu_fine_tuning \n
+fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_8b_seq8k_gpu_lora \n
+fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_8b_seq16k_gpu_lora \n
+fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_70b_seq16k_gpu_fine_tuning \n
+fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_70b_seq8k_gpu_fine_tuning \n
+fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_70b_seq8k_gpu_lora \n
+fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_70b_seq16k_gpu_lora \n
             """
 )
 @click.option(
