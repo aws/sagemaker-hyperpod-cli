@@ -178,7 +178,7 @@ hyperpod start-job --recipe fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_
     "container":"658645717510.dkr.ecr.us-west-2.amazonaws.com/smdistributed-modelparallel:2.4.1-gpu-py311-cu121",
     "+cluster.persistent_volume_claims.0.claimName":"fsx-claim-large",
     "+cluster.persistent_volume_claims.0.mountPath":"data",
-    "cluster.service_account_name":"kandinsky-service-account",
+    "cluster.service_account_name":"",
     "recipes.run.name":"deepseek",
     "recipes.model.train_batch_size":"1",
     "instance_type":"p4d.24xlarge",

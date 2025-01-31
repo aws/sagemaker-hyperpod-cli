@@ -785,8 +785,8 @@ def start_job(
         deep_health_check_passed_nodes_only=deep_health_check_passed_nodes_only,
     )
     # TODO: Unblock this after fixing customer using EKS cluster.
-    #console_link = utils.get_cluster_console_url()
-    #print(json.dumps({"Console URL": console_link}, indent=1, sort_keys=False))
+    console_link = utils.get_cluster_console_url()
+    print(json.dumps({"Console URL": console_link}, indent=1, sort_keys=False))
 
 
 @click.command()
