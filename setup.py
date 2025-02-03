@@ -98,6 +98,7 @@ setup(
         "pytest-order==1.3.0",
         "tox==4.18.0",
         "ruff==0.6.2",
+        "hera-workflows==5.16.3",
     ],
     entry_points={
         "console_scripts": [
