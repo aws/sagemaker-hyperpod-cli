@@ -20,7 +20,12 @@ from hyperpod_cli.clients.kubernetes_client import (
     KubernetesClient,
 )
 from kubernetes.client.rest import ApiException
+from kubernetes.client import (
+    V1ResourceAttributes
+)
 
+from hyperpod_cli.constants.command_constants import NVIDIA_GPU_RESOURCE_LIMIT_KEY
+from hyperpod_cli.service.discover_namespaces import DiscoverNamespaces
 
 class ListPods:
     def __init__(self):
@@ -38,7 +43,14 @@ class ListPods:
         k8s_client = KubernetesClient()
 
         if not namespace:
-            namespace = k8s_client.get_current_context_namespace()
+            resource_attributes_template = V1ResourceAttributes(
+                verb="list",
+                group="",
+                resource="pods",
+            )
+            namespace = DiscoverNamespaces().discover_accessible_namespace(
+                resource_attributes_template
+            )
 
         label_filter = f"training.kubeflow.org/job-name={job_name}"
 
@@ -75,7 +87,7 @@ class ListPods:
             if node_name:
                 for container in pod.spec.containers:
                     if container.resources and container.resources.requests:
-                        gpu_request = container.resources.requests.get("nvidia.com/gpu")
+                        gpu_request = container.resources.requests.get(NVIDIA_GPU_RESOURCE_LIMIT_KEY)
                         neuron_request = container.resources.requests.get(
                             "aws.amazon.com/neurondevice"
                         )

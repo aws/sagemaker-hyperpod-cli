@@ -14,13 +14,17 @@ import json
 import os
 import yaml
 from yaml.loader import SafeLoader
-from typing import Optional
+from typing import Optional, List
 
+from hyperpod_cli.clients.kubernetes_client import KubernetesClient
 from hyperpod_cli.constants.command_constants import (
+    KUEUE_WORKLOAD_PRIORITY_CLASS_LABEL_KEY,
+    SAGEMAKER_TRAINING_LAUNCHER_DIR,
     RestartPolicy,
     KUEUE_QUEUE_NAME_LABEL_KEY,
     HYPERPOD_AUTO_RESUME_ANNOTATION_KEY,
     HYPERPOD_MAX_RETRY_ANNOTATION_KEY,
+    SchedulerType
 )
 from hyperpod_cli.constants.hyperpod_instance_types import (
     HyperpodInstanceType,
@@ -32,6 +36,7 @@ from hyperpod_cli.validators.validator import (
 
 logger = setup_logger(__name__)
 
+RECIPES_DIR = os.path.join(SAGEMAKER_TRAINING_LAUNCHER_DIR, "recipes_collection/recipes")
 
 class JobValidator(Validator):
     def __init__(self):
@@ -55,6 +60,7 @@ class JobValidator(Validator):
         max_retry: Optional[int],
         namespace: Optional[str],
         entry_script: Optional[str],
+        recipe: Optional[str] = None,
     ):
         if job_kind is not None and job_kind != "kubeflow/PyTorchJob":
             logger.error("The only supported 'job-kind' is 'kubeflow/PyTorchJob'.")
@@ -64,19 +70,25 @@ class JobValidator(Validator):
             logger.error("The only supported 'command' is 'torchrun'.")
             return False
 
-        if scheduler_type is not None and scheduler_type != "Kueue":
-            logger.error("The only supported 'scheduler_type' is 'Kueue'.")
+        if scheduler_type is not None and scheduler_type not in SchedulerType.get_values():
+            logger.error(f"The only supported 'scheduler_type' are {SchedulerType.get_values()}.")
             return False
 
         if config_file is not None and job_name is not None:
             logger.error(
-                "Please provide only 'config-file' to submit job using config file or 'job-name' to submit job via CLI arguments"
+                "Please provide only 'config-file' to submit job using custom script or 'job-name' to submit job via CLI arguments"
+            )
+            return False
+        
+        if config_file is not None and recipe is not None:
+            logger.error(
+                "Please provide only 'config-file' to submit job using custom script or 'recipe' for recipe-based jobs"
             )
             return False
 
-        if config_file is None and job_name is None:
+        if config_file is None and job_name is None and recipe is None:
             logger.error(
-                "Please provide either 'config-file' to submit job using config file or 'job-name' to submit job via CLI arguments"
+                "Please provide either 'recipe' for recipe-based jobs or 'config-file' to submit job using config file or 'job-name' to submit job via CLI arguments"
             )
             return False
 
@@ -106,6 +118,10 @@ class JobValidator(Validator):
                         "Please ensure 'label-selector' keys are string type and values are string or list of string type"
                     )
                     return False
+            
+            if not validate_scheduler_related_fields(scheduler_type, namespace, priority):
+                return False
+            
             return validate_hyperpod_related_fields(
                 instance_type,
                 queue_name,
@@ -113,23 +129,18 @@ class JobValidator(Validator):
                 auto_resume,
                 restart_policy,
                 max_retry,
-                namespace,
+                namespace
             )
+        if recipe is not None:
+            return validate_recipe_file(recipe)
 
         return True
 
-    def validate_start_job_config_yaml(self, file):
-        if not os.path.exists(file):
-            logger.error(f"Configuration file {file} does not exist.")
-            return False
-        config_data = verify_and_load_yaml(file)
-        if config_data is None:
-            return False
-
-        return validate_yaml_content(config_data)
-
 
 def verify_and_load_yaml(file_path: str):
+    if not os.path.exists(file_path):
+        logger.error(f"Configuration file {file_path} does not exist.")
+        return None
     try:
         with open(file_path, "r") as file:
             # Attempt to load the YAML file
@@ -161,7 +172,13 @@ def validate_yaml_content(data):
     custom_labels = cluster_config_fields.get("custom_labels")
     annotations = cluster_config_fields.get("annotations")
     namespace = cluster_config_fields.get("namespace")
+    scheduler_type = cluster_config_fields.get("scheduler_type", SchedulerType.get_default().value)
 
+    if scheduler_type not in SchedulerType.get_values():
+        logger.error(
+            f"Unsupported scheduler type '{scheduler_type}', only {SchedulerType.get_values()} are allowed."
+        )
+        return False
     instance_type = cluster_fields.get("instance_type", None)
     queue_name = None
     if custom_labels is not None:
@@ -182,8 +199,15 @@ def validate_yaml_content(data):
 
     priority = cluster_config_fields.get("priority_class_name", None)
     restart_policy = cluster_config_fields.get("restartPolicy", None)
+    workload_priority = None
 
-    return validate_hyperpod_related_fields(
+    if custom_labels is not None:
+        workload_priority = custom_labels.get(KUEUE_WORKLOAD_PRIORITY_CLASS_LABEL_KEY, None)
+
+    if not validate_scheduler_related_fields(scheduler_type, namespace, workload_priority):
+        return False
+
+    if not validate_hyperpod_related_fields(
         instance_type,
         queue_name,
         priority,
@@ -191,7 +215,10 @@ def validate_yaml_content(data):
         restart_policy,
         max_retry,
         namespace,
-    )
+    ):
+        return False
+
+    return True
 
 
 def validate_hyperpod_related_fields(
@@ -201,8 +228,9 @@ def validate_hyperpod_related_fields(
     auto_resume: bool,
     restart_policy: Optional[RestartPolicy],
     max_retry: Optional[int],
-    namespace: Optional[str],
+    namespace: Optional[str]
 ):
+    logger.info(f"instance_type: {instance_type}, queue_name: {queue_name}, priority: {priority}, auto_resume: {auto_resume}, restart_policy: {restart_policy}, max_retry: {max_retry}, namespace: {namespace}")
     if instance_type is None:
         logger.error(
             "Please provide 'instance-type' to specify instance type for training job"
@@ -223,13 +251,41 @@ def validate_hyperpod_related_fields(
         )
         return False
 
-    if (queue_name is None and priority is not None) or (
-        queue_name is not None and priority is None
-    ):
-        logger.error("Must provide both or neither of 'queue_name' and 'priority'.")
-        return False
     return True
 
+
+def validate_scheduler_related_fields(
+    scheduler_type: SchedulerType,
+    namespace: Optional[str],
+    priority: Optional[str],
+): 
+    if scheduler_type == SchedulerType.SAGEMAKER.value:
+        k8s_client = KubernetesClient()
+        sm_managed_namespace = k8s_client.get_sagemaker_managed_namespace(namespace)
+        if namespace and not sm_managed_namespace:
+            logger.error(
+                f"Scheduler type is '{SchedulerType.SAGEMAKER.value}' however cannot find namespace '{namespace}' managed by SageMaker. Please ensure namespace exists and you have 'get' access to it."
+            )
+            return False
+
+        if priority is not None :       
+            priority_classes = [item['metadata']['name'] for item in k8s_client.list_workload_priority_classes()['items']]
+            if priority not in priority_classes:
+                logger.error(
+                    f"Workload priority class '{priority}' is not found. Please ensure the priority exists and you have 'get' access to 'WorkloadPriorityClass'. Valid priority values are {priority_classes}."
+                )
+                return False
+    return True
+
+def validate_recipe_file(recipe: str):
+    full_recipe_path = os.path.join(RECIPES_DIR, f"{recipe}.yaml")
+    
+    if os.path.exists(full_recipe_path) and os.path.isfile(full_recipe_path):
+        logger.info(f"Recipe file found: {full_recipe_path}")
+        return True
+    
+    logger.error(f"Recipe file '{recipe}.yaml' not found in {RECIPES_DIR}")
+    return False
 
 def is_dict_str_list_str(data: dict) -> bool:
     """
@@ -249,8 +305,6 @@ def is_dict_str_list_str(data: dict) -> bool:
         ):
             return False
     return True
-
-
 def _validate_json_str(
     json_str: str,
 ):

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: team-role-and-bindings
+version: 0.1.0
+appVersion: 1.0
+description: This chart installs the namespaced and cluster roles and bindings for team members

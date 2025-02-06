@@ -1,0 +1,54 @@
+{{- $targe_id := .Values.computeQuotaTarget.targetId | required ".Values.computeQuotaTarget.targetId is required." -}}
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: hyperpod-ns-{{ $targe_id }}
+  name: hyperpod-ns-{{ $targe_id }}-namespace-role
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "describe"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["create", "get", "watch", "list"]
+  - apiGroups: [""]
+    resources: ["nodes", "nodes/status", "pods/status"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get", "list"]
+  - apiGroups: ["kubeflow.org"]
+    resources: ["pytorchjobs", "pytorchjobs/status"]
+    verbs: ["get", "list", "watch", "create", "delete", "update"]
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["create", "update", "get", "delete"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create", "get", "list", "delete"]
+  - apiGroups: [ "apiextensions.k8s.io" ]
+    resources: [ "customresourcedefinitions" ]
+    verbs: ["list", "get"]
+  - apiGroups: [ "kueue.x-k8s.io" ]
+    resources: [ "workloads", "workloads/status" ]
+    verbs: ["get", "list", "watch", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: hyperpod-ns-{{ $targe_id }}
+  name: hyperpod-ns-{{ $targe_id }}-namespace-role-binding
+subjects:
+- kind: Group
+  name: hyperpod-ns-{{ $targe_id }}-namespace-level-group
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: hyperpod-ns-{{ $targe_id }}-namespace-role
+  apiGroup: rbac.authorization.k8s.io

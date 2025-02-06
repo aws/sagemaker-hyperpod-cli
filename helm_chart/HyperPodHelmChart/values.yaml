@@ -116,9 +116,6 @@ mlflow:
 trainingOperators:
   enabled: true
 
-kueue:
-  enabled: false
-
 storage:
   enabled: false
 
@@ -127,6 +124,9 @@ cluster-role-and-bindings:
 
 namespaced-role-and-bindings:
   enable: false
+
+team-role-and-bindings:
+  enabled: false
 
 nvidia-device-plugin:
   devicePlugin:
@@ -168,11 +168,25 @@ aws-efa-k8s-device-plugin:
       - ml.g5.16xlarge
       - ml.g5.24xlarge
       - ml.g5.48xlarge
+      - ml.g6.8xlarge
+      - ml.g6.12xlarge
+      - ml.g6.16xlarge
+      - ml.g6.24xlarge
+      - ml.g6.48xlarge
+      - ml.g6e.8xlarge
+      - ml.g6e.12xlarge
+      - ml.g6e.16xlarge
+      - ml.g6e.24xlarge
+      - ml.g6e.48xlarge
+      - ml.gr6.8xlarge
       - ml.p4d.24xlarge
       - ml.p4de.24xlarge
       - ml.p5.48xlarge
+      - ml.p5e.48xlarge
+      - ml.p5en.48xlarge
       - ml.trn1.32xlarge
       - ml.trn1n.32xlarge
+      - ml.trn2.48xlarge
   tolerations:
     - key: CriticalAddonsOnly
       operator: Exists

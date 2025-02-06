@@ -23,7 +23,6 @@ from hyperpod_cli.service.cancel_training_job import (
 
 from kubernetes.client.rest import ApiException
 
-
 class CancelTrainingJobTest(unittest.TestCase):
     def setUp(self):
         self.mock_cancel_training_job = CancelTrainingJob()
@@ -73,3 +72,20 @@ class CancelTrainingJobTest(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.mock_cancel_training_job.cancel_training_job("sample-job", None)
         mock_subprocess_run.assert_not_called()
+
+    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
+    @mock.patch("subprocess.run")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    def test_cancel_training_job_auto_discover_namespace(
+        self,
+        mock_kubernetes_client: mock.Mock,
+        mock_subprocess_run: mock.Mock,
+        mock_discover_accessible_namespace: mock.Mock,
+    ):
+        mock_kubernetes_client.return_value = self.mock_k8s_client
+        mock_discover_accessible_namespace.return_value = "discovered-namespace"
+        self.mock_k8s_client.get_current_context_namespace.return_value = None
+        self.mock_k8s_client.delete_training_job.return_value = {"status": "Success"}
+        result = self.mock_cancel_training_job.cancel_training_job("sample-job", None)
+        self.assertIsNone(result)
+        mock_subprocess_run.assert_called_once()

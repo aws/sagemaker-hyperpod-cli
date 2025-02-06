@@ -11,10 +11,12 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import unittest
-from unittest.mock import patch, mock_open
+from unittest.mock import patch, mock_open, MagicMock
+from unittest import mock
 
 from hyperpod_cli.constants.command_constants import (
     RestartPolicy,
+    SchedulerType,
 )
 from hyperpod_cli.validators.job_validator import (
     JobValidator,
@@ -47,7 +49,7 @@ class TestJobValidator(unittest.TestCase):
             job_kind,
             command,
             None,
-            None,
+            SchedulerType.KUEUE.value,
             None,
             None,
             False,
@@ -55,6 +57,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertTrue(result)
@@ -75,9 +78,8 @@ class TestJobValidator(unittest.TestCase):
             instance_type,
             image,
             job_kind,
-            command,
             None,
-            None,
+            SchedulerType.KUEUE.value,
             None,
             None,
             False,
@@ -85,6 +87,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -101,7 +104,6 @@ class TestJobValidator(unittest.TestCase):
         image = "image"
         job_kind = "kubeflow/PyTorchJob"
         command = "python"
-
         result = self.validator.validate_start_job_args(
             config_file,
             name,
@@ -111,7 +113,7 @@ class TestJobValidator(unittest.TestCase):
             job_kind,
             command,
             None,
-            None,
+            SchedulerType.KUEUE.value,
             None,
             None,
             False,
@@ -119,6 +121,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -147,7 +150,7 @@ class TestJobValidator(unittest.TestCase):
             job_kind,
             command,
             None,
-            None,
+            SchedulerType.KUEUE.value,
             None,
             None,
             False,
@@ -155,11 +158,12 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
         mock_logger.error.assert_called_once_with(
-            "Please provide only 'config-file' to submit job using config file or 'job-name' to submit job via CLI arguments"
+            "Please provide only 'config-file' to submit job using custom script or 'job-name' to submit job via CLI arguments"
         )
 
     @patch("hyperpod_cli.validators.job_validator.logger")
@@ -183,7 +187,7 @@ class TestJobValidator(unittest.TestCase):
             job_kind,
             command,
             None,
-            None,
+            SchedulerType.KUEUE.value,
             None,
             None,
             False,
@@ -191,11 +195,12 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
         mock_logger.error.assert_called_once_with(
-            "Please provide either 'config-file' to submit job using config file or 'job-name' to submit job via CLI arguments"
+            "Please provide either 'recipe' for recipe-based jobs or 'config-file' to submit job using config file or 'job-name' to submit job via CLI arguments"
         )
 
     @patch("hyperpod_cli.validators.job_validator.logger")
@@ -219,7 +224,7 @@ class TestJobValidator(unittest.TestCase):
             job_kind,
             command,
             None,
-            None,
+            SchedulerType.KUEUE.value,
             None,
             None,
             False,
@@ -227,6 +232,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -255,7 +261,7 @@ class TestJobValidator(unittest.TestCase):
             job_kind,
             command,
             None,
-            None,
+            SchedulerType.KUEUE.value,
             None,
             None,
             False,
@@ -263,6 +269,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -291,13 +298,14 @@ class TestJobValidator(unittest.TestCase):
             job_kind,
             command,
             None,
-            None,
+            SchedulerType.KUEUE.value,
             None,
             None,
             False,
             None,
             None,
             "kubeflow",
+            None,
             None,
         )
 
@@ -328,7 +336,7 @@ class TestJobValidator(unittest.TestCase):
             job_kind,
             command,
             None,
-            None,
+            SchedulerType.KUEUE.value,
             None,
             None,
             auto_resume,
@@ -336,6 +344,7 @@ class TestJobValidator(unittest.TestCase):
             max_retry,
             "hyperpod-1",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertTrue(result)
@@ -361,7 +370,7 @@ class TestJobValidator(unittest.TestCase):
             job_kind,
             command,
             None,
-            None,
+            SchedulerType.KUEUE.value,
             None,
             None,
             auto_resume,
@@ -369,6 +378,7 @@ class TestJobValidator(unittest.TestCase):
             max_retry,
             "any-hyperpod",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertTrue(result)
@@ -393,7 +403,7 @@ class TestJobValidator(unittest.TestCase):
             job_kind,
             command,
             None,
-            None,
+            SchedulerType.KUEUE.value,
             None,
             None,
             None,
@@ -401,6 +411,7 @@ class TestJobValidator(unittest.TestCase):
             max_retry,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -431,7 +442,7 @@ class TestJobValidator(unittest.TestCase):
             job_kind,
             command,
             None,
-            None,
+            SchedulerType.KUEUE.value,
             None,
             None,
             auto_resume,
@@ -439,6 +450,7 @@ class TestJobValidator(unittest.TestCase):
             max_retry,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -467,7 +479,7 @@ class TestJobValidator(unittest.TestCase):
             job_kind,
             command,
             None,
-            None,
+            SchedulerType.KUEUE.value,
             None,
             None,
             False,
@@ -475,6 +487,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -501,7 +514,7 @@ class TestJobValidator(unittest.TestCase):
             job_kind,
             command,
             None,
-            None,
+            SchedulerType.KUEUE.value,
             None,
             None,
             False,
@@ -509,6 +522,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -538,13 +552,14 @@ class TestJobValidator(unittest.TestCase):
             command,
             label_selector,
             None,
-            None,
+            SchedulerType.KUEUE.value,
             None,
             False,
             None,
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertTrue(result)
@@ -571,13 +586,14 @@ class TestJobValidator(unittest.TestCase):
             command,
             label_selector,
             None,
-            None,
+            SchedulerType.KUEUE.value,
             None,
             False,
             None,
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -604,13 +620,14 @@ class TestJobValidator(unittest.TestCase):
             command,
             label_selector,
             None,
-            None,
+            SchedulerType.KUEUE.value,
             None,
             False,
             None,
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -637,13 +654,14 @@ class TestJobValidator(unittest.TestCase):
             command,
             label_selector,
             None,
-            None,
+            SchedulerType.KUEUE.value,
             None,
             False,
             None,
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -670,13 +688,14 @@ class TestJobValidator(unittest.TestCase):
             command,
             label_selector,
             None,
-            None,
+            SchedulerType.KUEUE.value,
             None,
             False,
             None,
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -703,13 +722,14 @@ class TestJobValidator(unittest.TestCase):
             command,
             label_selector,
             None,
-            None,
+            SchedulerType.KUEUE.value,
             None,
             False,
             None,
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -742,6 +762,7 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
@@ -774,9 +795,10 @@ class TestJobValidator(unittest.TestCase):
             None,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
-        self.assertFalse(result)
+        self.assertTrue(result)
 
     def test_validate_start_job_args_auto_resume_restart_policy_unexpected(
         self,
@@ -798,7 +820,7 @@ class TestJobValidator(unittest.TestCase):
             job_kind,
             command,
             None,
-            None,
+            SchedulerType.KUEUE.value,
             None,
             None,
             True,
@@ -806,49 +828,215 @@ class TestJobValidator(unittest.TestCase):
             1,
             "kubeflow",
             "/opt/train/src/train.py",
+            None,
         )
 
         self.assertFalse(result)
 
-    @patch("os.path.exists", return_value=False)
-    def test_validate_start_job_config_yaml_file_not_exists(self, mock_exists):
-        result = self.validator.validate_start_job_config_yaml("non_existing_file.yaml")
-        self.assertFalse(result)
-
-    @patch("os.path.exists", return_value=True)
-    @patch(
-        "hyperpod_cli.validators.job_validator.verify_and_load_yaml",
-        return_value=None,
-    )
-    def test_validate_start_job_config_yaml_invalid_yaml(
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.get_sagemaker_managed_namespace")
+    def test_validate_start_job_args_sagemaker_scheduler_success(
         self,
-        mock_verify_and_load_yaml,
-        mock_exists,
+        mock_get_sagemaker_managed_namespace,
     ):
-        result = self.validator.validate_start_job_config_yaml("test.yaml")
-        self.assertFalse(result)
+        config_file = None
+        name = "job-name"
+        node_count = "2"
+        instance_type = "ml.p4d.24xlarge"
+        image = "my-image:latest"
+        job_kind = "kubeflow/PyTorchJob"
+        command = "torchrun"
 
-    @patch("os.path.exists", return_value=True)
-    @patch("hyperpod_cli.validators.job_validator.verify_and_load_yaml")
-    @patch(
-        "hyperpod_cli.validators.job_validator.validate_yaml_content",
-        return_value=True,
-    )
-    def test_validate_start_job_config_yaml_valid(
-        self,
-        mock_validate_yaml_content,
-        mock_verify_and_load_yaml,
-        mock_exists,
-    ):
-        mock_data = {
-            "cluster": {
-                "cluster_type": "k8s",
-                "cluster_config": {},
-            }
-        }
-        mock_verify_and_load_yaml.return_value = mock_data
-        result = self.validator.validate_start_job_config_yaml("test.yaml")
+        mock_get_sagemaker_managed_namespace.return_value = "kubeflow"
+
+        result = self.validator.validate_start_job_args(
+            config_file,
+            name,
+            node_count,
+            instance_type,
+            image,
+            job_kind,
+            command,
+            None,
+            SchedulerType.SAGEMAKER.value,
+            None,
+            None,
+            False,
+            None,
+            None,
+            "kubeflow",
+            "/opt/train/src/train.py",
+        )
+
         self.assertTrue(result)
+
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.get_sagemaker_managed_namespace")
+    def test_validate_start_job_args_sagemaker_scheduler_invalid_namespace(
+        self,
+        mock_get_sagemaker_managed_namespace,
+    ):
+        config_file = None
+        name = "job-name"
+        node_count = "2"
+        instance_type = "ml.p4d.24xlarge"
+        image = "my-image:latest"
+        job_kind = "kubeflow/PyTorchJob"
+        command = "torchrun"
+
+        mock_get_sagemaker_managed_namespace.return_value = None
+
+        result = self.validator.validate_start_job_args(
+            config_file,
+            name,
+            node_count,
+            instance_type,
+            image,
+            job_kind,
+            command,
+            None,
+            SchedulerType.SAGEMAKER.value,
+            None,
+            None,
+            False,
+            None,
+            None,
+            "kubeflow",
+            "/opt/train/src/train.py",
+        )
+
+        self.assertFalse(result)
+
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.list_workload_priority_classes")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.get_sagemaker_managed_namespace")
+    def test_validate_start_job_args_sagemaker_scheduler_success_with_priority(
+        self,
+        mock_get_sagemaker_managed_namespace,
+        mock_list_workload_priority_classes,
+    ):
+        config_file = None
+        name = "job-name"
+        node_count = "2"
+        instance_type = "ml.p4d.24xlarge"
+        image = "my-image:latest"
+        job_kind = "kubeflow/PyTorchJob"
+        command = "torchrun"
+
+        mock_get_sagemaker_managed_namespace.return_value = "kubeflow"
+        mock_list_workload_priority_classes.return_value = {
+            'items': [
+                {'metadata': {'name': 'high-priority'}},
+                {'metadata': {'name': 'medium-priority'}},
+                {'metadata': {'name': 'test-priority'}}
+            ]
+        }
+
+        result = self.validator.validate_start_job_args(
+            config_file,
+            name,
+            node_count,
+            instance_type,
+            image,
+            job_kind,
+            command,
+            None,
+            SchedulerType.SAGEMAKER.value,
+            None,
+            "test-priority",
+            False,
+            None,
+            None,
+            "kubeflow",
+            "/opt/train/src/train.py",
+        )
+
+        self.assertTrue(result)
+
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.list_workload_priority_classes")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.get_sagemaker_managed_namespace")
+    def test_validate_start_job_args_sagemaker_scheduler_fail_priority_not_exist(
+        self,
+        mock_get_sagemaker_managed_namespace,
+        mock_list_workload_priority_classes,
+    ):
+        config_file = None
+        name = "job-name"
+        node_count = "2"
+        instance_type = "ml.p4d.24xlarge"
+        image = "my-image:latest"
+        job_kind = "kubeflow/PyTorchJob"
+        command = "torchrun"
+
+        mock_get_sagemaker_managed_namespace.return_value = "kubeflow"
+        mock_list_workload_priority_classes.return_value = {
+            'items': [
+                {'metadata': {'name': 'high-priority'}},
+                {'metadata': {'name': 'medium-priority'}},
+            ]
+        }
+
+        result = self.validator.validate_start_job_args(
+            config_file,
+            name,
+            node_count,
+            instance_type,
+            image,
+            job_kind,
+            command,
+            None,
+            SchedulerType.SAGEMAKER.value,
+            None,
+            "test-priority",
+            False,
+            None,
+            None,
+            "kubeflow",
+            "/opt/train/src/train.py",
+        )
+
+        self.assertFalse(result)
+    
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.list_workload_priority_classes")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.get_sagemaker_managed_namespace")
+    def test_validate_start_job_args_sagemaker_scheduler_no_namespace(
+        self,
+        mock_get_sagemaker_managed_namespace,
+        mock_list_workload_priority_classes,
+    ):
+        config_file = None
+        name = "job-name"
+        node_count = "2"
+        instance_type = "ml.p4d.24xlarge"
+        image = "my-image:latest"
+        job_kind = "kubeflow/PyTorchJob"
+        command = "torchrun"
+
+        mock_get_sagemaker_managed_namespace.return_value = "kubeflow"
+        mock_list_workload_priority_classes.return_value = {
+            'items': [
+                {'metadata': {'name': 'high-priority'}},
+                {'metadata': {'name': 'medium-priority'}},
+            ]
+        }
+
+        result = self.validator.validate_start_job_args(
+            config_file,
+            name,
+            node_count,
+            instance_type,
+            image,
+            job_kind,
+            command,
+            None,
+            SchedulerType.SAGEMAKER.value,
+            None,
+            "test-priority",
+            False,
+            None,
+            None,
+            None,
+            "/opt/train/src/train.py",
+        )
+
+        self.assertFalse(result)
 
     @patch("os.path.exists", return_value=True)
     @patch(
@@ -875,6 +1063,15 @@ class TestJobValidator(unittest.TestCase):
     def test_verify_and_load_yaml_invalid(self, mock_exists):
         result = verify_and_load_yaml("test.yaml")
         self.assertIsNone(result)
+    
+    @patch("os.path.exists", return_value=False)
+    @patch(
+        "builtins.open",
+        mock_open(read_data="cluster:\n  cluster_type: k8s\n  cluster_config: {}"),
+    )
+    def test_verify_and_load_yaml_not_exist(self, mock_exists):
+        result = verify_and_load_yaml("test.yaml")
+        self.assertFalse(result)
 
     def test_validate_yaml_content_valid(self):
         mock_data = {
@@ -943,8 +1140,13 @@ class TestJobValidator(unittest.TestCase):
         result = validate_yaml_content(mock_data)
         self.assertTrue(result)
 
+    @patch(
+        "hyperpod_cli.validators.job_validator.validate_scheduler_related_fields",
+        return_value=True,
+    )
     def test_validate_yaml_content_valid_with_auto_resume(
         self,
+        mock_validate_scheduler_related_fields,
     ):
         mock_data = {
             "cluster": {
@@ -964,8 +1166,13 @@ class TestJobValidator(unittest.TestCase):
         result = validate_yaml_content(mock_data)
         self.assertTrue(result)
 
+    @patch(
+        "hyperpod_cli.validators.job_validator.validate_scheduler_related_fields",
+        return_value=True,
+    )
     def test_validate_yaml_content_valid_with_auto_resume_in_aws_hyperpod_namespace(
         self,
+        mock_validate_scheduler_related_fields,
     ):
         mock_data = {
             "cluster": {
@@ -985,7 +1192,14 @@ class TestJobValidator(unittest.TestCase):
         result = validate_yaml_content(mock_data)
         self.assertTrue(result)
 
-    def test_validate_yaml_content_valid_with_auto_resume_default_namespace(self):
+    @patch(
+        "hyperpod_cli.validators.job_validator.validate_scheduler_related_fields",
+        return_value=True,
+    )
+    def test_validate_yaml_content_valid_with_auto_resume_default_namespace(    
+        self,
+        mock_validate_scheduler_related_fields,
+    ):
         mock_data = {
             "cluster": {
                 "cluster_type": "k8s",
@@ -1004,8 +1218,13 @@ class TestJobValidator(unittest.TestCase):
         result = validate_yaml_content(mock_data)
         self.assertTrue(result)
 
+    @patch(
+        "hyperpod_cli.validators.job_validator.validate_scheduler_related_fields",
+        return_value=True,
+    )
     def test_validate_yaml_content_valid_with_auto_resume_any_hyperpod_namespace(
         self,
+        mock_validate_scheduler_related_fields,
     ):
         mock_data = {
             "cluster": {
@@ -1025,8 +1244,13 @@ class TestJobValidator(unittest.TestCase):
         result = validate_yaml_content(mock_data)
         self.assertTrue(result)
 
+    @patch(
+        "hyperpod_cli.validators.job_validator.validate_scheduler_related_fields",
+        return_value=True,
+    )
     def test_validate_yaml_content_error_only_auto_resume_no_max_retry(
         self,
+        mock_validate_scheduler_related_fields,
     ):
         mock_data = {
             "cluster": {
@@ -1045,8 +1269,13 @@ class TestJobValidator(unittest.TestCase):
         result = validate_yaml_content(mock_data)
         self.assertFalse(result)
 
+    @patch(
+        "hyperpod_cli.validators.job_validator.validate_scheduler_related_fields",
+        return_value=True,
+    )
     def test_validate_yaml_content_error_with_wrong_restart_policy(
         self,
+        mock_validate_scheduler_related_fields,
     ):
         mock_data = {
             "cluster": {
@@ -1066,8 +1295,13 @@ class TestJobValidator(unittest.TestCase):
         result = validate_yaml_content(mock_data)
         self.assertFalse(result)
 
+    @patch(
+        "hyperpod_cli.validators.job_validator.validate_scheduler_related_fields",
+        return_value=True,
+    )
     def test_validate_yaml_content_error_only_max_retry(
         self,
+        mock_validate_scheduler_related_fields,
     ):
         mock_data = {
             "cluster": {
@@ -1142,20 +1376,6 @@ class TestJobValidator(unittest.TestCase):
         )
         self.assertFalse(result)
 
-    def test_validate_hyperpod_related_fields_invalid_queue_and_priority(
-        self,
-    ):
-        result = validate_hyperpod_related_fields(
-            instance_type="ml.g5.xlarge",
-            queue_name=None,
-            priority="high-priority",
-            auto_resume=False,
-            restart_policy=RestartPolicy.NEVER.value,
-            max_retry=None,
-            namespace="kubeflow",
-        )
-        self.assertFalse(result)
 
-
-if __name__ == "__main__":
+if __name__== "__main__":
     unittest.main()

@@ -19,6 +19,13 @@ from hyperpod_cli.clients.kubernetes_client import (
     KubernetesClient,
 )
 from kubernetes.client.rest import ApiException
+from kubernetes.client import (
+    V1ResourceAttributes
+)
+
+from hyperpod_cli.constants.command_constants import KUEUE_WORKLOAD_PRIORITY_CLASS_LABEL_KEY
+from hyperpod_cli.constants.pytorch_constants import PYTORCH_CUSTOM_OBJECT_GROUP, PYTORCH_CUSTOM_OBJECT_PLURAL
+from hyperpod_cli.service.discover_namespaces import DiscoverNamespaces
 
 
 class ListTrainingJobs:
@@ -54,7 +61,14 @@ class ListTrainingJobs:
                             jobs.append(_job)
             else:
                 if not namespace:
-                    namespace = k8s_client.get_current_context_namespace()
+                    resource_attributes_template = V1ResourceAttributes(
+                        verb="list",
+                        group=PYTORCH_CUSTOM_OBJECT_GROUP,
+                        resource=PYTORCH_CUSTOM_OBJECT_PLURAL,
+                    )
+                    namespace = DiscoverNamespaces().discover_accessible_namespace(
+                        resource_attributes_template
+                    )
 
                 namespace_jobs = k8s_client.list_training_jobs(
                     namespace=namespace,
@@ -76,17 +90,22 @@ class ListTrainingJobs:
                 namespace = job.get("metadata").get("namespace")
                 creation_time = None
                 state = None
+                priority = self._get_job_priority(job)
                 if job.get("status"):
                     creation_time = job.get("status").get("startTime")
                     state = self._get_job_status(job.get("status").get("conditions"))
-                output_jobs["jobs"].append(
-                    {
-                        "Name": name,
-                        "Namespace": namespace,
-                        "CreationTime": creation_time,
-                        "State": state,
-                    }
-                )
+
+                job_summary = {
+                    "Name": name,
+                    "Namespace": namespace,
+                    "CreationTime": creation_time,
+                    "State": state,
+                }
+
+                if priority is not None:
+                    job_summary["priority"] = priority
+
+                output_jobs["jobs"].append(job_summary)
 
         return json.dumps(output_jobs, indent=1, sort_keys=False)
 
@@ -101,7 +120,26 @@ class ListTrainingJobs:
                 state.get("lastTransitionTime"),
                 "%Y-%m-%dT%H:%M:%SZ",
             )
-            if state_date_time > last_date_time:
+            if state_date_time >= last_date_time:
                 last_date_time = state_date_time
                 current_status = state.get("type")
         return current_status
+
+    def _get_job_priority(self, job) -> Optional[str]:
+        worker_template = job.get("spec", {}).get("pytorchReplicaSpecs", {}).get("Worker", {}).get("template", {})
+        wl_priority_cls = worker_template.get("metadata", {}).get("labels", {}).get(KUEUE_WORKLOAD_PRIORITY_CLASS_LABEL_KEY, None)
+        spec_priority_cls = worker_template.get("spec", {}).get("priorityClassName", None)
+
+        # For reference: https://kueue.sigs.k8s.io/docs/concepts/workload_priority_class/
+        # The workload priority class takes precedence over the k8s priority class.
+        # Because the cli focuses on the job level which means workload priority is more essential.
+        # There is possibility that these two priorities coexist at the same time. In this case,
+        # the k8s priority class will be used as pod priority. cli should still take workload
+        # priority in this scenario.
+
+        if wl_priority_cls is not None:
+            return wl_priority_cls
+        elif spec_priority_cls is not None:
+            return spec_priority_cls
+        
+        return None

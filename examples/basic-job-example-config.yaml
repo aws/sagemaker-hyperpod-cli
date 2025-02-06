@@ -64,8 +64,10 @@ cluster:
     # Mapping to '--namespace' argument in 'start-job' command.
     namespace: kubeflow
     # custom_labels: Optional. Used to specify the name of the queue, which is created by the cluster admin users.
+    # The priority class label is mapped to '--priority' argument in 'start-job' command if your scheduler type is 'SageMaker'.
     # custom_labels:
     #   kueue.x-k8s.io/queue-name: low-priority-queue2
+    #   kueue.x-k8s.io/priority-class: sample-priority
     custom_labels: null
     # priority_class_name: Optional. The priority for the job, which is created by the cluster admin users.
     # Mapping to '--priority' argument in 'start-job' command.
@@ -96,7 +98,11 @@ cluster:
     # To use SageMaker Hyperpod AutoResume functionality, please set it to OnFailure.
     # Mapping to '--restart-policy' argument in 'start-job' command.
     restartPolicy: OnFailure
-
+    # scheduler_type: Optional. Used to decide which type of scheduler to use. Default value is 'SageMaker' which makes
+    # the job only scheduled on queues created via SageMaker. Another valid value is 'Kueue', with this option, queue name
+    # and namespace has to be manually filled out.
+    # scheduler_type: Kueue
+    scheduler_type: SageMaker
 # base_results_dir: Optional. Location to store the results, checkpoints and logs.
 # Mapping to '--results-dir' argument in 'start-job' command.
 base_results_dir: ./result
