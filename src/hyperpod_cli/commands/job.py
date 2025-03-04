@@ -19,6 +19,7 @@ import os
 import sys
 import subprocess
 from typing import Any, Dict, Optional, List
+from tabulate import tabulate
 
 import click
 import yaml
@@ -40,6 +41,7 @@ from hyperpod_cli.constants.command_constants import (
     SAGEMAKER_QUOTA_ALLOCATION_LABEL,
     JobPatchType,
     SAGEMAKER_TRAINING_LAUNCHER_DIR,
+    OutputFormat,
     PullPolicy,
     RestartPolicy,
     PersistentVolumeClaim,
@@ -171,6 +173,13 @@ def get_job(
     help="Optional. A label selector to filter the listed jobs. The selector supports the '=', '==', and '!=' operators (e.g., `-l key1=value1,key2=value2`).",
 )
 @click.option(
+    "--output",
+    type=click.Choice([c.value for c in OutputFormat]),
+    required=False,
+    default=OutputFormat.JSON.value,
+    help="Optional. The output format. Available values are `TABLE` and `JSON`. The default value is `JSON`.",
+)
+@click.option(
     "--debug",
     is_flag=True,
     help="Enable debug mode",
@@ -179,6 +188,7 @@ def list_jobs(
     namespace: Optional[str],
     all_namespaces: Optional[bool],
     selector: Optional[str],
+    output: Optional[str],
     debug: bool,
 ):
     if debug:
@@ -191,7 +201,25 @@ def list_jobs(
         result = list_training_job_service.list_training_jobs(
             namespace, all_namespaces, selector
         )
-        click.echo(result)
+        result_dict = json.loads(result)
+
+        jobs = []
+        if "jobs" in result_dict and isinstance(result_dict["jobs"], list):
+            jobs = [job.values() for job in result_dict["jobs"]]
+
+        headers = [
+            "Name",
+            "Namespace",
+            "CreationTime",
+            "State"
+        ]
+
+        if output == OutputFormat.TABLE.value:
+            click.echo(tabulate(jobs, headers=headers, tablefmt="presto"))
+        elif output == OutputFormat.JSON.value:
+            json_list = [dict(zip(headers, value)) for value in jobs]
+            json_jobs = {"jobs": json_list}
+            click.echo(json.dumps(json_jobs, indent=4))
     except Exception as e:
         sys.exit(f"Unexpected error happens when trying to list training job : {e}")
 
