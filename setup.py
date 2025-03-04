@@ -30,47 +30,22 @@ subprocess.call(
 # Declare your non-python data files:
 # Files underneath configuration/ will be copied into the build preserving the
 # subdirectory structure if they exist.
-examples = []
+sagemaker_hyperpod_recipes = []
 for root, dirs, files in os.walk(
-    "src/hyperpod_cli/custom_launcher/examples/custom_script"
+    "src/hyperpod_cli/sagemaker_hyperpod_recipes"
 ):
-    examples.append(
-        (
-            os.path.relpath(root, "examples/custom_script"),
-            [os.path.join(root, f) for f in files],
-        )
-    )
-
-k8s_templates = []
-for root, dirs, files in os.walk(
-    "src/hyperpod_cli/custom_launcher/launcher/nemo/k8s_templates"
-):
-    k8s_templates.append(
+    sagemaker_hyperpod_recipes.append(
         (
             os.path.relpath(
                 root,
-                "src/hyperpod_cli/custom_launcher/launcher/nemo/k8s_templates",
-            ),
-            [os.path.join(root, f) for f in files],
-        )
-    )
-
-nemo_framework_launcher = []
-for root, dirs, files in os.walk(
-    "src/hyperpod_cli/custom_launcher/launcher/nemo/nemo_framework_launcher"
-):
-    nemo_framework_launcher.append(
-        (
-            os.path.relpath(
-                root,
-                "src/hyperpod_cli/custom_launcher/launcher/nemo/nemo_framework_launcher",
+                "src/hyperpod_cli/sagemaker_hyperpod_recipes",
             ),
             [os.path.join(root, f) for f in files],
         )
     )
 
 setup(
-    data_files=examples + k8s_templates + nemo_framework_launcher,
+    data_files=sagemaker_hyperpod_recipes,
     name="hyperpod",
     version="2.0.0",
     packages=find_packages(where="src", exclude=("test",)),
