@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+import json
 import unittest
 import click
 import subprocess
@@ -159,7 +160,7 @@ class JobTest(unittest.TestCase):
         mock_list_training_job_service: mock.Mock,
     ):
         mock_list_training_job_service.return_value = self.mock_list_jobs
-        mock_list_training_job_service_and_list_jobs.return_value = {"jobs": []}
+        mock_list_training_job_service_and_list_jobs.return_value = json.dumps({"jobs": []})
         result = self.runner.invoke(list_jobs)
         self.assertEqual(result.exit_code, 0)
         self.assertIn("jobs", result.output)
@@ -176,7 +177,7 @@ class JobTest(unittest.TestCase):
         mock_list_training_job_service: mock.Mock,
     ):
         mock_list_training_job_service.return_value = self.mock_list_jobs
-        mock_list_training_job_service_and_list_jobs.return_value = {"jobs": []}
+        mock_list_training_job_service_and_list_jobs.return_value = json.dumps({"jobs": []})
         result = self.runner.invoke(list_jobs, ["--debug"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("jobs", result.output)
@@ -192,7 +193,7 @@ class JobTest(unittest.TestCase):
         mock_list_training_job_service: mock.Mock,
     ):
         mock_list_training_job_service.return_value = self.mock_list_jobs
-        mock_list_training_job_service_and_list_jobs.return_value = {"jobs": []}
+        mock_list_training_job_service_and_list_jobs.return_value = json.dumps({"jobs": []})
         result = self.runner.invoke(list_jobs, ["--namespace", "kubeflow"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("jobs", result.output)
@@ -207,7 +208,7 @@ class JobTest(unittest.TestCase):
         mock_list_training_job_service: mock.Mock,
     ):
         mock_list_training_job_service.return_value = self.mock_list_jobs
-        mock_list_training_job_service_and_list_jobs.return_value = {"jobs": []}
+        mock_list_training_job_service_and_list_jobs.return_value = json.dumps({'jobs': []})
         result = self.runner.invoke(list_jobs, ["-A"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("jobs", result.output)
@@ -222,7 +223,7 @@ class JobTest(unittest.TestCase):
         mock_list_training_job_service: mock.Mock,
     ):
         mock_list_training_job_service.return_value = self.mock_list_jobs
-        mock_list_training_job_service_and_list_jobs.return_value = {"jobs": []}
+        mock_list_training_job_service_and_list_jobs.return_value = json.dumps({"jobs": []})
         result = self.runner.invoke(list_jobs, ["-A", "-l", "test=test"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("jobs", result.output)
