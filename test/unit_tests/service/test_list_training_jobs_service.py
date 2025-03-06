@@ -23,6 +23,7 @@ from hyperpod_cli.service.list_training_jobs import (
 )
 
 from kubernetes.client.rest import ApiException
+from tabulate import tabulate
 
 SAMPLE_OUTPUT = {
     "items": [
@@ -152,7 +153,7 @@ class ListTrainingJobsTest(unittest.TestCase):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         self.mock_k8s_client.list_training_jobs.return_value = SAMPLE_OUTPUT
         result = self.mock_list_training_jobs.list_training_jobs(
-            "namespace", None, None
+            "namespace", None, None, None
         )
         self.assertIn("test-name", result)
         self.assertIn("test-name1", result)
@@ -166,7 +167,7 @@ class ListTrainingJobsTest(unittest.TestCase):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         self.mock_k8s_client.get_current_context_namespace.return_value = "namespace"
         self.mock_k8s_client.list_training_jobs.return_value = SAMPLE_OUTPUT
-        result = self.mock_list_training_jobs.list_training_jobs(None, None, None)
+        result = self.mock_list_training_jobs.list_training_jobs(None, None, None, None)
         self.assertIn("test-name", result)
         self.assertIn("test-name1", result)
         self.assertIn("Running", result)
@@ -182,7 +183,7 @@ class ListTrainingJobsTest(unittest.TestCase):
         mock_discover_accessible_namespace.return_value = "discovered-namespace"
         self.mock_k8s_client.get_current_context_namespace.return_value = None
         self.mock_k8s_client.list_training_jobs.return_value = SAMPLE_OUTPUT
-        result = self.mock_list_training_jobs.list_training_jobs(None, None, None)
+        result = self.mock_list_training_jobs.list_training_jobs(None, None, None, None)
         mock_discover_accessible_namespace.assert_called_once_with(
             V1ResourceAttributes(
                 verb="list",
@@ -209,7 +210,7 @@ class ListTrainingJobsTest(unittest.TestCase):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         self.mock_k8s_client.get_current_context_namespace.return_value = "namespace"
         self.mock_k8s_client.list_training_jobs.return_value = {"items": []}
-        result = self.mock_list_training_jobs.list_training_jobs(None, None, None)
+        result = self.mock_list_training_jobs.list_training_jobs(None, None, None, None)
         self.assertNotIn("test-name", result)
         self.assertNotIn("test-name1", result)
 
@@ -221,7 +222,7 @@ class ListTrainingJobsTest(unittest.TestCase):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         self.mock_k8s_client.list_namespaces.return_value = ["namespace"]
         self.mock_k8s_client.list_training_jobs.return_value = SAMPLE_OUTPUT
-        result = self.mock_list_training_jobs.list_training_jobs(None, True, None)
+        result = self.mock_list_training_jobs.list_training_jobs(None, True, None, None)
         self.assertIn("test-name", result)
         self.assertIn("test-name1", result)
 
@@ -236,7 +237,7 @@ class ListTrainingJobsTest(unittest.TestCase):
             status="Failed", reason="unexpected"
         )
         with self.assertRaises(RuntimeError):
-            self.mock_list_training_jobs.list_training_jobs(None, True, None)
+            self.mock_list_training_jobs.list_training_jobs(None, True, None, None)
 
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_list_training_jobs_all_namespace_no_jobs(
@@ -246,7 +247,7 @@ class ListTrainingJobsTest(unittest.TestCase):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         self.mock_k8s_client.list_namespaces.return_value = ["namespace"]
         self.mock_k8s_client.list_training_jobs.return_value = {"items": []}
-        result = self.mock_list_training_jobs.list_training_jobs(None, True, None)
+        result = self.mock_list_training_jobs.list_training_jobs(None, True, None, None)
         self.assertNotIn("test-name", result)
         self.assertNotIn("test-name1", result)
 
@@ -258,7 +259,7 @@ class ListTrainingJobsTest(unittest.TestCase):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         self.mock_k8s_client.list_namespaces.return_value = ["namespace"]
         self.mock_k8s_client.list_training_jobs.return_value = INVALID_OUTPUT
-        result = self.mock_list_training_jobs.list_training_jobs(None, True, None)
+        result = self.mock_list_training_jobs.list_training_jobs(None, True, None, None)
         self.assertNotIn("name", result)
 
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
@@ -269,5 +270,94 @@ class ListTrainingJobsTest(unittest.TestCase):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         self.mock_k8s_client.list_namespaces.return_value = ["namespace"]
         self.mock_k8s_client.list_training_jobs.return_value = OUTPUT_WITHOUT_STATUS
-        result = self.mock_list_training_jobs.list_training_jobs(None, True, None)
+        result = self.mock_list_training_jobs.list_training_jobs(None, True, None, None)
         self.assertNotIn("State: null", result)
+
+    def test_generate_table_with_no_priority_header_and_values(self):
+        list_training_jobs = ListTrainingJobs()
+        output_jobs = {
+            "jobs": [
+                {
+                    "Name": "job1",
+                    "Namespace": "namespace1",
+                    "CreationTime": "2023-01-01T00:00:00Z",
+                    "State": "Running"
+                }
+            ]
+        }
+        priority_header_required = False
+
+        result = list_training_jobs._generate_table(output_jobs, priority_header_required)
+
+        expected_headers = ["Name", "Namespace", "CreationTime", "State"]
+        expected_jobs = [["job1", "namespace1", "2023-01-01T00:00:00Z", "Running"]]
+        expected_result = tabulate(expected_jobs, headers=expected_headers, tablefmt="presto")
+
+        assert result == expected_result
+
+    def test_generate_table_with_priority_header_and_priority_values(self):
+        list_training_jobs = ListTrainingJobs()
+        output_jobs = {
+            "jobs": [
+                {
+                    "Name": "job1",
+                    "Namespace": "namespace1",
+                    "CreationTime": "2023-01-01T00:00:00Z",
+                    "State": "Running",
+                    "priority": "high"
+                },
+                {
+                    "Name": "job2",
+                    "Namespace": "namespace2",
+                    "CreationTime": "2023-01-02T00:00:00Z",
+                    "State": "Completed",
+                    "priority": "low"
+                }
+            ]
+        }
+        priority_header_required = True
+
+        result = list_training_jobs._generate_table(output_jobs, priority_header_required)
+
+        expected_headers = ["Name", "Namespace", "CreationTime", "State", "Priority"]
+        expected_jobs = [
+            ["job1", "namespace1", "2023-01-01T00:00:00Z", "Running", "high"],
+            ["job2", "namespace2", "2023-01-02T00:00:00Z", "Completed", "low"]
+        ]
+        expected_result = tabulate(expected_jobs, headers=expected_headers, tablefmt="presto")
+
+        assert result == expected_result
+
+    def test_generate_table_with_priority_header_but_no_priority_value(self):
+        list_training_jobs = ListTrainingJobs()
+        output_jobs = {
+            "jobs": [
+                {
+                    "Name": "job1",
+                    "Namespace": "namespace1",
+                    "CreationTime": "2023-01-01T00:00:00Z",
+                    "State": "Running"
+                }
+            ]
+        }
+        priority_header_required = True
+
+        result = list_training_jobs._generate_table(output_jobs, priority_header_required)
+
+        expected_headers = ["Name", "Namespace", "CreationTime", "State", "Priority"]
+        expected_jobs = [["job1", "namespace1", "2023-01-01T00:00:00Z", "Running", "NA"]]
+        expected_result = tabulate(expected_jobs, headers=expected_headers, tablefmt="presto")
+
+        assert result == expected_result
+
+    def test_generate_table_empty_jobs(self):
+        list_training_jobs = ListTrainingJobs()
+        output_jobs = {"jobs": []}
+        priority_header_required = False
+
+        result = list_training_jobs._generate_table(output_jobs, priority_header_required)
+
+        expected_headers = ["Name", "Namespace", "CreationTime", "State"]
+        expected_result = tabulate([], headers=expected_headers, tablefmt="presto")
+
+        assert result == expected_result

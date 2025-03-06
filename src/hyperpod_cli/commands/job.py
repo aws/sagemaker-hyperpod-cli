@@ -199,27 +199,9 @@ def list_jobs(
     try:
         logger.debug("Listing training jobs")
         result = list_training_job_service.list_training_jobs(
-            namespace, all_namespaces, selector
+            namespace, all_namespaces, selector, output
         )
-        result_dict = json.loads(result)
-
-        jobs = []
-        if "jobs" in result_dict and isinstance(result_dict["jobs"], list):
-            jobs = [job.values() for job in result_dict["jobs"]]
-
-        headers = [
-            "Name",
-            "Namespace",
-            "CreationTime",
-            "State"
-        ]
-
-        if output == OutputFormat.TABLE.value:
-            click.echo(tabulate(jobs, headers=headers, tablefmt="presto"))
-        elif output == OutputFormat.JSON.value:
-            json_list = [dict(zip(headers, value)) for value in jobs]
-            json_jobs = {"jobs": json_list}
-            click.echo(json.dumps(json_jobs, indent=4))
+        click.echo(result)
     except Exception as e:
         sys.exit(f"Unexpected error happens when trying to list training job : {e}")
 

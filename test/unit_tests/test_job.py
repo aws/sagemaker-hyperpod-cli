@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-import json
 import unittest
 import click
 import subprocess
@@ -160,7 +159,7 @@ class JobTest(unittest.TestCase):
         mock_list_training_job_service: mock.Mock,
     ):
         mock_list_training_job_service.return_value = self.mock_list_jobs
-        mock_list_training_job_service_and_list_jobs.return_value = json.dumps({"jobs": []})
+        mock_list_training_job_service_and_list_jobs.return_value = {"jobs": []}
         result = self.runner.invoke(list_jobs)
         self.assertEqual(result.exit_code, 0)
         self.assertIn("jobs", result.output)
@@ -177,58 +176,10 @@ class JobTest(unittest.TestCase):
         mock_list_training_job_service: mock.Mock,
     ):
         mock_list_training_job_service.return_value = self.mock_list_jobs
-        mock_list_training_job_service_and_list_jobs.return_value = json.dumps({"jobs": []})
+        mock_list_training_job_service_and_list_jobs.return_value = {"jobs": []}
         result = self.runner.invoke(list_jobs, ["--debug"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("jobs", result.output)
-        mock_debug.assert_called()
-
-    @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs")
-    @mock.patch(
-        "hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
-    )
-    @mock.patch("logging.Logger.debug")
-    def test_list_job_happy_case_default_output_mode_json(
-        self,
-        mock_debug,
-        mock_list_training_job_service_and_list_jobs: mock.Mock,
-        mock_list_training_job_service: mock.Mock,
-    ):
-        mock_list_training_job_service.return_value = self.mock_list_jobs
-        mock_list_training_job_service_and_list_jobs.return_value = json.dumps({"jobs": [{
-            "Name": "test-job-name",
-            "Namespace": "test_namespace",
-            "CreationTime": "2025-01-01T01:01:01Z",
-            "State": "Succeeded"
-        }]})
-        result = self.runner.invoke(list_jobs, ["--output", "json"])
-        self.assertEqual(result.exit_code, 0)
-        expected_output = '{\n    "jobs": [\n        {\n            "Name": "test-job-name",\n            "Namespace": "test_namespace",\n            "CreationTime": "2025-01-01T01:01:01Z",\n            "State": "Succeeded"\n        }\n    ]\n}\n'
-        self.assertEqual(expected_output, result.output)
-        mock_debug.assert_called()
-
-    @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs")
-    @mock.patch(
-        "hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
-    )
-    @mock.patch("logging.Logger.debug")
-    def test_list_job_happy_case_default_output_mode_table(
-        self,
-        mock_debug,
-        mock_list_training_job_service_and_list_jobs: mock.Mock,
-        mock_list_training_job_service: mock.Mock,
-    ):
-        mock_list_training_job_service.return_value = self.mock_list_jobs
-        mock_list_training_job_service_and_list_jobs.return_value = json.dumps({"jobs": [{
-            "Name": "test-job-name",
-            "Namespace": "test_namespace",
-            "CreationTime": "2025-01-01T01:01:01Z",
-            "State": "Succeeded"
-        }]})
-        result = self.runner.invoke(list_jobs, ["--output", "table"])
-        self.assertEqual(result.exit_code, 0)
-        expected_output = ' Name          | Namespace      | CreationTime         | State\n---------------+----------------+----------------------+-----------\n test-job-name | test_namespace | 2025-01-01T01:01:01Z | Succeeded\n'
-        self.assertEqual(expected_output, result.output)
         mock_debug.assert_called()
 
     @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs")
@@ -241,7 +192,7 @@ class JobTest(unittest.TestCase):
         mock_list_training_job_service: mock.Mock,
     ):
         mock_list_training_job_service.return_value = self.mock_list_jobs
-        mock_list_training_job_service_and_list_jobs.return_value = json.dumps({"jobs": []})
+        mock_list_training_job_service_and_list_jobs.return_value = {"jobs": []}
         result = self.runner.invoke(list_jobs, ["--namespace", "kubeflow"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("jobs", result.output)
@@ -256,7 +207,7 @@ class JobTest(unittest.TestCase):
         mock_list_training_job_service: mock.Mock,
     ):
         mock_list_training_job_service.return_value = self.mock_list_jobs
-        mock_list_training_job_service_and_list_jobs.return_value = json.dumps({'jobs': []})
+        mock_list_training_job_service_and_list_jobs.return_value = {"jobs": []}
         result = self.runner.invoke(list_jobs, ["-A"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("jobs", result.output)
@@ -271,7 +222,7 @@ class JobTest(unittest.TestCase):
         mock_list_training_job_service: mock.Mock,
     ):
         mock_list_training_job_service.return_value = self.mock_list_jobs
-        mock_list_training_job_service_and_list_jobs.return_value = json.dumps({"jobs": []})
+        mock_list_training_job_service_and_list_jobs.return_value = {"jobs": []}
         result = self.runner.invoke(list_jobs, ["-A", "-l", "test=test"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("jobs", result.output)
