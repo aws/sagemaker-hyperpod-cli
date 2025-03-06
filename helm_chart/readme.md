@@ -93,21 +93,16 @@ Notes:
   ```
   helm install dependencies helm_chart/HyperPodHelmChart --namespace kube-system --set computeQuotaTarget.targetId=<target_id>
   ```
-### Step Five (only required for changing the health monitoring agent installation on your cluster- version upgrade):
-* This command is required to change the version of the Health Monitoring Agent running on your Hyperpod cluster.
+### Step Four (whenever you want to upgrade the installation of helm charts):
+* This command is required to upgrade the helm chart installation on your cluster, which will also help consume the latest releases of service components like Health Monitoring Agent.
 ```
-helm upgrade dependencies helm_chart/HyperPodHelmChart/charts/health-monitoring-agent --namespace kube-system -f helm_chart/HyperPodHelmChart/charts/health-monitoring-agent/values.yaml
+helm upgrade dependencies helm_chart/HyperPodHelmChart --namespace kube-system
 ```
 
 * To install the sub-chart separately that only contains roles and role bindings
   ```
   helm install dependencies helm_chart/HyperPodHelmChart/charts/team-role-and-bindings --set computeQuotaTarget.targetId=<target_id>
   ```
-### Step Five (only required for changing the health monitoring agent installation on your cluster- version upgrade):
-* This command is required to change the version of the Health Monitoring Agent running on your Hyperpod cluster.
-```
-helm upgrade dependencies helm_chart/HyperPodHelmChart/charts/health-monitoring-agent --namespace kube-system -f helm_chart/HyperPodHelmChart/charts/health-monitoring-agent/values.yaml
-```
 
 ## 6. Notes
 - Training job auto resume is expected to work with Kubeflow training operator release v1.7.0, v1.8.0, v1.8.1 https://github.com/kubeflow/training-operator/releases
