@@ -203,7 +203,6 @@ class JobTest(unittest.TestCase):
         }]})
         result = self.runner.invoke(list_jobs, ["--output", "json"])
         self.assertEqual(result.exit_code, 0)
-        print(result.output)
         expected_output = '{\n    "jobs": [\n        {\n            "Name": "test-job-name",\n            "Namespace": "test_namespace",\n            "CreationTime": "2025-01-01T01:01:01Z",\n            "State": "Succeeded"\n        }\n    ]\n}\n'
         self.assertEqual(expected_output, result.output)
         mock_debug.assert_called()
@@ -228,7 +227,6 @@ class JobTest(unittest.TestCase):
         }]})
         result = self.runner.invoke(list_jobs, ["--output", "table"])
         self.assertEqual(result.exit_code, 0)
-        print(result.output)
         expected_output = ' Name          | Namespace      | CreationTime         | State\n---------------+----------------+----------------------+-----------\n test-job-name | test_namespace | 2025-01-01T01:01:01Z | Succeeded\n'
         self.assertEqual(expected_output, result.output)
         mock_debug.assert_called()
