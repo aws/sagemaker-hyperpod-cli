@@ -19,6 +19,7 @@ import os
 import sys
 import subprocess
 from typing import Any, Dict, Optional, List
+from tabulate import tabulate
 
 import click
 import yaml
@@ -40,6 +41,7 @@ from hyperpod_cli.constants.command_constants import (
     SAGEMAKER_QUOTA_ALLOCATION_LABEL,
     JobPatchType,
     SAGEMAKER_TRAINING_LAUNCHER_DIR,
+    OutputFormat,
     PullPolicy,
     RestartPolicy,
     PersistentVolumeClaim,
@@ -171,6 +173,13 @@ def get_job(
     help="Optional. A label selector to filter the listed jobs. The selector supports the '=', '==', and '!=' operators (e.g., `-l key1=value1,key2=value2`).",
 )
 @click.option(
+    "--output",
+    type=click.Choice([c.value for c in OutputFormat]),
+    required=False,
+    default=OutputFormat.JSON.value,
+    help="Optional. The output format. Available values are `TABLE` and `JSON`. The default value is `JSON`.",
+)
+@click.option(
     "--debug",
     is_flag=True,
     help="Enable debug mode",
@@ -179,6 +188,7 @@ def list_jobs(
     namespace: Optional[str],
     all_namespaces: Optional[bool],
     selector: Optional[str],
+    output: Optional[str],
     debug: bool,
 ):
     if debug:
@@ -189,7 +199,7 @@ def list_jobs(
     try:
         logger.debug("Listing training jobs")
         result = list_training_job_service.list_training_jobs(
-            namespace, all_namespaces, selector
+            namespace, all_namespaces, selector, output
         )
         click.echo(result)
     except Exception as e:
