@@ -431,6 +431,18 @@ def cancel_job(
     " <volume_name>:</host/mount/path>:</container/mount/path>,<volume_name>:</host/mount/path1>:</container/mount/path1>",
 )
 @click.option(
+    "--pre-script",
+    type=click.STRING,
+    required=False,
+    help="Optional. Commands to run before the job starts. Multiple commands should be separated by semicolons.",
+)
+@click.option(
+    "--post-script",
+    type=click.STRING,
+    required=False,
+    help="Optional. Commands to run after the job completes. Multiple commands should be separated by semicolons.",
+)
+@click.option(
     "--recipe",
     type=click.STRING,
     required=False,
@@ -548,6 +560,8 @@ def start_job(
     service_account_name: Optional[str],
     persistent_volume_claims: Optional[str],
     volumes: Optional[str],
+    pre_script: Optional[str],
+    post_script: Optional[str],
     recipe: Optional[str],
     override_parameters: Optional[str],
     debug: bool,
@@ -793,6 +807,8 @@ def start_job(
         label_selector=label_selector,
         max_retry=max_retry,
         deep_health_check_passed_nodes_only=deep_health_check_passed_nodes_only,
+        pre_script=pre_script,
+        post_script=post_script,
     )
     # TODO: Unblock this after fixing customer using EKS cluster.
     console_link = utils.get_cluster_console_url()
@@ -973,7 +989,8 @@ def execute_command(cmd, env=None):
 def start_training_job(recipe, override_parameters, job_name, config_file, launcher_config_path=None, launcher_config_file_name=None,
                       pull_policy=None, restart_policy=None, namespace=None,
                       service_account_name=None, priority_class_name=None, volumes=None, persistent_volume_claims=None,
-                      auto_resume=None, label_selector=None, max_retry=None, deep_health_check_passed_nodes_only=None):
+                      auto_resume=None, label_selector=None, max_retry=None, deep_health_check_passed_nodes_only=None,
+                      pre_script=None, post_script=None):
     
     logger.info(f"recipe: {recipe}, override_parameters: {override_parameters}, job_name: {job_name}, config_file: {config_file}, launcher_config_path: {launcher_config_path}, launcher_config_file_name: {launcher_config_file_name}")
     env = os.environ.copy()
@@ -1034,6 +1051,12 @@ def start_training_job(recipe, override_parameters, job_name, config_file, launc
                 claim_name, mount_path = pvc.split(':')
                 cmd.append(f'+cluster.persistent_volume_claims.{idx}.claimName="{claim_name}"')
                 cmd.append(f'+cluster.persistent_volume_claims.{idx}.mountPath="{mount_path}"')
+
+        if pre_script:
+            cmd.append(f'+cluster.pre_script="{pre_script}"')
+
+        if post_script:
+            cmd.append(f'+cluster.post_script="{post_script}"')
 
         if label_selector:
             cmd.append(f'+cluster.label_selector={label_selector}')
