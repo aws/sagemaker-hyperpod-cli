@@ -23,9 +23,10 @@ from kubernetes.client import (
     V1ResourceAttributes
 )
 
-from hyperpod_cli.constants.command_constants import KUEUE_WORKLOAD_PRIORITY_CLASS_LABEL_KEY
+from hyperpod_cli.constants.command_constants import KUEUE_WORKLOAD_PRIORITY_CLASS_LABEL_KEY, OutputFormat
 from hyperpod_cli.constants.pytorch_constants import PYTORCH_CUSTOM_OBJECT_GROUP, PYTORCH_CUSTOM_OBJECT_PLURAL
 from hyperpod_cli.service.discover_namespaces import DiscoverNamespaces
+from tabulate import tabulate
 
 
 class ListTrainingJobs:
@@ -37,6 +38,7 @@ class ListTrainingJobs:
         namespace: Optional[str],
         all_namespaces: Optional[bool],
         selector: Optional[str],
+        output: Optional[str],
     ) -> str:
         """
         List training job provided by the user in the specified namespace.
@@ -44,7 +46,6 @@ class ListTrainingJobs:
         If all_namespace is true we will list training job from all namespaces that user has access
         Selector when specified will filter list of job addisional based on labels filter provided
         """
-
         k8s_client = KubernetesClient()
 
         jobs: List = []
@@ -80,10 +81,12 @@ class ListTrainingJobs:
         except ApiException as e:
             raise RuntimeError(f"Unexpected API error: {e.reason} ({e.status})")
 
-        return self._generate_list_training_job_output(jobs)
+        return self._generate_list_training_job_output(jobs, output)
 
-    def _generate_list_training_job_output(self, jobs: List):
+    def _generate_list_training_job_output(self, jobs: List, output: Optional[str]):
         output_jobs = {"jobs": []}
+        priority_header_required = False
+
         for job in jobs:
             if job.get("metadata"):
                 name = job.get("metadata").get("name")
@@ -104,10 +107,34 @@ class ListTrainingJobs:
 
                 if priority is not None:
                     job_summary["priority"] = priority
+                    priority_header_required = True
 
                 output_jobs["jobs"].append(job_summary)
 
-        return json.dumps(output_jobs, indent=1, sort_keys=False)
+        if output == OutputFormat.TABLE.value:
+            return self._generate_table(output_jobs, priority_header_required)
+        return json.dumps(output_jobs, indent=4, sort_keys=False)
+
+    def _generate_table(self, output_jobs, priority_header_required):
+        headers = [
+                "Name",
+                "Namespace",
+                "CreationTime",
+                "State"
+            ]
+
+        if priority_header_required:
+            headers.append("Priority")
+
+        jobs = []
+        if "jobs" in output_jobs and isinstance(output_jobs["jobs"], list):
+            for job in output_jobs["jobs"]:
+                job_values = list(job.values())
+                if priority_header_required and len(job_values) == 4:
+                    job_values.append("NA")
+                jobs.append(job_values)
+
+        return tabulate(jobs, headers=headers, tablefmt="presto")
 
     def _get_job_status(self, status: List) -> Optional[str]:
         current_status = None

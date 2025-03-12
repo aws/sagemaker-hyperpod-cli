@@ -93,39 +93,34 @@ Notes:
   ```
   helm install dependencies helm_chart/HyperPodHelmChart --namespace kube-system --set computeQuotaTarget.targetId=<target_id>
   ```
-### Step Five (only required for changing the health monitoring agent installation on your cluster- version upgrade):
-* This command is required to change the version of the Health Monitoring Agent running on your Hyperpod cluster.
+### Step Four (whenever you want to upgrade the installation of helm charts):
+* This command is required to upgrade the helm chart installation on your cluster, which will also help consume the latest releases of service components like Health Monitoring Agent.
 ```
-helm upgrade dependencies helm_chart/HyperPodHelmChart/charts/health-monitoring-agent --namespace kube-system -f helm_chart/HyperPodHelmChart/charts/health-monitoring-agent/values.yaml
+helm upgrade dependencies helm_chart/HyperPodHelmChart --namespace kube-system
 ```
 
 * To install the sub-chart separately that only contains roles and role bindings
   ```
   helm install dependencies helm_chart/HyperPodHelmChart/charts/team-role-and-bindings --set computeQuotaTarget.targetId=<target_id>
   ```
-### Step Five (only required for changing the health monitoring agent installation on your cluster- version upgrade):
-* This command is required to change the version of the Health Monitoring Agent running on your Hyperpod cluster.
-```
-helm upgrade dependencies helm_chart/HyperPodHelmChart/charts/health-monitoring-agent --namespace kube-system -f helm_chart/HyperPodHelmChart/charts/health-monitoring-agent/values.yaml
-```
 
 ## 6. Notes
 - Training job auto resume is expected to work with Kubeflow training operator release v1.7.0, v1.8.0, v1.8.1 https://github.com/kubeflow/training-operator/releases
 - If you intend to use the Health Monitoring Agent container image from another region, please see below list to find relevant region's URI.
   ```
-  IAD 767398015722.dkr.ecr.us-east-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.318.0_1.0.35.0
-  PDX 905418368575.dkr.ecr.us-west-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.318.0_1.0.35.0
-  CMH 851725546812.dkr.ecr.us-east-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.318.0_1.0.35.0
-  SFO 011528288828.dkr.ecr.us-west-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.318.0_1.0.35.0
-  FRA 211125453373.dkr.ecr.eu-central-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.318.0_1.0.35.0
-  ARN 654654141839.dkr.ecr.eu-north-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.318.0_1.0.35.0
-  DUB 533267293120.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.318.0_1.0.35.0
-  LHR 011528288831.dkr.ecr.eu-west-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.318.0_1.0.35.0
-  NRT 533267052152.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.318.0_1.0.35.0
-  BOM 011528288864.dkr.ecr.ap-south-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.318.0_1.0.35.0
-  SIN 905418428165.dkr.ecr.ap-southeast-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.318.0_1.0.35.0
-  SYD 851725636348.dkr.ecr.ap-southeast-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.318.0_1.0.35.0
-  GRU 025066253954.dkr.ecr.sa-east-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.318.0_1.0.35.0
+  IAD 767398015722.dkr.ecr.us-east-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.408.0_1.0.105.0
+  PDX 905418368575.dkr.ecr.us-west-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.408.0_1.0.105.0
+  CMH 851725546812.dkr.ecr.us-east-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.408.0_1.0.105.0
+  SFO 011528288828.dkr.ecr.us-west-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.408.0_1.0.105.0
+  FRA 211125453373.dkr.ecr.eu-central-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.408.0_1.0.105.0
+  ARN 654654141839.dkr.ecr.eu-north-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.408.0_1.0.105.0
+  DUB 533267293120.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.408.0_1.0.105.0
+  LHR 011528288831.dkr.ecr.eu-west-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.408.0_1.0.105.0
+  NRT 533267052152.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.408.0_1.0.105.0
+  BOM 011528288864.dkr.ecr.ap-south-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.408.0_1.0.105.0
+  SIN 905418428165.dkr.ecr.ap-southeast-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.408.0_1.0.105.0
+  SYD 851725636348.dkr.ecr.ap-southeast-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.408.0_1.0.105.0
+  GRU 025066253954.dkr.ecr.sa-east-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.408.0_1.0.105.0
   ```
 
 ## 7. Troubleshooting
