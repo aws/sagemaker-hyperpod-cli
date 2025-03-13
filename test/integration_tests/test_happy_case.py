@@ -25,6 +25,29 @@ logger = setup_logger(__name__)
 
 
 class TestHappyCase(AbstractIntegrationTests):
+    
+    @pytest.fixture(scope="class")
+    def hyperpod_cli_basic_job_name(self):
+        """
+        Class-level fixture to set the hyperpod_cli_job_name attribute.
+        """
+        config_path = os.path.expanduser("./test/integration_tests/data/basicJob.yaml")
+        command = [
+            "hyperpod",
+            "start-job",
+            "--config-file",
+            config_path,
+        ]
+
+        result = self._execute_test_command(command)
+        job_name = self._get_job_name_from_run_output(result.stdout)
+
+        # Wait for job to complete creation
+        time.sleep(240)
+        assert result.returncode == 0
+        logger.info(result.stdout)
+        return job_name
+
 
     @pytest.fixture(scope="class", autouse=True)
     def basic_test(self):
@@ -44,13 +67,20 @@ class TestHappyCase(AbstractIntegrationTests):
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failed to execute command: {command} Exception {e}")
 
+    def _get_job_name_from_run_output(self, output):
+        for line in output.splitlines():
+            if line.startswith('NAME:'):
+                job_name = line.split('NAME:')[1].strip()
+                return job_name
+        return None
+
     @pytest.mark.order(1)
     def test_hyperpod_connect_cluster(self):
         command = [
             "hyperpod",
             "connect-cluster",
             "--cluster-name",
-            super().hyperpod_cli_cluster_name,
+            self.hyperpod_cli_cluster_name,
             "--region",
             "us-west-2",
             "--namespace",
@@ -62,20 +92,8 @@ class TestHappyCase(AbstractIntegrationTests):
         logger.info(result.stdout)
 
     @pytest.mark.order(2)
-    def test_start_job(self):
-        config_path = os.path.expanduser("./test/integration_tests/data/basicJob.yaml")
-        command = [
-            "hyperpod",
-            "start-job",
-            "--config-file",
-            config_path,
-        ]
-
-        result = self._execute_test_command(command)
-        # wait for job to complete creation
-        time.sleep(240)
-        assert result.returncode == 0
-        logger.info(result.stdout)
+    def test_start_job(self, hyperpod_cli_basic_job_name):
+        assert hyperpod_cli_basic_job_name is not None
 
     # @pytest.mark.order(2)
     # def test_start_job_with_quota(self):
@@ -94,17 +112,17 @@ class TestHappyCase(AbstractIntegrationTests):
     #     logger.info(result.stdout)
 
     @pytest.mark.order(3)
-    def test_get_job(self):
+    def test_get_job(self, hyperpod_cli_basic_job_name):
         command = [
             "hyperpod",
             "get-job",
             "--job-name",
-            self.hyperpod_cli_job_name,
+            hyperpod_cli_basic_job_name,
         ]
 
         result = self._execute_test_command(command)
         assert result.returncode == 0
-        assert (self.hyperpod_cli_job_name) in str(result.stdout)
+        assert (hyperpod_cli_basic_job_name) in str(result.stdout)
         logger.info(result.stdout)
     
     # @pytest.mark.order(3)
@@ -122,37 +140,37 @@ class TestHappyCase(AbstractIntegrationTests):
     #     logger.info(result.stdout)
 
     @pytest.mark.order(4)
-    def test_list_jobs(self):
+    def test_list_jobs(self, hyperpod_cli_basic_job_name):
         command = ["hyperpod", "list-jobs"]
 
         result = self._execute_test_command(command)
         assert result.returncode == 0
-        assert (self.hyperpod_cli_job_name) in str(result.stdout)
+        assert (hyperpod_cli_basic_job_name) in str(result.stdout)
         logger.info(result.stdout)
 
     @pytest.mark.order(5)
-    def test_list_pods(self):
+    def test_list_pods(self, hyperpod_cli_basic_job_name):
         command = [
             "hyperpod",
             "list-pods",
             "--job-name",
-            self.hyperpod_cli_job_name,
+            hyperpod_cli_basic_job_name,
         ]
 
         result = self._execute_test_command(command)
         assert result.returncode == 0
-        assert (self.hyperpod_cli_job_name) in str(result.stdout)
+        assert (hyperpod_cli_basic_job_name) in str(result.stdout)
         logger.info(result.stdout)
 
     @pytest.mark.order(6)
-    def test_get_logs(self):
+    def test_get_logs(self, hyperpod_cli_basic_job_name):
         command = [
             "hyperpod",
             "get-log",
             "--job-name",
-            self.hyperpod_cli_job_name,
+            hyperpod_cli_basic_job_name,
             "--pod",
-            self.hyperpod_cli_job_name+"-worker-0",
+            hyperpod_cli_basic_job_name +"-worker-0",
         ]
 
         result = self._execute_test_command(command)
@@ -160,12 +178,12 @@ class TestHappyCase(AbstractIntegrationTests):
         logger.info(result.stdout)
 
     @pytest.mark.order(7)
-    def test_cancel_job(self):
+    def test_cancel_job(self, hyperpod_cli_basic_job_name):
         command = [
             "hyperpod",
             "cancel-job",
             "--job-name",
-            self.hyperpod_cli_job_name,
+            hyperpod_cli_basic_job_name,
         ]
 
         result = self._execute_test_command(command)
