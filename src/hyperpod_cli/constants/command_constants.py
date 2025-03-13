@@ -26,6 +26,7 @@ DEEP_HEALTH_CHECK_PASSED_ONLY_NODE_AFFINITY_DICT = {
         "sagemaker.amazonaws.com/deep-health-check-status": ["Passed"],
     },
 }
+KUBERNETES_INSTANCE_TYPE_LABEL_KEY = "beta.kubernetes.io/instance-type"
 KUEUE_QUEUE_NAME_LABEL_KEY = "kueue.x-k8s.io/queue-name"
 KUEUE_WORKLOAD_PRIORITY_CLASS_LABEL_KEY = "kueue.x-k8s.io/priority-class"
 KUEUE_JOB_UID_LABEL_KEY = "kueue.x-k8s.io/job-uid"

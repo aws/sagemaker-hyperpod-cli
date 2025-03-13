@@ -24,6 +24,7 @@ from hyperpod_cli.constants.command_constants import (
     KUEUE_QUEUE_NAME_LABEL_KEY,
     HYPERPOD_AUTO_RESUME_ANNOTATION_KEY,
     HYPERPOD_MAX_RETRY_ANNOTATION_KEY,
+    KUBERNETES_INSTANCE_TYPE_LABEL_KEY,
     SchedulerType
 )
 from hyperpod_cli.constants.hyperpod_instance_types import (
@@ -183,6 +184,19 @@ def validate_yaml_content(data):
     queue_name = None
     if custom_labels is not None:
         queue_name = custom_labels.get(KUEUE_QUEUE_NAME_LABEL_KEY, None)
+
+    label_selector = cluster_config_fields.setdefault("label_selector",{})
+    required_labels = label_selector.setdefault("required", {})
+
+    if not required_labels.get(KUBERNETES_INSTANCE_TYPE_LABEL_KEY):
+        required_labels[KUBERNETES_INSTANCE_TYPE_LABEL_KEY] = (
+            [str(instance_type)]
+        )
+    if instance_type not in required_labels[KUBERNETES_INSTANCE_TYPE_LABEL_KEY]:
+        logger.error(
+            f"Please ensure 'instance-type' in 'cluster' matches with 'instance-type' in 'label_selector.required.beta.kubernetes.io/instance-type' in config file"
+        )
+        return False
 
     auto_resume = False
     max_retry = None

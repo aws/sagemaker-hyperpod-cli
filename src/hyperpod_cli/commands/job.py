@@ -32,6 +32,7 @@ from hyperpod_cli.constants.command_constants import (
     HYPERPOD_KUBERNETES_JOB_PREFIX,
     HYPERPOD_MAX_RETRY_ANNOTATION_KEY,
     HYPERPOD_NAMESPACE_PREFIX,
+    KUBERNETES_INSTANCE_TYPE_LABEL_KEY,
     KUEUE_JOB_UID_LABEL_KEY,
     KUEUE_QUEUE_NAME_LABEL_KEY,
     KUEUE_WORKLOAD_PRIORITY_CLASS_LABEL_KEY,
@@ -670,6 +671,15 @@ def start_job(
                 config["cluster"]["cluster_config"]["label_selector"] = (
                     NODE_AFFINITY_DICT
                 )
+
+            label_selector = config["cluster"].setdefault("label_selector",{})
+            required_labels = label_selector.setdefault("required", {})
+
+            if not required_labels.get(KUBERNETES_INSTANCE_TYPE_LABEL_KEY):
+                required_labels[KUBERNETES_INSTANCE_TYPE_LABEL_KEY] = (
+                    [str(instance_type)]
+                )
+
 
             if auto_resume:
                 # Set max_retry default to 1
