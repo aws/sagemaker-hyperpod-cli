@@ -575,6 +575,86 @@ class JobTest(unittest.TestCase):
         print(f"Output: {result.output}")
         if result.exception:
             print(f"Exception: {result.exception}")
+            
+    @mock.patch('subprocess.run')
+    @mock.patch("yaml.dump")
+    @mock.patch("os.path.exists", return_value=True)
+    @mock.patch("os.remove", return_value=None)
+    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
+    def test_start_job_label_selector_preferred_instance_type(
+        self,
+        mock_boto3,
+        mock_validator_cls,
+        mock_kubernetes_client,
+        mock_get_console_link,
+        mock_remove,
+        mock_exists,
+        mock_yaml_dump,
+        mock_subprocess_run,
+    ):
+        # Setup mocks
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
+        mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
+        mock_get_console_link.return_value = "test-console-link"
+        mock_subprocess_run.return_value = subprocess.CompletedProcess(
+            args=['some_command'],
+            returncode=0,
+            stdout='Command executed successfully',
+            stderr=''
+        )
+
+        expected_default_label_selector_config = {
+            "preferred": {"beta.kubernetes.io/instance-type": ["ml.c5.xlarge"]},
+        }
+
+        # Capture the yaml.dump calls to inspect the config
+        configs_dumped = []
+        def capture_yaml_dump(config, *args, **kwargs):
+            configs_dumped.append(config)
+            print(f"Dumped config: {config}")
+            return None
+        mock_yaml_dump.side_effect = capture_yaml_dump
+
+        # Run the command
+        result = self.runner.invoke(
+            start_job,
+            [
+                "--job-name", "test-job",
+                "--instance-type", "ml.c5.xlarge",
+                "--image", "pytorch:1.9.0-cuda11.1-cudnn8-runtime",
+                "--node-count", "2",
+                "--entry-script", "/opt/train/src/train.py",
+                "--label_selector", 
+                '{"preferred": {"beta.kubernetes.io/instance-type": ["ml.c5.xlarge"]}}',
+            ],
+            catch_exceptions=False
+        )
+
+        # Verify the command executed successfully
+        self.assertEqual(result.exit_code, 0)
+
+        # Get the config that was generated
+        self.assertTrue(len(configs_dumped) > 0, "No config was generated")
+        config = configs_dumped[0]  # Get the first config that was dumped
+
+        # Verify label_selector configuration
+        self.assertIn('cluster', config)
+        self.assertIn('cluster_config', config['cluster'])
+        self.assertIn('label_selector', config['cluster']['cluster_config'])
+
+        self.assertEqual(
+            config['cluster']['cluster_config']['label_selector'],
+            expected_default_label_selector_config
+        )
+
+        print(f"Exit code: {result.exit_code}")
+        print(f"Output: {result.output}")
+        if result.exception:
+            print(f"Exception: {result.exception}")
 
     @mock.patch('subprocess.run')
     @mock.patch("yaml.dump")
