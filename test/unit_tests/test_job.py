@@ -576,7 +576,6 @@ class JobTest(unittest.TestCase):
         if result.exception:
             print(f"Exception: {result.exception}")
 
-
     @mock.patch('subprocess.run')
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)

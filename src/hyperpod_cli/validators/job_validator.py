@@ -192,11 +192,6 @@ def validate_yaml_content(data):
         required_labels[KUBERNETES_INSTANCE_TYPE_LABEL_KEY] = (
             [str(instance_type)]
         )
-    if instance_type not in required_labels[KUBERNETES_INSTANCE_TYPE_LABEL_KEY]:
-        logger.error(
-            f"Please ensure 'instance-type' in 'cluster' matches with 'instance-type' in 'label_selector.required.beta.kubernetes.io/instance-type' in config file"
-        )
-        return False
 
     auto_resume = False
     max_retry = None

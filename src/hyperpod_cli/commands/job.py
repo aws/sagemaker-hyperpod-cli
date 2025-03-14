@@ -662,7 +662,7 @@ def start_job(
                 config["cluster"]["cluster_config"]["volumes"] = volume_mount
 
             if label_selector is not None:
-                config["cluster"]["cluster_config"]["label_selector"] = label_selector
+                config["cluster"]["cluster_config"]["label_selector"] = json.loads(label_selector)
             elif deep_health_check_passed_nodes_only:
                 config["cluster"]["cluster_config"]["label_selector"] = (
                     DEEP_HEALTH_CHECK_PASSED_ONLY_NODE_AFFINITY_DICT
@@ -672,14 +672,13 @@ def start_job(
                     NODE_AFFINITY_DICT
                 )
 
-            label_selector = config["cluster"].setdefault("label_selector",{})
+            label_selector = config["cluster"]["cluster_config"].setdefault("label_selector",{})
             required_labels = label_selector.setdefault("required", {})
 
             if not required_labels.get(KUBERNETES_INSTANCE_TYPE_LABEL_KEY):
                 required_labels[KUBERNETES_INSTANCE_TYPE_LABEL_KEY] = (
                     [str(instance_type)]
                 )
-
 
             if auto_resume:
                 # Set max_retry default to 1
