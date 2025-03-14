@@ -628,7 +628,7 @@ class JobTest(unittest.TestCase):
                 "--image", "pytorch:1.9.0-cuda11.1-cudnn8-runtime",
                 "--node-count", "2",
                 "--entry-script", "/opt/train/src/train.py",
-                "--label_selector", 
+                "--label-selector", 
                 '{"preferred": {"beta.kubernetes.io/instance-type": ["ml.c5.xlarge"]}}',
             ],
             catch_exceptions=False

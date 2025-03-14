@@ -673,14 +673,16 @@ def start_job(
                 )
 
             label_selector = config["cluster"]["cluster_config"].setdefault("label_selector",{})
-            required_labels = label_selector.setdefault("required", {})
-            preferred_labels = label_selector.setdefault("preferred", {})
+            required_labels = label_selector.get("required", {})
+            preferred_labels = label_selector.get("preferred", {})
 
             if (
                 not required_labels.get(KUBERNETES_INSTANCE_TYPE_LABEL_KEY) and
                 not preferred_labels.get(KUBERNETES_INSTANCE_TYPE_LABEL_KEY)
             ):
-                required_labels[KUBERNETES_INSTANCE_TYPE_LABEL_KEY] = (
+                if "required" not in label_selector:
+                    label_selector["required"] = {}
+                label_selector["required"][KUBERNETES_INSTANCE_TYPE_LABEL_KEY] = (
                     [str(instance_type)]
                 )
 

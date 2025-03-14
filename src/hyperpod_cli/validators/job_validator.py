@@ -186,13 +186,15 @@ def validate_yaml_content(data):
         queue_name = custom_labels.get(KUEUE_QUEUE_NAME_LABEL_KEY, None)
 
     label_selector = cluster_config_fields.setdefault("label_selector",{})
-    required_labels = label_selector.setdefault("required", {})
-    preferred_labels = label_selector.setdefault("preferred", {})
+    required_labels = label_selector.get("required", {})
+    preferred_labels = label_selector.get("preferred", {})
 
     if (
         not required_labels.get(KUBERNETES_INSTANCE_TYPE_LABEL_KEY) and 
         not preferred_labels.get(KUBERNETES_INSTANCE_TYPE_LABEL_KEY)
     ):
+        if "required" not in label_selector:
+            label_selector["required"] = {}
         required_labels[KUBERNETES_INSTANCE_TYPE_LABEL_KEY] = (
             [str(instance_type)]
         )
