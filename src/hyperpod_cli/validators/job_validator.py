@@ -195,7 +195,7 @@ def validate_yaml_content(data):
     ):
         if "required" not in label_selector:
             label_selector["required"] = {}
-        required_labels[KUBERNETES_INSTANCE_TYPE_LABEL_KEY] = (
+        label_selector["required"][KUBERNETES_INSTANCE_TYPE_LABEL_KEY] = (
             [str(instance_type)]
         )
 
