@@ -1086,6 +1086,101 @@ class TestJobValidator(unittest.TestCase):
         }
         result = validate_yaml_content(mock_data)
         self.assertTrue(result)
+        
+    def test_validate_yaml_content_preferred_instance_type_label(self):
+        expected_label_selector = {
+            "preferred": {
+                "node.kubernetes.io/instance-type": [
+                    "ml.g5.xlarge"
+                ]
+            }
+        }
+        
+        # Respect user provided label_selector
+        mock_data = {
+            "cluster": {
+                "cluster_type": "k8s",
+                "instance_type": "ml.g5.xlarge",
+                "cluster_config": {
+                    "scheduler": "SageMaker",
+                    "label_selector": {
+                        "preferred": {
+                            "node.kubernetes.io/instance-type": [
+                                "ml.g5.xlarge"
+                            ]
+                        }
+                    }
+                },
+            }
+        }
+        
+        result = validate_yaml_content(mock_data)
+        self.assertTrue(result)
+        self.assertEqual(
+            mock_data["cluster"]["cluster_config"]["label_selector"], expected_label_selector
+        )
+    
+    def test_validate_yaml_content_required_instance_type_label(self):
+        expected_label_selector = {
+            "required": {
+                "node.kubernetes.io/instance-type": [
+                    "ml.g5.xlarge"
+                ]
+            }
+        }
+        
+        # User does not provide label_selector
+        mock_data = {
+            "cluster": {
+                "cluster_type": "k8s",
+                "instance_type": "ml.g5.xlarge",
+                "cluster_config": {
+                    "scheduler": "SageMaker"
+                },
+            }
+        }
+        
+        result = validate_yaml_content(mock_data)
+        self.assertTrue(result)
+        self.assertEqual(
+            mock_data["cluster"]["cluster_config"]["label_selector"], expected_label_selector
+        )
+        
+        expected_label_selector = {
+            "required": {
+                "sagemaker.amazonaws.com/node-health-status": [
+                    "Schedulable"
+                ],
+                "node.kubernetes.io/instance-type": [
+                    "ml.g5.xlarge"
+                ]
+            }
+        }
+        
+        # User provides label_selector without instance_type
+        mock_data = {
+            "cluster": {
+                "cluster_type": "k8s",
+                "instance_type": "ml.g5.xlarge",
+                "cluster_config": {
+                    "scheduler": "SageMaker",
+                    "label_selector": {
+                        "required": {
+                            "sagemaker.amazonaws.com/node-health-status": [
+                                "Schedulable"
+                            ]
+                        }
+                    }
+                },
+            }
+        }
+        
+        result = validate_yaml_content(mock_data)
+        self.assertTrue(result)
+        self.assertEqual(
+            mock_data["cluster"]["cluster_config"]["label_selector"], expected_label_selector
+        )
+
 
     def test_validate_yaml_content_error_no_cluster(
         self,
