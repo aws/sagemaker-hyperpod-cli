@@ -527,7 +527,7 @@ class JobTest(unittest.TestCase):
         expected_default_label_selector_config = {
             "required": {
                 "sagemaker.amazonaws.com/node-health-status": ["Schedulable"],
-                "beta.kubernetes.io/instance-type": ["ml.c5.xlarge"]
+                "node.kubernetes.io/instance-type": ["ml.c5.xlarge"]
             },
             "preferred": {"sagemaker.amazonaws.com/deep-health-check-status": ["Passed"]},
             "weights": [100],
@@ -608,7 +608,7 @@ class JobTest(unittest.TestCase):
         )
 
         expected_default_label_selector_config = {
-            "preferred": {"beta.kubernetes.io/instance-type": ["ml.c5.xlarge"]},
+            "preferred": {"node.kubernetes.io/instance-type": ["ml.c5.xlarge"]},
         }
 
         # Capture the yaml.dump calls to inspect the config
@@ -629,7 +629,7 @@ class JobTest(unittest.TestCase):
                 "--node-count", "2",
                 "--entry-script", "/opt/train/src/train.py",
                 "--label-selector", 
-                '{"preferred": {"beta.kubernetes.io/instance-type": ["ml.c5.xlarge"]}}',
+                '{"preferred": {"node.kubernetes.io/instance-type": ["ml.c5.xlarge"]}}',
             ],
             catch_exceptions=False
         )

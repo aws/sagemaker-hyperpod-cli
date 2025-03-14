@@ -1090,7 +1090,7 @@ class TestJobValidator(unittest.TestCase):
     def test_validate_yaml_content_preferred_instance_type_label(self):
         expected_label_selector = {
             "preferred": {
-                "beta.kubernetes.io/instance-type": [
+                "node.kubernetes.io/instance-type": [
                     "ml.g5.xlarge"
                 ]
             }
@@ -1105,7 +1105,7 @@ class TestJobValidator(unittest.TestCase):
                     "scheduler": "SageMaker",
                     "label_selector": {
                         "preferred": {
-                            "beta.kubernetes.io/instance-type": [
+                            "node.kubernetes.io/instance-type": [
                                 "ml.g5.xlarge"
                             ]
                         }
@@ -1123,7 +1123,7 @@ class TestJobValidator(unittest.TestCase):
     def test_validate_yaml_content_required_instance_type_label(self):
         expected_label_selector = {
             "required": {
-                "beta.kubernetes.io/instance-type": [
+                "node.kubernetes.io/instance-type": [
                     "ml.g5.xlarge"
                 ]
             }
@@ -1151,7 +1151,7 @@ class TestJobValidator(unittest.TestCase):
                 "sagemaker.amazonaws.com/node-health-status": [
                     "Schedulable"
                 ],
-                "beta.kubernetes.io/instance-type": [
+                "node.kubernetes.io/instance-type": [
                     "ml.g5.xlarge"
                 ]
             }
