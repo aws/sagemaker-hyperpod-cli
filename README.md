@@ -147,7 +147,7 @@ hyperpod start-job --job-name <job-name> [--namespace <namespace>] [--job-kind <
 * `script-args` (list[string]) - Optional. The list of arguments for entry scripts.
 * `environment` (dict[string, string]) - Optional. The environment variables (key-value pairs) to set in the containers.
 * `node-count` (int) - Required. The number of nodes (instances) to launch the jobs on.
-* `instance-type` (string) - Required. The instance type to launch the job on. Note that the instance types you can use are the available instances within your SageMaker quotas for instances prefixed with `ml`.
+* `instance-type` (string) - Required. The instance type to launch the job on. Note that the instance types you can use are the available instances within your SageMaker quotas for instances prefixed with `ml`. If `node.kubernetes.io/instance-type` is provided via the `label-selector` it will take precedence for node selection.
 * `tasks-per-node` (int) - Optional. The number of devices to use per instance.
 * `label-selector` (dict[string, list[string]]) - Optional. A dictionary of labels and their values that will override the predefined node selection rules based on the SageMaker HyperPod `node-health-status` label and values. If users provide this field, the CLI will launch the job with this customized label selection.
 * `deep-health-check-passed-nodes-only` (bool) - Optional. If set to `true`, the job will be launched only on nodes that have the `deep-health-check-status` label with the value `passed`.

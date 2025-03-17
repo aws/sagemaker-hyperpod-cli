@@ -24,6 +24,7 @@ from hyperpod_cli.constants.command_constants import (
     KUEUE_QUEUE_NAME_LABEL_KEY,
     HYPERPOD_AUTO_RESUME_ANNOTATION_KEY,
     HYPERPOD_MAX_RETRY_ANNOTATION_KEY,
+    INSTANCE_TYPE_LABEL,
     SchedulerType
 )
 from hyperpod_cli.constants.hyperpod_instance_types import (
@@ -183,6 +184,20 @@ def validate_yaml_content(data):
     queue_name = None
     if custom_labels is not None:
         queue_name = custom_labels.get(KUEUE_QUEUE_NAME_LABEL_KEY, None)
+
+    label_selector = cluster_config_fields.setdefault("label_selector",{})
+    required_labels = label_selector.get("required", {})
+    preferred_labels = label_selector.get("preferred", {})
+
+    if (
+        not required_labels.get(INSTANCE_TYPE_LABEL) and
+        not preferred_labels.get(INSTANCE_TYPE_LABEL)
+    ):
+        if "required" not in label_selector:
+            label_selector["required"] = {}
+        label_selector["required"][INSTANCE_TYPE_LABEL] = (
+            [str(instance_type)]
+        )
 
     auto_resume = False
     max_retry = None
