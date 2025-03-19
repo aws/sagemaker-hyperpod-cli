@@ -723,7 +723,7 @@ def start_job(
             # Handle pre_script
             if pre_script:
                 _override_or_remove(
-                    config["cluster"]["cluster_config"], 
+                    config["training_cfg"],
                     "pre_script", 
                     pre_script.split(',')
                 )
@@ -731,7 +731,7 @@ def start_job(
             # Handle post_script
             if post_script:
                 _override_or_remove(
-                    config["cluster"]["cluster_config"], 
+                    config["training_cfg"],
                     "post_script", 
                     post_script.split(',')
                 )

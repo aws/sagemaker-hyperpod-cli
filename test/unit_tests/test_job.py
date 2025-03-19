@@ -763,8 +763,8 @@ class JobTest(unittest.TestCase):
         # Assert that yaml.dump was called with the correct configuration
         mock_yaml_dump.assert_called_once()
         call_args = mock_yaml_dump.call_args[0]
-        self.assertEqual(call_args[0]['cluster']['cluster_config']['pre_script'], ["echo 'test'", " echo 'test 1'"])
-        self.assertEqual(call_args[0]['cluster']['cluster_config']['post_script'], ["echo 'test 1'", " echo 'test 2'"])
+        self.assertEqual(call_args[0]['training_cfg']['pre_script'], ["echo 'test'", " echo 'test 1'"])
+        self.assertEqual(call_args[0]['training_cfg']['post_script'], ["echo 'test 1'", " echo 'test 2'"])
         
         self.assertEqual(result.exit_code, 1)
 
