@@ -890,6 +890,53 @@ class JobTest(unittest.TestCase):
     @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("hyperpod_cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
+    def test_start_job_with_cli_args_pre_script_and_post_script(
+        self,
+        mock_boto3,
+        mock_validator_cls,
+        mock_kubernetes_client,
+        mock_yaml_dump,
+    ):
+        mock_validator = mock_validator_cls.return_value
+        mock_validator.validate_aws_credential.return_value = True
+        mock_kubernetes_client.get_current_context_namespace.return_value = "kubeflow"
+        mock_yaml_dump.return_value = None
+        result = self.runner.invoke(
+            start_job,
+            [
+                "--job-name",
+                "test-job",
+                "--instance-type",
+                "ml.c5.xlarge",
+                "--image",
+                "pytorch:1.9.0-cuda11.1-cudnn8-runtime",
+                "--node-count",
+                "2",
+                "--label-selector",
+                "{NonJsonStr",
+                "--entry-script",
+                "/opt/train/src/train.py",
+                "--pre-script",
+                "echo 'test', echo 'test 1'",
+                "--post-script",
+                "echo 'test 1', echo 'test 2'",
+                "--label-selector", 
+                '{"preferred": {"node.kubernetes.io/instance-type": ["ml.c5.xlarge"]}}'
+            ],
+        )
+
+        # Assert that yaml.dump was called with the correct configuration
+        mock_yaml_dump.assert_called_once()
+        call_args = mock_yaml_dump.call_args[0]
+        self.assertEqual(call_args[0]['training_cfg']['pre_script'], ["echo 'test'", " echo 'test 1'"])
+        self.assertEqual(call_args[0]['training_cfg']['post_script'], ["echo 'test 1'", " echo 'test 2'"])
+        
+        self.assertEqual(result.exit_code, 1)
+
+    @mock.patch("yaml.dump")
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_label_selection_invalid_values(
         self,
         mock_boto3,

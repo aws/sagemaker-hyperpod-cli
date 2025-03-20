@@ -432,6 +432,18 @@ def cancel_job(
     " <volume_name>:</host/mount/path>:</container/mount/path>,<volume_name>:</host/mount/path1>:</container/mount/path1>",
 )
 @click.option(
+    "--pre-script",
+    type=click.STRING,
+    required=False,
+    help="Optional. Commands to run before the job starts. Multiple commands should be separated by semicolons.",
+)
+@click.option(
+    "--post-script",
+    type=click.STRING,
+    required=False,
+    help="Optional. Commands to run after the job completes. Multiple commands should be separated by semicolons.",
+)
+@click.option(
     "--recipe",
     type=click.STRING,
     required=False,
@@ -549,6 +561,8 @@ def start_job(
     service_account_name: Optional[str],
     persistent_volume_claims: Optional[str],
     volumes: Optional[str],
+    pre_script: Optional[str],
+    post_script: Optional[str],
     recipe: Optional[str],
     override_parameters: Optional[str],
     debug: bool,
@@ -721,6 +735,23 @@ def start_job(
                 custom_labels[KUEUE_WORKLOAD_PRIORITY_CLASS_LABEL_KEY] = priority
                 priority = None
 
+            # Handle pre_script
+            if pre_script:
+                _override_or_remove(
+                    config["training_cfg"],
+                    "pre_script", 
+                    pre_script.split(',')
+                )
+            
+            # Handle post_script
+            if post_script:
+                _override_or_remove(
+                    config["training_cfg"],
+                    "post_script", 
+                    post_script.split(',')
+                )
+
+
             _override_or_remove(
                 config["cluster"]["cluster_config"],
                 "custom_labels",
@@ -807,7 +838,7 @@ def start_job(
         auto_resume=auto_resume,
         label_selector=label_selector,
         max_retry=max_retry,
-        deep_health_check_passed_nodes_only=deep_health_check_passed_nodes_only,
+        deep_health_check_passed_nodes_only=deep_health_check_passed_nodes_only
     )
     # TODO: Unblock this after fixing customer using EKS cluster.
     console_link = utils.get_cluster_console_url()
