@@ -919,7 +919,9 @@ class JobTest(unittest.TestCase):
                 "--pre-script",
                 "echo 'test', echo 'test 1'",
                 "--post-script",
-                "echo 'test 1', echo 'test 2'"
+                "echo 'test 1', echo 'test 2'",
+                "--label-selector", 
+                '{"preferred": {"node.kubernetes.io/instance-type": ["ml.c5.xlarge"]}}'
             ],
         )
 
