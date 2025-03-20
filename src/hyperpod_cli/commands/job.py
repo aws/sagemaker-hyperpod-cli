@@ -32,6 +32,7 @@ from hyperpod_cli.constants.command_constants import (
     HYPERPOD_KUBERNETES_JOB_PREFIX,
     HYPERPOD_MAX_RETRY_ANNOTATION_KEY,
     HYPERPOD_NAMESPACE_PREFIX,
+    INSTANCE_TYPE_LABEL,
     KUEUE_JOB_UID_LABEL_KEY,
     KUEUE_QUEUE_NAME_LABEL_KEY,
     KUEUE_WORKLOAD_PRIORITY_CLASS_LABEL_KEY,
@@ -675,7 +676,7 @@ def start_job(
                 config["cluster"]["cluster_config"]["volumes"] = volume_mount
 
             if label_selector is not None:
-                config["cluster"]["cluster_config"]["label_selector"] = label_selector
+                config["cluster"]["cluster_config"]["label_selector"] = json.loads(label_selector)
             elif deep_health_check_passed_nodes_only:
                 config["cluster"]["cluster_config"]["label_selector"] = (
                     DEEP_HEALTH_CHECK_PASSED_ONLY_NODE_AFFINITY_DICT
@@ -683,6 +684,20 @@ def start_job(
             else:
                 config["cluster"]["cluster_config"]["label_selector"] = (
                     NODE_AFFINITY_DICT
+                )
+
+            label_selector = config["cluster"]["cluster_config"].setdefault("label_selector",{})
+            required_labels = label_selector.get("required", {})
+            preferred_labels = label_selector.get("preferred", {})
+
+            if (
+                not required_labels.get(INSTANCE_TYPE_LABEL) and
+                not preferred_labels.get(INSTANCE_TYPE_LABEL)
+            ):
+                if "required" not in label_selector:
+                    label_selector["required"] = {}
+                label_selector["required"][INSTANCE_TYPE_LABEL] = (
+                    [str(instance_type)]
                 )
 
             if auto_resume:
