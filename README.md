@@ -134,7 +134,7 @@ hyperpod connect-cluster --cluster-name <cluster-name> [--region <region>] [--na
 This command submits a new training job to the connected SageMaker HyperPod cluster.
 
 ```
-hyperpod start-job --job-name <job-name> [--namespace <namespace>] [--job-kind <kubeflow/PyTorchJob>] [--image <image>] [--command <command>] [--entry-script <script>] [--script-args <arg1 arg2>] [--environment <key=value>] [--pull-policy <Always|IfNotPresent|Never>] [--instance-type <instance-type>] [--node-count <count>] [--tasks-per-node <count>] [--label-selector <key=value>] [--deep-health-check-passed-nodes-only] [--scheduler-type <Kueue SageMaker None>] [--queue-name <queue-name>] [--priority <priority>] [--auto-resume] [--max-retry <count>] [--restart-policy <Always|OnFailure|Never|ExitCode>] [--volumes <volume1,volume2>] [--persistent-volume-claims <claim1:/mount/path,claim2:/mount/path>] [--results-dir <dir>] [--service-account-name <account>]
+hyperpod start-job --job-name <job-name> [--namespace <namespace>] [--job-kind <kubeflow/PyTorchJob>] [--image <image>] [--command <command>] [--entry-script <script>] [--script-args <arg1 arg2>] [--environment <key=value>] [--pull-policy <Always|IfNotPresent|Never>] [--instance-type <instance-type>] [--node-count <count>] [--tasks-per-node <count>] [--label-selector <key=value>] [--deep-health-check-passed-nodes-only] [--scheduler-type <Kueue SageMaker None>] [--queue-name <queue-name>] [--priority <priority>] [--auto-resume] [--max-retry <count>] [--restart-policy <Always|OnFailure|Never|ExitCode>] [--volumes <volume1,volume2>] [--persistent-volume-claims <claim1:/mount/path,claim2:/mount/path>] [--results-dir <dir>] [--service-account-name <account>] [--pre-script <cmd1 cmd2>] [--post-script <cmd1 cmd2>]
 ```
 
 * `job-name` (string) - Required. The base name of the job. A unique identifier (UUID) will automatically be appended to the name like `<job-name>-<UUID>`.
@@ -147,6 +147,9 @@ hyperpod start-job --job-name <job-name> [--namespace <namespace>] [--job-kind <
 * `script-args` (list[string]) - Optional. The list of arguments for entry scripts.
 * `environment` (dict[string, string]) - Optional. The environment variables (key-value pairs) to set in the containers.
 * `node-count` (int) - Required. The number of nodes (instances) to launch the jobs on.
+* `instance-type` (string) - Required. The instance type to launch the job on. Note that the instance types you can use are the available instances within your SageMaker quotas for instances prefixed with `ml`.
+* `pre-script` (list[string]) - Optional. Commands to run before the job starts. Multiple commands should be separated by comma.
+* `post-script` (list[string]) - Optional. Commands to run after the job completes. Multiple commands should be separated by comma.
 * `instance-type` (string) - Required. The instance type to launch the job on. Note that the instance types you can use are the available instances within your SageMaker quotas for instances prefixed with `ml`. If `node.kubernetes.io/instance-type` is provided via the `label-selector` it will take precedence for node selection.
 * `tasks-per-node` (int) - Optional. The number of devices to use per instance.
 * `label-selector` (dict[string, list[string]]) - Optional. A dictionary of labels and their values that will override the predefined node selection rules based on the SageMaker HyperPod `node-health-status` label and values. If users provide this field, the CLI will launch the job with this customized label selection.
