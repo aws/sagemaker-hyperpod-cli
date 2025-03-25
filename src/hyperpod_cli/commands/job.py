@@ -48,6 +48,7 @@ from hyperpod_cli.constants.command_constants import (
     PersistentVolumeClaim,
     SchedulerType,
     Volume,
+    USER_NAME_LABEL_KEY,
 )
 from hyperpod_cli.clients.kubernetes_client import (
     KubernetesClient,
@@ -579,6 +580,9 @@ def start_job(
         logger.error("Cannot start Training job due to AWS credentials issue")
         sys.exit(1)
 
+    # get caller's user name
+    user_name = get_user_name()
+
     if namespace is None and config_file is None:
         namespace = _get_auto_fill_namespace_for_create_job()
     
@@ -714,6 +718,10 @@ def start_job(
                 config["cluster"]["cluster_config"].pop("annotations")
 
             custom_labels = {}
+
+            # attach user label
+            custom_labels[USER_NAME_LABEL_KEY] = user_name
+
             _override_or_remove(
                 config["cluster"]["cluster_config"], "pullPolicy", pull_policy
             )
@@ -787,8 +795,11 @@ def start_job(
         cluster_config = config.get("cluster").get("cluster_config")
         namespace = cluster_config.get("namespace", None)
         scheduler_type = cluster_config.get("scheduler_type", SchedulerType.get_default().value)
+
         custom_labels = cluster_config.get("custom_labels", {})
         custom_labels = {} if custom_labels is None else custom_labels
+        custom_labels[USER_NAME_LABEL_KEY] = user_name
+
         queue_name = custom_labels.get(KUEUE_QUEUE_NAME_LABEL_KEY, None)
         # Autofill namespace
         if namespace is None:
@@ -1121,4 +1132,14 @@ def start_training_job(recipe, override_parameters, job_name, config_file, launc
         if os.path.exists(file_to_delete):
             os.remove(file_to_delete)
 
-
+def get_user_name():
+    caller_arn = boto3.client("sts").get_caller_identity().get('Arn')
+    if 'user/' in caller_arn:
+        user_name = 'User-' + caller_arn.split('user/')[-1]
+    elif 'assumed-role' in caller_arn:
+        user_name = 'AssumedRole-' + caller_arn.split('assumed-role/')[-1]
+    else:
+        user_name = 'Unknown'
+    
+    # label value does not allow slash
+    return user_name.replace('/', '-')
