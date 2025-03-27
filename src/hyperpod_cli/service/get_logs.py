@@ -110,10 +110,10 @@ class GetLogs:
             cloudwatch_url = self.get_log_url(eks_cluster_name, region, node_name, pod_name, namespace, container_name, container_id)
 
             if not validate_region_and_cluster_name(region, eks_cluster_name):
-                return 'Failed to validate Eks cluster name and region'
+                raise ValueError('Eks cluster name or cluster region is invalid.')
 
             if not re.match(CONTAINER_INSIGHTS_LOG_REGEX_PATTERN, cloudwatch_url):
-                return 'Failed to validate cloudwatch log url. Please verify node name, pod container name and container id are valid'
+                raise ValueError("Failed to validate cloudwatch log url. Please make sure pod's node name, container name and container id are valid")
             
             cloudwatch_link = f'The pod cloudwatch log stream link is {cloudwatch_url}'
         else:
