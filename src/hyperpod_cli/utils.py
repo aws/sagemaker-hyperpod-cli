@@ -121,7 +121,7 @@ def _validate_link(console_url):
         return False
 
 
-def _validate_placeholders(region, cluster_name):
+def validate_region_and_cluster_name(region, cluster_name):
     output = False
     region_char_list = region.split("-")
 
@@ -135,6 +135,9 @@ def _validate_placeholders(region, cluster_name):
     region_prefix_length = len(region_char_list[0])
     region_length = len(region_char_list[1])
     region_suffix_length = len(region_char_list[2])
+
+    cluster_name_match = re.match("[a-zA-Z0-9-]+", cluster_name)
+
     if (
         region_prefix_match
         and region_match
@@ -143,6 +146,7 @@ def _validate_placeholders(region, cluster_name):
         and region_suffix_length == 1
         and region_length >= 4
         and region_length < 10
+        and cluster_name_match
         and len(cluster_name) >= 1
         and len(cluster_name) <= 63
     ):
@@ -165,7 +169,7 @@ def get_cluster_console_url():
             f"https://{region}.console.aws.amazon.com/sagemaker/"
             f"home?region={region}#/cluster-management/{cluster_name}"
         )
-        if _validate_link(console_url) and _validate_placeholders(region, cluster_name):
+        if _validate_link(console_url) and validate_region_and_cluster_name(region, cluster_name):
             return console_url
     return None
 

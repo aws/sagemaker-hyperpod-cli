@@ -23,9 +23,11 @@ from hyperpod_cli.service.list_pods import (
 from hyperpod_cli.utils import (
     get_eks_cluster_name,
     get_hyperpod_cluster_region,
+    validate_region_and_cluster_name,
 )
 from kubernetes.client.rest import ApiException
 from kubernetes.client import V1ResourceAttributes
+import re
 
 AMAZON_ClOUDWATCH_OBSERVABILITY = "amazon-cloudwatch-observability"
 
@@ -103,17 +105,28 @@ class GetLogs:
                 container_id = None         
 
             # Cloudwatch container insight log groups should have the same pod log as API response
-            if node_name and pod_name and namespace and container_name and container_id:
-                region = get_hyperpod_cluster_region()
+            region = get_hyperpod_cluster_region()
+            cloudwatch_url = self.get_log_url(eks_cluster_name, region, node_name, pod_name, namespace, container_name, container_id)
 
-                cloudwatch_url = self.get_log_url(eks_cluster_name, region, node_name, pod_name, namespace, container_name, container_id)
-                cloudwatch_link = f'The pod cloudwatch log stream link is {cloudwatch_url}'
-            else:
-                cloudwatch_link = 'Failed to load container insights CloudWatch Link!'
+            if not validate_region_and_cluster_name(region, eks_cluster_name):
+                return 'Failed to validate Eks cluster name and region'
+
+            if not self._validate_log_url(cloudwatch_url):
+                return 'Failed to validate cloudwatch log url. Please verify node name, pod container name and container id are valid'
+            
+            cloudwatch_link = f'The pod cloudwatch log stream link is {cloudwatch_url}'
         else:
             cloudwatch_link = None
 
         return cloudwatch_link
+
+    def _validate_log_url(self, log_url):
+        pattern = "https:\/\/([a-z0-9-]+).console.aws.amazon.com\/cloudwatch\/home\?region=([a-z0-9-]+)#logsV2:log-groups\/log-group\/\$252Faws\$252Fcontainerinsights\$252F([a-zA-Z0-9-]+)\$252Fapplication\/log-events\/([a-z0-9-]+)-application.var.log.containers.([a-z0-9-]+)_([a-z0-9-]+)_([a-z0-9-]+)-([a-z0-9-]+).log"
+        match = re.match(pattern, log_url)
+        if match:
+            return True
+        else:
+            return False
 
     def get_log_url(self, eks_cluster_name, region, node_name, pod_name, namespace, container_name, container_id):
         console_prefix = f'https://{region}.console.aws.amazon.com/cloudwatch/home?region={region}#'
