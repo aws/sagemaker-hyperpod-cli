@@ -35,11 +35,14 @@ class PodTest(unittest.TestCase):
 
     @mock.patch("hyperpod_cli.service.get_logs.GetLogs")
     @mock.patch("hyperpod_cli.service.get_logs.GetLogs.get_training_job_logs")
+    @mock.patch("hyperpod_cli.service.get_logs.GetLogs.generate_cloudwatch_link")
     def test_get_logs_happy_case(
         self,
+        mock_get_logs_service_and_generate_cloudwatch_link: mock.Mock,
         mock_get_logs_service_and_get_logs: mock.Mock,
         mock_get_logs_service: mock.Mock,
     ):
+        mock_get_logs_service_and_generate_cloudwatch_link.return_value = 'link'
         mock_get_logs_service.return_value = self.mock_get_job_log
         mock_get_logs_service_and_get_logs.return_value = "{}"
         result = self.runner.invoke(
@@ -55,15 +58,19 @@ class PodTest(unittest.TestCase):
 
     @mock.patch("hyperpod_cli.service.get_logs.GetLogs")
     @mock.patch("hyperpod_cli.service.get_logs.GetLogs.get_training_job_logs")
+    @mock.patch("hyperpod_cli.service.get_logs.GetLogs.generate_cloudwatch_link")
     @mock.patch("logging.Logger.debug")
     def test_get_logs_happy_case_debug_mode(
         self,
         mock_debug: mock.Mock,
+         mock_get_logs_service_and_generate_cloudwatch_link: mock.Mock,
         mock_get_logs_service_and_get_logs: mock.Mock,
         mock_get_logs_service: mock.Mock,
     ):
         mock_get_logs_service.return_value = self.mock_get_job_log
         mock_get_logs_service_and_get_logs.return_value = "{}"
+        mock_get_logs_service_and_generate_cloudwatch_link.return_value = 'link'
+
         result = self.runner.invoke(
             get_log,
             [
@@ -79,13 +86,17 @@ class PodTest(unittest.TestCase):
 
     @mock.patch("hyperpod_cli.service.get_logs.GetLogs")
     @mock.patch("hyperpod_cli.service.get_logs.GetLogs.get_training_job_logs")
+    @mock.patch("hyperpod_cli.service.get_logs.GetLogs.generate_cloudwatch_link")
     def test_describe_job_happy_case_with_namespace(
         self,
+        mock_get_logs_service_and_generate_cloudwatch_link: mock.Mock,
         mock_get_logs_service_and_get_logs: mock.Mock,
         mock_get_logs_service: mock.Mock,
     ):
         mock_get_logs_service.return_value = self.mock_get_job_log
         mock_get_logs_service_and_get_logs.return_value = "{}"
+        mock_get_logs_service_and_generate_cloudwatch_link.return_value = 'link'
+
         result = self.runner.invoke(
             get_log,
             [

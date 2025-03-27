@@ -23,6 +23,8 @@ from hyperpod_cli.utils import (
     setup_logger,
     get_cluster_console_url,
     store_current_hyperpod_context,
+    get_eks_cluster_name,
+    get_hyperpod_cluster_region,
 )
 
 DATA_JSON = {
@@ -36,7 +38,8 @@ DATA = (
     '{"ClusterArn": "arn:aws:sagemaker:us-west-2:1234567890:cluster/test",'
     ' "ClusterName": "hyperpod-eks-test",'
     ' "ClusterStatus": "InService",'
-    ' "CreationTime": "2024-08-17 01:26:35.921000+00:00"}'
+    ' "CreationTime": "2024-08-17 01:26:35.921000+00:00",'
+    ' "Orchestrator": {"Eks": {"ClusterArn":"arn:aws:eks:us-west-2:593793038179:cluster/hyperpod-eks-test"}}}'
 )
 
 INVALID_DATA = (
@@ -296,3 +299,24 @@ class TestUtils(unittest.TestCase):
             "/tmp/hyperpod_current_context.json",
             "r",
         )
+
+    def test_get_eks_cluster_name(self):
+        mock_read = mock_open(read_data=DATA)
+        with patch("builtins.open", mock_read):
+            result = get_eks_cluster_name()
+        self.assertEqual(result, "hyperpod-eks-test")
+        mock_read.assert_called_once_with(
+            "/tmp/hyperpod_current_context.json",
+            "r",
+        )
+    
+    def test_get_hyperpod_cluster_region(self):
+        mock_read = mock_open(read_data=DATA)
+        with patch("builtins.open", mock_read):
+            result = get_hyperpod_cluster_region()
+        self.assertEqual(result, "us-west-2")
+        mock_read.assert_called_once_with(
+            "/tmp/hyperpod_current_context.json",
+            "r",
+        )
+

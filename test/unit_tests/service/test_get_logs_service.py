@@ -125,3 +125,20 @@ class TestGetLogs(unittest.TestCase):
             "sample-job", "test-pod", None
         )
         self.assertIn("test logs", result)
+
+    def test_get_log_url(
+        self,
+    ):
+        eks_cluster_name = 'eks_cluster_name'
+        region = 'us-west-2'
+        node_name = 'node_name'
+        pod_name = 'pod_name'
+        namespace = 'namespace'
+        container_name = 'container_name'
+        container_id = 'container_id'
+        result_url = self.mock_get_logs.get_log_url(eks_cluster_name, region, node_name, pod_name, namespace, container_name, container_id)
+
+        self.assertEqual(
+            result_url,
+            'https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#logsV2:log-groups/log-group/$252Faws$252Fcontainerinsights$252Feks_cluster_name$252Fapplication/log-events/node_name-application.var.log.containers.pod_name_namespace_container_name-container_id.log'
+        )

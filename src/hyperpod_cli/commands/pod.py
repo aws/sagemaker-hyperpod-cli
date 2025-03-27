@@ -76,7 +76,13 @@ def get_log(
         sys.exit(
             f"Unexpected error happens when trying to get logs for training job {job_name} : {e}"
         )
-
+    
+    try:
+        cloudwatch_link = get_logs_service.generate_cloudwatch_link(pod, namespace=namespace)
+        if cloudwatch_link:
+            click.echo(cloudwatch_link)
+    except Exception as e:
+        click.echo(f"WARNING: Failed to generate container insights cloudwatch link: {e}")
 
 def _exec_command_required_option_pod_and_all_pods():
     class OptionRequiredClass(click.Command):
