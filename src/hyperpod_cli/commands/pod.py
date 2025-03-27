@@ -72,6 +72,10 @@ def get_log(
             job_name, pod, namespace=namespace
         )
         click.echo(result)
+
+        cloudwatch_link = get_logs_service.generate_cloudwatch_link(pod, namespace=namespace)
+        if cloudwatch_link:
+            click.echo(cloudwatch_link)
     except Exception as e:
         sys.exit(
             f"Unexpected error happens when trying to get logs for training job {job_name} : {e}"

@@ -275,6 +275,11 @@ class KubernetesClient:
             plural=PYTORCH_CUSTOM_OBJECT_PLURAL,
             name=job_name,
         )
+    
+    def get_pod_details(self, pod_name: str, namespace: str):
+        return client.CoreV1Api().read_namespaced_pod(
+            name=pod_name, namespace=namespace
+        )
 
     def delete_training_job(self, job_name: str, namespace: str):
         return client.CustomObjectsApi().delete_namespaced_custom_object(

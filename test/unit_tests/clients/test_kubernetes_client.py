@@ -521,6 +521,15 @@ class TestKubernetesClient(unittest.TestCase):
         self.assertIn("test log", result)
 
     @patch(
+        "kubernetes.client.CoreV1Api",
+        return_value=Mock(read_namespaced_pod=Mock(return_value="pod details")),
+    )
+    def test_get_pod_details(self, mock_core_client: Mock):
+        test_client = KubernetesClient()
+        result = test_client.get_pod_details("test", "kubeflow")
+        self.assertIn("pod details", result)
+
+    @patch(
         "kubernetes.client.CustomObjectsApi",
         return_value=Mock(
             list_namespaced_custom_object=Mock(

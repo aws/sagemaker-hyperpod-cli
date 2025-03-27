@@ -113,7 +113,7 @@ def _retrieve_current_hyperpod_context():
 
 
 def _validate_link(console_url):
-    pattern = "https:\/\/([a-z0-9-]+).console.aws.amazon.com\/sagemaker\/home\?region=([a-z0-9-]+)#\/cluster-management\/([a-z0-9-]+)"
+    pattern = "https:\/\/([a-z0-9-]+).console.aws.amazon.com\/sagemaker\/home\?region=([a-z0-9-]+)#\/cluster-management\/([a-zA-Z0-9-]+)"
     match = re.match(pattern, console_url)
     if match:
         return True
@@ -168,3 +168,12 @@ def get_cluster_console_url():
         if _validate_link(console_url) and _validate_placeholders(region, cluster_name):
             return console_url
     return None
+
+def get_eks_cluster_name():
+    hyperpod_context_cluster = _retrieve_current_hyperpod_context()
+    eks_cluster_arn = hyperpod_context_cluster.get("Orchestrator", {}).get("Eks", {}).get("ClusterArn", '')
+    return eks_cluster_arn.split('cluster/')[-1]
+
+def get_hyperpod_cluster_region():
+    hyperpod_context_cluster = _retrieve_current_hyperpod_context()
+    return hyperpod_context_cluster.get("ClusterArn").split(":")[3]
