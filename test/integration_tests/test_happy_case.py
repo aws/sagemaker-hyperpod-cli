@@ -69,9 +69,11 @@ class TestHappyCase(AbstractIntegrationTests):
 
     def _get_job_name_from_run_output(self, output):
         for line in output.splitlines():
-            if line.startswith('NAME:'):
-                job_name = line.split('NAME:')[1].strip()
+            if line.startswith('Job') and "submission file created at" in line:
+                job_name = line.split(' ')[1].strip()
                 return job_name
+
+        logger.warning(f'No Job name is found from output, returning Job name as None!')
         return None
 
     @pytest.mark.order(1)
