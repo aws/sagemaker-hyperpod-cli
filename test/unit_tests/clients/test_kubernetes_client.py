@@ -661,3 +661,27 @@ class TestKubernetesClient(unittest.TestCase):
             plural="clusterqueues",
             name="test-cluster-queue",
         )
+
+    @patch(
+        "kubernetes.client.CoreV1Api",
+        return_value=Mock(
+            read_namespace=Mock(
+                return_value=V1Namespace(metadata=V1ObjectMeta(name="test"))
+            )
+        ),
+    )
+    def test_check_if_namespace_exists_true(self, mock_core_client: Mock):
+        test_client = KubernetesClient()
+        result = test_client.check_if_namespace_exists("kubeflow")
+        self.assertTrue(result)
+
+    @patch(
+        "kubernetes.client.CoreV1Api",
+        side_effect=client.rest.ApiException(
+            status=404,
+        ),
+    )
+    def test_check_if_namespace_exists_false(self, mock_core_client: Mock):
+        test_client = KubernetesClient()
+        result = test_client.check_if_namespace_exists("abcdef")
+        self.assertFalse(result)
