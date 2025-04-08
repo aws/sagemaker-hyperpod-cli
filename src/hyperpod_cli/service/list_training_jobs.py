@@ -70,6 +70,9 @@ class ListTrainingJobs:
                     namespace = DiscoverNamespaces().discover_accessible_namespace(
                         resource_attributes_template
                     )
+                else:
+                    if not k8s_client.check_if_namespace_exists(namespace):
+                        raise ValueError(f"Namespace {namespace} does not exist!")
 
                 namespace_jobs = k8s_client.list_training_jobs(
                     namespace=namespace,
