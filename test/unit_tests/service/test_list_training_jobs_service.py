@@ -273,6 +273,16 @@ class ListTrainingJobsTest(unittest.TestCase):
         result = self.mock_list_training_jobs.list_training_jobs(None, True, None, None)
         self.assertNotIn("State: null", result)
 
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    def test_list_training_jobs_namespace_not_exist(
+        self,
+        mock_kubernetes_client: mock.Mock,
+    ):
+        mock_kubernetes_client.return_value = self.mock_k8s_client
+        self.mock_k8s_client.check_if_namespace_exists.return_value = False
+        with self.assertRaises(ValueError):
+            self.mock_list_training_jobs.list_training_jobs("abcdef", False, None, None)
+
     def test_generate_table_with_no_priority_header_and_values(self):
         list_training_jobs = ListTrainingJobs()
         output_jobs = {
