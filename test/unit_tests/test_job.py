@@ -27,6 +27,7 @@ from kubernetes.client import (
 from hyperpod_cli.commands.job import (
     cancel_job,
     get_job,
+    get_user_name,
     list_jobs,
     list_pods,
     patch_job,
@@ -2126,3 +2127,16 @@ class JobTest(unittest.TestCase):
             ],
         )
         self.assertNotEqual(result.exit_code, 0)
+
+    @mock.patch("boto3.client")
+    def test_get_user_name_long_arn(self, mock_boto3_client):
+        mock_client = MagicMock()
+        mock_boto3_client.return_value = mock_client
+
+        mock_identity = MagicMock()
+        mock_client.get_caller_identity.return_value = mock_identity
+
+        long_user_name = "ReadOnly/AmazonSageMaker-a-long-long-long-long-long-long-long-arn-for-testing-get-user-name"
+        long_arn = "arn:aws:iam::0123456789012:assumed-role/" + long_user_name
+        mock_identity.get.return_value = long_arn
+        self.assertEqual(get_user_name(), "AssumedRole-" + long_user_name.replace("/", "-")[:51])
