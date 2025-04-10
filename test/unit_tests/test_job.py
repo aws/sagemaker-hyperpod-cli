@@ -2139,4 +2139,4 @@ class JobTest(unittest.TestCase):
         long_user_name = "ReadOnly/AmazonSageMaker-a-long-long-long-long-long-long-long-arn-for-testing-get-user-name"
         long_arn = "arn:aws:iam::0123456789012:assumed-role/" + long_user_name
         mock_identity.get.return_value = long_arn
-        self.assertEqual(get_user_name(), "AssumedRole-" + long_user_name.replace("/", "-")[:51])
+        self.assertEqual(get_user_name(), "AssumedRole-" + long_user_name.replace("/", "-")[:48] + "...")
