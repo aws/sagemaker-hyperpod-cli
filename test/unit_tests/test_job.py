@@ -258,6 +258,18 @@ class JobTest(unittest.TestCase):
             "Unexpected error happens when trying to list training job",
             result.output,
         )
+    
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    def test_list_job_when_namespace_not_exist(
+        self,
+        mock_kubernetes_client: mock.Mock,
+    ):
+        mock_client_instance = mock_kubernetes_client.return_value
+        mock_client_instance.check_if_namespace_exists.return_value = False
+        result = self.runner.invoke(list_jobs, ["--namespace", "abcdef"])
+        mock_client_instance.check_if_namespace_exists.assert_any_call("abcdef")
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("Namespace abcdef does not exist!", result.output)
 
     @mock.patch("hyperpod_cli.service.list_pods.ListPods")
     @mock.patch("hyperpod_cli.service.list_pods.ListPods.list_pods_for_training_job")
