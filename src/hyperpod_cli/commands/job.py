@@ -1142,4 +1142,11 @@ def get_user_name():
         user_name = 'Unknown'
     
     # label value does not allow slash
-    return user_name.replace('/', '-')
+    user_name = user_name.replace('/', '-')
+    # 63 is the max length for a Kubernetes label
+    if len(user_name) > 63:
+        # Add dots in the end to indicate the username is trimmed
+        trimmed_user_name = user_name[:55] + '-trimmed'
+        logger.warning(f"The username is longer than the maximum length (63) of Kubernetes label, trimming to {trimmed_user_name}")
+        return trimmed_user_name
+    return user_name
