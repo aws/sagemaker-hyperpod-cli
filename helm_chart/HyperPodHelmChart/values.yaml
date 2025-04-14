@@ -138,6 +138,8 @@ nvidia-device-plugin:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms: 
         - matchExpressions:
+          - key: nvidia.com/gpu
+            operator: Exists
           # nvidia plugin needs at least one node selector. Below label exists for all hyperpod nodes
           - key: kubernetes.io/os
             operator: In
