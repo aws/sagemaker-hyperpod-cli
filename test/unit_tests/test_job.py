@@ -27,6 +27,7 @@ from kubernetes.client import (
 from hyperpod_cli.commands.job import (
     cancel_job,
     get_job,
+    get_user_name,
     list_jobs,
     list_pods,
     patch_job,
@@ -258,6 +259,18 @@ class JobTest(unittest.TestCase):
             "Unexpected error happens when trying to list training job",
             result.output,
         )
+    
+    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    def test_list_job_when_namespace_not_exist(
+        self,
+        mock_kubernetes_client: mock.Mock,
+    ):
+        mock_client_instance = mock_kubernetes_client.return_value
+        mock_client_instance.check_if_namespace_exists.return_value = False
+        result = self.runner.invoke(list_jobs, ["--namespace", "abcdef"])
+        mock_client_instance.check_if_namespace_exists.assert_any_call("abcdef")
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("Namespace abcdef does not exist!", result.output)
 
     @mock.patch("hyperpod_cli.service.list_pods.ListPods")
     @mock.patch("hyperpod_cli.service.list_pods.ListPods.list_pods_for_training_job")
@@ -2126,3 +2139,16 @@ class JobTest(unittest.TestCase):
             ],
         )
         self.assertNotEqual(result.exit_code, 0)
+
+    @mock.patch("boto3.client")
+    def test_get_user_name_long_arn(self, mock_boto3_client):
+        mock_client = MagicMock()
+        mock_boto3_client.return_value = mock_client
+
+        mock_identity = MagicMock()
+        mock_client.get_caller_identity.return_value = mock_identity
+
+        long_user_name = "ReadOnly/AmazonSageMaker-a-long-long-long-long-long-long-long-arn-for-testing-get-user-name"
+        long_arn = "arn:aws:iam::0123456789012:assumed-role/" + long_user_name
+        mock_identity.get.return_value = long_arn
+        self.assertEqual(get_user_name(), "AssumedRole-" + long_user_name.replace("/", "-")[:43] + "-trimmed")

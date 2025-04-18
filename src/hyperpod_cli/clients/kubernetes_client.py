@@ -302,6 +302,17 @@ class KubernetesClient:
             plural=PYTORCH_CUSTOM_OBJECT_PLURAL,
             label_selector=label_selector,
         )
+    
+    def check_if_namespace_exists(self, namespace: str):
+        try:
+            client.CoreV1Api().read_namespace(name=namespace)
+            return True
+        except client.rest.ApiException as e:
+            if e.status == 404:
+                return False
+            else:
+                print(f"Exception when calling read_namespace: {e}")
+                raise e
 
     def exec_command_on_pod(
         self,

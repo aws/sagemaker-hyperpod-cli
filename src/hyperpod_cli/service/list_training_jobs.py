@@ -18,6 +18,7 @@ from datetime import datetime
 from hyperpod_cli.clients.kubernetes_client import (
     KubernetesClient,
 )
+from hyperpod_cli.utils import setup_logger
 from kubernetes.client.rest import ApiException
 from kubernetes.client import (
     V1ResourceAttributes
@@ -49,6 +50,8 @@ class ListTrainingJobs:
         k8s_client = KubernetesClient()
 
         jobs: List = []
+        logger = setup_logger(__name__)
+        logger.debug(namespace)
         try:
             if all_namespaces:
                 namespaces: List[str] = k8s_client.list_namespaces()
@@ -70,6 +73,9 @@ class ListTrainingJobs:
                     namespace = DiscoverNamespaces().discover_accessible_namespace(
                         resource_attributes_template
                     )
+                else:
+                    if not k8s_client.check_if_namespace_exists(namespace):
+                        raise ValueError(f"Namespace {namespace} does not exist!")
 
                 namespace_jobs = k8s_client.list_training_jobs(
                     namespace=namespace,
