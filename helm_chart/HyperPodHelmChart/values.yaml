@@ -181,11 +181,36 @@ aws-efa-k8s-device-plugin:
       - ml.g6e.24xlarge
       - ml.g6e.48xlarge
       - ml.gr6.8xlarge
+      - ml.i3en.large
+      - ml.i3en.xlarge
+      - ml.i3en.2xlarge
+      - ml.i3en.3xlarge
+      - ml.i3en.6xlarge
+      - ml.i3en.12xlarge
+      - ml.i3en.24xlarge
+      - ml.m7i.large
+      - ml.m7i.xlarge
+      - ml.m7i.2xlarge
+      - ml.m7i.4xlarge
+      - ml.m7i.8xlarge
+      - ml.m7i.12xlarge
+      - ml.m7i.16xlarge
+      - ml.m7i.24xlarge
+      - ml.m7i.48xlarge
       - ml.p4d.24xlarge
       - ml.p4de.24xlarge
       - ml.p5.48xlarge
       - ml.p5e.48xlarge
       - ml.p5en.48xlarge
+      - ml.r7i.large
+      - ml.r7i.xlarge
+      - ml.r7i.2xlarge
+      - ml.r7i.4xlarge
+      - ml.r7i.8xlarge
+      - ml.r7i.12xlarge
+      - ml.r7i.16xlarge
+      - ml.r7i.24xlarge
+      - ml.r7i.48xlarge
       - ml.trn1.32xlarge
       - ml.trn1n.32xlarge
       - ml.trn2.48xlarge
