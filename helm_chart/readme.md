@@ -67,7 +67,7 @@ Notes:
 
 * Simulate the installation process. Below command shows you what would be installed and the configuration that would be applied. 
   ```
-  helm install dependencies helm_chart/HyperPodHelmChart --dry-run
+  helm install dependencies helm_chart/HyperPodHelmChart --namespace kube-system --dry-run
   ```
 
 * If the resource already exists, avoid running the install command again, as it may cause conflicts. Instead, use the following command to upgrade the existing release while preserving the current configuration. This ensures that your current settings are maintained without overwriting them.
