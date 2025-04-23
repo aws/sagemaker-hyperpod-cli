@@ -172,11 +172,6 @@ nvidia-device-plugin:
               - ml.p5.48xlarge
               - ml.p5e.48xlarge
               - ml.p5en.48xlarge
-          # nvidia plugin needs at least one node selector. Below label exists for all hyperpod nodes
-          - key: kubernetes.io/os
-            operator: In
-            values:
-            - "linux"
   tolerations:
     - key: nvidia.com/gpu
       operator: Exists
