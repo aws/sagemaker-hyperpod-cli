@@ -34,15 +34,7 @@ class ExecCommand:
         all_pods: Optional[bool],
         bash_command: tuple,
     ):
-        before_seperator = bash_command[: bash_command.index("-")]
-
-        if before_seperator:
-            raise RuntimeError(
-                f"please provide bash command after -, unexpected char found {before_seperator}"
-            )
-
-        after_seperator = bash_command[bash_command.index("-") + 1 :]
-        bash_command_str: str = " ".join(after_seperator)
+        bash_command_str: str = " ".join(bash_command)
 
         k8s_client = KubernetesClient()
         list_pods_service = ListPods()

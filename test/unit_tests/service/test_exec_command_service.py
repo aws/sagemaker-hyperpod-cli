@@ -57,7 +57,6 @@ class ExecCommandServiceTest(unittest.TestCase):
             None,
             False,
             (
-                "-",
                 "date",
             ),
         )
@@ -86,7 +85,6 @@ class ExecCommandServiceTest(unittest.TestCase):
             "kubeflow",
             False,
             (
-                "-",
                 "date",
             ),
         )
@@ -110,23 +108,6 @@ class ExecCommandServiceTest(unittest.TestCase):
                 "kubeflow",
                 False,
                 (
-                    "-",
-                    "date",
-                ),
-            )
-
-    def test_exec_with_input_before_dash_raises_exception(
-        self,
-    ):
-        with self.assertRaises(RuntimeError):
-            self.mock_exec_command.exec_command(
-                "sample-job",
-                "sample-job-master-0",
-                "kubeflow",
-                False,
-                (
-                    "date",
-                    "-",
                     "date",
                 ),
             )
@@ -154,7 +135,6 @@ class ExecCommandServiceTest(unittest.TestCase):
             "kubeflow",
             True,
             (
-                "-",
                 "date",
             ),
         )
@@ -184,7 +164,6 @@ class ExecCommandServiceTest(unittest.TestCase):
                 "kubeflow",
                 True,
                 (
-                    "-",
                     "date",
                 ),
             )
