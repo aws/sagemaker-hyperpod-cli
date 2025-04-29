@@ -98,11 +98,11 @@ cluster:
     # To use SageMaker Hyperpod AutoResume functionality, please set it to OnFailure.
     # Mapping to '--restart-policy' argument in 'start-job' command.
     restartPolicy: OnFailure
-    # scheduler_type: Optional. Used to decide which type of scheduler to use. Default value is 'SageMaker' which makes
-    # the job only scheduled on queues created via SageMaker. Another valid value is 'Kueue', with this option, queue name
-    # and namespace has to be manually filled out.
-    # scheduler_type: Kueue
-    scheduler_type: SageMaker
+    # scheduler_type: Optional. Used to decide which type of scheduler to use. Default value is 'SageMaker' which makes the job
+    # only scheduled on queues created via SageMaker. This requires local queue name filled in custom label 'kueue.x-k8s.io/queue-name'
+    # Another valid value is 'Kueue', with this option, queue name and namespace has to be manually filled out.
+    # scheduler_type: SageMaker
+    scheduler_type: Kueue
 # base_results_dir: Optional. Location to store the results, checkpoints and logs.
 # Mapping to '--results-dir' argument in 'start-job' command.
 base_results_dir: ./result
