@@ -82,6 +82,7 @@ class HyperpodInstanceType(Enum):
     ML_P5_48XLARGE = "ml.p5.48xlarge"
     ML_P5E_48XLARGE = "ml.p5e.48xlarge"
     ML_P5EN_48XLARGE = "ml.p5en.48xlarge"
+    ML_P6E_GB200_36XLARGE = "ml.p6e-gb200.36xlarge"
     ML_R7I_LARGE = "ml.r7i.large"
     ML_R7I_XLARGE = "ml.r7i.xlarge"
     ML_R7I_2XLARGE = "ml.r7i.2xlarge"
