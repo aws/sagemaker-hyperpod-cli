@@ -180,6 +180,8 @@ nvidia-device-plugin:
       operator: Equal
       value: Unschedulable
       effect: NoSchedule
+    - key: CriticalAddonsOnly
+      operator: Exists
 
 neuron-device-plugin:
   devicePlugin:

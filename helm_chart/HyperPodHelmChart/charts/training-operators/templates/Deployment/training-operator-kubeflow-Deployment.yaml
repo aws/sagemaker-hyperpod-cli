@@ -54,5 +54,8 @@ spec:
           timeoutSeconds: 3
         securityContext:
           allowPrivilegeEscalation: false
+        tolerations:
+          - key: CriticalAddonsOnly
+            operator: Exists
       serviceAccountName: training-operator
       terminationGracePeriodSeconds: 10

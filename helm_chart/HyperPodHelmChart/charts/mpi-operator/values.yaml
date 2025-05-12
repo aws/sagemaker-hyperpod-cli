@@ -22,6 +22,8 @@ mpiOperator:
   ## Tolerations for pod assignment
   ## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
   tolerations:
+  - key: CriticalAddonsOnly
+    operator: Exists
   - key: sagemaker.amazonaws.com/node-health-status
     operator: "Equal"
     value: "Unschedulable"
