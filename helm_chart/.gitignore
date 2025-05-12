@@ -1,0 +1,3 @@
+HyperPodHelmChartForRIG/charts/*/templates/
+HyperPodHelmChartForRIG/charts/*.tgz
+HyperPodHelmChart/charts/*.tgz

@@ -1,0 +1,196 @@
+# OVERRIDE values for HyperPodHelmChart for RIG.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# value_safe_name of dependencies - see install_rig_dependencies.sh
+# 
+# Note:
+#
+# The format is add-on: {keys:...} .
+# Helm wil AUTOMATICALLY SCOPE the add-on values when resolving each dependency
+# In other words, what is exposed to each dependency template is 
+# {{ .Values.tolerations }} , NOT {{ .Values.add-on.tolerations  }}
+coredns:
+  tolerations:
+    - effect: NoSchedule
+      key: node-role.kubernetes.io/control-plane
+    - key: CriticalAddonsOnly
+      operator: Exists
+    - effect: NoSchedule
+      operator: Equal
+      key: "sagemaker.amazonaws.com/RestrictedNode"
+      value: "Worker"
+  nodeSelector:
+    "sagemaker.amazonaws.com/instance-group-type": "Restricted"
+
+mpi-operator:
+  tolerations:
+    - key: "sagemaker.amazonaws.com/node-health-status"
+      operator: "Equal"
+      value: "Unschedulable"
+      effect: "NoSchedule"
+    - effect: NoSchedule
+      operator: Equal
+      key: "sagemaker.amazonaws.com/RestrictedNode"
+      value: "Worker"
+  nodeSelector:
+    "sagemaker.amazonaws.com/instance-group-type": "Restricted"
+
+neuron-device-plugin:
+  tolerations:
+    - key: CriticalAddonsOnly
+      operator: Exists
+    - key: "aws.amazon.com/neuron"
+      operator: Exists
+      effect: NoSchedule
+    - key: "sagemaker.amazonaws.com/node-health-status"
+      operator: Equal
+      value: Unschedulable
+      effect: NoSchedule
+    - effect: NoSchedule
+      operator: Equal
+      key: "sagemaker.amazonaws.com/RestrictedNode"
+      value: "Worker"
+  nodeSelector: {}
+
+training-operators:
+  tolerations:
+    - effect: NoSchedule
+      operator: Equal
+      key: "sagemaker.amazonaws.com/RestrictedNode"
+      value: "Worker"
+  nodeSelector:
+    "sagemaker.amazonaws.com/instance-group-type": "Restricted"
+
+# Overrides for externally-maintained Helm charts
+aws-efa-k8s-device-plugin:
+  devicePlugin:
+    enabled: true
+  supportedInstanceLabels:
+    values:
+      - ml.c5n.9xlarge
+      - ml.c5n.18xlarge
+      - ml.g5.8xlarge
+      - ml.g5.12xlarge
+      - ml.g5.16xlarge
+      - ml.g5.24xlarge
+      - ml.g5.48xlarge
+      - ml.g6.8xlarge
+      - ml.g6.12xlarge
+      - ml.g6.16xlarge
+      - ml.g6.24xlarge
+      - ml.g6.48xlarge
+      - ml.g6e.8xlarge
+      - ml.g6e.12xlarge
+      - ml.g6e.16xlarge
+      - ml.g6e.24xlarge
+      - ml.g6e.48xlarge
+      - ml.gr6.8xlarge
+      - ml.i3en.large
+      - ml.i3en.xlarge
+      - ml.i3en.2xlarge
+      - ml.i3en.3xlarge
+      - ml.i3en.6xlarge
+      - ml.i3en.12xlarge
+      - ml.i3en.24xlarge
+      - ml.m7i.large
+      - ml.m7i.xlarge
+      - ml.m7i.2xlarge
+      - ml.m7i.4xlarge
+      - ml.m7i.8xlarge
+      - ml.m7i.12xlarge
+      - ml.m7i.16xlarge
+      - ml.m7i.24xlarge
+      - ml.m7i.48xlarge
+      - ml.p4d.24xlarge
+      - ml.p4de.24xlarge
+      - ml.p5.48xlarge
+      - ml.p5e.48xlarge
+      - ml.p5en.48xlarge
+      - ml.r7i.large
+      - ml.r7i.xlarge
+      - ml.r7i.2xlarge
+      - ml.r7i.4xlarge
+      - ml.r7i.8xlarge
+      - ml.r7i.12xlarge
+      - ml.r7i.16xlarge
+      - ml.r7i.24xlarge
+      - ml.r7i.48xlarge
+      - ml.trn1.32xlarge
+      - ml.trn1n.32xlarge
+      - ml.trn2.48xlarge
+  tolerations:
+    - key: CriticalAddonsOnly
+      operator: Exists
+    - effect: NoSchedule
+      key: aws.amazon.com/efa
+      operator: Exists
+    - key: sagemaker.amazonaws.com/node-health-status
+      operator: "Equal"
+      value: "Unschedulable"
+      effect: "NoSchedule"
+    - effect: NoSchedule
+      operator: Equal
+      key: "sagemaker.amazonaws.com/RestrictedNode"
+      value: "Worker"
+  nodeSelector:
+    "sagemaker.amazonaws.com/instance-group-type": "Restricted"
+
+nvidia-device-plugin:
+  devicePlugin:
+    enabled: true
+  allowDefaultNamespace: true
+  namespaceOverride: "kube-system"
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms: 
+        - matchExpressions:
+          - key: node.kubernetes.io/instance-type
+            operator: In
+            values:
+              - ml.g5.xlarge
+              - ml.g5.2xlarge
+              - ml.g5.4xlarge
+              - ml.g5.8xlarge
+              - ml.g5.12xlarge
+              - ml.g5.16xlarge
+              - ml.g5.24xlarge
+              - ml.g5.48xlarge
+              - ml.g6.xlarge
+              - ml.g6.2xlarge
+              - ml.g6.4xlarge
+              - ml.g6.8xlarge
+              - ml.g6.16xlarge
+              - ml.g6.12xlarge
+              - ml.g6.24xlarge
+              - ml.g6.48xlarge
+              - ml.g6e.xlarge
+              - ml.g6e.2xlarge
+              - ml.g6e.4xlarge
+              - ml.g6e.8xlarge
+              - ml.g6e.12xlarge
+              - ml.g6e.16xlarge
+              - ml.g6e.24xlarge
+              - ml.g6e.48xlarge
+              - ml.gr6.4xlarge
+              - ml.gr6.8xlarge
+              - ml.p4d.24xlarge
+              - ml.p4de.24xlarge
+              - ml.p5.48xlarge
+              - ml.p5e.48xlarge
+              - ml.p5en.48xlarge
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+    - key: sagemaker.amazonaws.com/node-health-status
+      operator: Equal
+      value: Unschedulable
+      effect: NoSchedule
+    - effect: NoSchedule
+      operator: Equal
+      key: "sagemaker.amazonaws.com/RestrictedNode"
+      value: "Worker"
+  nodeSelector:
+    "sagemaker.amazonaws.com/instance-group-type": "Restricted"
