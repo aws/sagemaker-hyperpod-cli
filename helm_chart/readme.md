@@ -87,6 +87,16 @@ Notes:
   helm install dependencies helm_chart/HyperPodHelmChart --namespace kube-system
   ```
 
+### Step Four:
+
+* Deploy a second Helm Chart to Your Kubernetes Cluster specific for RIG instances. This command deploys HyperPod dependencies to your cluster based on (1) the existing standard EKS Deployments in your cluster (e.g. coredns), and (2) the current version of Helm chart in this repo. The following command will fetch the information from your current EKS cluster (connected via `update-kubeconfig` in Step Zero) and your repo for the installation, and present the target installation for confirmation before deployment:
+  ```
+  ./install_rig_dependencies.sh
+  ```
+
+  If needed, please run `chmod +700 ./install_rig_dependencies.sh` to allow the script to execute.
+
+
 ## 5. Create Team Role
 
 * To create role for hyperpod cluster users, please set the value for `computeQuotaTarget.targeId` when installing or upgrade the chart. This value is the same as the `targeId` of quota allocation.
