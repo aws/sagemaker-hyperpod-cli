@@ -133,7 +133,8 @@ aws-efa-k8s-device-plugin:
       operator: Equal
       key: "sagemaker.amazonaws.com/RestrictedNode"
       value: "Worker"
-  nodeSelector: {}
+  nodeSelector:
+    "sagemaker.amazonaws.com/instance-group-type": "Restricted"
 
 nvidia-device-plugin:
   devicePlugin:
@@ -191,4 +192,5 @@ nvidia-device-plugin:
       operator: Equal
       key: "sagemaker.amazonaws.com/RestrictedNode"
       value: "Worker"
-  nodeSelector: {}
+  nodeSelector:
+    "sagemaker.amazonaws.com/instance-group-type": "Restricted"
