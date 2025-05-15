@@ -259,4 +259,6 @@ health-monitoring-agent:
 deep-health-check:
   enabled: true
 job-auto-restart:
-  enabled: true   
+  enabled: true
+hyperpod-patching:
+  enabled: true
