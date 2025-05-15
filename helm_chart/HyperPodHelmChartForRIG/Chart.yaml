@@ -39,10 +39,6 @@ dependencies:
     version: "0.1.0"
     repository: "file://charts/neuron-device-plugin"
     condition: neuron-device-plugin.devicePlugin.enabled
-  - name: health-monitoring-agent
-    version: "0.1.0"
-    repository: "file://charts/health-monitoring-agent"
-    condition: health_monitoring_agent.enabled 
   - name: mpi-operator
     version: "0.1.0"
     repository: "file://charts/mpi-operator"

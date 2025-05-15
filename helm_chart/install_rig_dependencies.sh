@@ -8,7 +8,6 @@ add_ons=(
     "eks,kube-system,coredns"
     "hp,kube-system,mpi-operator"
     "hp,kube-system,neuron-device-plugin"
-    "hp,kube-system,health-monitoring-agent"
     "hp,kube-system,training-operators"
 )
 
@@ -30,6 +29,7 @@ fetch_yaml_and_enable_overrides() {
 	if [ "$scope" = "eks" ]; then
 		kubectl get deployment $name -n $namespace -o yaml | \
 			yq 'select(.kind == "Deployment" or .kind == "DaemonSet")' - | yq e "
+		    .metadata.name = \"rig-\" + .metadata.name |
 		    .spec.template.spec.nodeSelector = \"NODESELECTORS\" |
 		    .spec.template.spec.tolerations = \"TOLERATIONS\"
 		" - | \
@@ -48,8 +48,9 @@ EOF
 
 
 	else
-		helm template $name $SRC_DIR/charts/$name -f $SRC_DIR/values.yaml -f $SRC_DIR/charts/$name/values.yaml --debug | \
+		helm template dependencies $SRC_DIR/charts/$name -f $SRC_DIR/values.yaml -f $SRC_DIR/charts/$name/values.yaml --debug | \
 			yq 'select(.kind == "Deployment" or .kind == "DaemonSet")' - | yq e "
+		    .metadata.name = \"rig-\" + .metadata.name |
 		    .spec.template.spec.nodeSelector = \"NODESELECTORS\" |
 		    .spec.template.spec.tolerations = \"TOLERATIONS\"
 		" - | \
@@ -66,7 +67,18 @@ if ! command -v yq &> /dev/null; then
 fi
 fetch_yaml_and_enable_overrides add_ons[@]
 helm dependencies update ./HyperPodHelmChartForRIG # This needs to be run after any dependency template change before "helm <template | install>"
-helm template rig-dependencies ./HyperPodHelmChartForRIG --namespace kube-system -f ./HyperPodHelmChartForRIG/values.yaml
+helm template rig-dependencies ./HyperPodHelmChartForRIG --namespace kube-system -f ./HyperPodHelmChartForRIG/values.yaml > rig-dependencies.yaml
+cat rig-dependencies.yaml
+echo
+read -p "🚀 Do you want to install this Helm chart? [y/N]: " confirm
+
+if [[ "$confirm" =~ ^[Yy]$ ]]; then
+  echo "🔧 Installing Helm chart..."
+  helm install rig-dependencies ./HyperPodHelmChartForRIG --namespace kube-system -f ./HyperPodHelmChartForRIG/values.yaml
+else
+  echo "❌ Installation cancelled."
+fi
+
 echo "Templates generated in $OUTPUT_DIR"
 echo ""
 echo ""
