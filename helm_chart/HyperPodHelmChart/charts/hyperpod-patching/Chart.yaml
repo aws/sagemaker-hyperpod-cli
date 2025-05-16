@@ -1,0 +1,5 @@
+apiVersion: v2
+name: hyperpod-patching
+description: A subchart for RBAC used by HyperPod patching workflows
+version: 0.1.0
+appVersion: "1.0"

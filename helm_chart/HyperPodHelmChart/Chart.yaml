@@ -75,3 +75,7 @@ dependencies:
     version: "0.1.0"
     repository: "file://charts/team-role-and-bindings"
     condition: team-role-and-bindings.enabled
+  - name: hyperpod-patching
+    version: "0.1.0"
+    repository: "file://charts/hyperpod-patching"
+    condition: hyperpod-patching.enabled
