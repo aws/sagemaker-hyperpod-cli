@@ -1,0 +1,26 @@
+namePrefix: "deploymentoperator-"
+
+controllerImage: "controller:latest"
+defaultIAMRoleArnForDeployments:
+hyperpodClusterArn:
+executionRoleArn:
+stage: "gamma"
+defaultTlsCertificateOutputS3uri:
+restApiId: "6klf138ysc"
+eksClusterName:
+aws-load-balancer-controller:
+  clusterName:
+
+components:
+  crd:
+    enabled: true
+    path: "config/crd"
+  rbac:
+    enabled: true
+    path: "config/rbac"
+  manager:
+    enabled: true
+    path: "config/manager"
+  metricsService:
+    enabled: true
+    path: "config/metrics"

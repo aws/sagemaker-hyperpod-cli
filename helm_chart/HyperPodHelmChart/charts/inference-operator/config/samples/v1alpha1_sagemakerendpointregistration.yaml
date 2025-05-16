@@ -1,0 +1,11 @@
+apiVersion: inference.sagemaker.aws.amazon.com/v1alpha1
+kind: SageMakerEndpointRegistration
+metadata:
+  labels:
+    app.kubernetes.io/name: AWSCrescendoInferenceOperator
+  name: sagemakerendpointregistration-sample
+spec:
+  name: sample-endpoint
+  executionRole: arn:aws:iam::123456789012:role/service-role/model-deployment
+  imageUri: 763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:1.7.1-transformers4.6.1-cpu-py36-ubuntu18.04
+  instanceType: ml.g4dn.xlarge

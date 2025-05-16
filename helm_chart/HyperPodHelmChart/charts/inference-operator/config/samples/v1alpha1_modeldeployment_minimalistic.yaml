@@ -1,0 +1,15 @@
+apiVersion: inference.sagemaker.aws.amazon.com/v1alpha1
+kind: ModelDeployment
+metadata:
+  labels:
+    app.kubernetes.io/name: deploymentoperator
+  name: modeldeployment-minimal-sample
+spec:
+  sageMakerEndpoint:
+    name: minimal-sagemaker-endpoint
+  model:
+    acceptEula: true
+    modelId: jumpstart-dft-some-model-id
+  server:
+    instanceType: ml.t3.medium
+    namespace: default-namespace

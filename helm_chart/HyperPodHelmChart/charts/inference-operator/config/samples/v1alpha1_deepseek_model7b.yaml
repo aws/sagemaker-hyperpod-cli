@@ -1,0 +1,24 @@
+apiVersion: inference.sagemaker.aws.amazon.com/v1alpha1
+kind: ModelDeployment
+metadata:
+  labels:
+    app.kubernetes.io/name: deploymentoperator
+  name: deepseek-sample
+spec:
+  sageMakerEndpoint:
+    name: deepsek7bsme
+  bedrockEndpoint:
+    name: deepsek7bbre
+  model:
+    modelHubName: SageMakerPublicHub
+    modelId: deepseek-llm-r1-distill-qwen-7b
+    modelVersion: 2.0.4
+  server:
+    instanceType: ml.g5.48xlarge
+    maxAutoScaleReplicas: 2
+    minAutoScaleReplicas: 1
+    namespace: inference-namespace
+  environmentVariables:
+    - name: SAMPLE_ENV_VAR
+      value: "sample_value"
+  maxDeployTimeInSeconds: 1800

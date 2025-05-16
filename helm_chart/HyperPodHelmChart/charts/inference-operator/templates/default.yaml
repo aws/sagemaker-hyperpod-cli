@@ -1,0 +1,25 @@
+{{- template "validateRequiredValues" . -}}
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: deploymentoperator
+    control-plane: {{ .Values.namePrefix }}controller-manager
+  name: {{ .Values.namePrefix }}system
+---
+{{- range $component, $config := .Values.components }}
+{{- if $config.enabled }}
+{{- if $config.file }}
+{{- $content := $.Files.Get (printf "%s/%s" $config.path $config.file) }}
+---
+{{ tpl $content $ }}
+{{- else }}
+{{- range $path, $_ := $.Files.Glob (printf "%s/*.yaml" $config.path) }}
+{{- $content := $.Files.Get $path }}
+---
+{{ tpl $content $ }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
