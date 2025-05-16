@@ -55,7 +55,8 @@ spec:
           - --metrics-bind-address=:8443
           - --leader-elect
           - --health-probe-bind-address=:8081
-        image: {{ .Values.controllerImage }}
+        image: "{{ .Values.image.repository }}/hyperpod-inference-operator:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: manager
         securityContext:
           allowPrivilegeEscalation: false
@@ -84,8 +85,6 @@ spec:
             cpu: 10m
             memory: 64Mi
         env:
-          - name: IAM_ROLE_ARN
-            value: {{ .Values.defaultIAMRoleArnForDeployments }}
           - name: restApiId
             value: {{ .Values.restApiId }}
           - name: HYPERPOD_CLUSTER_ARN
