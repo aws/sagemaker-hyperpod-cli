@@ -443,18 +443,8 @@ spec:
                   type: object
                 type: array
               endpoints:
-                description: EndpointStatus contains the status of both SageMaker
-                  and Bedrock endpoints
+                description: EndpointStatus contains the status of SageMaker endpoints
                 properties:
-                  bedrock:
-                    description: Status of the Bedrock endpoint
-                    properties:
-                      state:
-                        description: The current state of the Bedrock endpoint
-                        type: string
-                    required:
-                    - state
-                    type: object
                   sagemaker:
                     description: Status of the SageMaker endpoint
                     properties:

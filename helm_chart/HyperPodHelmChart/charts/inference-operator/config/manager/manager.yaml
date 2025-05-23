@@ -69,6 +69,12 @@ spec:
             port: 8081
           initialDelaySeconds: 15
           periodSeconds: 20
+        startupProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          failureThreshold: 120
+          periodSeconds: 60
         readinessProbe:
           httpGet:
             path: /readyz
@@ -85,8 +91,6 @@ spec:
             cpu: 10m
             memory: 64Mi
         env:
-          - name: restApiId
-            value: {{ .Values.restApiId }}
           - name: HYPERPOD_CLUSTER_ARN
             value: {{ .Values.hyperpodClusterArn }}
           - name: EXECUTION_ROLE_ARN
@@ -96,6 +100,6 @@ spec:
           - name: EKS_CLUSTER_NAME
             value: {{ .Values.eksClusterName }}
           - name: TLS_CERTIFICATE_OUTPUT_S3URI
-            value: {{ .Values.defaultTlsCertificateOutputS3uri }}
+            value: {{ .Values.tlsCertificateS3Bucket }}
       serviceAccountName: {{ .Values.namePrefix }}controller-manager
       terminationGracePeriodSeconds: 10

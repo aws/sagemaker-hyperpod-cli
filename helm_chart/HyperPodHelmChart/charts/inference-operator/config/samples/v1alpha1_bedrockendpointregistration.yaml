@@ -1,9 +1,0 @@
-apiVersion: inference.sagemaker.aws.amazon.com/v1alpha1
-kind: BedrockEndpointRegistration
-metadata:
-  labels:
-    app.kubernetes.io/name: AWSCrescendoInferenceOperator
-  name: bedrockendpointregistration-sample
-spec:
-  modelArn: arn:aws:sagemaker:us-east-1:123456789012:model/autogluon-forecasting-chronos-t5-small
-  sageMakerEndpointArn: arn:aws:sagemaker:us-east-1:123456789012:endpoint/my-model-endpoint

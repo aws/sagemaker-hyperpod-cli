@@ -39,17 +39,6 @@ spec:
           spec:
             description: JumpStartModelSpec defines the desired state of JumpStartModel.
             properties:
-              bedrockEndpoint:
-                properties:
-                  name:
-                    description: If set, the deployed endpoint will be registered
-                      as an Amazon Bedrock Endpoint.
-                    maxLength: 63
-                    pattern: ^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$
-                    type: string
-                required:
-                - name
-                type: object
               environmentVariables:
                 description: Additional environment variables to be passed to the
                   inference server. Limited to 100 key-value pairs.
@@ -220,18 +209,8 @@ spec:
                   type: object
                 type: array
               endpoints:
-                description: EndpointStatus contains the status of both SageMaker
-                  and Bedrock endpoints
+                description: EndpointStatus contains the status of SageMaker endpoints
                 properties:
-                  bedrock:
-                    description: Status of the Bedrock endpoint
-                    properties:
-                      state:
-                        description: The current state of the Bedrock endpoint
-                        type: string
-                    required:
-                    - state
-                    type: object
                   sagemaker:
                     description: Status of the SageMaker endpoint
                     properties:

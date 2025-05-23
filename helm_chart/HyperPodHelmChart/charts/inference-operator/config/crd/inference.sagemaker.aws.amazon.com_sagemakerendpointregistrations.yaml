@@ -188,7 +188,7 @@ spec:
                 description: Endpoint Metadata
                 properties:
                   arn:
-                    description: The Amazon Resource Name (ARN) of the Bedrock endpoint
+                    description: The Amazon Resource Name (ARN) of the SageMaker endpoint
                     pattern: (arn:aws[a-z\-]*:sagemaker:[a-z0-9\-]*:[0-9]{12}:endpoint/.*|^$)
                     type: string
                   configArn:

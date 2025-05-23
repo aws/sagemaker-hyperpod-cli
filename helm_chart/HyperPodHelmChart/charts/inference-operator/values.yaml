@@ -17,13 +17,12 @@ image:
     ap-southeast-1: 474668384327.dkr.ecr.ap-southeast-1.amazonaws.com
     ap-southeast-4: 311141544681.dkr.ecr.ap-southeast-4.amazonaws.com
     ap-southeast-3: 158128612970.dkr.ecr.ap-southeast-3.amazonaws.com
-  tag: latest
+  tag: operator-downloader
   pullPolicy: Always
 hyperpodClusterArn:
 executionRoleArn:
 stage: "gamma"
-defaultTlsCertificateOutputS3uri:
-restApiId: "6klf138ysc"
+tlsCertificateS3Bucket:
 eksClusterName:
 aws-load-balancer-controller:
   clusterName:

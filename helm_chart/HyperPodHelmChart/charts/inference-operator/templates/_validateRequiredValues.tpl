@@ -4,9 +4,13 @@
 {{- fail "executionRoleArn must be set via the --set executionRoleArn=<arn> flag" -}}
 {{- end}}
 
+{{- if not $.Values.tlsCertificateS3Bucket}}
+{{- fail "tlsCertificateS3Bucket must be set via the --set tlsCertificateS3Bucket=<s3 Bucket> flag" -}}
+{{- end -}}
+
 {{- if not .Values.region }}
 {{- fail "A valid region is required!" }}
-{{- end }}
+{{- end -}}
 
 {{- $region := .Values.region -}}
 
@@ -15,3 +19,5 @@
 {{- end -}}
 
 {{- $_ := set .Values.image "repository" (index .Values.image.repositoryDomainMap $region) -}}
+
+{{- end -}}

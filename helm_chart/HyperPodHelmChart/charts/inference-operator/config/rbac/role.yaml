@@ -10,7 +10,6 @@ rules:
 - apiGroups:
   - inference.sagemaker.aws.amazon.com
   resources:
-  - bedrockendpointregistrations
   - jumpstartmodels
   - inferenceendpointconfigs
   - sagemakerendpointregistrations
@@ -25,7 +24,6 @@ rules:
 - apiGroups:
   - inference.sagemaker.aws.amazon.com
   resources:
-  - bedrockendpointregistrations/finalizers
   - jumpstartmodels/finalizers
   - inferenceendpointconfigs/finalizers
   - sagemakerendpointregistrations/finalizers
@@ -34,7 +32,6 @@ rules:
 - apiGroups:
   - inference.sagemaker.aws.amazon.com
   resources:
-  - bedrockendpointregistrations/status
   - jumpstartmodels/status
   - inferenceendpointconfigs/status
   - sagemakerendpointregistrations/status
@@ -52,40 +49,45 @@ rules:
   verbs:
   - "*"
 - apiGroups:
-    - kueue.x-k8s.io
+  - kueue.x-k8s.io
   resources:
-    - clusterqueues
+  - clusterqueues
   verbs:
-    - create
-    - delete
-    - get
-    - list
-    - patch
-    - update
-    - watch
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
-    - kueue.x-k8s.io
+  - kueue.x-k8s.io
   resources:
-    - clusterqueues/finalizers
+  - clusterqueues/finalizers
   verbs:
-    - update
+  - update
 - apiGroups:
-    - kueue.x-k8s.io
+  - kueue.x-k8s.io
   resources:
-    - clusterqueues/status
+  - clusterqueues/status
   verbs:
-    - get
-    - patch
-    - update
+  - get
+  - patch
+  - update
 - apiGroups:
   - cert-manager.io
   resources:
-    - issuers 
-    - secrets
-    - certificates 
+  - certificates
+  - issuers
   verbs:
-    - get
-    - list
-    - watch
-    - create
-    - delete
+  - create
+  - delete
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get

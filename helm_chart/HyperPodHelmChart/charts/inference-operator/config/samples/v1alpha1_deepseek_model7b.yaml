@@ -7,8 +7,6 @@ metadata:
 spec:
   sageMakerEndpoint:
     name: deepsek7bsme
-  bedrockEndpoint:
-    name: deepsek7bbre
   model:
     modelHubName: SageMakerPublicHub
     modelId: deepseek-llm-r1-distill-qwen-7b

@@ -7,8 +7,6 @@ metadata:
 spec:
   sageMakerEndpoint:
     name: sample-sagemaker-endpoint-phi-3
-  bedrockEndpoint:
-    name: sample-bedrock-endpoint-phi-3
   model:
     modelHubName: SageMakerPublicHub
     modelId: huggingface-llm-phi-3-mini-4k-instruct
