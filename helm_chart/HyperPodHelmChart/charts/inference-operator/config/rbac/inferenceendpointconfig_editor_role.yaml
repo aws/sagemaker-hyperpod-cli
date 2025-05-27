@@ -3,7 +3,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    app.kubernetes.io/name: deploymentoperator
+    app.kubernetes.io/name: {{ .Values.namePrefix }}App
     app.kubernetes.io/managed-by: kustomize
   name: {{ .Values.namePrefix }}inferenceendpointconfig-editor-role
   namespace: {{ .Values.namePrefix }}system

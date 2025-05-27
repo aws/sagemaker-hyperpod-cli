@@ -6,7 +6,7 @@ metadata:
   namespace: {{ .Values.namePrefix }}system
   labels:
     control-plane: {{ .Values.namePrefix }}controller-manager
-    app.kubernetes.io/name: deploymentoperator
+    app.kubernetes.io/name: {{ .Values.namePrefix }}App
 spec:
   selector:
     matchLabels:
@@ -50,7 +50,7 @@ spec:
         #   type: RuntimeDefault
       containers:
       - command:
-        - /manager
+        - /hyperpod-inference-manager
         args:
           - --metrics-bind-address=:8443
           - --leader-elect

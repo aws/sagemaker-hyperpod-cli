@@ -4,7 +4,7 @@ kind: Namespace
 metadata:
   labels:
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: deploymentoperator
+    app.kubernetes.io/name: {{ .Values.namePrefix }}App
     control-plane: {{ .Values.namePrefix }}controller-manager
   name: {{ .Values.namePrefix }}system
 ---

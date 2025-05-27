@@ -2,7 +2,7 @@ apiVersion: inference.sagemaker.aws.amazon.com/v1alpha1
 kind: ModelDeployment
 metadata:
   labels:
-    app.kubernetes.io/name: deploymentoperator
+    app.kubernetes.io/name: {{ .Values.namePrefix }}App
   name: deepseek-sample
 spec:
   sageMakerEndpoint:

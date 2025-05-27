@@ -1,4 +1,4 @@
-namePrefix: "deploymentoperator-"
+namePrefix: "hyperpod-inference-operator-"
 
 image: 
   repositoryDomainMap:
@@ -17,11 +17,11 @@ image:
     ap-southeast-1: 474668384327.dkr.ecr.ap-southeast-1.amazonaws.com
     ap-southeast-4: 311141544681.dkr.ecr.ap-southeast-4.amazonaws.com
     ap-southeast-3: 158128612970.dkr.ecr.ap-southeast-3.amazonaws.com
-  tag: operator-downloader
+  tag: v1.0.0
   pullPolicy: Always
 hyperpodClusterArn:
 executionRoleArn:
-stage: "gamma"
+stage: "prod"
 tlsCertificateS3Bucket:
 eksClusterName:
 aws-load-balancer-controller:
