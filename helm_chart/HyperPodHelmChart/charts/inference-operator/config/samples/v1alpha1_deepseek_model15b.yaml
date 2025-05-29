@@ -1,6 +1,8 @@
 apiVersion: inference.sagemaker.aws.amazon.com/v1alpha1
 kind: JumpStartModel
 metadata:
+  labels:
+    app.kubernetes.io/name: deepseek-llm-r1-distill-qwen-1-5b-app
   name: deepseek-sample
   namespace: ns-team-a
 spec:

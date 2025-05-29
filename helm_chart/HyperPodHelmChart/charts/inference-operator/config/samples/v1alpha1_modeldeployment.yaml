@@ -2,7 +2,7 @@ apiVersion: inference.sagemaker.aws.amazon.com/v1alpha1
 kind: ModelDeployment
 metadata:
   labels:
-    app.kubernetes.io/name: {{ .Values.namePrefix }}App
+    app.kubernetes.io/name: huggingface-text2text-flan-t5-xl-app
   name: modeldeployment-sample
   namespace: ns-team-a
 spec:

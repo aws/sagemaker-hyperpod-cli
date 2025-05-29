@@ -2,7 +2,7 @@ apiVersion: inference.sagemaker.aws.amazon.com/v1alpha1
 kind: ModelDeployment
 metadata:
   labels:
-    app.kubernetes.io/name: {{ .Values.namePrefix }}App2
+    app.kubernetes.io/name: huggingface-llm-mistral-7b-instruct-app
     kueue.x-k8s.io/priority-class: real-time-inference
   name: sample-mistral
   namespace: ns-team-a
