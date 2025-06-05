@@ -64,7 +64,6 @@ setup(
         "hydra-core==1.3.2",
         "omegaconf==2.3",
         "pynvml==11.4.1",
-        "requests==2.32.3",
         "tqdm==4.66.5",
         "zstandard==0.15.2",
         # Test dependencies
