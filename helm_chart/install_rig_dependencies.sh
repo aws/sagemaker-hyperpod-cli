@@ -108,7 +108,7 @@ override_aws_node() {
 		.spec.template.spec.containers[] |=
 		    select(.name == \"aws-node\").image = \"602401143452.dkr.ecr.us-east-1.amazonaws.com/amazon-k8s-cni:v1.19.6-rc1-eksbuild.1\" |
 		.spec.template.spec.containers[] |=
-		    select(.name == \"aws-vpc-cni-init\").image = \"602401143452.dkr.ecr.us-east-1.amazonaws.com/amazon/aws-network-policy-agent:v1.2.1-eksbuild.2\"
+		    select(.name == \"aws-eks-nodeagent\").image = \"602401143452.dkr.ecr.us-east-1.amazonaws.com/amazon/aws-network-policy-agent:v1.2.1-eksbuild.2\"
             " - )
     change_metadata=$(echo "$override_images" | \
 	    yq e -P "
