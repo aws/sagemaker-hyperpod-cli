@@ -22,6 +22,7 @@ image:
 hyperpodClusterArn:
 executionRoleArn:
 stage: "prod"
+region:
 tlsCertificateS3Bucket:
 eksClusterName:
 aws-load-balancer-controller:

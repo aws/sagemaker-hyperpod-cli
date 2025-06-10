@@ -62,6 +62,39 @@ spec:
                   The invocation endpoint of the model server. http://<host>:<port>/ would be pre-populated based on the other fields.
                   Please fill in the path after http://<host>:<port>/ specific to your model server.
                 type: string
+              metrics:
+                description: Configuration for metrics collection and exposure
+                properties:
+                  enabled:
+                    default: false
+                    description: Enable metrics collection for this model deployment
+                    type: boolean
+                  metricsScrapeIntervalSeconds:
+                    default: 15
+                    description: Scrape interval in seconds for metrics collection
+                      from sidecar and model container.
+                    format: int32
+                    maximum: 300
+                    minimum: 5
+                    type: integer
+                  modelMetrics:
+                    description: Configuration for model container metrics scraping
+                    properties:
+                      path:
+                        default: /metrics
+                        description: Path where the model exposes metrics
+                        pattern: ^/[a-zA-Z0-9\-_.\/]*$
+                        type: string
+                      port:
+                        default: 8080
+                        description: Port where the model exposes metrics. If not
+                          specified, a default port will be used.
+                        format: int32
+                        maximum: 65535
+                        minimum: 1024
+                        type: integer
+                    type: object
+                type: object
               modelName:
                 description: Name of model that will be created on Sagemaker
                 maxLength: 63
@@ -442,6 +475,112 @@ spec:
                   - type
                   type: object
                 type: array
+              deploymentStatus:
+                description: Details of the native kubernetes deployment that hosts
+                  the model
+                properties:
+                  deploymentObjectOverallState:
+                    description: Overall State of the Deployment Object
+                    type: string
+                  lastUpdated:
+                    description: Last Update Time
+                    format: date-time
+                    type: string
+                  message:
+                    description: Message populated in the root CRD while updating
+                      the status of underlying Deployment
+                    type: string
+                  name:
+                    description: Name of the Deployment Object
+                    type: string
+                  reason:
+                    description: Reason populated in the root CRD while updating the
+                      status of underlying Deployment
+                    type: string
+                  status:
+                    description: Status of the Deployment Object
+                    properties:
+                      availableReplicas:
+                        description: Total number of available pods (ready for at
+                          least minReadySeconds) targeted by this deployment.
+                        format: int32
+                        type: integer
+                      collisionCount:
+                        description: |-
+                          Count of hash collisions for the Deployment. The Deployment controller uses this
+                          field as a collision avoidance mechanism when it needs to create the name for the
+                          newest ReplicaSet.
+                        format: int32
+                        type: integer
+                      conditions:
+                        description: Represents the latest available observations
+                          of a deployment's current state.
+                        items:
+                          description: DeploymentCondition describes the state of
+                            a deployment at a certain point.
+                          properties:
+                            lastTransitionTime:
+                              description: Last time the condition transitioned from
+                                one status to another.
+                              format: date-time
+                              type: string
+                            lastUpdateTime:
+                              description: The last time this condition was updated.
+                              format: date-time
+                              type: string
+                            message:
+                              description: A human readable message indicating details
+                                about the transition.
+                              type: string
+                            reason:
+                              description: The reason for the condition's last transition.
+                              type: string
+                            status:
+                              description: Status of the condition, one of True, False,
+                                Unknown.
+                              type: string
+                            type:
+                              description: Type of deployment condition.
+                              type: string
+                          required:
+                          - status
+                          - type
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                        - type
+                        x-kubernetes-list-type: map
+                      observedGeneration:
+                        description: The generation observed by the deployment controller.
+                        format: int64
+                        type: integer
+                      readyReplicas:
+                        description: readyReplicas is the number of pods targeted
+                          by this Deployment with a Ready Condition.
+                        format: int32
+                        type: integer
+                      replicas:
+                        description: Total number of non-terminated pods targeted
+                          by this deployment (their labels match the selector).
+                        format: int32
+                        type: integer
+                      unavailableReplicas:
+                        description: |-
+                          Total number of unavailable pods targeted by this deployment. This is the total number of
+                          pods that are still required for the deployment to have 100% available capacity. They may
+                          either be pods that are running but not yet available or pods that still have not been created.
+                        format: int32
+                        type: integer
+                      updatedReplicas:
+                        description: Total number of non-terminated pods targeted
+                          by this deployment that have the desired template spec.
+                        format: int32
+                        type: integer
+                    type: object
+                required:
+                - lastUpdated
+                - name
+                type: object
               endpoints:
                 description: EndpointStatus contains the status of SageMaker endpoints
                 properties:
@@ -468,6 +607,37 @@ spec:
                     required:
                     - state
                     type: object
+                type: object
+              metricsStatus:
+                description: Status of metrics collection
+                properties:
+                  enabled:
+                    description: Whether metrics collection is enabled
+                    type: boolean
+                  errorMessage:
+                    description: Error message if metrics collection is in error state
+                    type: string
+                  metricsScrapeIntervalSeconds:
+                    description: Scrape interval in seconds for metrics collection
+                      from sidecar and model container.
+                    format: int32
+                    type: integer
+                  modelMetrics:
+                    description: Status of model container metrics collection
+                    properties:
+                      path:
+                        description: The path where metrics are available
+                        type: string
+                      port:
+                        description: The port on which metrics are exposed
+                        format: int32
+                        type: integer
+                    type: object
+                  state:
+                    description: Current state of metrics collection
+                    type: string
+                required:
+                - enabled
                 type: object
               observedGeneration:
                 description: Latest generation reconciled by controller
@@ -505,6 +675,16 @@ spec:
                   issuerName:
                     description: The issuer name of cert manager
                     type: string
+                  tlsCertificateOutputS3Bucket:
+                    description: S3 bucket that stores the certificate that needs
+                      to be trusted
+                    type: string
+                  tlsCertificateS3Keys:
+                    description: The output tls certificate S3 key that points to
+                      the .pem file
+                    items:
+                      type: string
+                    type: array
                 type: object
             type: object
         type: object

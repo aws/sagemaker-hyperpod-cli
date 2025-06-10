@@ -102,16 +102,19 @@ spec:
                 type: string
               tlsConfig:
                 properties:
-                  certificateName:
-                    description: The cert-manager.io/v1/Certificate resource that
-                      manages the created tls cert
+                  tlsCertificateOutputS3Bucket:
+                    description: S3 bucket that stores the certificate that needs
+                      to be trusted
                     type: string
-                  tlsCertificateOutputS3Uri:
-                    description: S3 uri that stores the generated tls certificate
-                    type: string
+                  tlsCertificateS3Keys:
+                    description: The output tls certificate S3 key that points to
+                      the .pem file
+                    items:
+                      type: string
+                    type: array
                 required:
-                - certificateName
-                - tlsCertificateOutputS3Uri
+                - tlsCertificateOutputS3Bucket
+                - tlsCertificateS3Keys
                 type: object
             required:
             - eksClusterDetails
@@ -227,20 +230,6 @@ spec:
                 - DeletionFailed
                 - DeletionCompleted
                 type: string
-              tlsConfig:
-                description: TlsConfig Metadata
-                properties:
-                  tlsCertificateS3Bucket:
-                    description: The output tls certificate S3 bucket
-                    type: string
-                  tlsCertificateS3Key:
-                    description: The output tls certificate S3 key that points to
-                      the .pem file
-                    type: string
-                required:
-                - tlsCertificateS3Bucket
-                - tlsCertificateS3Key
-                type: object
             required:
             - state
             type: object
