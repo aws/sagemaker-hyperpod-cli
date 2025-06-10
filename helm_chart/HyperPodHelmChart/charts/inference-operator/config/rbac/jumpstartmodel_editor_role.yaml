@@ -1,0 +1,30 @@
+# permissions for end users to edit jumpstartmodels.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: {{ .Values.namePrefix }}App
+    app.kubernetes.io/managed-by: kustomize
+  name: {{ .Values.namePrefix }}jumpstartmodels-editor-role
+  namespace: {{ .Values.namePrefix }}system
+rules:
+- apiGroups:
+  - inference.sagemaker.aws.amazon.com
+  resources:
+  - jumpstartmodels
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - inference.sagemaker.aws.amazon.com
+  resources:
+  - jumpstartmodels/status
+  verbs:
+  - get
+  - update
+  - patch
