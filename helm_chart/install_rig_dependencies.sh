@@ -8,9 +8,9 @@ OUTPUT_DIR="HyperPodHelmChartForRIG"
 add_ons=(
     "eks,kube-system,aws-node,daemonset"
     "eks,kube-system,coredns,deployment"
-    "hp,kube-system,mpi-operator,deployment"
-    "hp,kube-system,neuron-device-plugin,daemonset"
-    "hp,kube-system,training-operators,deployment"
+    #"hp,kube-system,mpi-operator,deployment"
+    #"hp,kube-system,neuron-device-plugin,daemonset"
+    #"hp,kube-system,training-operators,deployment"
 )
 
 generate_helm_chart_root() {
