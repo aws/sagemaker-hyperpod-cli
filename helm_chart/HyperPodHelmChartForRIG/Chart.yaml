@@ -24,25 +24,10 @@ version: 0.1.0
 appVersion: "1.16.0"
 
 dependencies:
-  - name: training-operators
-    version: "0.1.0"
-    repository: "file://charts/training-operators"
   - name: nvidia-device-plugin
     version: "0.16.1"
     repository: https://nvidia.github.io/k8s-device-plugin
     condition: nvidia-device-plugin.devicePlugin.enabled    
-  - name: aws-efa-k8s-device-plugin
-    version: "0.5.3"
-    repository: https://aws.github.io/eks-charts/
-    condition: aws-efa-k8s-device-plugin.devicePlugin.enabled
-  - name: neuron-device-plugin
-    version: "0.1.0"
-    repository: "file://charts/neuron-device-plugin"
-    condition: neuron-device-plugin.devicePlugin.enabled
-  - name: mpi-operator
-    version: "0.1.0"
-    repository: "file://charts/mpi-operator"
-    condition: mpi_operator.enabled 
   - name: coredns
     version: "0.1.0"
     repository: "file://charts/coredns"
