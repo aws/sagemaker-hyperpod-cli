@@ -2,6 +2,9 @@ from hyperpod.inference.config.constants import *
 from hyperpod.inference.config.jumpstart_model_endpoint_config import Model, JumpStartModelSpec, SageMakerEndpoint, Server
 from hyperpod.inference.model_endpoint_base import ModelEndpointBase
 from datetime import datetime
+from typing import Dict
+from tabulate import tabulate
+import yaml
 
 
 class JumpStartModelEndpoint(ModelEndpointBase):
@@ -35,7 +38,7 @@ class JumpStartModelEndpoint(ModelEndpointBase):
         '''
         pass
 
-    def _get_default_endpoint_name(self, model_id):
+    def _get_default_endpoint_name(self, model_id: str):
         '''
         Generate default endpoint name if not specified by user
         '''
@@ -55,16 +58,65 @@ class JumpStartModelEndpoint(ModelEndpointBase):
         if spec is None:
             sagemaker_endpoint = self._get_default_endpoint_name(model_id)
             
-            # create spec config
             spec = JumpStartModelSpec(
                 model=Model(model_id=model_id),
                 server=Server(instance_type=instance_type),
                 sage_maker_endpoint=SageMakerEndpoint(name=sagemaker_endpoint),
             )
 
-        self.invoke_api_call(
+        self.call_create_api(
             name=spec.model.modelId,    # use model id as metadata name
             kind=JUMPSTART_MODEL_KIND,
             namespace=namespace,
             spec=spec,
+        )
+
+    def create_from_dict(self, input: Dict, namespace: str):
+        spec = JumpStartModelSpec.model_validate(input, by_name=True)
+
+        self.call_create_api(
+            namespace=namespace,
+            spec=spec,
+        )
+
+    def list_endpoints(
+        self,
+        namespace: str
+    ):
+        response = self.call_list_api(
+            kind=JUMPSTART_MODEL_KIND,
+            namespace=namespace,
+        )
+
+        output_data = []
+        for item in response['items']:
+            metadata = item['metadata']
+            output_data.append((metadata['name'], metadata['creationTimestamp']))
+        headers = ["METADATA NAME", "CREATE TIME"]
+
+        print(tabulate(output_data, headers=headers))
+
+    def describe_endpoint(
+        self,
+        name: str, 
+        namespace: str,
+    ):
+        response = self.call_get_api(
+            name=name,
+            kind=JUMPSTART_MODEL_KIND,
+            namespace=namespace,
+        )
+
+        response['metadata'].pop('managedFields')
+        print(yaml.dump(response))
+
+    def delete_endpoint(
+        self,
+        name: str,
+        namespace: str,
+    ):
+        return self.call_delete_api(
+            name=name,    # use model id as metadata name
+            kind=JUMPSTART_MODEL_KIND,
+            namespace=namespace,
         )

@@ -2,7 +2,7 @@ from hyperpod.inference.config.constants import *
 from hyperpod.inference.config.model_endpoint_config import InferenceEndpointConfigSpec, ModelSourceConfig, S3Storage, FsxStorage
 from hyperpod.inference.model_endpoint_base import ModelEndpointBase
 from datetime import datetime
-from typing import Union
+from typing import Union, Dict
 
 
 class ModelEndpoint(ModelEndpointBase):
@@ -138,9 +138,48 @@ class ModelEndpoint(ModelEndpointBase):
                 container_port=container_port,
             )
 
-        self.invoke_api_call(
+        self.call_create_api(
             name=spec.modelName,    # use model name as metadata name
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace=namespace,
             spec=spec,
+        )
+
+    def create_from_dict(self, input: Dict, namespace: str):
+        spec = InferenceEndpointConfigSpec.model_validate(input, by_name=True)
+
+        self.call_create_api(
+            namespace=namespace,
+            spec=spec,
+        )
+
+    def list_endpoints(
+        self,
+        namespace: str
+    ):
+        return self.call_list_api(
+            kind=INFERENCE_ENDPOINT_CONFIG_KIND,
+            namespace=namespace,
+        )
+
+    def describe_endpoint(
+        self,
+        name: str, 
+        namespace: str,
+    ):
+        return self.call_get_api(
+            name=name,
+            kind=INFERENCE_ENDPOINT_CONFIG_KIND,
+            namespace=namespace,
+        )
+
+    def delete_endpoint(
+        self,
+        name: str,
+        namespace: str,
+    ):
+        return self.call_delete_api(
+            name=name,    # use model id as metadata name
+            kind=INFERENCE_ENDPOINT_CONFIG_KIND,
+            namespace=namespace,
         )
