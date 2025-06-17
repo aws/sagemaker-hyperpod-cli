@@ -110,6 +110,7 @@ spec:
                       - ml.g6e.24xlarge
                       - ml.g6e.48xlarge
                       - ml.trn2.48xlarge
+                      - ml.p6-b200.48xlarge
       containers:
         - name: health-monitoring-agent
           args:
