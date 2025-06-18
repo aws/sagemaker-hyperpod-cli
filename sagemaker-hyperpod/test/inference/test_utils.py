@@ -1,5 +1,4 @@
 import unittest
-import pytest
 from sagemaker.hyperpod.utils import get_eks_name_from_arn
 
 
