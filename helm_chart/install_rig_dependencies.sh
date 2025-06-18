@@ -145,8 +145,7 @@ override_coredns() {
 	.spec.updateStrategy = {
             \"type\": .spec.strategy.type,
             \"rollingUpdate\": {
-                \"maxUnavailable\": .spec.strategy.rollingUpdate.maxUnavailable,
-                \"maxSurge\": .spec.strategy.rollingUpdate.maxSurge
+                \"maxUnavailable\": 1
             }
         } |
         del(.spec.strategy)
