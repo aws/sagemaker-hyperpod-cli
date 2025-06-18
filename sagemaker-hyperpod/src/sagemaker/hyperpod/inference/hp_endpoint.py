@@ -92,7 +92,7 @@ class HPEndpoint(HPEndpointBase):
 
     def _validate_instance_type(self):
         """
-        Get supported instance types from node and model
+        To implement
         """
         pass
 
