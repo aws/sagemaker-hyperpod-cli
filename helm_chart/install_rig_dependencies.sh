@@ -113,6 +113,7 @@ override_aws_node() {
     change_metadata=$(echo "$override_images" | \
 	    yq e -P "
                 .metadata.name = \"rig-\" + .metadata.name |
+                .metadata.annotations.[\"helm.sh/hook-weight\"] = \"-1\" |
 		del(.status)
             " - )
 
@@ -137,6 +138,7 @@ override_coredns() {
     yq e "
         .kind = \"DaemonSet\" |
         .metadata.name = \"rig-\" + .metadata.name |
+        .metadata.annotations.[\"helm.sh/hook-weight\"] = \"0\" |
         .spec.template.spec.nodeSelector = {\"sagemaker.amazonaws.com/instance-group-type\": \"Restricted\"} |
         .spec.template.spec.tolerations += [{
             \"key\": \"sagemaker.amazonaws.com/RestrictedNode\",
