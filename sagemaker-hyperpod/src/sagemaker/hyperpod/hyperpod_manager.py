@@ -13,6 +13,7 @@ import re
 KUBE_CONFIG_PATH = os.path.expanduser(KUBE_CONFIG_DEFAULT_LOCATION)
 TEMP_KUBE_CONFIG_FILE = "/tmp/kubeconfig"
 
+
 class HyperPodManager:
     def _get_eks_name_from_arn(self, arn: str) -> str:
 
@@ -23,17 +24,11 @@ class HyperPodManager:
             return match.group(1)
         else:
             raise RuntimeError("cannot get EKS cluster name")
-    
-    def _is_eks_orchestrator(
-        self,
-        sagemaker_client,
-        cluster_name: str
-    ):
-        response = sagemaker_client.describe_cluster(
-            ClusterName=cluster_name
-        )
-        return 'Eks' in response['Orchestrator']
-    
+
+    def _is_eks_orchestrator(self, sagemaker_client, cluster_name: str):
+        response = sagemaker_client.describe_cluster(ClusterName=cluster_name)
+        return "Eks" in response["Orchestrator"]
+
     def _update_kube_config(
         self,
         eks_name: str,
@@ -53,15 +48,8 @@ class HyperPodManager:
             RuntimeError: If the `aws eks update-kubeconfig` command fails to execute.
         """
 
-        # Construct the kubeconfig update command
         # EKS doesn't provide boto3 API for this command
-        command = [
-            "aws",
-            "eks",
-            "update-kubeconfig",
-            "--name",
-            eks_name,
-        ]
+        command = ["aws", "eks", "update-kubeconfig", "--name", eks_name]
 
         if region:
             command.extend(["--region", region])
@@ -74,7 +62,6 @@ class HyperPodManager:
             subprocess.run(command, check=True)
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failed to update kubeconfig: {e}")
-
 
     def _set_current_context(
         self,
@@ -119,47 +106,49 @@ class HyperPodManager:
         self,
         region: Optional[str] = None,
     ):
-        client = boto3.client('sagemaker', region_name=region)
+        client = boto3.client("sagemaker", region_name=region)
         clusters = client.list_clusters()
 
         eks_clusters = []
         slurm_clusters = []
 
-        for cluster in clusters['ClusterSummaries']:
-            cluster_name = cluster['ClusterName']
-            
+        for cluster in clusters["ClusterSummaries"]:
+            cluster_name = cluster["ClusterName"]
+
             if self._is_eks_orchestrator(client, cluster_name):
-                eks_clusters.append(('EKS', cluster_name))
+                eks_clusters.append(("EKS", cluster_name))
             else:
-                slurm_clusters.append((cluster_name, 'Slurm'))
+                slurm_clusters.append((cluster_name, "Slurm"))
 
         table_data = eks_clusters + slurm_clusters
         headers = ["Orchestrator", "Cluster Name"]
 
         print(tabulate(table_data, headers=headers))
 
-    def set_current_cluster(
+    def set_context_cluster(
         self,
         cluster_name: str,
         region: Optional[str] = None,
         namespace: Optional[str] = None,
     ):
-        client = boto3.client('sagemaker', region_name=region)
+        client = boto3.client("sagemaker", region_name=region)
 
-        response = client.describe_cluster(
-            ClusterName=cluster_name
-        )
-        eks_cluster_arn = response['Orchestrator']['Eks']['ClusterArn']
+        response = client.describe_cluster(ClusterName=cluster_name)
+        eks_cluster_arn = response["Orchestrator"]["Eks"]["ClusterArn"]
         eks_name = self._get_eks_name_from_arn(eks_cluster_arn)
 
         self._update_kube_config(eks_name, region, TEMP_KUBE_CONFIG_FILE)
         self._set_current_context(eks_cluster_arn, namespace)
 
-        print(f'Successfully set current cluster: {cluster_name}')
+        print(f"Successfully set current cluster: {cluster_name}")
 
-    def current_context(self):
+    def get_context(self):
         try:
-            current_context = config.list_kube_config_contexts()[1]['context']['cluster']
-            print(f'Current Eks context is: {current_context}')
+            current_context = config.list_kube_config_contexts()[1]["context"][
+                "cluster"
+            ]
+            print(f"Current Eks context is: {current_context}")
         except Exception as e:
-            print(f'Failed to get current context: {e}. Check your config file at {TEMP_KUBE_CONFIG_FILE}')
+            print(
+                f"Failed to get current context: {e}. Check your config file at {TEMP_KUBE_CONFIG_FILE}"
+            )

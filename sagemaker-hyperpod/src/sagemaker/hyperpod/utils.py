@@ -1,3 +1,6 @@
+import re
+
+
 def get_name_from_arn(arn: str) -> str:
     """
     Parse the EKS cluster name from an EKS ARN.
