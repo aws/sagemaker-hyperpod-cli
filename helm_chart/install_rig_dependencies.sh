@@ -136,12 +136,19 @@ override_coredns() {
     ################################################
     yq e "
         .kind = \"DaemonSet\" |
+        .metadata.name = \"rig-\" + .metadata.name |
+        .spec.template.spec.nodeSelector = {\"sagemaker.amazonaws.com/instance-group-type\": \"Restricted\"} |
+        .spec.template.spec.tolerations += [{
+            \"key\": \"sagemaker.amazonaws.com/RestrictedNode\",
+            \"operator\": \"Equal\",
+            \"value\": \"Worker\",
+            \"effect\": \"NoSchedule\"
+        }] |
         del(.status) |
         del(.spec.replicas) |
         del(.spec.progressDeadlineSeconds) |
         del(.spec.revisionHistoryLimit) |
         del(.spec.template.spec.topologySpreadConstraints) |
-        del(.spec.template.spec.affinity.podAntiAffinity) |
 	.spec.updateStrategy = {
             \"type\": .spec.strategy.type,
             \"rollingUpdate\": {
