@@ -4,10 +4,14 @@ from sagemaker.hyperpod.inference.config.model_endpoint_config import (
     ModelSourceConfig,
     S3Storage,
     FsxStorage,
+    Worker,
+    ModelInvocationPort,
+    ModelVolumeMount,
+    Resources,
 )
 from sagemaker.hyperpod.inference.hp_endpoint_base import HPEndpointBase
 from datetime import datetime
-from typing import Union, Dict
+from typing import Union, Dict, Literal
 
 
 class HPEndpoint(HPEndpointBase):
@@ -17,14 +21,14 @@ class HPEndpoint(HPEndpointBase):
         instance_type: str,
         image: str,
         container_port: int,
-        model_source_type: Union["fsx", "s3"],
-        bucket_name: str,
-        bucket_region: str,
-        fsx_dns_name: str,
-        fsx_file_system_id: str,
-        fsx_mount_name: str,
+        model_source_type: Literal["fsx", "s3"],
+        bucket_name: str = None,
+        bucket_region: str = None,
+        fsx_dns_name: str = None,
+        fsx_file_system_id: str = None,
+        fsx_mount_name: str = None,
+        model_volume_mount_name: str = None,
     ):
-        # Validate required parameters when spec is None
         required_params = [
             model_name,
             instance_type,
@@ -89,6 +93,12 @@ class HPEndpoint(HPEndpointBase):
                 raise TypeError(
                     f"fsx_mount_name must be of type str, got {type(fsx_mount_name)}"
                 )
+        
+        # Validate model_volume_mount_name if provided
+        if model_volume_mount_name is not None and not isinstance(model_volume_mount_name, str):
+            raise TypeError(
+                f"model_volume_mount_name must be of type str, got {type(model_volume_mount_name)}"
+            )
 
     def _validate_instance_type(self):
         """
@@ -108,15 +118,19 @@ class HPEndpoint(HPEndpointBase):
         self,
         namespace: str,
         model_name: str = None,
+        model_version: str = None,
         instance_type: str = None,
         image: str = None,
         container_port: int = None,
-        model_source_type: Union["fsx", "s3"] = None,
+        model_source_type: Literal["fsx", "s3"] = None,
         bucket_name: str = None,
         bucket_region: str = None,
         fsx_dns_name: str = None,
         fsx_file_system_id: str = None,
         fsx_mount_name: str = None,
+        endpoint_name: str = None,
+        model_volume_mount_name: str = None,
+        model_volume_mount_path: str = None,
     ):
         self._validate_inputs(
             model_name,
@@ -129,9 +143,16 @@ class HPEndpoint(HPEndpointBase):
             fsx_dns_name,
             fsx_file_system_id,
             fsx_mount_name,
+            endpoint_name,
+            model_volume_mount_name,
+            model_volume_mount_path,
         )
 
-        endpoint_name = self._get_default_endpoint_name(model_name)
+        if not endpoint_name:
+            endpoint_name = self._get_default_endpoint_name(model_name)
+
+        if not model_volume_mount_path:
+            model_volume_mount_path = "/opt/ml/model"
 
         if model_source_type == "s3":
             model_source_config = ModelSourceConfig(
@@ -144,21 +165,31 @@ class HPEndpoint(HPEndpointBase):
         else:
             model_source_config = ModelSourceConfig(
                 model_source_type=model_source_type,
-                s3_storage=FsxStorage(
-                    fsx_dns_name=fsx_dns_name,
+                fsx_storage=FsxStorage(
+                    dns_name=fsx_dns_name,
                     file_system_id=fsx_file_system_id,
                     mount_name=fsx_mount_name,
                 ),
             )
 
+        worker = Worker(
+            image=image,
+            model_volume_mount=ModelVolumeMount(
+                name=model_volume_mount_name,
+                mount_path=model_volume_mount_path,
+            ),
+            model_invocation_port=ModelInvocationPort(container_port=container_port),
+            resources=Resources(),
+        )
+        
         # create spec config
         spec = InferenceEndpointConfigSpec(
-            endpoint_name=endpoint_name,
             instance_type=instance_type,
             model_name=model_name,
+            model_version=model_version,
             model_source_config=model_source_config,
-            image=image,
-            container_port=container_port,
+            worker=worker,
+            endpoint_name=endpoint_name,
         )
 
         self.call_create_api(
@@ -174,6 +205,8 @@ class HPEndpoint(HPEndpointBase):
         namespace: str = None,
     ):
         self.call_create_api(
+            name=spec.modelName,  # use model name as metadata name
+            kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace=namespace,
             spec=spec,
         )

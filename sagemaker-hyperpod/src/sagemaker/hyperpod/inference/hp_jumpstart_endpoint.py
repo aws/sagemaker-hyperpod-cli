@@ -49,14 +49,22 @@ class HPJumpStartEndpoint(HPEndpointBase):
         self,
         namespace: str,
         model_id: str = None,
+        model_version: str = None,
         instance_type: str = None,
+        sagemaker_endpoint: str = None,
+        accept_eula: bool = False,
     ):
         self._validate_inputs(model_id, instance_type)
 
-        sagemaker_endpoint = self._get_default_endpoint_name(model_id)
+        if not sagemaker_endpoint:
+            sagemaker_endpoint = self._get_default_endpoint_name(model_id)
 
         spec = JumpStartModelSpec(
-            model=Model(model_id=model_id),
+            model=Model(
+                model_id=model_id,
+                model_version=model_version,
+                accept_eula=accept_eula,
+            ),
             server=Server(instance_type=instance_type),
             sage_maker_endpoint=SageMakerEndpoint(name=sagemaker_endpoint),
         )

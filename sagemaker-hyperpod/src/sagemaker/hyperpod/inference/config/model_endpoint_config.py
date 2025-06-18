@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional, List, Dict, Union
+from typing import Optional, List, Dict, Union, Literal
 
 
 class ModelMetrics(BaseModel):
@@ -64,7 +64,7 @@ class ModelSourceConfig(BaseModel):
         alias="model_location",
         description="Sepcific location where the model data exists",
     )
-    modelSourceType: Union["fsx", "s3"] = Field(alias="model_source_type")
+    modelSourceType: Literal["fsx", "s3"] = Field(alias="model_source_type")
     prefetchEnabled: Optional[bool] = Field(
         default=False,
         alias="prefetch_enabled",

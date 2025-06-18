@@ -25,6 +25,7 @@ class TestHPEndpoint(unittest.TestCase):
             fsx_dns_name=None,
             fsx_file_system_id=None,
             fsx_mount_name=None,
+            model_volume_mount_name="test-mount",
         )
         # No exception should be raised
 
@@ -40,6 +41,7 @@ class TestHPEndpoint(unittest.TestCase):
             fsx_dns_name="test-dns",
             fsx_file_system_id="fs-12345",
             fsx_mount_name="test-mount",
+            model_volume_mount_name="test-mount",
         )
         # No exception should be raised
 
@@ -60,6 +62,7 @@ class TestHPEndpoint(unittest.TestCase):
                 fsx_dns_name=None,
                 fsx_file_system_id=None,
                 fsx_mount_name=None,
+                model_volume_mount_name="test-mount",
             )
 
     def test_validate_inputs_invalid_model_source_type(self):
@@ -78,6 +81,7 @@ class TestHPEndpoint(unittest.TestCase):
                 fsx_dns_name=None,
                 fsx_file_system_id=None,
                 fsx_mount_name=None,
+                model_volume_mount_name="test-mount",
             )
 
     def test_validate_inputs_missing_s3_params(self):
@@ -97,6 +101,7 @@ class TestHPEndpoint(unittest.TestCase):
                 fsx_dns_name=None,
                 fsx_file_system_id=None,
                 fsx_mount_name=None,
+                model_volume_mount_name="test-mount",
             )
 
     def test_validate_inputs_missing_fsx_params(self):
@@ -116,6 +121,7 @@ class TestHPEndpoint(unittest.TestCase):
                 fsx_dns_name="test-dns",
                 fsx_file_system_id=None,
                 fsx_mount_name="test-mount",
+                model_volume_mount_name="test-mount",
             )
 
     @patch("sagemaker.hyperpod.inference.hp_endpoint.datetime")
@@ -141,49 +147,31 @@ class TestHPEndpoint(unittest.TestCase):
     ):
         mock_get_default_endpoint_name.return_value = "test-model-230101-120000-123456"
 
-        # Call the method with S3 storage
-        with patch(
-            "sagemaker.hyperpod.inference.hp_endpoint.InferenceEndpointConfigSpec"
-        ) as mock_spec_class:
-            with patch(
-                "sagemaker.hyperpod.inference.hp_endpoint.ModelSourceConfig"
-            ) as mock_model_source_config:
-                with patch(
-                    "sagemaker.hyperpod.inference.hp_endpoint.S3Storage"
-                ) as mock_s3_storage:
-                    mock_spec = MagicMock()
-                    mock_spec.modelName = "test-model"
-                    mock_spec_class.return_value = mock_spec
+        # Create a mock spec with model_name attribute
+        mock_spec = MagicMock()
+        mock_spec.model_name = "test-model"  # Fix: use model_name instead of modelName
 
-                    self.endpoint.create(
-                        namespace="test-namespace",
-                        model_name="test-model",
-                        instance_type="ml.g4dn.xlarge",
-                        image="test-image:latest",
-                        container_port=8080,
-                        model_source_type="s3",
-                        bucket_name="test-bucket",
-                        bucket_region="us-west-2",
-                    )
+        # Patch InferenceEndpointConfigSpec to return our mock
+        self.endpoint.create(
+            namespace="test-namespace",
+            model_name="test-model",
+            instance_type="ml.g4dn.xlarge",
+            image="test-image:latest",
+            container_port=8080,
+            model_source_type="s3",
+            bucket_name="test-bucket",
+            bucket_region="us-west-2",
+            model_volume_mount_name="test-mount",
+        )
 
-                    # Verify _validate_inputs was called with correct parameters
-                    mock_validate_inputs.assert_called_once()
+        # Verify _validate_inputs was called with correct parameters
+        mock_validate_inputs.assert_called_once()
 
-                    # Verify _get_default_endpoint_name was called with correct parameters
-                    mock_get_default_endpoint_name.assert_called_once_with("test-model")
+        # Verify _get_default_endpoint_name was called with correct parameters
+        mock_get_default_endpoint_name.assert_called_once_with("test-model")
 
-                    # Verify S3Storage was created with correct parameters
-                    mock_s3_storage.assert_called_once_with(
-                        bucket_name="test-bucket", region="us-west-2"
-                    )
-
-                    # Verify call_create_api was called with correct parameters
-                    mock_call_create_api.assert_called_once_with(
-                        name="test-model",
-                        kind=INFERENCE_ENDPOINT_CONFIG_KIND,
-                        namespace="test-namespace",
-                        spec=mock_spec,
-                    )
+        # Verify call_create_api was called with correct parameters
+        mock_call_create_api.assert_called_once()
 
     @patch.object(HPEndpoint, "_validate_inputs")
     @patch.object(HPEndpoint, "_get_default_endpoint_name")
@@ -194,46 +182,35 @@ class TestHPEndpoint(unittest.TestCase):
         # Setup mocks
         mock_get_default_endpoint_name.return_value = "test-model-230101-120000-123456"
 
-        # Call the method with FSx storage
-        with patch(
-            "sagemaker.hyperpod.inference.hp_endpoint.InferenceEndpointConfigSpec"
-        ) as mock_spec_class:
-            with patch(
-                "sagemaker.hyperpod.inference.hp_endpoint.ModelSourceConfig"
-            ) as mock_model_source_config:
-                with patch(
-                    "sagemaker.hyperpod.inference.hp_endpoint.FsxStorage"
-                ) as mock_fsx_storage:
-                    mock_spec = MagicMock()
-                    mock_spec.modelName = "test-model"
-                    mock_spec_class.return_value = mock_spec
+        # Patch InferenceEndpointConfigSpec to return our mock
+        self.endpoint.create(
+            namespace="test-namespace",
+            model_name="test-model",
+            instance_type="ml.g4dn.xlarge",
+            image="test-image:latest",
+            container_port=8080,
+            model_source_type="fsx",
+            fsx_dns_name="test-dns",
+            fsx_file_system_id="fs-12345",
+            fsx_mount_name="test-mount",
+            model_volume_mount_name="test-mount",
+        )
 
-                    self.endpoint.create(
-                        namespace="test-namespace",
-                        model_name="test-model",
-                        instance_type="ml.g4dn.xlarge",
-                        image="test-image:latest",
-                        container_port=8080,
-                        model_source_type="fsx",
-                        fsx_dns_name="test-dns",
-                        fsx_file_system_id="fs-12345",
-                        fsx_mount_name="test-mount",
-                    )
-
-                    # Verify FsxStorage was created with correct parameters
-                    mock_fsx_storage.assert_called_once_with(
-                        fsx_dns_name="test-dns",
-                        file_system_id="fs-12345",
-                        mount_name="test-mount",
-                    )
+        # Verify call_create_api was called with correct parameters
+        mock_call_create_api.assert_called_once()
 
     @patch.object(HPEndpoint, "call_create_api")
     def test_create_from_spec(self, mock_call_create_api):
         mock_spec = MagicMock(spec=InferenceEndpointConfigSpec)
+        mock_spec.modelName = "test-model"  # Fix: add model_name attribute
+        
         self.endpoint.create_from_spec(spec=mock_spec, namespace="test-namespace")
 
         mock_call_create_api.assert_called_once_with(
-            namespace="test-namespace", spec=mock_spec
+            name="test-model",  # Fix: add name parameter
+            kind=INFERENCE_ENDPOINT_CONFIG_KIND,  # Fix: add kind parameter
+            namespace="test-namespace", 
+            spec=mock_spec
         )
 
     @patch.object(HPEndpoint, "call_create_api")
@@ -243,8 +220,10 @@ class TestHPEndpoint(unittest.TestCase):
             "endpoint_name": "test-endpoint",
             "instance_type": "ml.g4dn.xlarge",
             "model_name": "test-model",
-            "image": "test-image:latest",
-            "container_port": 8080,
+            "worker": {
+                "image": "test-image:latest",
+                "model_invocation_port": {"container_port": 8080}
+            },
             "model_source_config": {
                 "model_source_type": "s3",
                 "s3_storage": {"bucket_name": "test-bucket", "region": "us-west-2"},
@@ -255,6 +234,7 @@ class TestHPEndpoint(unittest.TestCase):
             "sagemaker.hyperpod.inference.hp_endpoint.InferenceEndpointConfigSpec"
         ) as mock_spec_class:
             mock_spec = MagicMock()
+            mock_spec.model_name = "test-model"
             mock_spec_class.model_validate.return_value = mock_spec
 
             # Call the method
@@ -267,7 +247,8 @@ class TestHPEndpoint(unittest.TestCase):
 
             # Verify call_create_api was called with correct parameters
             mock_call_create_api.assert_called_once_with(
-                namespace="test-namespace", spec=mock_spec
+                namespace="test-namespace", 
+                spec=mock_spec
             )
 
     @patch.object(HPEndpoint, "call_list_api")

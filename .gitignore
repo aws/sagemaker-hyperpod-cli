@@ -19,6 +19,8 @@ __pycache__/
 /build
 
 /sagemaker-hyperpod/build
+/sagemaker-hyperpod/.coverage
+/sagemaker-hyperpod/.coverage.*
 
 # Ignore all contents of result and results directories
 /result/

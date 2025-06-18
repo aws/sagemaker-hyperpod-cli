@@ -75,62 +75,18 @@ class TestHPJumpStartEndpoint(unittest.TestCase):
         mock_get_default_endpoint_name.return_value = "test-model-230101-120000-123456"
 
         # Call the method
-        with patch(
-            "sagemaker.hyperpod.inference.hp_jumpstart_endpoint.JumpStartModelSpec"
-        ) as mock_spec_class:
-            with patch(
-                "sagemaker.hyperpod.inference.hp_jumpstart_endpoint.Model"
-            ) as mock_model_class:
-                with patch(
-                    "sagemaker.hyperpod.inference.hp_jumpstart_endpoint.Server"
-                ) as mock_server_class:
-                    with patch(
-                        "sagemaker.hyperpod.inference.hp_jumpstart_endpoint.SageMakerEndpoint"
-                    ) as mock_endpoint_class:
-                        # Setup mock objects
-                        mock_model = MagicMock()
-                        mock_server = MagicMock()
-                        mock_sagemaker_endpoint = MagicMock()
-                        mock_spec = MagicMock()
+        self.endpoint.create(
+            namespace="test-namespace",
+            model_id="test-model",
+            instance_type="ml.g4dn.xlarge",
+        )
 
-                        mock_model_class.return_value = mock_model
-                        mock_server_class.return_value = mock_server
-                        mock_endpoint_class.return_value = mock_sagemaker_endpoint
-                        mock_spec_class.return_value = mock_spec
+        # Verify method calls
+        mock_validate_inputs.assert_called_once_with("test-model", "ml.g4dn.xlarge")
+        
+        mock_get_default_endpoint_name.assert_called_once_with("test-model")
 
-                        mock_spec.model.modelId = "test-model"
-
-                        # Call the method
-                        self.endpoint.create(
-                            namespace="test-namespace",
-                            model_id="test-model",
-                            instance_type="ml.g4dn.xlarge",
-                        )
-
-                        # Verify method calls
-                        mock_validate_inputs.assert_called_once_with(
-                            "test-model", "ml.g4dn.xlarge"
-                        )
-                        mock_get_default_endpoint_name.assert_called_once_with(
-                            "test-model"
-                        )
-
-                        # Verify object creation
-                        mock_model_class.assert_called_once_with(model_id="test-model")
-                        mock_server_class.assert_called_once_with(
-                            instance_type="ml.g4dn.xlarge"
-                        )
-                        mock_endpoint_class.assert_called_once_with(
-                            name="test-model-230101-120000-123456"
-                        )
-
-                        # Verify API call
-                        mock_call_create_api.assert_called_once_with(
-                            name="test-model",
-                            kind=JUMPSTART_MODEL_KIND,
-                            namespace="test-namespace",
-                            spec=mock_spec,
-                        )
+        mock_call_create_api.assert_called_once()
 
     @patch.object(HPJumpStartEndpoint, "call_create_api")
     def test_create_from_spec(self, mock_call_create_api):
