@@ -121,6 +121,41 @@ override_aws_node() {
     rm $tmp
 }
 
+override_coredns() {
+    ###################################################
+    # coredns has special requirements as of 6/6/2025
+    #  1. Need to convert the Deployment template into a Daemonset template
+    ####################################################
+    
+    local outdir="$1"                # Daemonset will be in separate files
+    local tmp="$outpath.tmp.yaml"    # Temporary space to work on overrides
+    cat > $tmp                       # Save the YAML from EKS so we can override it
+
+    ################################################
+    # 1 - Convert to Daemonset
+    ################################################
+    yq e "
+        .kind = \"DaemonSet\" |
+        del(.status) |
+        del(.spec.replicas) |
+        del(.spec.progressDeadlineSeconds) |
+        del(.spec.revisionHistoryLimit) |
+        del(.spec.template.spec.topologySpreadConstraints) |
+        del(.spec.template.spec.affinity.podAntiAffinity) |
+	.spec.updateStrategy = {
+            \"type\": .spec.strategy.type,
+            \"rollingUpdate\": {
+                \"maxUnavailable\": .spec.strategy.rollingUpdate.maxUnavailable,
+                \"maxSurge\": .spec.strategy.rollingUpdate.maxSurge
+            }
+        } |
+        del(.spec.strategy)
+    " $tmp > $outdir/daemonset.rig.yaml
+
+    rm $tmp
+}
+
+
 fetch_yaml_and_enable_overrides() {
     local resources=("${!1}")
     
@@ -151,7 +186,11 @@ fetch_yaml_and_enable_overrides() {
                 # aws-node is a special case with different requirements
                 get_helm_chart_from_eks $kind $name $namespace | \
 		    override_aws_node $(dirname $outpath)
-	    else
+	    elif [ "$name" = "coredns" ]; then
+		# corens is a special case with different requirements for multi-RIG
+		get_helm_chart_from_eks $kind $name $namespace | \
+		    override_coredns $(dirname $outpath)
+	    else 
 		get_helm_chart_from_eks $kind $name $namespace | \
 		    enable_nodeselectors_and_tolerations_overrides $outpath
             fi
