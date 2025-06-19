@@ -13,6 +13,8 @@ from sagemaker.hyperpod.inference.hp_endpoint_base import HPEndpointBase
 from datetime import datetime
 from typing import Dict, Literal
 import boto3
+from tabulate import tabulate
+import yaml
 
 
 class HPEndpoint(HPEndpointBase):
@@ -240,10 +242,18 @@ class HPEndpoint(HPEndpointBase):
         cls,
         namespace: str = 'default',
     ):
-        return cls().call_list_api(
+        response = cls().call_list_api(
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace=namespace,
         )
+
+        output_data = []
+        for item in response["items"]:
+            metadata = item["metadata"]
+            output_data.append((metadata["name"], metadata["creationTimestamp"]))
+        headers = ["METADATA NAME", "CREATE TIME"]
+
+        print(tabulate(output_data, headers=headers))
 
     @classmethod
     def describe_endpoint(
@@ -251,11 +261,14 @@ class HPEndpoint(HPEndpointBase):
         name: str,
         namespace: str = 'default',
     ):
-        return cls().call_get_api(
+        response = cls().call_get_api(
             name=name,
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace=namespace,
         )
+        
+        response["metadata"].pop("managedFields")
+        print(yaml.dump(response))
 
     @classmethod
     def delete_endpoint(

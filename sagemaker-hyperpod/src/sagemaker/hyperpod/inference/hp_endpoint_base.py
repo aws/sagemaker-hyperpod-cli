@@ -78,7 +78,7 @@ class HPEndpointBase:
                 body=body,
             )
 
-            print("\nSuccessful deployed model and its endpoint!")
+            print("\nDeploying model and its endpoint... The process may take a few minutes.")
         except Exception as e:
             print(f"\nFailed to deploy model and its endpoint: {e}")
 
@@ -127,7 +127,7 @@ class HPEndpointBase:
                 plural=KIND_PLURAL_MAP[kind],
                 name=name,
             )
-            print(f"Successful deleted model and endpoint!")
+            print(f"Deleting model and its endpoint...")
         except Exception as e:
             print(f"Failed to delete endpoint details: {e}")
 

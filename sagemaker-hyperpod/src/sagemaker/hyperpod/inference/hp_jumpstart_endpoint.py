@@ -122,7 +122,6 @@ class HPJumpStartEndpoint(HPEndpointBase):
         headers = ["METADATA NAME", "CREATE TIME"]
 
         print(tabulate(output_data, headers=headers))
-        return response
 
     @classmethod
     def describe_endpoint(
@@ -138,7 +137,6 @@ class HPJumpStartEndpoint(HPEndpointBase):
 
         response["metadata"].pop("managedFields")
         print(yaml.dump(response))
-        return response
 
     @classmethod
     def delete_endpoint(
@@ -146,7 +144,7 @@ class HPJumpStartEndpoint(HPEndpointBase):
         name: str,
         namespace: str = 'default',
     ):
-        return cls().call_delete_api(
+        cls().call_delete_api(
             name=name,  # use model id as metadata name
             kind=JUMPSTART_MODEL_KIND,
             namespace=namespace,
