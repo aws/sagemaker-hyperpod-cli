@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 import pytest
 from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
-from sagemaker.hyperpod.inference.config.model_endpoint_config import (
+from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     InferenceEndpointConfigSpec,
 )
 from sagemaker.hyperpod.inference.config.constants import *

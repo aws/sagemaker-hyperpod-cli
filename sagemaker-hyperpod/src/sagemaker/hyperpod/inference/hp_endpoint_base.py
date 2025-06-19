@@ -2,10 +2,10 @@ from kubernetes import client
 from kubernetes import config as k8s_config
 from sagemaker.hyperpod.inference.config.constants import *
 import yaml
-from sagemaker.hyperpod.inference.config.jumpstart_model_endpoint_config import (
+from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
     JumpStartModelSpec,
 )
-from sagemaker.hyperpod.inference.config.model_endpoint_config import (
+from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     InferenceEndpointConfigSpec,
 )
 from types import SimpleNamespace
@@ -78,7 +78,6 @@ class HPEndpointBase:
                 body=body,
             )
 
-            self.set_endpoint(spec.sageMakerEndpoint.name)
             print("\nSuccessful deployed model and its endpoint!")
         except Exception as e:
             print(f"\nFailed to deploy model and its endpoint: {e}")

@@ -1,5 +1,5 @@
 from sagemaker.hyperpod.inference.config.constants import *
-from sagemaker.hyperpod.inference.config.jumpstart_model_endpoint_config import (
+from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
     Model,
     JumpStartModelSpec,
     SageMakerEndpoint,
@@ -47,7 +47,7 @@ class HPJumpStartEndpoint(HPEndpointBase):
     @classmethod
     def create(
         cls,
-        namespace: str = None,
+        namespace: str = 'default',
         model_id: str = None,
         model_version: str = None,
         instance_type: str = None,
@@ -77,13 +77,11 @@ class HPJumpStartEndpoint(HPEndpointBase):
             spec=spec,
         )
 
-        return cls.get_endpoint(endpoint_name=sagemaker_endpoint)
-
     @classmethod
     def create_from_spec(
         cls,
         spec: JumpStartModelSpec,
-        namespace: str = None,
+        namespace: str = 'default',
     ):
         cls().call_create_api(
             name=spec.model.modelId,  # use model id as metadata name
@@ -92,13 +90,11 @@ class HPJumpStartEndpoint(HPEndpointBase):
             spec=spec,
         )
 
-        return super().get_endpoint(endpoint_name=spec.sageMakerEndpoint.name)
-
     @classmethod
     def create_from_dict(
         cls,
         input: Dict,
-        namespace: str = None,
+        namespace: str = 'default',
     ):
         spec = JumpStartModelSpec.model_validate(input, by_name=True)
 
@@ -109,12 +105,10 @@ class HPJumpStartEndpoint(HPEndpointBase):
             spec=spec,
         )
 
-        return super().get_endpoint(endpoint_name=spec.sageMakerEndpoint.name)
-
     @classmethod
     def list_endpoints(
         cls,
-        namespace: str = None,
+        namespace: str = 'default',
     ):
         response = cls().call_list_api(
             kind=JUMPSTART_MODEL_KIND,
@@ -134,7 +128,7 @@ class HPJumpStartEndpoint(HPEndpointBase):
     def describe_endpoint(
         cls,
         name: str,
-        namespace: str = None,
+        namespace: str = 'default',
     ):
         response = cls().call_get_api(
             name=name,
@@ -150,7 +144,7 @@ class HPJumpStartEndpoint(HPEndpointBase):
     def delete_endpoint(
         cls,
         name: str,
-        namespace: str = None,
+        namespace: str = 'default',
     ):
         return cls().call_delete_api(
             name=name,  # use model id as metadata name
