@@ -9,9 +9,35 @@ from sagemaker.hyperpod.inference.config.model_endpoint_config import (
     InferenceEndpointConfigSpec,
 )
 from types import SimpleNamespace
+import boto3
+from sagemaker_core.main.resources import Endpoint
+
+
+def get_current_region():
+    session = boto3.session.Session()
+    return session.region_name
 
 
 class HPEndpointBase:
+    _endpoint = None
+
+    def get_name(self):
+        if not self._endpoint or not hasattr(self._endpoint, "endpoint_name"):
+            print(f"Endpoint is not set!")
+
+        print(f"Endpoint name is: {self._endpoint.endpoint_name}")
+
+    @classmethod
+    def get_endpoint(
+        cls,
+        endpoint_name: str,
+        region: str = None,
+    ):
+        if not region:
+            region = get_current_region()
+
+        return Endpoint.get(endpoint_name, region=region)
+
     def _validate_connection(self):
         try:
             k8s_config.load_kube_config()
@@ -51,6 +77,8 @@ class HPEndpointBase:
                 plural=KIND_PLURAL_MAP[kind],
                 body=body,
             )
+
+            self.set_endpoint(spec.sageMakerEndpoint.name)
             print("\nSuccessful deployed model and its endpoint!")
         except Exception as e:
             print(f"\nFailed to deploy model and its endpoint: {e}")
@@ -125,3 +153,12 @@ class HPEndpointBase:
             )
         except Exception as e:
             print(f"\nFailed to list endpoint: {e}")
+
+    def invoke(self, body, **kwargs):
+        if self._endpoint is None:
+            raise Exception("Endpoint not initialized. Please set endpoint first.")
+
+        try:
+            self._endpoint.invoke(body, **kwargs)
+        except Exception as e:
+            print(f"\nFailed to invoke endpoint: {e}")

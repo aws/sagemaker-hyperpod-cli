@@ -172,7 +172,7 @@ class TestHyperPodManager(unittest.TestCase):
             }
         }
         mock_get_name.return_value = "my-cluster"
-        self.manager.set_context_cluster("my-cluster", "us-west-2", "default")
+        self.manager.set_context("my-cluster", "us-west-2", "default")
 
         # Verify
         mock_boto3_client.assert_called_once_with("sagemaker", region_name="us-west-2")

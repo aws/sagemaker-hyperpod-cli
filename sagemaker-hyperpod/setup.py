@@ -16,6 +16,7 @@ setup(
         "pyyaml==6.0.2",
         "ratelimit==2.2.1",
         "tabulate==0.9.0",
+        "pydantic==2.11.7",
         "pytest==8.3.2",
         "pytest-cov==5.0.0",
         "pytest-order==1.3.0",
