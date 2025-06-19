@@ -11,7 +11,8 @@ from sagemaker.hyperpod.inference.config.model_endpoint_config import (
 )
 from sagemaker.hyperpod.inference.hp_endpoint_base import HPEndpointBase
 from datetime import datetime
-from typing import Union, Dict, Literal
+from typing import Dict, Literal
+import boto3
 
 
 class HPEndpoint(HPEndpointBase):
@@ -93,9 +94,11 @@ class HPEndpoint(HPEndpointBase):
                 raise TypeError(
                     f"fsx_mount_name must be of type str, got {type(fsx_mount_name)}"
                 )
-        
+
         # Validate model_volume_mount_name if provided
-        if model_volume_mount_name is not None and not isinstance(model_volume_mount_name, str):
+        if model_volume_mount_name is not None and not isinstance(
+            model_volume_mount_name, str
+        ):
             raise TypeError(
                 f"model_volume_mount_name must be of type str, got {type(model_volume_mount_name)}"
             )
@@ -114,9 +117,10 @@ class HPEndpoint(HPEndpointBase):
 
         return model_name + "-" + time_str
 
+    @classmethod
     def create(
-        self,
-        namespace: str,
+        cls,
+        namespace: str = None,
         model_name: str = None,
         model_version: str = None,
         instance_type: str = None,
@@ -132,7 +136,9 @@ class HPEndpoint(HPEndpointBase):
         model_volume_mount_name: str = None,
         model_volume_mount_path: str = None,
     ):
-        self._validate_inputs(
+        instance = cls()
+
+        instance._validate_inputs(
             model_name,
             instance_type,
             image,
@@ -143,16 +149,14 @@ class HPEndpoint(HPEndpointBase):
             fsx_dns_name,
             fsx_file_system_id,
             fsx_mount_name,
-            endpoint_name,
             model_volume_mount_name,
-            model_volume_mount_path,
         )
 
         if not endpoint_name:
-            endpoint_name = self._get_default_endpoint_name(model_name)
+            endpoint_name = instance._get_default_endpoint_name(model_name)
 
         if not model_volume_mount_path:
-            model_volume_mount_path = "/opt/ml/model"
+            model_volume_mount_path = DEFAULT_MOUNT_PATH
 
         if model_source_type == "s3":
             model_source_config = ModelSourceConfig(
@@ -181,7 +185,7 @@ class HPEndpoint(HPEndpointBase):
             model_invocation_port=ModelInvocationPort(container_port=container_port),
             resources=Resources(),
         )
-        
+
         # create spec config
         spec = InferenceEndpointConfigSpec(
             instance_type=instance_type,
@@ -192,56 +196,80 @@ class HPEndpoint(HPEndpointBase):
             endpoint_name=endpoint_name,
         )
 
-        self.call_create_api(
+        instance.call_create_api(
             name=spec.modelName,  # use model name as metadata name
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace=namespace,
             spec=spec,
         )
 
+        return super().get_endpoint(endpoint_name)
+
+    @classmethod
     def create_from_spec(
-        self,
+        cls,
         spec: InferenceEndpointConfigSpec,
         namespace: str = None,
     ):
-        self.call_create_api(
+        cls().call_create_api(
             name=spec.modelName,  # use model name as metadata name
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace=namespace,
             spec=spec,
         )
 
-    def create_from_dict(self, input: Dict, namespace: str):
+        region = boto3.session.Session().region_name
+
+        return super().get_endpoint(endpoint_name=spec.endpointName, region=region)
+
+    @classmethod
+    def create_from_dict(
+        cls,
+        input: Dict,
+        namespace: str = None,
+    ):
         spec = InferenceEndpointConfigSpec.model_validate(input, by_name=True)
 
-        self.call_create_api(
+        cls().call_create_api(
+            name=spec.modelName,  # use model name as metadata name
+            kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace=namespace,
             spec=spec,
         )
 
-    def list_endpoints(self, namespace: str):
-        return self.call_list_api(
+        region = boto3.session.Session().region_name
+
+        return super().get_endpoint(endpoint_name=spec.endpointName, region=region)
+
+    @classmethod
+    def list_endpoints(
+        cls,
+        namespace: str = None,
+    ):
+        return cls().call_list_api(
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace=namespace,
         )
 
+    @classmethod
     def describe_endpoint(
-        self,
+        cls,
         name: str,
-        namespace: str,
+        namespace: str = None,
     ):
-        return self.call_get_api(
+        return cls().call_get_api(
             name=name,
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace=namespace,
         )
 
+    @classmethod
     def delete_endpoint(
-        self,
+        cls,
         name: str,
-        namespace: str,
+        namespace: str = None,
     ):
-        return self.call_delete_api(
+        cls().call_delete_api(
             name=name,  # use model id as metadata name
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace=namespace,

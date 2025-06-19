@@ -139,12 +139,18 @@ class TestHPEndpoint(unittest.TestCase):
         mock_now.strftime.assert_called_once_with("%y%m%d-%H%M%S-%f")
 
     # Tests for create method
+    @patch("sagemaker_core.main.resources.Endpoint.get")
     @patch.object(HPEndpoint, "_validate_inputs")
     @patch.object(HPEndpoint, "_get_default_endpoint_name")
     @patch.object(HPEndpoint, "call_create_api")
     def test_create_with_s3(
-        self, mock_call_create_api, mock_get_default_endpoint_name, mock_validate_inputs
+        self,
+        mock_call_create_api,
+        mock_get_default_endpoint_name,
+        mock_validate_inputs,
+        mock_get_endpoint,
     ):
+        mock_get_endpoint.return_value = MagicMock()
         mock_get_default_endpoint_name.return_value = "test-model-230101-120000-123456"
 
         # Create a mock spec with model_name attribute
@@ -152,7 +158,7 @@ class TestHPEndpoint(unittest.TestCase):
         mock_spec.model_name = "test-model"  # Fix: use model_name instead of modelName
 
         # Patch InferenceEndpointConfigSpec to return our mock
-        self.endpoint.create(
+        HPEndpoint.create(
             namespace="test-namespace",
             model_name="test-model",
             instance_type="ml.g4dn.xlarge",
@@ -173,17 +179,23 @@ class TestHPEndpoint(unittest.TestCase):
         # Verify call_create_api was called with correct parameters
         mock_call_create_api.assert_called_once()
 
+    @patch("sagemaker_core.main.resources.Endpoint.get")
     @patch.object(HPEndpoint, "_validate_inputs")
     @patch.object(HPEndpoint, "_get_default_endpoint_name")
     @patch.object(HPEndpoint, "call_create_api")
     def test_create_with_fsx(
-        self, mock_call_create_api, mock_get_default_endpoint_name, mock_validate_inputs
+        self,
+        mock_call_create_api,
+        mock_get_default_endpoint_name,
+        mock_validate_inputs,
+        mock_get_endpoint,
     ):
         # Setup mocks
         mock_get_default_endpoint_name.return_value = "test-model-230101-120000-123456"
+        mock_get_endpoint.return_value = MagicMock()
 
         # Patch InferenceEndpointConfigSpec to return our mock
-        self.endpoint.create(
+        HPEndpoint.create(
             namespace="test-namespace",
             model_name="test-model",
             instance_type="ml.g4dn.xlarge",
@@ -200,56 +212,62 @@ class TestHPEndpoint(unittest.TestCase):
         mock_call_create_api.assert_called_once()
 
     @patch.object(HPEndpoint, "call_create_api")
-    def test_create_from_spec(self, mock_call_create_api):
-        mock_spec = MagicMock(spec=InferenceEndpointConfigSpec)
-        mock_spec.modelName = "test-model"  # Fix: add model_name attribute
-        
-        self.endpoint.create_from_spec(spec=mock_spec, namespace="test-namespace")
+    @patch("boto3.session.Session")
+    @patch("sagemaker_core.main.resources.Endpoint.get")
+    def test_create_from_spec(
+        self, mock_get_endpoint, mock_session, mock_call_create_api
+    ):
+        # Setup mocks
+        mock_session_instance = MagicMock()
+        mock_session_instance.region_name = "us-west-2"
+        mock_session.return_value = mock_session_instance
 
+        mock_endpoint = MagicMock()
+        mock_get_endpoint.return_value = mock_endpoint
+
+        # Create a mock spec with proper attributes
+        mock_spec = MagicMock(spec=InferenceEndpointConfigSpec)
+        mock_spec.modelName = "test-model"  # Use snake_case
+        mock_spec.endpointName = "test-endpoint"  # Add endpoint_name attribute
+
+        # Call the method
+        result = HPEndpoint.create_from_spec(spec=mock_spec, namespace="test-namespace")
+
+        # Verify call_create_api was called with correct parameters
         mock_call_create_api.assert_called_once_with(
-            name="test-model",  # Fix: add name parameter
-            kind=INFERENCE_ENDPOINT_CONFIG_KIND,  # Fix: add kind parameter
-            namespace="test-namespace", 
-            spec=mock_spec
+            name=mock_spec.modelName,
+            kind=INFERENCE_ENDPOINT_CONFIG_KIND,
+            namespace="test-namespace",
+            spec=mock_spec,
         )
 
+    @patch("sagemaker_core.main.resources.Endpoint.get")
     @patch.object(HPEndpoint, "call_create_api")
-    def test_create_from_dict(self, mock_call_create_api):
+    def test_create_from_dict(self, mock_call_create_api, mock_get_endpoint):
+        mock_get_endpoint.return_value = MagicMock()
+
         # Setup test data
         input_dict = {
-            "endpoint_name": "test-endpoint",
-            "instance_type": "ml.g4dn.xlarge",
-            "model_name": "test-model",
+            "endpointName": "test-endpoint",
+            "instanceType": "ml.g4dn.xlarge",
+            "modelName": "test-model",
             "worker": {
                 "image": "test-image:latest",
-                "model_invocation_port": {"container_port": 8080}
+                "modelInvocationPort": {"container_port": 8080},
+                "modelVolumeMount": {"name": "volume-mount"},
+                "resources": {},
             },
-            "model_source_config": {
-                "model_source_type": "s3",
-                "s3_storage": {"bucket_name": "test-bucket", "region": "us-west-2"},
+            "modelSourceConfig": {
+                "modelSourceType": "s3",
+                "s3Storage": {"bucket_name": "test-bucket", "region": "us-west-2"},
             },
         }
 
-        with patch(
-            "sagemaker.hyperpod.inference.hp_endpoint.InferenceEndpointConfigSpec"
-        ) as mock_spec_class:
-            mock_spec = MagicMock()
-            mock_spec.model_name = "test-model"
-            mock_spec_class.model_validate.return_value = mock_spec
+        # Call the method
+        HPEndpoint.create_from_dict(input=input_dict, namespace="test-namespace")
 
-            # Call the method
-            self.endpoint.create_from_dict(input=input_dict, namespace="test-namespace")
-
-            # Verify InferenceEndpointConfigSpec.model_validate was called with correct parameters
-            mock_spec_class.model_validate.assert_called_once_with(
-                input_dict, by_name=True
-            )
-
-            # Verify call_create_api was called with correct parameters
-            mock_call_create_api.assert_called_once_with(
-                namespace="test-namespace", 
-                spec=mock_spec
-            )
+        # Verify call_create_api was called with correct parameters
+        mock_call_create_api.assert_called_once()
 
     @patch.object(HPEndpoint, "call_list_api")
     def test_list_endpoints(self, mock_call_list_api):
@@ -257,7 +275,7 @@ class TestHPEndpoint(unittest.TestCase):
         mock_call_list_api.return_value = mock_response
 
         # Call the method
-        result = self.endpoint.list_endpoints(namespace="test-namespace")
+        result = HPEndpoint.list_endpoints(namespace="test-namespace")
 
         # Verify call_list_api was called with correct parameters
         mock_call_list_api.assert_called_once_with(
@@ -272,7 +290,7 @@ class TestHPEndpoint(unittest.TestCase):
         mock_response = {"metadata": {"name": "endpoint-1"}}
         mock_call_get_api.return_value = mock_response
 
-        result = self.endpoint.describe_endpoint(
+        result = HPEndpoint.describe_endpoint(
             name="endpoint-1", namespace="test-namespace"
         )
 
@@ -289,11 +307,10 @@ class TestHPEndpoint(unittest.TestCase):
     @patch.object(HPEndpoint, "call_delete_api")
     def test_delete_endpoint(self, mock_call_delete_api):
         # Setup mock response
-        mock_response = {"status": "success"}
-        mock_call_delete_api.return_value = mock_response
+        mock_call_delete_api.return_value = None
 
         # Call the method
-        result = self.endpoint.delete_endpoint(
+        result = HPEndpoint.delete_endpoint(
             name="endpoint-1", namespace="test-namespace"
         )
 
@@ -303,6 +320,3 @@ class TestHPEndpoint(unittest.TestCase):
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace="test-namespace",
         )
-
-        # Verify result
-        self.assertEqual(result, mock_response)

@@ -18,7 +18,6 @@ class HPJumpStartEndpoint(HPEndpointBase):
         model_id: str,
         instance_type: str,
     ):
-
         # Validate required parameters when spec is None
         if model_id is None or instance_type is None:
             raise ValueError("Must provide both model_id and instance_type.")
@@ -45,19 +44,21 @@ class HPJumpStartEndpoint(HPEndpointBase):
 
         return model_id + "-" + time_str
 
+    @classmethod
     def create(
-        self,
-        namespace: str,
+        cls,
+        namespace: str = None,
         model_id: str = None,
         model_version: str = None,
         instance_type: str = None,
         sagemaker_endpoint: str = None,
         accept_eula: bool = False,
     ):
-        self._validate_inputs(model_id, instance_type)
+        instance = cls()
+        instance._validate_inputs(model_id, instance_type)
 
         if not sagemaker_endpoint:
-            sagemaker_endpoint = self._get_default_endpoint_name(model_id)
+            sagemaker_endpoint = instance._get_default_endpoint_name(model_id)
 
         spec = JumpStartModelSpec(
             model=Model(
@@ -69,35 +70,53 @@ class HPJumpStartEndpoint(HPEndpointBase):
             sage_maker_endpoint=SageMakerEndpoint(name=sagemaker_endpoint),
         )
 
-        self.call_create_api(
+        instance.call_create_api(
             name=spec.model.modelId,  # use model id as metadata name
             kind=JUMPSTART_MODEL_KIND,
             namespace=namespace,
             spec=spec,
         )
 
+        return cls.get_endpoint(endpoint_name=sagemaker_endpoint)
+
+    @classmethod
     def create_from_spec(
-        self,
+        cls,
         spec: JumpStartModelSpec,
         namespace: str = None,
     ):
-        self.call_create_api(
+        cls().call_create_api(
             name=spec.model.modelId,  # use model id as metadata name
             kind=JUMPSTART_MODEL_KIND,
             namespace=namespace,
             spec=spec,
         )
 
-    def create_from_dict(self, input: Dict, namespace: str):
+        return super().get_endpoint(endpoint_name=spec.sageMakerEndpoint.name)
+
+    @classmethod
+    def create_from_dict(
+        cls,
+        input: Dict,
+        namespace: str = None,
+    ):
         spec = JumpStartModelSpec.model_validate(input, by_name=True)
 
-        self.call_create_api(
+        cls().call_create_api(
+            name=spec.model.modelId,  # use model id as metadata name
+            kind=JUMPSTART_MODEL_KIND,
             namespace=namespace,
             spec=spec,
         )
 
-    def list_endpoints(self, namespace: str):
-        response = self.call_list_api(
+        return super().get_endpoint(endpoint_name=spec.sageMakerEndpoint.name)
+
+    @classmethod
+    def list_endpoints(
+        cls,
+        namespace: str = None,
+    ):
+        response = cls().call_list_api(
             kind=JUMPSTART_MODEL_KIND,
             namespace=namespace,
         )
@@ -109,13 +128,15 @@ class HPJumpStartEndpoint(HPEndpointBase):
         headers = ["METADATA NAME", "CREATE TIME"]
 
         print(tabulate(output_data, headers=headers))
+        return response
 
+    @classmethod
     def describe_endpoint(
-        self,
+        cls,
         name: str,
-        namespace: str,
+        namespace: str = None,
     ):
-        response = self.call_get_api(
+        response = cls().call_get_api(
             name=name,
             kind=JUMPSTART_MODEL_KIND,
             namespace=namespace,
@@ -123,13 +144,15 @@ class HPJumpStartEndpoint(HPEndpointBase):
 
         response["metadata"].pop("managedFields")
         print(yaml.dump(response))
+        return response
 
+    @classmethod
     def delete_endpoint(
-        self,
+        cls,
         name: str,
-        namespace: str,
+        namespace: str = None,
     ):
-        return self.call_delete_api(
+        return cls().call_delete_api(
             name=name,  # use model id as metadata name
             kind=JUMPSTART_MODEL_KIND,
             namespace=namespace,

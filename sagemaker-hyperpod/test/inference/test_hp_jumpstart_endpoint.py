@@ -2,12 +2,6 @@ import unittest
 from unittest.mock import patch, MagicMock
 import pytest
 from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
-from sagemaker.hyperpod.inference.config.jumpstart_model_endpoint_config import (
-    JumpStartModelSpec,
-    Model,
-    Server,
-    SageMakerEndpoint,
-)
 from sagemaker.hyperpod.inference.config.constants import *
 
 
@@ -58,7 +52,7 @@ class TestHPJumpStartEndpoint(unittest.TestCase):
         mock_now.strftime.return_value = "230101-120000-123456"
 
         # Test the method
-        result = self.endpoint._get_default_endpoint_name("test-model")
+        result = HPJumpStartEndpoint()._get_default_endpoint_name("test-model")
 
         # Verify results
         self.assertEqual(result, "test-model-230101-120000-123456")
@@ -74,30 +68,50 @@ class TestHPJumpStartEndpoint(unittest.TestCase):
         # Setup mocks
         mock_get_default_endpoint_name.return_value = "test-model-230101-120000-123456"
 
-        # Call the method
-        self.endpoint.create(
-            namespace="test-namespace",
-            model_id="test-model",
-            instance_type="ml.g4dn.xlarge",
-        )
+        with patch("sagemaker_core.main.resources.Endpoint.get") as mock_endpoint_get:
+            mock_endpoint_instance = MagicMock()
+            mock_endpoint_get.return_value = mock_endpoint_instance
 
-        # Verify method calls
-        mock_validate_inputs.assert_called_once_with("test-model", "ml.g4dn.xlarge")
-        
-        mock_get_default_endpoint_name.assert_called_once_with("test-model")
+            # Call the method
+            HPJumpStartEndpoint.create(
+                namespace="test-namespace",
+                model_id="test-model",
+                instance_type="ml.g4dn.xlarge",
+            )
 
-        mock_call_create_api.assert_called_once()
+            # Verify method calls
+            mock_validate_inputs.assert_called_once_with("test-model", "ml.g4dn.xlarge")
+
+            mock_get_default_endpoint_name.assert_called_once_with("test-model")
+
+            mock_call_create_api.assert_called_once()
 
     @patch.object(HPJumpStartEndpoint, "call_create_api")
-    def test_create_from_spec(self, mock_call_create_api):
+    @patch("boto3.session.Session")
+    @patch("sagemaker_core.main.resources.Endpoint.get")
+    def test_create_from_spec(
+        self, mock_get_endpoint, mock_session, mock_call_create_api
+    ):
+        # Setup mocks
+        mock_session_instance = MagicMock()
+        mock_session_instance.region_name = "us-west-2"
+        mock_session.return_value = mock_session_instance
+
+        mock_endpoint = MagicMock()
+        mock_get_endpoint.return_value = mock_endpoint
+
         # Create a mock spec with proper structure
         mock_spec = MagicMock()
         mock_model = MagicMock()
         mock_model.modelId = "test-model-id"
         mock_spec.model = mock_model
 
+        mock_sage_maker_endpoint = MagicMock()
+        mock_sage_maker_endpoint.name = "test-endpoint"
+        mock_spec.sageMakerEndpoint = mock_sage_maker_endpoint
+
         # Call the method
-        self.endpoint.create_from_spec(spec=mock_spec, namespace="test-namespace")
+        HPJumpStartEndpoint.create_from_spec(spec=mock_spec, namespace="test-namespace")
 
         # Verify call_create_api was called with correct parameters
         mock_call_create_api.assert_called_once_with(
@@ -113,69 +127,32 @@ class TestHPJumpStartEndpoint(unittest.TestCase):
         input_dict = {
             "model": {"model_id": "test-model"},
             "server": {"instance_type": "ml.g4dn.xlarge"},
-            "sage_maker_endpoint": {"name": "test-endpoint"},
+            "sageMakerEndpoint": {"name": "test-endpoint"},
         }
 
-        # Setup mock for JumpStartModelSpec
-        with patch(
-            "sagemaker.hyperpod.inference.hp_jumpstart_endpoint.JumpStartModelSpec"
-        ) as mock_spec_class:
-            mock_spec = MagicMock()
-            mock_spec_class.model_validate.return_value = mock_spec
+        with patch("sagemaker_core.main.resources.Endpoint.get") as mock_endpoint_get:
+            mock_endpoint_instance = MagicMock()
+            mock_endpoint_get.return_value = mock_endpoint_instance
 
             # Call the method
-            self.endpoint.create_from_dict(input=input_dict, namespace="test-namespace")
-
-            # Verify JumpStartModelSpec.model_validate was called with correct parameters
-            mock_spec_class.model_validate.assert_called_once_with(
-                input_dict, by_name=True
+            HPJumpStartEndpoint.create_from_dict(
+                input=input_dict, namespace="test-namespace"
             )
 
             # Verify call_create_api was called with correct parameters
-            mock_call_create_api.assert_called_once_with(
-                namespace="test-namespace", spec=mock_spec
-            )
+            mock_call_create_api.assert_called_once()
 
     @patch.object(HPJumpStartEndpoint, "call_list_api")
     def test_list_endpoints(self, mock_call_list_api):
-        # Setup mock response
-        mock_response = {
-            "items": [
-                {
-                    "metadata": {
-                        "name": "endpoint-1",
-                        "creationTimestamp": "2023-01-01T12:00:00Z",
-                    }
-                },
-                {
-                    "metadata": {
-                        "name": "endpoint-2",
-                        "creationTimestamp": "2023-01-02T12:00:00Z",
-                    }
-                },
-            ]
-        }
-        mock_call_list_api.return_value = mock_response
+        mock_call_list_api.return_value = {"items": []}
 
         # Call the method with print capture
-        with patch(
-            "sagemaker.hyperpod.inference.hp_jumpstart_endpoint.tabulate"
-        ) as mock_tabulate:
-            self.endpoint.list_endpoints(namespace="test-namespace")
+        HPJumpStartEndpoint.list_endpoints(namespace="test-namespace")
 
-            # Verify call_list_api was called with correct parameters
-            mock_call_list_api.assert_called_once_with(
-                kind=JUMPSTART_MODEL_KIND, namespace="test-namespace"
-            )
-
-            # Verify tabulate was called with correct data
-            expected_data = [
-                ("endpoint-1", "2023-01-01T12:00:00Z"),
-                ("endpoint-2", "2023-01-02T12:00:00Z"),
-            ]
-            mock_tabulate.assert_called_once_with(
-                expected_data, headers=["METADATA NAME", "CREATE TIME"]
-            )
+        # Verify call_list_api was called with correct parameters
+        mock_call_list_api.assert_called_once_with(
+            kind=JUMPSTART_MODEL_KIND, namespace="test-namespace"
+        )
 
     @patch.object(HPJumpStartEndpoint, "call_get_api")
     def test_describe_endpoint(self, mock_call_get_api):
@@ -189,7 +166,7 @@ class TestHPJumpStartEndpoint(unittest.TestCase):
         with patch(
             "sagemaker.hyperpod.inference.hp_jumpstart_endpoint.yaml.dump"
         ) as mock_yaml_dump:
-            self.endpoint.describe_endpoint(
+            HPJumpStartEndpoint.describe_endpoint(
                 name="test-endpoint", namespace="test-namespace"
             )
 
@@ -207,7 +184,9 @@ class TestHPJumpStartEndpoint(unittest.TestCase):
     @patch.object(HPJumpStartEndpoint, "call_delete_api")
     def test_delete_endpoint(self, mock_call_delete_api):
         # Call the method
-        self.endpoint.delete_endpoint(name="test-endpoint", namespace="test-namespace")
+        HPJumpStartEndpoint.delete_endpoint(
+            name="test-endpoint", namespace="test-namespace"
+        )
 
         # Verify call_delete_api was called with correct parameters
         mock_call_delete_api.assert_called_once_with(

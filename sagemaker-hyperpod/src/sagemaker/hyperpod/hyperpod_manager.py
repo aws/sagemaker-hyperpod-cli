@@ -125,7 +125,7 @@ class HyperPodManager:
 
         print(tabulate(table_data, headers=headers))
 
-    def set_context_cluster(
+    def set_context(
         self,
         cluster_name: str,
         region: Optional[str] = None,

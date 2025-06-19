@@ -1,15 +1,8 @@
-import os
 import unittest
 from unittest.mock import (
     MagicMock,
     Mock,
-    mock_open,
     patch,
-)
-import yaml
-from kubernetes import client
-from kubernetes.config import (
-    KUBE_CONFIG_DEFAULT_LOCATION,
 )
 from sagemaker.hyperpod.inference.hp_endpoint_base import HPEndpointBase
 from sagemaker.hyperpod.inference.config.constants import (
@@ -45,6 +38,7 @@ class TestHPEndpointBase(unittest.TestCase):
         # Create mock spec
         mock_spec = MagicMock()
         mock_spec.model_dump.return_value = {"key": "value"}
+        mock_spec.sageMakerEndpoint.name = "test-endpoint"
 
         # Setup mock API
         mock_create_namespaced_custom_object = Mock()
@@ -179,3 +173,43 @@ class TestHPEndpointBase(unittest.TestCase):
             namespace=namespace,
             plural=KIND_PLURAL_MAP[kind],
         )
+
+    def test_invoke_endpoint_not_initialized(self):
+        # Test invoke when endpoint is not initialized
+        with self.assertRaises(Exception) as context:
+            self.mock_hp_endpoint_base.invoke({"input": "test"})
+
+        self.assertTrue("Endpoint not initialized" in str(context.exception))
+
+    def test_invoke_success(self):
+        # Setup mock endpoint
+        mock_endpoint = MagicMock()
+        mock_endpoint.invoke = MagicMock()
+        self.mock_hp_endpoint_base._endpoint = mock_endpoint
+
+        # Test parameters
+        body = {"input": "test data"}
+        content_type = "application/json"
+
+        # Call the method
+        self.mock_hp_endpoint_base.invoke(body, content_type=content_type)
+
+        # Verify the call
+        mock_endpoint.invoke.assert_called_once_with(body, content_type=content_type)
+
+    @patch("sagemaker.hyperpod.inference.hp_endpoint_base.get_current_region")
+    def test_get_endpoint_with_endpoint_get(self, mock_get_current_region):
+        # Setup mocks
+        mock_get_current_region.return_value = "us-west-2"
+
+        # Mock the Endpoint.get static method
+        with patch("sagemaker_core.main.resources.Endpoint.get") as mock_endpoint_get:
+            mock_endpoint_instance = MagicMock()
+            mock_endpoint_get.return_value = mock_endpoint_instance
+
+            # Call the method
+            result = HPEndpointBase.get_endpoint("test-endpoint")
+
+            # Verify the call
+            mock_endpoint_get.assert_called_once()
+            self.assertEqual(result, mock_endpoint_instance)
