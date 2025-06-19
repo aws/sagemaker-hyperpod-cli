@@ -767,6 +767,11 @@ def start_job(
                 if custom_labels
                 else None,
             )
+
+            if "custom_labels" not in config["cluster"]["cluster_config"] or config["cluster"]["cluster_config"]["custom_labels"] is None:
+                config["cluster"]["cluster_config"]["custom_labels"] = {}
+            config["cluster"]["cluster_config"]["custom_labels"][USER_NAME_LABEL_KEY] = user_name
+
             _override_or_remove(
                 config["cluster"]["cluster_config"], "priority_class_name", priority
             )
