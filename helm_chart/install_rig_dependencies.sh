@@ -7,8 +7,8 @@ TRAINING_OPERATORS=dependencies-training-operators # dependencies- prefix from s
 
 # Format: "<eks|hyperpod>,namespace,<k8s_name|chart_dir>"
 add_ons=(
-    #"eks,kube-system,aws-node,daemonset"
-    #"eks,kube-system,coredns,deployment"
+    "eks,kube-system,aws-node,daemonset"
+    "eks,kube-system,coredns,deployment"
     #"hp,kube-system,mpi-operator,deployment"
     #"hp,kube-system,neuron-device-plugin,daemonset"
     "hp,kubeflow,$TRAINING_OPERATORS,deployment"
@@ -350,8 +350,8 @@ main() {
     fetch_yaml_and_enable_overrides add_ons[@]
 
     local outpath="./rig-dependencies.yaml"
-    #refresh_helm_dependencies
-    #render_rig_helm_chart $outpath
+    refresh_helm_dependencies
+    render_rig_helm_chart $outpath
     confirm_installation_with_user $outpath
 }
 
