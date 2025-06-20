@@ -3,14 +3,15 @@ set -e
 
 SRC_DIR="HyperPodHelmChart"
 OUTPUT_DIR="HyperPodHelmChartForRIG"
+TRAINING_OPERATORS=dependencies-training-operators # dependencies- prefix from standard Helm installation
 
 # Format: "<eks|hyperpod>,namespace,<k8s_name|chart_dir>"
 add_ons=(
-    "eks,kube-system,aws-node,daemonset"
-    "eks,kube-system,coredns,deployment"
+    #"eks,kube-system,aws-node,daemonset"
+    #"eks,kube-system,coredns,deployment"
     #"hp,kube-system,mpi-operator,deployment"
     #"hp,kube-system,neuron-device-plugin,daemonset"
-    #"hp,kube-system,training-operators,deployment"
+    "hp,kubeflow,$TRAINING_OPERATORS,deployment"
 )
 
 generate_helm_chart_root() {
@@ -163,6 +164,55 @@ override_coredns() {
     rm $tmp
 }
 
+override_training_operators() {
+    #####################################################
+    # training-operators dependency needs to be present
+    # to schedule pytorch jobs but by by default, only
+    # tolerates non-RIG nodes
+    #
+    # Therefore, needs to tolerate RIG node taint, 
+    # but still prefer scheduling onto non-RIG
+    # in case cluster consists of both non-RIG and RIG
+    #####################################################
+   
+    # Using kubectl directly since relatively simple patch 
+    # that does not require new separeate file/deployments specific for RIG
+    kubectl patch deployment $TRAINING_OPERATORS -n kubeflow --type=json -p='[
+      {
+        "op": "add",
+        "path": "/spec/template/spec/tolerations",
+        "value": [
+          {
+            "key": "sagemaker.amazonaws.com/RestrictedNode",
+            "value": "Worker",
+            "effect": "NoSchedule"
+          }
+        ]
+      },
+      {
+        "op": "add",
+        "path": "/spec/template/spec/affinity",
+        "value": {
+          "nodeAffinity": {
+            "preferredDuringSchedulingIgnoredDuringExecution": [
+              {
+                "weight": 100,
+                "preference": {
+                  "matchExpressions": [
+                    {
+                      "key": "sagemaker.amazonaws.com/instance-group-type",
+                      "operator": "NotIn",
+                      "values": ["Restricted"]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]'
+}
 
 fetch_yaml_and_enable_overrides() {
     local resources=("${!1}")
@@ -178,10 +228,11 @@ fetch_yaml_and_enable_overrides() {
         #####################################################
         # Clean and (Re)Create Helm chart directories
         #####################################################
-	rm -rf $OUTPUT_DIR/charts/$name/templates
-	rm -f $OUTPUT_DIR/charts/$name/*.tgz
-	mkdir -p $OUTPUT_DIR/charts/$name/templates
-
+	if [ "$name" != "$TRAINING_OPERATORS" ]; then
+            rm -rf $OUTPUT_DIR/charts/$name/templates
+            rm -f $OUTPUT_DIR/charts/$name/*.tgz
+            mkdir -p $OUTPUT_DIR/charts/$name/templates
+	fi
 
         #####################################################
         # Enable Overrides in Helm Charts/YAML
@@ -203,30 +254,29 @@ fetch_yaml_and_enable_overrides() {
 		    enable_nodeselectors_and_tolerations_overrides $outpath
             fi
 	else
-	    cp -r $SRC_DIR/charts/$name/. $OUTPUT_DIR/charts/$name
-	    rm -rf $OUTPUT_DIR/charts/$name/templates/*
+	    if [ "$name" = "$TRAINING_OPERATORS" ]; then
+		# training-operators is a special case with different requirements
+		continue
+            else
+                cp -r $SRC_DIR/charts/$name/. $OUTPUT_DIR/charts/$name
+                rm -rf $OUTPUT_DIR/charts/$name/templates/*
 
-            get_helm_chart_from_local $SRC_DIR $name $kind | \
-               enable_nodeselectors_and_tolerations_overrides $outpath
+                get_helm_chart_from_local $SRC_DIR $name $kind | \
+                   enable_nodeselectors_and_tolerations_overrides $outpath
+	    fi
 	fi
     done
 }
 
-assert_eks_addons_enabled() {
+assert_addons_enabled() {
     local resources=("${!1}")
     local response=""
     for resource in "${resources[@]}"; do
         IFS=',' read -r scope namespace name kind <<< "$resource"
-        if [ "$scope" = "eks" ]; then
-            if [ "$kind" = "daemonset" ]; then
-                response=$(kubectl get daemonset $name -n $namespace --no-headers 2>/dev/null)
-            else
-                response=$(kubectl get deployment $name -n $namespace --no-headers 2>/dev/null)
-            fi
-            if [ -z "$response" ]; then
-                echo "No $kind $name found in namespace $namespace. Please enable this before installing RIG dependencies."
-                exit 1
-            fi
+        response=$(kubectl get $kind $name -n $namespace --no-headers)
+        if [ -z "$response" ]; then
+            echo "No $kind $name found in namespace $namespace. Please enable this before installing RIG dependencies."
+            exit 1
         fi
     done
 }
@@ -252,11 +302,27 @@ confirm_installation_with_user() {
 
     if [[ "$confirm" =~ ^[Yy]$ ]]; then
       echo "🔧 Installing Helm chart..."
-      helm install rig-dependencies ./HyperPodHelmChartForRIG --namespace kube-system -f ./HyperPodHelmChartForRIG/values.yaml
-      
+      #helm install rig-dependencies ./HyperPodHelmChartForRIG --namespace kube-system -f ./HyperPodHelmChartForRIG/values.yaml
+      #if [ $? -ne 0 ]; then
+      #  echo "RIG Helm Installation Failed. Exiting (0/3 steps completed)..."
+      #  return 1
+      #fi
+  
       # aws-node needs specific instllation for *.nonrig.yaml
-      kubectl apply -f HyperPodHelmChartForRIG/charts/aws-node/templates/daemonset.nonrig.yaml -n kube-system
+      #kubectl apply -f HyperPodHelmChartForRIG/charts/aws-node/templates/daemonset.nonrig.yaml -n kube-system
+      #if [ $? -ne 0 ]; then
+      #  echo "RIG Helm Installation Failed (aws-node). Exiting (only 1/3 steps completed)..."
+      #  return 1
+      #fi
 
+      # training-operator needs specific patch
+      override_training_operators
+      if [ $? -ne 0 ]; then
+        echo "RIG Helm Installation Failed (training-operator). Exiting (only 2/3 steps completed)..."
+        return 1
+      fi
+
+      echo "RIG Helm Installation Succeeded (3/3 steps completed)."
     else
       echo "❌ Installation cancelled."
     fi
@@ -280,12 +346,12 @@ ensure_yq_installed(){
 main() {
     ensure_yq_installed
 
-    assert_eks_addons_enabled add_ons[@]
+    assert_addons_enabled add_ons[@]
     fetch_yaml_and_enable_overrides add_ons[@]
 
     local outpath="./rig-dependencies.yaml"
-    refresh_helm_dependencies
-    render_rig_helm_chart $outpath
+    #refresh_helm_dependencies
+    #render_rig_helm_chart $outpath
     confirm_installation_with_user $outpath
 }
 
