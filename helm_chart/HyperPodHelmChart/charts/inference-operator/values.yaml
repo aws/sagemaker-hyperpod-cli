@@ -1,5 +1,8 @@
 namePrefix: "hyperpod-inference-operator-"
 
+region: ""
+eksClusterName: ""
+
 image: 
   repositoryDomainMap:
     us-east-2: 061051259071.dkr.ecr.us-east-2.amazonaws.com
@@ -21,12 +24,65 @@ image:
   pullPolicy: Always
 hyperpodClusterArn:
 executionRoleArn:
+jumpstartGatedModelDownloadRoleArn: ""
 stage: "prod"
-region:
 tlsCertificateS3Bucket:
-eksClusterName:
-aws-load-balancer-controller:
-  clusterName:
+
+s3:
+  enabled: true
+  # IAM role ARN used for S3 CSI driver k8s service account
+  serviceAccountRoleArn: ""
+  # S3 persistent volume configuration
+  persistentVolume:
+    enabled: true
+    name: s3-pv
+    capacity: 1200Gi
+    accessModes:
+      - ReadWriteMany
+    prefix: "/"
+    csi:
+      driver: s3.csi.aws.com
+      volumeHandle: s3-csi-driver-volume
+      volumeAttributes: {}
+  # S3 persistent volume claim configuration
+  persistentVolumeClaim:
+    enabled: true
+    name: s3-claim
+    storageClassName: ""  # required for static provisioning
+    accessModes:
+      - ReadWriteMany
+    requests:
+      storage: 1200Gi
+    volumeName: s3-pv
+
+fsx:
+  enabled: true
+
+alb:
+  enabled: true
+  clusterName: ""
+  region: ""
+  vpcId: ""
+  serviceAccount:
+    create: false
+    name: aws-load-balancer-controller
+    roleArn: ""
+
+cert-manager:
+  enabled: true
+  namespace: cert-manager
+  crds:
+    enabled: true
+
+keda:
+  enabled: true
+  namespace: keda
+  podIdentity:
+    aws:
+      irsa:
+        enabled: true
+        roleArn: ""
+
 
 components:
   crd:
