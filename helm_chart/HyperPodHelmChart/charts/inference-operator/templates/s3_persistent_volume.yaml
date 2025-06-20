@@ -1,0 +1,24 @@
+{{- if .Values.s3.enabled }}
+{{- if .Values.s3.persistentVolume.enabled }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Values.s3.persistentVolume.name }}
+spec:
+  capacity:
+    storage: {{ .Values.s3.persistentVolume.capacity }}
+  accessModes:
+    {{- range .Values.s3.persistentVolume.accessModes }}
+    - {{ . }}
+    {{- end }}
+  mountOptions:
+    - allow-delete
+    - region {{ .Values.region }}
+    - prefix {{ .Values.s3.persistentVolume.prefix }}
+  csi:
+    driver: s3.csi.aws.com
+    volumeHandle: {{ .Values.s3.persistentVolume.csi.volumeHandle }}
+    volumeAttributes:
+      bucketName: {{ trimPrefix "s3://" .Values.tlsCertificateS3Bucket }}
+{{- end }}
+{{- end }}
