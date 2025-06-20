@@ -114,6 +114,13 @@ spec:
                       type: object
                     maxItems: 10
                     type: array
+                  gatedModelDownloadRole:
+                    description: The Amazon Resource Name (ARN) of an IAM role that
+                      will be used to download gated model
+                    maxLength: 2048
+                    minLength: 20
+                    pattern: ^arn:aws[a-z\-]*:iam::\d{12}:role/?[a-zA-Z_0-9+=,.@\-_/]+$
+                    type: string
                   modelHubName:
                     default: SageMakerPublicHub
                     description: The name of the model hub content. Can be an ARN

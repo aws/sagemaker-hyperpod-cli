@@ -24,6 +24,7 @@ image:
   pullPolicy: Always
 hyperpodClusterArn:
 executionRoleArn:
+jumpstartGatedModelDownloadRoleArn: ""
 stage: "prod"
 tlsCertificateS3Bucket:
 

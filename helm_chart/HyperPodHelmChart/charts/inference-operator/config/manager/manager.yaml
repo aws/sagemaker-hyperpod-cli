@@ -95,6 +95,8 @@ spec:
             value: {{ .Values.hyperpodClusterArn }}
           - name: EXECUTION_ROLE_ARN
             value: {{ .Values.executionRoleArn }}
+          - name: JUMPSTART_GATED_MODEL_DOWNLOAD_ARN
+            value: {{ .Values.jumpstartGatedModelDownloadRoleArn }}
           - name: STAGE
             value: {{ .Values.stage }}
           - name: EKS_CLUSTER_NAME
