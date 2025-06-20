@@ -1,5 +1,5 @@
 from sagemaker.hyperpod.inference.config.constants import *
-from sagemaker.hyperpod.inference.config.model_endpoint_config import (
+from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     InferenceEndpointConfigSpec,
     ModelSourceConfig,
     S3Storage,
@@ -13,6 +13,8 @@ from sagemaker.hyperpod.inference.hp_endpoint_base import HPEndpointBase
 from datetime import datetime
 from typing import Dict, Literal
 import boto3
+from tabulate import tabulate
+import yaml
 
 
 class HPEndpoint(HPEndpointBase):
@@ -120,7 +122,7 @@ class HPEndpoint(HPEndpointBase):
     @classmethod
     def create(
         cls,
-        namespace: str = None,
+        namespace: str = 'default',
         model_name: str = None,
         model_version: str = None,
         instance_type: str = None,
@@ -203,13 +205,11 @@ class HPEndpoint(HPEndpointBase):
             spec=spec,
         )
 
-        return super().get_endpoint(endpoint_name)
-
     @classmethod
     def create_from_spec(
         cls,
         spec: InferenceEndpointConfigSpec,
-        namespace: str = None,
+        namespace: str = 'default',
     ):
         cls().call_create_api(
             name=spec.modelName,  # use model name as metadata name
@@ -220,13 +220,11 @@ class HPEndpoint(HPEndpointBase):
 
         region = boto3.session.Session().region_name
 
-        return super().get_endpoint(endpoint_name=spec.endpointName, region=region)
-
     @classmethod
     def create_from_dict(
         cls,
         input: Dict,
-        namespace: str = None,
+        namespace: str = 'default',
     ):
         spec = InferenceEndpointConfigSpec.model_validate(input, by_name=True)
 
@@ -239,35 +237,44 @@ class HPEndpoint(HPEndpointBase):
 
         region = boto3.session.Session().region_name
 
-        return super().get_endpoint(endpoint_name=spec.endpointName, region=region)
-
     @classmethod
     def list_endpoints(
         cls,
-        namespace: str = None,
+        namespace: str = 'default',
     ):
-        return cls().call_list_api(
+        response = cls().call_list_api(
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace=namespace,
         )
+
+        output_data = []
+        for item in response["items"]:
+            metadata = item["metadata"]
+            output_data.append((metadata["name"], metadata["creationTimestamp"]))
+        headers = ["METADATA NAME", "CREATE TIME"]
+
+        print(tabulate(output_data, headers=headers))
 
     @classmethod
     def describe_endpoint(
         cls,
         name: str,
-        namespace: str = None,
+        namespace: str = 'default',
     ):
-        return cls().call_get_api(
+        response = cls().call_get_api(
             name=name,
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace=namespace,
         )
+        
+        response["metadata"].pop("managedFields")
+        print(yaml.dump(response))
 
     @classmethod
     def delete_endpoint(
         cls,
         name: str,
-        namespace: str = None,
+        namespace: str = 'default',
     ):
         cls().call_delete_api(
             name=name,  # use model id as metadata name
