@@ -302,18 +302,18 @@ confirm_installation_with_user() {
 
     if [[ "$confirm" =~ ^[Yy]$ ]]; then
       echo "🔧 Installing Helm chart..."
-      #helm install rig-dependencies ./HyperPodHelmChartForRIG --namespace kube-system -f ./HyperPodHelmChartForRIG/values.yaml
-      #if [ $? -ne 0 ]; then
-      #  echo "RIG Helm Installation Failed. Exiting (0/3 steps completed)..."
-      #  return 1
-      #fi
+      helm install rig-dependencies ./HyperPodHelmChartForRIG --namespace kube-system -f ./HyperPodHelmChartForRIG/values.yaml
+      if [ $? -ne 0 ]; then
+        echo "RIG Helm Installation Failed. Exiting (0/3 steps completed)..."
+        return 1
+      fi
   
       # aws-node needs specific instllation for *.nonrig.yaml
-      #kubectl apply -f HyperPodHelmChartForRIG/charts/aws-node/templates/daemonset.nonrig.yaml -n kube-system
-      #if [ $? -ne 0 ]; then
-      #  echo "RIG Helm Installation Failed (aws-node). Exiting (only 1/3 steps completed)..."
-      #  return 1
-      #fi
+      kubectl apply -f HyperPodHelmChartForRIG/charts/aws-node/templates/daemonset.nonrig.yaml -n kube-system
+      if [ $? -ne 0 ]; then
+        echo "RIG Helm Installation Failed (aws-node). Exiting (only 1/3 steps completed)..."
+        return 1
+      fi
 
       # training-operator needs specific patch
       override_training_operators
