@@ -322,7 +322,16 @@ confirm_installation_with_user() {
         return 1
       fi
 
+      echo ""
       echo "RIG Helm Installation Succeeded (3/3 steps completed)."
+      echo ""
+
+      # Warn user about CNI start up
+      echo ""
+      echo "⚠️ Note: aws-node (AWS VPC CNI) is a critical add-on for general pod use."
+      echo "Other pods that depend on aws-node (e.g. CoreDNS, HyperPod HealthMonitoringAgent,...) may experience 'FailedCreatePodSandBox' if the aws-node pods are not available before start up."
+      echo "Therefore, please allow additional time for K8s to recreate the pods and/or manually recreate the pods (or let K8s recreate after cleaning up) before full cluster use."
+      echo ""
     else
       echo "❌ Installation cancelled."
     fi
@@ -330,13 +339,13 @@ confirm_installation_with_user() {
 
 ensure_yq_installed(){
     if ! command -v yq &> /dev/null; then
-        echo "Error: yq is required but not installed."
+        echo "Error: yq is required but not installed. Please install version >= 4 (e.g. https://github.com/mikefarah/yq/releases/tag/v4)"
         exit 1
     fi
 
     version=$(yq --version | grep -o 'v[0-9]\+' | cut -d 'v' -f 2 )
     if [ "$version" -lt "4" ]; then
-        echo "Error: yq version 4 or higher is required"
+        echo "Error: yq version 4 or higher is required (e.g. https://github.com/mikefarah/yq/releases/tag/v4)"
         echo "Current version: $(yq -q --version)"
         echo "Please upgrade yq"
         exit 1

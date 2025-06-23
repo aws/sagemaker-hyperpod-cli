@@ -98,6 +98,12 @@ Notes:
 
   If needed, please run `chmod +700 ./install_rig_dependencies.sh` to allow the script to execute.
 
+⚠️ Note: This will require the yq utility with version >= 4 (e.g. https://github.com/mikefarah/yq/releases/tag/v4)
+
+⚠️ Note: aws-node (AWS VPC CNI) is a critical add-on for general pod use.
+Other pods that depend on aws-node (e.g. CoreDNS, HyperPod HealthMonitoringAgent,...) may experience 'FailedCreatePodSandBox' if the aws-node pods are not available before start up.
+Therefore, please allow additional time for K8s to recreate the pods and/or manually recreate the pods (or let K8s recreate after cleaning up) before cluster use.
+
 
 ## 5. Create Team Role
 
