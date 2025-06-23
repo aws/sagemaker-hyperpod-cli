@@ -19,7 +19,7 @@
 {{- if not .Values.eksClusterName }}
 {{- fail "An EKS cluster name is required!" }}
 {{- end -}}
-∂
+
 {{- if and .Values.keda.enabled (not .Values.keda.podIdentity.aws.irsa.roleArn) }}
 {{- fail "A valid role for the KEDA operator must be set via the --set keda.podIdentity.aws.irsa.roleArn=<arn> flag." }}
 {{- end -}}

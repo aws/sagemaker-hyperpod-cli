@@ -6,7 +6,7 @@ metadata:
   namespace: {{ .Values.namePrefix }}system
   labels:
     control-plane: {{ .Values.namePrefix }}controller-manager
-    app.kubernetes.io/name: {{ .Values.namePrefix }}App
+    app.kubernetes.io/name: deploymentoperator
 spec:
   selector:
     matchLabels:
@@ -102,8 +102,6 @@ spec:
           - name: EKS_CLUSTER_NAME
             value: {{ .Values.eksClusterName }}
           - name: TLS_CERTIFICATE_OUTPUT_S3URI
-            value: {{ .Values.tlsCertificateS3Bucket }}
-          - name: AWS_REGION
-            value: {{ .Values.region }}
+            value: {{ .Values.defaultTlsCertificateOutputS3uri }}
       serviceAccountName: {{ .Values.namePrefix }}controller-manager
       terminationGracePeriodSeconds: 10
