@@ -39,6 +39,161 @@ spec:
           spec:
             description: JumpStartModelSpec defines the desired state of JumpStartModel.
             properties:
+              autoScalingSpec:
+                properties:
+                  cloudWatchTrigger:
+                    description: CloudWatch metric trigger to use for autoscaling
+                    properties:
+                      dimensions:
+                        description: Dimensions for Cloudwatch metrics
+                        items:
+                          properties:
+                            name:
+                              description: CloudWatch Metric dimension name
+                              type: string
+                            value:
+                              description: CloudWatch Metric dimension value
+                              type: string
+                          required:
+                          - name
+                          - value
+                          type: object
+                        type: array
+                      metricCollectionPeriod:
+                        default: 300
+                        description: Defines the Period for CloudWatch query
+                        format: int32
+                        type: integer
+                      metricCollectionStartTime:
+                        default: 300
+                        description: Defines the StartTime for CloudWatch query
+                        format: int32
+                        type: integer
+                      metricName:
+                        description: Metric name to query for Cloudwatch trigger
+                        type: string
+                      metricStat:
+                        default: Average
+                        description: Statistics metric to be used by Trigger. Used
+                          to define Stat for CloudWatch query. Default is Average.
+                        type: string
+                      metricType:
+                        default: Average
+                        description: 'The type of metric to be used by HPA. Enum:
+                          AverageValue - Uses average value of metric per pod, Value
+                          - Uses absolute metric value'
+                        enum:
+                        - Value
+                        - Average
+                        type: string
+                      minValue:
+                        default: 0
+                        description: Minimum metric value used in case of empty response
+                          from CloudWatch. Default is 0.
+                        type: number
+                      name:
+                        description: Name for the CloudWatch trigger
+                        type: string
+                      namespace:
+                        description: AWS CloudWatch namespace for metric
+                        type: string
+                      targetValue:
+                        description: TargetValue for CloudWatch metric
+                        type: number
+                      useCachedMetrics:
+                        default: true
+                        description: Enable caching of metric values during polling
+                          interval. Default is true
+                        type: boolean
+                    type: object
+                  cooldownPeriod:
+                    default: 300
+                    description: The period to wait after the last trigger reported
+                      active before scaling the resource back to 0. Default 300 seconds.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  initialCooldownPeriod:
+                    default: 300
+                    description: The delay before the cooldownPeriod starts after
+                      the initial creation of the ScaledObject. Default 300 seconds.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  maxReplicaCount:
+                    default: 5
+                    description: The maximum number of model pods to scale to. Default
+                      5.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  minReplicaCount:
+                    default: 1
+                    description: The minimum number of model pods to scale down to.
+                      Default 1.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  pollingInterval:
+                    default: 30
+                    description: This is the interval to check each trigger on. Default
+                      30 seconds.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  prometheusTrigger:
+                    description: Prometheus metric trigger to use for autoscaling
+                    properties:
+                      customHeaders:
+                        description: Custom headers to include while querying the
+                          prometheus endpoint.
+                        type: string
+                      metricType:
+                        default: Average
+                        description: 'The type of metric to be used by HPA. Enum:
+                          AverageValue - Uses average value of metric per pod, Value
+                          - Uses absolute metric value'
+                        enum:
+                        - Value
+                        - Average
+                        type: string
+                      name:
+                        description: Name for the Prometheus trigger
+                        type: string
+                      namespace:
+                        description: Namespace for namespaced queries
+                        type: string
+                      query:
+                        description: PromQLQuery for the metric.
+                        type: string
+                      serverAddress:
+                        description: Server address for AMP workspace
+                        pattern: ^https:\/\/aps-workspaces\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.amazonaws\.com\/workspaces\/ws-[a-zA-Z0-9-]+\/[a-zA-Z0-9-]+$|^$
+                        type: string
+                      targetValue:
+                        description: Target metric value for scaling
+                        type: number
+                      useCachedMetrics:
+                        default: true
+                        description: Enable caching of metric values during polling
+                          interval. Default is true
+                        type: boolean
+                    type: object
+                  scaleDownStabilizationTime:
+                    default: 300
+                    description: The time window to stabilize for HPA before scaling
+                      down. Default 300 seconds.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  scaleUpStabilizationTime:
+                    default: 0
+                    description: The time window to stabilize for HPA before scaling
+                      up. Default 0 seconds.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                type: object
               environmentVariables:
                 description: Additional environment variables to be passed to the
                   inference server. Limited to 100 key-value pairs.
@@ -442,11 +597,26 @@ spec:
                     description: The Amazon Resource Name (ARN) of the ACM certificate
                     pattern: arn:aws[a-z\-]*:acm:[a-z0-9\-]*:[0-9]{12}:certificate/.*
                     type: string
+                  certificateDomainNames:
+                    description: The certificate domain names that is attached to
+                      the certificate
+                    items:
+                      type: string
+                    type: array
                   certificateName:
                     description: The certificate name of cert manager
                     type: string
+                  importedCertificates:
+                    description: Used for tracking the imported certificates to ACM
+                    items:
+                      type: string
+                    type: array
                   issuerName:
                     description: The issuer name of cert manager
+                    type: string
+                  lastCertExpiryTime:
+                    description: The last certificate expiry time
+                    format: date-time
                     type: string
                   tlsCertificateOutputS3Bucket:
                     description: S3 bucket that stores the certificate that needs
