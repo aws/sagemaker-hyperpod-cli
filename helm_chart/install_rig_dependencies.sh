@@ -64,6 +64,23 @@ enable_nodeselectors_and_tolerations_overrides() {
         sed "s/TOLERATIONS/\n{{ toYaml (index .Values \"tolerations\"  ) | indent 8 }}/" > $outpath
 }
 
+override_image_if_below_version() {
+    local IMAGE=$1
+    local MIN_VERSION=$2
+    local MIN_VERSION_TAG=$3
+
+    local override=$(cat)
+    local uri=$(echo "$override" | yq e ".spec.template.spec.containers[] | select(.name == \"$IMAGE\").image" -)
+    local version=$(echo $uri | cut -d':' -f2 | cut -d'-' -f1 | tr -d 'v')
+    local repo=$(echo $uri | cut -d':' -f1)
+ 
+    if test "$(echo -e "$version\n$MIN_VERSION" | sort -V | head -n 1)" != "$MIN_VERSION"; then
+        override=$(echo "$override" | \
+            yq e -P ".spec.template.spec.containers[] |= select(.name == \"$IMAGE\").image = \"$repo:$MIN_VERSION_TAG\"" -)
+    fi
+    echo "$override"
+}
+
 override_aws_node() {
     ###################################################
     # aws-node has special requirements as of 6/6/2025
@@ -104,13 +121,11 @@ override_aws_node() {
 	        .spec.template.spec.containers[] |=
 		    select(.name == \"aws-node\").env += [{\"name\": \"ENABLE_IMDS_ONLY_MODE\", \"value\": \"true\"}]
 	    " - )
-    override_images=$(echo "$set_and_append_envvars" | \
-	    yq e -P " 
-		.spec.template.spec.containers[] |=
-		    select(.name == \"aws-node\").image = \"602401143452.dkr.ecr.us-east-1.amazonaws.com/amazon-k8s-cni:v1.19.6-rc1-eksbuild.1\" |
-		.spec.template.spec.containers[] |=
-		    select(.name == \"aws-eks-nodeagent\").image = \"602401143452.dkr.ecr.us-east-1.amazonaws.com/amazon/aws-network-policy-agent:v1.2.1-eksbuild.2\"
-            " - )
+
+    override_images="$set_and_append_envvars"
+    override_images=$(echo "$override_images" | override_image_if_below_version aws-node 1.19.6 "v1.19.6-eksbuild.1" )
+    override_images=$(echo "$override_images" | override_image_if_below_version aws-eks-nodeagent 1.2.2 "v1.2.2-eksbuild.1" )
+
     change_metadata=$(echo "$override_images" | \
 	    yq e -P "
                 .metadata.name = \"rig-\" + .metadata.name |
