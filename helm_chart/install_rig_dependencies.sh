@@ -323,7 +323,7 @@ confirm_installation_with_user() {
 
     if [[ "$confirm" =~ ^[Yy]$ ]]; then
       echo "🔧 Installing Helm chart..."
-      helm install rig-dependencies ./HyperPodHelmChartForRIG --namespace kube-system -f ./HyperPodHelmChartForRIG/values.yaml
+      helm upgrade --install rig-dependencies ./HyperPodHelmChartForRIG --namespace kube-system -f ./HyperPodHelmChartForRIG/values.yaml
       if [ $? -ne 0 ]; then
         echo "RIG Helm Installation Failed. Exiting (0/3 steps completed)..."
         return 1
