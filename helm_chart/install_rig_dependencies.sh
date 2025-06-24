@@ -173,6 +173,12 @@ override_training_operators() {
     # Therefore, needs to tolerate RIG node taint, 
     # but still prefer scheduling onto non-RIG
     # in case cluster consists of both non-RIG and RIG
+    #
+    # NOTE: this based on the original Helm installation
+    #       of training-operators Deployment.
+    #       There are no affinities nor tolerations
+    #       as of commit 
+    #       https://github.com/aws/sagemaker-hyperpod-cli/blob/9ff002f949bc408849f7673678f46a3326983ed2/helm_chart/HyperPodHelmChart/charts/training-operators/templates/Deployment/training-operator-kubeflow-Deployment.yaml
     #####################################################
    
     # Using kubectl directly since relatively simple patch 
