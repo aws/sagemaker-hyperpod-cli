@@ -28,7 +28,7 @@ class HPEndpointBase:
         print(f"Endpoint name is: {self._endpoint.endpoint_name}")
 
     @classmethod
-    def get_endpoint(
+    def get(
         cls,
         endpoint_name: str,
         region: str = None,
@@ -78,7 +78,9 @@ class HPEndpointBase:
                 body=body,
             )
 
-            print("\nDeploying model and its endpoint... The process may take a few minutes.")
+            print(
+                "\nDeploying model and its endpoint... The process may take a few minutes."
+            )
         except Exception as e:
             print(f"\nFailed to deploy model and its endpoint: {e}")
 
