@@ -67,15 +67,16 @@ override_image_if_below_version() {
     local IMAGE=$1
     local MIN_VERSION=$2
     local MIN_VERSION_TAG=$3
+    local CONTAINER_TYPE=${4:-containers}
 
     local override=$(cat)
-    local uri=$(echo "$override" | yq e ".spec.template.spec.containers[] | select(.name == \"$IMAGE\").image" -)
+    local uri=$(echo "$override" | yq e ".spec.template.spec.${CONTAINER_TYPE}[] | select(.name == \"$IMAGE\").image" -)
     local version=$(echo $uri | cut -d':' -f2 | cut -d'-' -f1 | tr -d 'v')
     local repo=$(echo $uri | cut -d':' -f1)
  
     if test "$(echo -e "$version\n$MIN_VERSION" | sort -V | head -n 1)" != "$MIN_VERSION"; then
         override=$(echo "$override" | \
-            yq e -P ".spec.template.spec.containers[] |= select(.name == \"$IMAGE\").image = \"$repo:$MIN_VERSION_TAG\"" -)
+            yq e -P ".spec.template.spec.${CONTAINER_TYPE}[] |= select(.name == \"$IMAGE\").image = \"$repo:$MIN_VERSION_TAG\"" -)
     fi
     echo "$override"
 }
@@ -124,6 +125,7 @@ override_aws_node() {
     override_images="$set_and_append_envvars"
     override_images=$(echo "$override_images" | override_image_if_below_version aws-node 1.19.6 "v1.19.6-eksbuild.1" )
     override_images=$(echo "$override_images" | override_image_if_below_version aws-eks-nodeagent 1.2.2 "v1.2.2-eksbuild.1" )
+    override_images=$(echo "$override_images" | override_image_if_below_version aws-vpc-cni-init 1.19.6 "v1.19.6-eksbuild.1" initContainers)
 
     change_metadata=$(echo "$override_images" | \
 	    yq e -P "
