@@ -208,7 +208,7 @@ class TestHPEndpointBase(unittest.TestCase):
             mock_endpoint_get.return_value = mock_endpoint_instance
 
             # Call the method
-            result = HPEndpointBase.get_endpoint("test-endpoint")
+            result = HPEndpointBase.get("test-endpoint")
 
             # Verify the call
             mock_endpoint_get.assert_called_once()

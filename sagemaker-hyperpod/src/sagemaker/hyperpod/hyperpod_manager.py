@@ -102,10 +102,13 @@ class HyperPodManager:
         # Load the updated kubeconfig
         config.load_kube_config(config_file=KUBE_CONFIG_PATH)
 
+    @classmethod
     def list_clusters(
-        self,
+        cls,
         region: Optional[str] = None,
     ):
+        instance = cls()
+
         client = boto3.client("sagemaker", region_name=region)
         clusters = client.list_clusters()
 
@@ -115,7 +118,7 @@ class HyperPodManager:
         for cluster in clusters["ClusterSummaries"]:
             cluster_name = cluster["ClusterName"]
 
-            if self._is_eks_orchestrator(client, cluster_name):
+            if instance._is_eks_orchestrator(client, cluster_name):
                 eks_clusters.append(("EKS", cluster_name))
             else:
                 slurm_clusters.append((cluster_name, "Slurm"))
@@ -125,24 +128,27 @@ class HyperPodManager:
 
         print(tabulate(table_data, headers=headers))
 
+    @classmethod
     def set_context(
-        self,
+        cls,
         cluster_name: str,
         region: Optional[str] = None,
         namespace: Optional[str] = None,
     ):
+        instance = cls()
         client = boto3.client("sagemaker", region_name=region)
 
         response = client.describe_cluster(ClusterName=cluster_name)
         eks_cluster_arn = response["Orchestrator"]["Eks"]["ClusterArn"]
-        eks_name = self._get_eks_name_from_arn(eks_cluster_arn)
+        eks_name = instance._get_eks_name_from_arn(eks_cluster_arn)
 
-        self._update_kube_config(eks_name, region, TEMP_KUBE_CONFIG_FILE)
-        self._set_current_context(eks_cluster_arn, namespace)
+        instance._update_kube_config(eks_name, region, TEMP_KUBE_CONFIG_FILE)
+        instance._set_current_context(eks_cluster_arn, namespace)
 
-        print(f"Successfully set current cluster: {cluster_name}")
+        print(f"Successfully set current cluster as: {cluster_name}")
 
-    def get_context(self):
+    @classmethod
+    def get_context(cls):
         try:
             current_context = config.list_kube_config_contexts()[1]["context"][
                 "cluster"

@@ -47,7 +47,7 @@ class HPJumpStartEndpoint(HPEndpointBase):
     @classmethod
     def create(
         cls,
-        namespace: str = 'default',
+        namespace: str = "default",
         model_id: str = None,
         model_version: str = None,
         instance_type: str = None,
@@ -81,7 +81,7 @@ class HPJumpStartEndpoint(HPEndpointBase):
     def create_from_spec(
         cls,
         spec: JumpStartModelSpec,
-        namespace: str = 'default',
+        namespace: str = "default",
     ):
         cls().call_create_api(
             name=spec.model.modelId,  # use model id as metadata name
@@ -94,7 +94,7 @@ class HPJumpStartEndpoint(HPEndpointBase):
     def create_from_dict(
         cls,
         input: Dict,
-        namespace: str = 'default',
+        namespace: str = "default",
     ):
         spec = JumpStartModelSpec.model_validate(input, by_name=True)
 
@@ -106,9 +106,9 @@ class HPJumpStartEndpoint(HPEndpointBase):
         )
 
     @classmethod
-    def list_endpoints(
+    def list(
         cls,
-        namespace: str = 'default',
+        namespace: str = "default",
     ):
         response = cls().call_list_api(
             kind=JUMPSTART_MODEL_KIND,
@@ -116,18 +116,19 @@ class HPJumpStartEndpoint(HPEndpointBase):
         )
 
         output_data = []
-        for item in response["items"]:
-            metadata = item["metadata"]
-            output_data.append((metadata["name"], metadata["creationTimestamp"]))
+        if response and response["items"]:
+            for item in response["items"]:
+                metadata = item["metadata"]
+                output_data.append((metadata["name"], metadata["creationTimestamp"]))
         headers = ["METADATA NAME", "CREATE TIME"]
 
         print(tabulate(output_data, headers=headers))
 
     @classmethod
-    def describe_endpoint(
+    def describe(
         cls,
         name: str,
-        namespace: str = 'default',
+        namespace: str = "default",
     ):
         response = cls().call_get_api(
             name=name,
@@ -139,10 +140,10 @@ class HPJumpStartEndpoint(HPEndpointBase):
         print(yaml.dump(response))
 
     @classmethod
-    def delete_endpoint(
+    def delete(
         cls,
         name: str,
-        namespace: str = 'default',
+        namespace: str = "default",
     ):
         cls().call_delete_api(
             name=name,  # use model id as metadata name

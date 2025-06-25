@@ -123,7 +123,7 @@ class HPEndpoint(HPEndpointBase):
     @classmethod
     def create(
         cls,
-        namespace: str = 'default',
+        namespace: str = "default",
         model_name: str = None,
         model_version: str = None,
         instance_type: str = None,
@@ -216,7 +216,7 @@ class HPEndpoint(HPEndpointBase):
     def create_from_spec(
         cls,
         spec: InferenceEndpointConfigSpec,
-        namespace: str = 'default',
+        namespace: str = "default",
     ):
         cls().call_create_api(
             name=spec.modelName,  # use model name as metadata name
@@ -231,7 +231,7 @@ class HPEndpoint(HPEndpointBase):
     def create_from_dict(
         cls,
         input: Dict,
-        namespace: str = 'default',
+        namespace: str = "default",
     ):
         spec = InferenceEndpointConfigSpec.model_validate(input, by_name=True)
 
@@ -247,7 +247,7 @@ class HPEndpoint(HPEndpointBase):
     @classmethod
     def list_endpoints(
         cls,
-        namespace: str = 'default',
+        namespace: str = "default",
     ):
         response = cls().call_list_api(
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
@@ -267,14 +267,14 @@ class HPEndpoint(HPEndpointBase):
     def describe_endpoint(
         cls,
         name: str,
-        namespace: str = 'default',
+        namespace: str = "default",
     ):
         response = cls().call_get_api(
             name=name,
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace=namespace,
         )
-        
+
         response["metadata"].pop("managedFields")
         print(yaml.dump(response))
 
@@ -282,7 +282,7 @@ class HPEndpoint(HPEndpointBase):
     def delete_endpoint(
         cls,
         name: str,
-        namespace: str = 'default',
+        namespace: str = "default",
     ):
         cls().call_delete_api(
             name=name,  # use model id as metadata name

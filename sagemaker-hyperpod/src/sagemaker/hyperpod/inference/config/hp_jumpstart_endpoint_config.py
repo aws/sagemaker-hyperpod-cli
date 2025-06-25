@@ -1,5 +1,159 @@
 from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional, List, Dict, Union
+from typing import Optional, List, Dict, Union, Literal
+
+
+class Dimensions(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(description="CloudWatch Metric dimension name")
+    value: str = Field(description="CloudWatch Metric dimension value")
+
+
+class CloudWatchTrigger(BaseModel):
+    """CloudWatch metric trigger to use for autoscaling"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    dimensions: Optional[List[Dimensions]] = Field(
+        default=None, description="Dimensions for Cloudwatch metrics"
+    )
+    metricCollectionPeriod: Optional[int] = Field(
+        default=300,
+        alias="metric_collection_period",
+        description="Defines the Period for CloudWatch query",
+    )
+    metricCollectionStartTime: Optional[int] = Field(
+        default=300,
+        alias="metric_collection_start_time",
+        description="Defines the StartTime for CloudWatch query",
+    )
+    metricName: Optional[str] = Field(
+        default=None,
+        alias="metric_name",
+        description="Metric name to query for Cloudwatch trigger",
+    )
+    metricStat: Optional[str] = Field(
+        default="Average",
+        alias="metric_stat",
+        description="Statistics metric to be used by Trigger. Used to define Stat for CloudWatch query. Default is Average.",
+    )
+    metricType: Optional[Literal["Value", "Average"]] = Field(
+        default="Average",
+        alias="metric_type",
+        description="The type of metric to be used by HPA. Enum: AverageValue - Uses average value of metric per pod, Value - Uses absolute metric value",
+    )
+    minValue: Optional[float] = Field(
+        default=0,
+        alias="min_value",
+        description="Minimum metric value used in case of empty response from CloudWatch. Default is 0.",
+    )
+    name: Optional[str] = Field(
+        default=None, description="Name for the CloudWatch trigger"
+    )
+    namespace: Optional[str] = Field(
+        default=None, description="AWS CloudWatch namespace for metric"
+    )
+    targetValue: Optional[float] = Field(
+        default=None,
+        alias="target_value",
+        description="TargetValue for CloudWatch metric",
+    )
+    useCachedMetrics: Optional[bool] = Field(
+        default=True,
+        alias="use_cached_metrics",
+        description="Enable caching of metric values during polling interval. Default is true",
+    )
+
+
+class PrometheusTrigger(BaseModel):
+    """Prometheus metric trigger to use for autoscaling"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    customHeaders: Optional[str] = Field(
+        default=None,
+        alias="custom_headers",
+        description="Custom headers to include while querying the prometheus endpoint.",
+    )
+    metricType: Optional[Literal["Value", "Average"]] = Field(
+        default="Average",
+        alias="metric_type",
+        description="The type of metric to be used by HPA. Enum: AverageValue - Uses average value of metric per pod, Value - Uses absolute metric value",
+    )
+    name: Optional[str] = Field(
+        default=None, description="Name for the Prometheus trigger"
+    )
+    namespace: Optional[str] = Field(
+        default=None, description="Namespace for namespaced queries"
+    )
+    query: Optional[str] = Field(
+        default=None, description="PromQLQuery for the metric."
+    )
+    serverAddress: Optional[str] = Field(
+        default=None,
+        alias="server_address",
+        description="Server address for AMP workspace",
+    )
+    targetValue: Optional[float] = Field(
+        default=None,
+        alias="target_value",
+        description="Target metric value for scaling",
+    )
+    useCachedMetrics: Optional[bool] = Field(
+        default=True,
+        alias="use_cached_metrics",
+        description="Enable caching of metric values during polling interval. Default is true",
+    )
+
+
+class AutoScalingSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    cloudWatchTrigger: Optional[CloudWatchTrigger] = Field(
+        default=None,
+        alias="cloud_watch_trigger",
+        description="CloudWatch metric trigger to use for autoscaling",
+    )
+    cooldownPeriod: Optional[int] = Field(
+        default=300,
+        alias="cooldown_period",
+        description="The period to wait after the last trigger reported active before scaling the resource back to 0. Default 300 seconds.",
+    )
+    initialCooldownPeriod: Optional[int] = Field(
+        default=300,
+        alias="initial_cooldown_period",
+        description="The delay before the cooldownPeriod starts after the initial creation of the ScaledObject. Default 300 seconds.",
+    )
+    maxReplicaCount: Optional[int] = Field(
+        default=5,
+        alias="max_replica_count",
+        description="The maximum number of model pods to scale to. Default 5.",
+    )
+    minReplicaCount: Optional[int] = Field(
+        default=1,
+        alias="min_replica_count",
+        description="The minimum number of model pods to scale down to. Default 1.",
+    )
+    pollingInterval: Optional[int] = Field(
+        default=30,
+        alias="polling_interval",
+        description="This is the interval to check each trigger on. Default 30 seconds.",
+    )
+    prometheusTrigger: Optional[PrometheusTrigger] = Field(
+        default=None,
+        alias="prometheus_trigger",
+        description="Prometheus metric trigger to use for autoscaling",
+    )
+    scaleDownStabilizationTime: Optional[int] = Field(
+        default=300,
+        alias="scale_down_stabilization_time",
+        description="The time window to stabilize for HPA before scaling down. Default 300 seconds.",
+    )
+    scaleUpStabilizationTime: Optional[int] = Field(
+        default=0,
+        alias="scale_up_stabilization_time",
+        description="The time window to stabilize for HPA before scaling up. Default 0 seconds.",
+    )
 
 
 class EnvironmentVariables(BaseModel):
@@ -61,6 +215,11 @@ class Model(BaseModel):
     additionalConfigs: Optional[List[AdditionalConfigs]] = Field(
         default=None, alias="additional_configs"
     )
+    gatedModelDownloadRole: Optional[str] = Field(
+        default=None,
+        alias="gated_model_download_role",
+        description="The Amazon Resource Name (ARN) of an IAM role that will be used to download gated model",
+    )
     modelHubName: Optional[str] = Field(
         default="SageMakerPublicHub",
         alias="model_hub_name",
@@ -80,7 +239,10 @@ class Model(BaseModel):
 class SageMakerEndpoint(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    name: str
+    name: Optional[str] = Field(
+        default="",
+        description="Name of sagemaker endpoint. Defaults to empty string which represents that Sagemaker endpoint will not be created.",
+    )
 
 
 class Server(BaseModel):
@@ -110,6 +272,9 @@ class JumpStartModelSpec(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    autoScalingSpec: Optional[AutoScalingSpec] = Field(
+        default=None, alias="auto_scaling_spec"
+    )
     environmentVariables: Optional[List[EnvironmentVariables]] = Field(
         default=None,
         alias="environment_variables",
@@ -128,6 +293,8 @@ class JumpStartModelSpec(BaseModel):
         default=1,
         description="The desired number of inference server replicas. Default 1.",
     )
-    sageMakerEndpoint: SageMakerEndpoint = Field(alias="sage_maker_endpoint")
+    sageMakerEndpoint: Optional[SageMakerEndpoint] = Field(
+        default=None, alias="sage_maker_endpoint"
+    )
     server: Server
     tlsConfig: Optional[TlsConfig] = Field(default=None, alias="tls_config")
