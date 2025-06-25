@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 SRC_DIR="HyperPodHelmChart"
 OUTPUT_DIR="HyperPodHelmChartForRIG"
@@ -294,9 +293,9 @@ assert_addons_enabled() {
     local response=""
     for resource in "${resources[@]}"; do
         IFS=',' read -r scope namespace name kind <<< "$resource"
-        response=$(kubectl get $kind $name -n $namespace --no-headers)
-        if [ -z "$response" ]; then
-            echo "No $kind $name found in namespace $namespace. Please enable this before installing RIG dependencies."
+        response=$(kubectl get $kind $name -n $namespace --no-headers 2>&1)
+        if [[ "$response" == *"Error from server (NotFound)"* ]] || [ -z "$response" ]; then
+            echo "Namespace $namespace does not exist or No $kind $name found in namespace $namespace. Please ensure CNI, CoreDNS add-ons enabled, and that standard HyperPod Helm chart is installed for this cluster before installing RIG dependencies."
             exit 1
         fi
     done
@@ -377,6 +376,8 @@ main() {
     ensure_yq_installed
 
     assert_addons_enabled add_ons[@]
+    
+    set -e
     fetch_yaml_and_enable_overrides add_ons[@]
 
     local outpath="./rig-dependencies.yaml"
