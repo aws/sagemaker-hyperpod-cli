@@ -4,7 +4,7 @@ kind: ServiceMonitor
 metadata:
   labels:
     control-plane: {{ .Values.namePrefix }}controller-manager
-    app.kubernetes.io/name: {{ .Values.namePrefix }}App
+    app.kubernetes.io/name: deploymentoperator
   name: {{ .Values.namePrefix }}controller-manager-metrics-monitor
   namespace: {{ .Values.namePrefix }}system
 spec:

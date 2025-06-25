@@ -1,6 +1,21 @@
 dependencies:
+- name: aws-mountpoint-s3-csi-driver
+  repository: https://awslabs.github.io/mountpoint-s3-csi-driver/
+  version: 1.14.1
 - name: metrics-server
   repository: https://kubernetes-sigs.github.io/metrics-server/
   version: 3.12.2
-digest: sha256:39f4737203552e67f690885042aa44930ea306ca0edf31064a0ef9de4a146e98
-generated: "2024-11-26T14:25:16.105559-08:00"
+- name: aws-fsx-csi-driver
+  repository: https://kubernetes-sigs.github.io/aws-fsx-csi-driver
+  version: 1.11.0
+- name: aws-load-balancer-controller
+  repository: https://aws.github.io/eks-charts
+  version: 1.13.2
+- name: cert-manager
+  repository: https://charts.jetstack.io
+  version: v1.18.0
+- name: keda
+  repository: https://kedacore.github.io/charts
+  version: 2.17.1
+digest: sha256:5f877809dfd7c4d13b13f3de92e0824c28f80ed3abcf7c54f11764d9aeabbeba
+generated: "2025-06-19T22:21:36.075156362Z"
