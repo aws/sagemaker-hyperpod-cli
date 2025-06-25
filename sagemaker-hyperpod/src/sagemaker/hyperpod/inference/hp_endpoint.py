@@ -8,7 +8,6 @@ from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     ModelInvocationPort,
     ModelVolumeMount,
     Resources,
-    TlsConfig,
 )
 from sagemaker.hyperpod.inference.hp_endpoint_base import HPEndpointBase
 from datetime import datetime
@@ -138,7 +137,6 @@ class HPEndpoint(HPEndpointBase):
         endpoint_name: str = None,
         model_volume_mount_name: str = None,
         model_volume_mount_path: str = None,
-        tls_s3_uri: str = None,
     ):
         instance = cls()
 
@@ -161,9 +159,6 @@ class HPEndpoint(HPEndpointBase):
 
         if not model_volume_mount_path:
             model_volume_mount_path = DEFAULT_MOUNT_PATH
-
-        if not tls_s3_uri:
-            tls_s3_uri = ''
 
         if model_source_type == "s3":
             model_source_config = ModelSourceConfig(
@@ -193,10 +188,6 @@ class HPEndpoint(HPEndpointBase):
             resources=Resources(),
         )
 
-        tls_config = TlsConfig(
-            tls_certificate_output_s3_uri=tls_s3_uri,
-        )
-
         # create spec config
         spec = InferenceEndpointConfigSpec(
             instance_type=instance_type,
@@ -205,7 +196,6 @@ class HPEndpoint(HPEndpointBase):
             model_source_config=model_source_config,
             worker=worker,
             endpoint_name=endpoint_name,
-            tls_config=tls_config,
         )
 
         instance.call_create_api(
@@ -258,10 +248,9 @@ class HPEndpoint(HPEndpointBase):
         )
 
         output_data = []
-        if response and response["items"]:
-            for item in response["items"]:
-                metadata = item["metadata"]
-                output_data.append((metadata["name"], metadata["creationTimestamp"]))
+        for item in response["items"]:
+            metadata = item["metadata"]
+            output_data.append((metadata["name"], metadata["creationTimestamp"]))
         headers = ["METADATA NAME", "CREATE TIME"]
 
         print(tabulate(output_data, headers=headers))
