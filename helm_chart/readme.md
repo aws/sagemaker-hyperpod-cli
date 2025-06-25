@@ -16,7 +16,7 @@ chmod 700 get_helm.sh
 | Chart Name                   | Usage                                                                                                                                                                                   | Enable by default |
 |------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|
 | Cluster role and binding     | Defines cluster-wide roles and bindings for Kubernetes resources, allowing cluster administrators to assign and manage permissions across the entire cluster.                           | No                |
-| Team role and binding        | Defines cluster and namespaced roles and bindings, allowing cluster administrators to create scientist roles with sufficient permissions to submit jobs to the accessible teams.        | No                |
+| Team role and binging        | Defines cluster and namespaced roles and bindings, allowing cluster administrators to create scientist roles with sufficient permissions to submit jobs to the accessible teams.        | No                |
 | Deep health check            | Implements advanced health checks for Kubernetes services and pods to ensure deep monitoring of resource status and functionality beyond basic liveness and readiness probes.           | Yes               |
 | Health monitoring agent      | Deploys an agent to continuously monitor the health of Kubernetes applications, providing detailed insights and alerting for potential issues.                                          | Yes               |
 | Job auto restart             | Configures automatic restart policies for Kubernetes jobs, ensuring failed or terminated jobs are restarted based on predefined conditions for high availability.                       | Yes               |
@@ -27,8 +27,7 @@ chmod 700 get_helm.sh
 | storage                      | Manages persistent storage resources for Kubernetes applications, ensuring that data is retained and accessible across pod restarts and cluster upgrades.                               | No                |
 | training-operators           | Installs operators for managing various machine learning training jobs, such as TensorFlow, PyTorch, and MXNet, providing native Kubernetes support for distributed training workloads. | Yes               |
 | HyperPod patching            | Deploys the RBAC and controller resources needed for orchestrating rolling updates and patching workflows in SageMaker HyperPod clusters. Includes pod eviction and node monitoring.    | Yes               |
-| aws-efa-k8s-device-plugin    | This plugin enables AWS Elastic Fabric Adapter (EFA) metrics on the EKS clusters.                                                                                                       | Yes               |  
-| hyperpod-inference-operator  | Installs the HyperPod Inference Operator and its dependencies to the cluster, allowing cluster deployment and inferencing of JumpStart, s3-hosted, and FSx-hosted models                | No                | 
+| aws-efa-k8s-device-plugin    | This plugin enables AWS Elastic Fabric Adapter (EFA) metrics on the EKS clusters.    | Yes               |  
 
 ## 3. Test the Chart Locally
 
@@ -89,6 +88,31 @@ Notes:
   ```
   helm install dependencies helm_chart/HyperPodHelmChart --namespace kube-system
   ```
+
+### Step Four:
+
+* Deploy a second Helm Chart to Your Kubernetes Cluster specific for RIG instances. This command deploys HyperPod dependencies to your cluster based on (1) the existing standard EKS Deployments in your cluster (e.g. coredns), and (2) the current version of Helm chart in this repo. The following command will fetch the information from your current EKS cluster (connected via `update-kubeconfig` in Step Zero) and your repo for the installation, and present the target installation for confirmation before deployment:
+  ```
+  ./install_rig_dependencies.sh
+  ```
+
+  If needed, please run `chmod +700 ./install_rig_dependencies.sh` to allow the script to execute.
+
+⚠️ Note: RIG installation depends on the Helm release name. If the above commands were modified for standard Helm installation (i.e. no longer `helm install dependencies...` where `dependencies` is the release name), then please update the STANDARD_HELM_RELEASE_NAME in install_rig_dependencies.sh before running
+
+⚠️ Note: This will require the yq utility with version >= 4 (e.g. https://github.com/mikefarah/yq/releases/tag/v4)
+
+⚠️ Note: aws-node (AWS VPC CNI) is a critical add-on for general pod use.
+Other pods that depend on aws-node (e.g. CoreDNS, HyperPod HealthMonitoringAgent,...) may experience 'FailedCreatePodSandBox' if the aws-node pods are not available before start up.
+Therefore, please allow additional time for K8s to recreate the pods and/or manually recreate the pods (or let K8s recreate after cleaning up) before cluster use.
+
+⚠️ Note: HyperPod HealthMonitoringAgent (HMA) is a critical dependency for node resilience.
+HMA installation is normally handled by the standard (non-RIG) Helm Chart. See https://github.com/aws/sagemaker-hyperpod-cli/blob/main/helm_chart/HyperPodHelmChart/charts/health-monitoring-agent/values.yaml#L2
+The image URI for this component is region-specific. See https://github.com/aws/sagemaker-hyperpod-cli/tree/main/helm_chart#6-notes
+To ensure this feature works as intended, please be sure to use the correct image URI.
+
+For installations that have already deployed, the image URI can be updated (corrected) using a 'kubectl patch' command. For example:
+    kubectl patch daemonset health-monitoring-agent -n aws-hyperpod --patch '{spec: {template: {spec: {containers: [{name: health-monitoring-agent, image: 767398015722.dkr.ecr.us-east-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.448.0_1.0.115.0}]}}}}'
 
 ## 5. Create Team Role
 
