@@ -47,6 +47,8 @@ NVIDIA_GPU_RESOURCE_LIMIT_KEY = "nvidia.com/gpu"
 AVAILABLE_ACCELERATOR_DEVICES_KEY = "AvailableAcceleratorDevices"
 TOTAL_ACCELERATOR_DEVICES_KEY = "TotalAcceleratorDevices"
 USER_NAME_LABEL_KEY = "sagemaker.user/created-by"
+AMAZON_HYPERPOD_OBSERVABILITY = "amazon-sagemaker-hyperpod-observability"
+GRAFANA_DASHBOARD_UID = "aws-sm-hp-observability-cluster-v1_0"
 
 class PullPolicy(Enum):
     ALWAYS = "Always"
