@@ -262,10 +262,32 @@ override_efa() {
     #
     #       Therefore, we need to append NOT replace, but append.
     #       This is done using the `-` at the end of the `path`
+    #
+    #
+    #
+    # Additionally, as of 6/26/2025, EFA is NOT a standard add-on for EKS
+    # The standard add-ons use logic to detemrine the correct image URI (e.g. https://github.com/aws/amazon-vpc-cni-k8s/blob/fe8968d43ee48a86561faf66f9ea93d794519bd1/charts/aws-vpc-cni/templates/_helpers.tpl#L66)
+    # However, as of 6/26/2025, EFA Helm only uses static values.yml.
+    # Therefore, the image URI must be overridden manually.
+    # The registries are listed here https://docs.aws.amazon.com/eks/latest/userguide/add-ons-images.html
+    #
+    # NOTE: For now, resolve image URI for only few regions where we support for GA: eu-north-1, us-east-1
+    #       These have the same source account ID and are in standard AWS partition
+    #
+    # NOTE: this should be changed/removed once EFA is added as a standard add-on for EKS
     #####################################################
-   
+ 
+    # TODO: Remove this logic once EFA is an official EKS Add-On and image URI can be deteremined automatically
+    # This is ok for GA 6/26/2025 since region support limited to us-east-1, eu-north-1  which have same account ID and partition for source registry
+    # https://docs.aws.amazon.com/eks/latest/userguide/add-ons-images.html
+    local region=$(kubectl config current-context | cut -d':' -f4)
+    local image=$(kubectl get daemonset $EFA -n kube-system -o yaml | yq e '.spec.template.spec.containers[] | select(.name == "aws-efa-k8s-device-plugin").image' -)
+    local new_image=$(echo "$image" | sed "s/\.[^.]*\.amazonaws\.com/.$region.amazonaws.com/")
+    local index=$(kubectl get daemonset $EFA -n kube-system -o yaml | yq e '.spec.template.spec.containers | to_entries | .[] | select(.value.name == "aws-efa-k8s-device-plugin") | .key' -)
+
     # Using kubectl directly since relatively simple patch 
     # that does not require new separeate file/deployments specific for RIG
+    
     kubectl patch daemonset $EFA -n kube-system --type=json -p='[
       {
         "op": "add",
@@ -275,6 +297,11 @@ override_efa() {
           "value": "Worker",
           "effect": "NoSchedule"
         }
+      },
+      {
+        "op": "replace",
+        "path": "/spec/template/spec/containers/'$index'/image",
+        "value": "'$new_image'"
       }
     ]'
 }
