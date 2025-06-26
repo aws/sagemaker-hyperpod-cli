@@ -1,5 +1,12 @@
 #!/bin/bash
 
+
+SUPPORTED_REGIONS=(
+    "us-east-1"
+    "eu-north-1"
+)
+
+
 SRC_DIR="HyperPodHelmChart"
 OUTPUT_DIR="HyperPodHelmChartForRIG"
 STANDARD_HELM_RELEASE_NAME=dependencies
@@ -306,13 +313,12 @@ override_efa() {
     ]'
 }
 
-# Function to check if an item is in the skiplist
-in_skiplist() {
+in_list() {
     local item="$1"
     shift
     local -a skiplist=("$@")
-    for skip in "${skiplist[@]}"; do
-        if [[ "$item" == "$skip" ]]; then
+    for x in "${skiplist[@]}"; do
+        if [[ "$item" == "$x" ]]; then
             return 0  # True, item is in skiplist
         fi
     done
@@ -333,7 +339,7 @@ fetch_yaml_and_enable_overrides() {
         #####################################################
         # Clean and (Re)Create Helm chart directories
         #####################################################
-	if ! in_skiplist "$name" "${PATCH_ONLY[@]}" ; then
+	if ! in_list "$name" "${PATCH_ONLY[@]}" ; then
             rm -rf $OUTPUT_DIR/charts/$name/templates
             rm -f $OUTPUT_DIR/charts/$name/*.tgz
             mkdir -p $OUTPUT_DIR/charts/$name/templates
@@ -359,7 +365,7 @@ fetch_yaml_and_enable_overrides() {
 		    enable_nodeselectors_and_tolerations_overrides $outpath
             fi
 	else
-	    if in_skiplist "$name" "${PATCH_ONLY[@]}"; then
+	    if in_list "$name" "${PATCH_ONLY[@]}"; then
 		continue
             else
                 cp -r $SRC_DIR/charts/$name/. $OUTPUT_DIR/charts/$name
@@ -464,9 +470,24 @@ ensure_yq_installed(){
     fi
 }
 
+assert_supported_region() {
+    local eks=$(kubectl config current-context)
+    local region=$(kubectl config current-context | cut -d':' -f4)
+    if ! in_list "$region" "${SUPPORTED_REGIONS[@]}" ; then
+        echo ""
+	echo "❌  Installation cancelled (no actions taken)."
+	echo "'kubectl config current-context' discovered cluster is in region '$region.' (eks cluster '$eks')"
+        echo "The list of SUPPORTED_REGIONS for HyperPod RIG use/RIG Helm installation is [${SUPPORTED_REGIONS[@]}]."
+        echo "Please use one of these supported regions for HyperPod RIG use."
+        echo ""
+        exit 1
+    fi
+}
+
 main() {
     ensure_yq_installed
 
+    assert_supported_region
     assert_addons_enabled add_ons[@]
     
     set -e
@@ -478,4 +499,5 @@ main() {
     confirm_installation_with_user $outpath
 }
 
-main
+#main
+assert_supported_region
