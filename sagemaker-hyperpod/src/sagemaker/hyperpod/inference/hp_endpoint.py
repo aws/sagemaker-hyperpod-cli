@@ -28,6 +28,7 @@ class HPEndpoint(HPEndpointBase):
         model_source_type: Literal["fsx", "s3"],
         bucket_name: str = None,
         bucket_region: str = None,
+        model_location: str = None,
         fsx_dns_name: str = None,
         fsx_file_system_id: str = None,
         fsx_mount_name: str = None,
@@ -68,7 +69,7 @@ class HPEndpoint(HPEndpointBase):
 
         # Validate model_source_type specific parameters
         if model_source_type == "s3":
-            if any([bucket_name is None, bucket_region is None]):
+            if any([bucket_name is None, bucket_region is None, model_location is None]):
                 raise ValueError(
                     "When model_source_type is 's3', bucket_name and bucket_region must be provided"
                 )
@@ -132,6 +133,7 @@ class HPEndpoint(HPEndpointBase):
         model_source_type: Literal["fsx", "s3"] = None,
         bucket_name: str = None,
         bucket_region: str = None,
+        model_location: str = None,
         fsx_dns_name: str = None,
         fsx_file_system_id: str = None,
         fsx_mount_name: str = None,
@@ -150,6 +152,7 @@ class HPEndpoint(HPEndpointBase):
             model_source_type,
             bucket_name,
             bucket_region,
+            model_location,
             fsx_dns_name,
             fsx_file_system_id,
             fsx_mount_name,
@@ -165,6 +168,7 @@ class HPEndpoint(HPEndpointBase):
         if model_source_type == "s3":
             model_source_config = ModelSourceConfig(
                 model_source_type=model_source_type,
+                model_location=model_location,
                 s3_storage=S3Storage(
                     bucket_name=bucket_name,
                     region=bucket_region,
@@ -245,7 +249,7 @@ class HPEndpoint(HPEndpointBase):
         region = boto3.session.Session().region_name
 
     @classmethod
-    def list_endpoints(
+    def list(
         cls,
         namespace: str = "default",
     ):
@@ -264,7 +268,7 @@ class HPEndpoint(HPEndpointBase):
         print(tabulate(output_data, headers=headers))
 
     @classmethod
-    def describe_endpoint(
+    def describe(
         cls,
         name: str,
         namespace: str = "default",
@@ -279,7 +283,7 @@ class HPEndpoint(HPEndpointBase):
         print(yaml.dump(response))
 
     @classmethod
-    def delete_endpoint(
+    def delete(
         cls,
         name: str,
         namespace: str = "default",

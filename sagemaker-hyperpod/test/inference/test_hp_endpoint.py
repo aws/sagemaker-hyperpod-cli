@@ -275,7 +275,7 @@ class TestHPEndpoint(unittest.TestCase):
         mock_call_list_api.return_value = mock_response
 
         # Call the method
-        result = HPEndpoint.list_endpoints(namespace="test-namespace")
+        result = HPEndpoint.list(namespace="test-namespace")
 
         # Verify call_list_api was called with correct parameters
         mock_call_list_api.assert_called_once_with(

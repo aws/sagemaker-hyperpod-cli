@@ -147,7 +147,7 @@ class TestHPJumpStartEndpoint(unittest.TestCase):
         mock_call_list_api.return_value = {"items": []}
 
         # Call the method with print capture
-        HPJumpStartEndpoint.list_endpoints(namespace="test-namespace")
+        HPJumpStartEndpoint.list(namespace="test-namespace")
 
         # Verify call_list_api was called with correct parameters
         mock_call_list_api.assert_called_once_with(
