@@ -499,5 +499,4 @@ main() {
     confirm_installation_with_user $outpath
 }
 
-#main
-assert_supported_region
+main
