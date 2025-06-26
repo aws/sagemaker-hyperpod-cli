@@ -1,0 +1,18 @@
+{{- if .Values.s3.enabled }}
+{{- if .Values.s3.persistentVolumeClaim.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.s3.persistentVolumeClaim.name }}
+spec:
+  accessModes:
+    {{- range .Values.s3.persistentVolumeClaim.accessModes }}
+    - {{ . }}
+    {{- end }}
+  storageClassName: {{ .Values.s3.persistentVolumeClaim.storageClassName }}
+  resources:
+    requests:
+      storage: {{ .Values.s3.persistentVolumeClaim.requests.storage }}
+  volumeName: {{ .Values.s3.persistentVolumeClaim.volumeName }}
+{{- end }}
+{{- end }}
