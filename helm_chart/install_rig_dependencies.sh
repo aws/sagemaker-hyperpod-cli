@@ -1,6 +1,7 @@
 #!/bin/bash
 
 RIG_HELM_RELEASE=rig-dependencies
+DATETIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 SUPPORTED_REGIONS=(
     "us-east-1"
     "eu-north-1"
@@ -122,6 +123,7 @@ override_aws_node() {
     yq e "
         .spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[] |=
 		.matchExpressions += [{\"key\":\"sagemaker.amazonaws.com/instance-group-type\",\"operator\":\"NotIn\",\"values\":[\"Restricted\"]}] |
+                .metadata.annotations[\"rig.hyperpod.patch/aws-node\"] = \"{\\\"timestamp\\\":\\\" $DATETIME \\\"}\" |
 		del(.status)
     " $tmp > $outdir/daemonset.nonrig.yaml
 
@@ -150,6 +152,7 @@ override_aws_node() {
 	    yq e -P "
                 .metadata.name = \"rig-\" + .metadata.name |
                 .metadata.annotations.[\"helm.sh/hook-weight\"] = \"-1\" |
+                .metadata.annotations[\"rig.hyperpod.patch/aws-node\"] = \"{\\\"timestamp\\\":\\\" $DATETIME \\\"}\" |
 		del(.status)
             " - )
 
@@ -175,6 +178,7 @@ override_coredns() {
         .kind = \"DaemonSet\" |
         .metadata.name = \"rig-\" + .metadata.name |
         .metadata.annotations.[\"helm.sh/hook-weight\"] = \"0\" |
+        .metadata.annotations[\"rig.hyperpod.patch/coredns\"] = \"{\\\"timestamp\\\":\\\" $DATETIME \\\"}\" |
         .spec.template.spec.nodeSelector = {\"sagemaker.amazonaws.com/instance-group-type\": \"Restricted\"} |
         .spec.template.spec.tolerations += [{
             \"key\": \"sagemaker.amazonaws.com/RestrictedNode\",
@@ -251,6 +255,11 @@ override_training_operators() {
             ]
           }
         }
+      },
+      {
+        "op": "add",
+        "path": "/metadata/annotations/rig.hyperpod.patch~1training-operators",
+        "value": "{\"timestamp\": \"'$DATETIME'\"}"
       }
     ]'
 }
@@ -311,6 +320,11 @@ override_efa() {
         "op": "replace",
         "path": "/spec/template/spec/containers/'$index'/image",
         "value": "'$new_image'"
+      },
+      {
+        "op": "add",
+        "path": "/metadata/annotations/rig.hyperpod.patch~1aws-efa-k8s-device-plugin",
+        "value": "{\"timestamp\": \"'$DATETIME'\"}"
       }
     ]'
 }
