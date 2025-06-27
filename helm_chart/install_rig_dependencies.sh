@@ -481,7 +481,18 @@ confirm_installation_with_user() {
       echo "Other pods that depend on aws-node (e.g. CoreDNS, HyperPod HealthMonitoringAgent,...) may experience 'FailedCreatePodSandBox' if the aws-node pods are not available before start up."
       echo "Therefore, please allow additional time for K8s to recreate the pods and/or manually recreate the pods (or let K8s recreate after cleaning up) before full cluster use."
       echo ""
-      
+     
+      # Warn user about HMA region
+      echo ""
+      echo "⚠️ Note: HyperPod HealthMonitoringAgent (HMA) is a critical dependency for node resilience."
+      echo "HMA installation is normally handled by the standard (non-RIG) Helm Chart. See https://github.com/aws/sagemaker-hyperpod-cli/blob/main/helm_chart/HyperPodHelmChart/charts/health-monitoring-agent/values.yaml#L2"
+      echo "The image URI for this component is region-specific. See https://github.com/aws/sagemaker-hyperpod-cli/tree/main/helm_chart#6-notes"
+      echo "To ensure this feature works as intended, please be sure to use the correct image URI."
+      echo ""
+      echo "For installations that have already deployed, the image URI can be updated (corrected) using a 'kubectl patch' command. For example:"
+      echo "    kubectl patch daemonset health-monitoring-agent -n aws-hyperpod --patch '{"spec": {"template": {"spec": {"containers": [{"name": "health-monitoring-agent", "image": "767398015722.dkr.ecr.us-east-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.448.0_1.0.115.0"}]}}}}'"
+      echo ""
+
       # Warn user about re-running installation
       echo ""
       echo "⚠️ Note: This installation script should only be run one time for a given HyperPod cluster. Please avoid re-running this installation to avoid duplicated Deployments and Daemonsets and unintended K8s patches to existing objects."
