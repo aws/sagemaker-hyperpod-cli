@@ -1,6 +1,6 @@
 #!/bin/bash
 
-
+RIG_HELM_RELEASE=rig-dependencies
 SUPPORTED_REGIONS=(
     "us-east-1"
     "eu-north-1"
@@ -117,6 +117,8 @@ override_aws_node() {
     ################################################
     # 1 - Non-RIG Daemonset updates
     ################################################
+
+    # We're not using `kubectl patch` for this because this expression needs to be added for each list of `matchExpressions` (there may be more than 1)
     yq e "
         .spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[] |=
 		.matchExpressions += [{\"key\":\"sagemaker.amazonaws.com/instance-group-type\",\"operator\":\"NotIn\",\"values\":[\"Restricted\"]}] |
@@ -399,7 +401,7 @@ refresh_helm_dependencies() {
 
 render_rig_helm_chart() {
     local outpath=$1
-    helm template rig-dependencies ./HyperPodHelmChartForRIG --namespace kube-system -f ./HyperPodHelmChartForRIG/values.yaml > $outpath
+    helm template $RIG_HELM_RELEASE ./HyperPodHelmChartForRIG --namespace kube-system -f ./HyperPodHelmChartForRIG/values.yaml > $outpath
     echo ""
     echo ""
     echo "Rendered target Helm chart at $outpath"
@@ -413,7 +415,7 @@ confirm_installation_with_user() {
 
     if [[ "$confirm" =~ ^[Yy]$ ]]; then
       echo "🔧 Installing Helm chart..."
-      helm upgrade --install rig-dependencies ./HyperPodHelmChartForRIG --namespace kube-system -f ./HyperPodHelmChartForRIG/values.yaml
+      helm upgrade --install $RIG_HELM_RELEASE ./HyperPodHelmChartForRIG --namespace kube-system -f ./HyperPodHelmChartForRIG/values.yaml
       if [ $? -ne 0 ]; then
         echo "RIG Helm Installation Failed. Exiting (0/4 steps completed)..."
         return 1
@@ -441,7 +443,7 @@ confirm_installation_with_user() {
       fi
 
       echo ""
-      echo "RIG Helm Installation Succeeded (4/4 steps completed)."
+      echo "✅ RIG Helm Installation Succeeded (4/4 steps completed)."
       echo ""
 
       # Warn user about CNI start up
@@ -449,6 +451,11 @@ confirm_installation_with_user() {
       echo "⚠️ Note: aws-node (AWS VPC CNI) is a critical add-on for general pod use."
       echo "Other pods that depend on aws-node (e.g. CoreDNS, HyperPod HealthMonitoringAgent,...) may experience 'FailedCreatePodSandBox' if the aws-node pods are not available before start up."
       echo "Therefore, please allow additional time for K8s to recreate the pods and/or manually recreate the pods (or let K8s recreate after cleaning up) before full cluster use."
+      echo ""
+      
+      # Warn user about re-running installation
+      echo ""
+      echo "⚠️ Note: This installation script should only be run one time for a given HyperPod cluster. Please avoid re-running this installation to avoid duplicated Deployments and Daemonsets and unintended K8s patches to existing objects."
       echo ""
     else
       echo "❌ Installation cancelled."
@@ -484,7 +491,30 @@ assert_supported_region() {
     fi
 }
 
+assert_not_already_installed() {
+    if helm status $RIG_HELM_RELEASE -n kube-system >/dev/null 2>&1; then
+        echo ""
+        echo "⚠️  WARNING: It looks like this cluster already has RIG dependencies installed (found '$RIG_HELM_RELEASE' Helm release in EKS cluster)" 
+        echo "This installation script should only be run one time for a given HyperPod cluster. Please avoid re-running this installation to avoid duplicated Deployments and Daemonsets and unintended K8s patches to existing objects."
+        echo ""
+        
+        read -p "Are you sure you want to re-run this RIG Helm installation script ? [y/N]: " confirm
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            echo ""
+            echo "⚠️  WARNING: Re-running installation for cluster with RIG dependencies already installed..."
+            echo ""
+        else
+            echo ""
+            echo "❌  Installation cancelled."
+            echo ""
+            exit 1
+        fi 
+    fi
+}
+
 main() {
+    assert_not_already_installed
+
     ensure_yq_installed
 
     assert_supported_region
