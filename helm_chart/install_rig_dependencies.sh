@@ -436,24 +436,39 @@ confirm_installation_with_user() {
       fi
   
       # aws-node needs specific instllation for *.nonrig.yaml
-      kubectl apply -f HyperPodHelmChartForRIG/charts/aws-node/templates/daemonset.nonrig.yaml -n kube-system
-      if [ $? -ne 0 ]; then
-        echo "RIG Helm Installation Failed (aws-node). Exiting (only 1/4 steps completed)..."
-        return 1
+      local patched=$(kubectl get daemonset aws-node -n kube-system -o yaml | yq e '.metadata.annotations | has("rig.hyperpod.patch/aws-node")' -)
+      if [ "$patched" = "false" ]; then
+          kubectl apply -f HyperPodHelmChartForRIG/charts/aws-node/templates/daemonset.nonrig.yaml -n kube-system
+          if [ $? -ne 0 ]; then
+            echo "RIG Helm Installation Failed (aws-node). Exiting (only 1/4 steps completed)..."
+            return 1
+          fi
+      else
+          echo "Found annotation 'rig.hyperpod.patch/aws-node'. Skipping patching for RIG..."
       fi
 
       # training-operator needs specific patch
-      override_training_operators
-      if [ $? -ne 0 ]; then
-        echo "RIG Helm Installation Failed (training-operator). Exiting (only 2/4 steps completed)..."
-        return 1
+      patched=$(kubectl get deployments $TRAINING_OPERATORS -n kubeflow -o yaml | yq e '.metadata.annotations | has("rig.hyperpod.patch/training-operators")' -)
+      if [ "$patched" = "false" ]; then
+          override_training_operators
+          if [ $? -ne 0 ]; then
+            echo "RIG Helm Installation Failed (training-operator). Exiting (only 2/4 steps completed)..."
+            return 1
+          fi
+      else
+          echo "Found annotation 'rig.hyperpod.patch/training-operators'. Skipping patching for RIG..."
       fi
 
       # efa needs specific patch
-      override_efa
-      if [ $? -ne 0 ]; then
-        echo "RIG Helm Installation Failed (aws-efa-k8s-device-plugin). Exiting (only 3/4 steps completed)..."
-        return 1
+      patched=$(kubectl get daemonset $EFA -n kube-system -o yaml | yq e '.metadata.annotations | has("rig.hyperpod.patch/aws-efa-k8s-device-plugin")' -)
+      if [ "$patched" = "false" ]; then
+          override_efa
+          if [ $? -ne 0 ]; then
+            echo "RIG Helm Installation Failed (aws-efa-k8s-device-plugin). Exiting (only 3/4 steps completed)..."
+            return 1
+          fi
+      else
+          echo "Found annotation 'rig.hyperpod.patch/aws-efa-k8s-device-plugin'. Skipping patching for RIG..."
       fi
 
       echo ""
