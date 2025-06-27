@@ -21,6 +21,7 @@ from botocore.config import Config
 from hyperpod_cli.constants.command_constants import (
     GENERATED_LAUNCHER_CONFIG_FILE_PATH,
     HYPERPOD_CLUSTER_CONTEXT_FILE_NAME,
+    AMAZON_HYPERPOD_OBSERVABILITY,
 )
 
 
@@ -181,3 +182,10 @@ def get_eks_cluster_name():
 def get_hyperpod_cluster_region():
     hyperpod_context_cluster = _retrieve_current_hyperpod_context()
     return hyperpod_context_cluster.get("ClusterArn").split(":")[3]
+
+def is_observability_addon_enabled(eks_cluster_name):
+    response = boto3.client("eks").list_addons(clusterName=eks_cluster_name, maxResults=50)
+    if AMAZON_HYPERPOD_OBSERVABILITY in response.get('addons', []):
+        return True
+    else:
+        return False
