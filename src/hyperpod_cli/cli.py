@@ -14,8 +14,8 @@ import click
 import importlib.metadata
 
 from hyperpod_cli.commands.cluster import (
-    connect_cluster,
-    get_clusters,
+    set_cluster_context,
+    list_cluster,
     metrics,
 )
 from hyperpod_cli.commands.job import (
@@ -68,8 +68,8 @@ def cli():
     pass
 
 
-cli.add_command(get_clusters)
-cli.add_command(connect_cluster)
+cli.add_command(list_cluster)
+cli.add_command(set_cluster_context)
 cli.add_command(metrics)
 cli.add_command(start_job)
 cli.add_command(get_job)

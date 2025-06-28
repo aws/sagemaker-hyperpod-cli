@@ -115,7 +115,7 @@ logger = setup_logger(__name__)
     multiple=True,
     help="Optional. The namespace that you want to check the capacity for. Only SageMaker managed namespaces are supported.",
 )
-def get_clusters(
+def list_cluster(
     region: Optional[str],
     orchestrator: Optional[str],
     output: Optional[str],
@@ -471,7 +471,7 @@ def _aggregate_nodes_info(
     is_flag=True,
     help="Enable debug mode",
 )
-def connect_cluster(
+def set_cluster_context(
     cluster_name: str,
     region: Optional[str],
     debug: bool,
