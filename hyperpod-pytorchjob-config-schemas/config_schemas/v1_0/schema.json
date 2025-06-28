@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "HyperPod PyTorch Job Parameters",
+  "type": "object",
+  "properties": {
+    "job-name": {
+      "type": "string",
+      "description": "Job name",
+      "minLength": 1
+    },
+    "namespace": {
+      "type": "string",
+      "description": "Kubernetes namespace",
+      "default": "default"
+    },
+    "job-kind": {
+      "type": "string",
+      "default": "HyperPodPyTorchJob"
+    },
+    "image": {
+      "type": "string",
+      "description": "Docker image for training"
+    },
+    "command": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Command to run in the container"
+    },
+    "entry-script": {
+      "type": "string",
+      "description": "Entry script for the job"
+    },
+    "script-args": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Arguments for the entry script"
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Environment variables as key-value pairs"
+    },
+    "pull-policy": {
+      "type": "string",
+      "enum": ["Always", "Never", "IfNotPresent"],
+      "default": "IfNotPresent",
+      "description": "Image pull policy"
+    },
+    "instance-type": {
+      "type": "string",
+      "description": "Instance type for training"
+    },
+    "node-count": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "Number of nodes"
+    },
+    "tasks-per-node": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of tasks per node"
+    },
+    "label-selector": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Node label selector as key-value pairs"
+    },
+    "deep-health-check-passed-nodes-only": {
+      "type": "boolean",
+      "default": false,
+      "description": "Schedule pods only on nodes that passed deep health check"
+    },
+    "scheduler-type": {
+      "type": "string",
+      "enum": ["default", "kueue"],
+      "default": "default",
+      "description": "Scheduler type"
+    },
+    "queue-name": {
+      "type": "string",
+      "description": "Queue name for job scheduling"
+    },
+    "priority": {
+      "type": "string",
+      "description": "Priority class for job scheduling"
+    },
+    "auto-resume": {
+      "type": "boolean",
+      "default": false,
+      "description": "Auto resume capability (not supported)"
+    },
+    "max-retry": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Maximum number of job retries"
+    },
+    "restart-policy": {
+      "type": "string",
+      "description": "Restart policy (not supported - always synchronized restarts)"
+    },
+    "volumes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of volumes to mount"
+    },
+    "persistent-volume-claims": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of persistent volume claims"
+    },
+    "results-dir": {
+      "type": "string",
+      "description": "Directory to store results (part of entry script)"
+    },
+    "service-account-name": {
+      "type": "string",
+      "description": "Service account name"
+    },
+    "pre-script": {
+      "type": "string",
+      "description": "Script to run before main job (part of entry script)"
+    },
+    "post-script": {
+      "type": "string",
+      "description": "Script to run after main job (part of entry script)"
+    }
+  },
+  "required": ["job-name", "image"],
+  "additionalProperties": false
+}

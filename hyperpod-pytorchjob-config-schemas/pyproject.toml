@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hyperpod-pytorch-job-config-schema-v1_0_0"
+version = "1.0"
+description = "Config schema for HyperPod PyTorch Job v1.0.0"
+requires-python = ">=3.9"
+dependencies = [
+    "pydantic>=1.8.0,<2.0.0",
+]
+
+[project.entry-points."mycli.config_versions"]
+"1.0" = "config_schemas.v1_0:PyTorchJobConfig"
