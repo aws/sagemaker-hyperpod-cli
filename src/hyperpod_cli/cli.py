@@ -17,6 +17,7 @@ from hyperpod_cli.commands.cluster import (
     set_cluster_context,
     list_cluster,
     metrics,
+    get_cluster_context,
 )
 from hyperpod_cli.commands.job import (
     cancel_job,
@@ -70,6 +71,7 @@ def cli():
 
 cli.add_command(list_cluster)
 cli.add_command(set_cluster_context)
+cli.add_command(get_cluster_context)
 cli.add_command(metrics)
 cli.add_command(start_job)
 cli.add_command(get_job)
