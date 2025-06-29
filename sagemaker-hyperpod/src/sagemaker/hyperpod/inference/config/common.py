@@ -1,15 +1,15 @@
-from typing import Dict, List, Optional, Self
+from typing import Dict, List, Optional
 from pydantic import Field, ConfigDict, BaseModel
 
 
 class Metadata(BaseModel):
     """Metadata class"""
 
-    name: Optional[str] = Field(
+    name: str = Field(
         description="Name must match the name of one entry in pod.spec.resourceClaims of the Pod where this field is used. It makes that resource available inside a container."
     )
     namespace: Optional[str] = Field(
-        default=None,
+        default="default",
         description="Name must match the name of one entry in pod.spec.resourceClaims of the Pod where this field is used. It makes that resource available inside a container.",
     )
     labels: Optional[Dict[str, str]] = Field(
