@@ -153,7 +153,7 @@ class HyperPodManager:
             current_context = config.list_kube_config_contexts()[1]["context"][
                 "cluster"
             ]
-            print(f"Current Eks context is: {current_context}")
+            return current_context
         except Exception as e:
             print(
                 f"Failed to get current context: {e}. Check your config file at {TEMP_KUBE_CONFIG_FILE}"

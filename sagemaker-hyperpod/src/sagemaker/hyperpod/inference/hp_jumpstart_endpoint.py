@@ -1,152 +1,126 @@
 from sagemaker.hyperpod.inference.config.constants import *
-from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
-    Model,
-    JumpStartModelSpec,
-    SageMakerEndpoint,
-    Server,
-)
 from sagemaker.hyperpod.inference.hp_endpoint_base import HPEndpointBase
-from datetime import datetime
-from typing import Dict
-from tabulate import tabulate
-import yaml
+from sagemaker.hyperpod.inference.config.common import Metadata
+from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
+    _HPJumpStartEndpoint,
+    JumpStartModelStatus,
+)
+from typing import Dict, List, Optional, Self
+from sagemaker_core.main.resources import Endpoint
+from pydantic import Field
 
 
-class HPJumpStartEndpoint(HPEndpointBase):
-    def _validate_inputs(
-        self,
-        model_id: str,
-        instance_type: str,
-    ):
-        # Validate required parameters when spec is None
-        if model_id is None or instance_type is None:
-            raise ValueError("Must provide both model_id and instance_type.")
+class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
+    metadata: Optional[Metadata] = Field(default=None)
+    status: Optional[JumpStartModelStatus] = Field(default=None)
 
-        # Type validation
-        if not isinstance(model_id, str):
-            raise TypeError(f"model_id must be of type str, got {type(model_id)}")
-        if not isinstance(instance_type, str):
-            raise TypeError(
-                f"instance_type must be of type str, got {type(instance_type)}"
-            )
-
-    def _validate_instance_type(self):
-        """
-        Get supported instance types from node and model
-        """
-        pass
-
-    def _get_default_endpoint_name(self, model_id: str):
-        """
-        Generate default endpoint name if not specified by user
-        """
-        time_str = datetime.now().strftime("%y%m%d-%H%M%S-%f")
-
-        return model_id + "-" + time_str
-
-    @classmethod
     def create(
-        cls,
-        namespace: str = "default",
-        model_id: str = None,
-        model_version: str = None,
-        instance_type: str = None,
-        sagemaker_endpoint: str = None,
-        accept_eula: bool = False,
-    ):
-        instance = cls()
-        instance._validate_inputs(model_id, instance_type)
+        self,
+        name=None,
+        namespace="default",
+    ) -> None:
 
-        if not sagemaker_endpoint:
-            sagemaker_endpoint = instance._get_default_endpoint_name(model_id)
+        spec = _HPJumpStartEndpoint(**self.model_dump(by_alias=True, exclude_none=True))
 
-        spec = JumpStartModelSpec(
-            model=Model(
-                model_id=model_id,
-                model_version=model_version,
-                accept_eula=accept_eula,
-            ),
-            server=Server(instance_type=instance_type),
-            sage_maker_endpoint=SageMakerEndpoint(name=sagemaker_endpoint),
-        )
+        if not name:
+            name = spec.model.modelId
 
-        instance.call_create_api(
-            name=spec.model.modelId,  # use model id as metadata name
+        self.call_create_api(
+            name=name,  # use model name as metadata name
             kind=JUMPSTART_MODEL_KIND,
             namespace=namespace,
             spec=spec,
         )
 
-    @classmethod
-    def create_from_spec(
-        cls,
-        spec: JumpStartModelSpec,
-        namespace: str = "default",
-    ):
-        cls().call_create_api(
-            name=spec.model.modelId,  # use model id as metadata name
-            kind=JUMPSTART_MODEL_KIND,
+        self.metadata = Metadata(
+            name=name,
             namespace=namespace,
-            spec=spec,
         )
 
-    @classmethod
     def create_from_dict(
-        cls,
+        self,
         input: Dict,
+        name: str = None,
         namespace: str = "default",
-    ):
-        spec = JumpStartModelSpec.model_validate(input, by_name=True)
+    ) -> None:
+        spec = _HPJumpStartEndpoint.model_validate(input, by_name=True)
 
-        cls().call_create_api(
-            name=spec.model.modelId,  # use model id as metadata name
+        if not name:
+            name = spec.model.modelId
+
+        self.call_create_api(
+            name=name,  # use model name as metadata name
             kind=JUMPSTART_MODEL_KIND,
             namespace=namespace,
             spec=spec,
         )
+
+        self.metadata = Metadata(
+            name=name,
+            namespace=namespace,
+        )
+
+    def refresh(self) -> Self:
+        response = HPJumpStartEndpoint.call_get_api(
+            name=self.model.modelId,
+            kind=JUMPSTART_MODEL_KIND,
+            namespace=self.metadata.namespace,
+        )
+
+        self.status = JumpStartModelStatus.model_validate(
+            response["status"], by_name=True
+        )
+
+        return self
 
     @classmethod
     def list(
         cls,
         namespace: str = "default",
-    ):
-        response = cls().call_list_api(
+    ) -> List[Endpoint]:
+        response = cls.call_list_api(
             kind=JUMPSTART_MODEL_KIND,
             namespace=namespace,
         )
 
-        output_data = []
+        endpoints = []
+
         if response and response["items"]:
             for item in response["items"]:
-                metadata = item["metadata"]
-                output_data.append((metadata["name"], metadata["creationTimestamp"]))
-        headers = ["METADATA NAME", "CREATE TIME"]
+                name = item["metadata"]["name"]
+                endpoints.append(cls.get(name, namespace=namespace))
 
-        print(tabulate(output_data, headers=headers))
+        return endpoints
 
     @classmethod
-    def describe(
-        cls,
-        name: str,
-        namespace: str = "default",
-    ):
-        response = cls().call_get_api(
+    def get(cls, name: str, namespace: str = "default") -> Self:
+        response = cls.call_get_api(
             name=name,
             kind=JUMPSTART_MODEL_KIND,
             namespace=namespace,
         )
 
-        response["metadata"].pop("managedFields")
-        print(yaml.dump(response))
-
-    @classmethod
-    def delete(
-        cls,
-        name: str,
-        namespace: str = "default",
-    ):
-        cls().call_delete_api(
-            name=name,  # use model id as metadata name
-            kind=JUMPSTART_MODEL_KIND,
-            namespace=namespace,
+        endpoint = HPJumpStartEndpoint.model_validate(response["spec"], by_name=True)
+        endpoint.status = JumpStartModelStatus.model_validate(
+            response["status"], by_name=True
         )
+        endpoint.metadata = Metadata.model_validate(response["metadata"], by_name=True)
+
+        return endpoint
+
+    def delete(self) -> None:
+        self.call_delete_api(
+            name=self.metadata.name,
+            kind=JUMPSTART_MODEL_KIND,
+            namespace=self.metadata.namespace,
+        )
+
+    def invoke(self, body, content_type="application/json"):
+        if not self.sageMakerEndpoint or not self.sageMakerEndpoint.name:
+            raise Exception("SageMaker endpoint name not found in this object!")
+
+        endpoint = Endpoint.get(
+            self.sageMakerEndpoint.name, region=HPJumpStartEndpoint.get_current_region()
+        )
+
+        return endpoint.invoke(body=body, content_type=content_type)
