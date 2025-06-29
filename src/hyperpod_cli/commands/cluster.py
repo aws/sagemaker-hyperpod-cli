@@ -13,9 +13,7 @@
 import logging
 import subprocess
 import json
-import re
 import sys
-import yaml
 import botocore.config
 from collections import defaultdict
 from typing import Any, Dict, List, Optional
@@ -44,8 +42,6 @@ from hyperpod_cli.constants.command_constants import (
     Orchestrator,
     TEMP_KUBE_CONFIG_FILE,
     OutputFormat,
-    AMAZON_HYPERPOD_OBSERVABILITY,
-    GRAFANA_DASHBOARD_UID,
 )
 from hyperpod_cli.telemetry.user_agent import (
     get_user_agent_extra_suffix,
@@ -66,8 +62,8 @@ from hyperpod_cli.validators.cluster_validator import (
 from hyperpod_cli.utils import (
     get_eks_cluster_name,
     get_hyperpod_cluster_region,
-    is_observability_addon_enabled
 )
+from sagemaker.hyperpod.utils import get_monitoring_config, is_observability_addon_enabled
 
 RATE_LIMIT = 4
 RATE_LIMIT_PERIOD = 1  # 1 second
@@ -526,55 +522,30 @@ def set_cluster_context(
         )
         sys.exit(1)
 
-def get_grafana_ws_name_from_arn(arn: str) -> str:
-    """
-    Parse the Grafana workspace name from a grafana workspace ARN.
-
-    Args:
-        arn (str): The ARN of the grafana workspace.
-
-    Returns: str: The name of the grafana workspace name if parsing is successful.
-    """
-    # Define the regex pattern to match the Grafana workspace ARN and capture the workspace name
-    pattern = r'g-[a-z0-9]+$'
-    workspace_id = re.search(pattern, arn).group(0)
-    #TODO : Add exception handling here.
-    return workspace_id
-
-
-def buildGrafanaUrl(grafana_workspace, region, dashboardUid):
-    # https: // ${grafanaWorkspaceId}.grafana - workspace.${region}.amazonaws.com / d /${dashboardUid}
-    grafana_url = f'https://{grafana_workspace}.grafana-workspace.{region}.amazonaws.com/d/{dashboardUid}'
-    return grafana_url
-
-
-
 
 @click.command()
 @click.option("--grafana", is_flag=True, help="Returns Grafana Dashboard URL")
-@click.option("--prometheus", is_flag=True, help="Returns Prometheus Endpoint URL")
+@click.option("--prometheus", is_flag=True, help="Returns Prometheus Workspace URL")
 @click.option("--list", is_flag=True, help="Returns list of available metrics")
-def metrics(grafana: bool, prometheus: bool, list: bool) -> None:
-    """Get metrics for Hyperpod cluster"""
+def get_cluster_monitoring_config(grafana: bool, prometheus: bool, list: bool) -> None:
+    """Get monitoring configurations for Hyperpod cluster"""
     try:
-        eks_cluster_name = get_eks_cluster_name()
-        if not is_observability_addon_enabled(eks_cluster_name):
-            logger.error("Hyperpod Observability addon is not enabled.")
+        if not any([grafana, prometheus, list]):
+            print("Error: Please select at least one option")
+            print("Usage : hyp get-cluster-monitoring-config --grafana/--prometheus/--list/--help")
+            return
+        if not is_observability_addon_enabled(get_eks_cluster_name()):
+            print("Observability addon is not enabled for this cluster")
             sys.exit(1)
-
-        response = boto3.client("eks").describe_addon(clusterName=eks_cluster_name, addonName=AMAZON_HYPERPOD_OBSERVABILITY)
-        config_values = yaml.safe_load(response['addon']['configurationValues'])
-
+        monitor_config = get_monitoring_config()
         if prometheus:
-            print(f"Prometheus endpoint URL: {json.dumps(config_values['ampWorkspace']['prometheusEndpoint'], indent=4)}")
+            print(f"Prometheus workspace URL: {monitor_config.prometheusURL}")
         if grafana:
-            region = get_hyperpod_cluster_region()
-            workspace_arn = config_values['amgWorkspace']['arn']
-            grafana_url = buildGrafanaUrl(get_grafana_ws_name_from_arn(workspace_arn), region, GRAFANA_DASHBOARD_UID)
-            print(f"Grafana dashboard URL: {grafana_url}")
+            print(f"Grafana dashboard URL: {monitor_config.grafanaURL}")
         if list:
-            metrics_data = config_values['metricsProvider']
-            print(tabulate([[k, v.get('level', v.get('enabled'))] for k, v in metrics_data.items()], headers=['Metric', 'Level/Enabled'], tablefmt='presto'))
+            metrics_data = monitor_config.availableMetrics
+            print(tabulate([[k, v.get('level', v.get('enabled'))] for k, v in metrics_data.items()],
+                           headers=['Metric', 'Level/Enabled'], tablefmt='presto'))
     except Exception as e:
         logger.error(f"Failed to get metrics: {e}")
         sys.exit(1)
