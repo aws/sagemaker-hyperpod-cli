@@ -8,7 +8,11 @@ from config.hyperpod_pytorch_job_config import (
 )
 from kubernetes import client
 from typing import Optional
-from utils import remove_metadata, remove_metadata_from_list, validate_cluster_connection
+from utils import (
+    remove_metadata,
+    remove_metadata_from_list,
+    validate_cluster_connection,
+)
 import yaml
 
 TRAINING_GROUP = "sagemaker.amazonaws.com"
@@ -48,9 +52,7 @@ class HyperpodPytorchJob:
                     replicas=node_count,
                     template=Template(
                         spec=Spec(
-                            containers=[
-                                Container(name="container-name", image=image)
-                            ]
+                            containers=[Container(name="container-name", image=image)]
                         )
                     ),
                 )
