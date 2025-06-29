@@ -63,6 +63,7 @@ from hyperpod_cli.utils import (
     get_eks_cluster_name,
     get_hyperpod_cluster_region,
 )
+from sagemaker.hyperpod.hyperpod_manager import HyperPodManager
 from sagemaker.hyperpod.utils import get_monitoring_config, is_observability_addon_enabled
 
 RATE_LIMIT = 4
@@ -573,8 +574,7 @@ def get_cluster_context(
         sm_client = get_sagemaker_client(session, botocore_config)
         hp_cluster_details = sm_client.describe_cluster(ClusterName=cluster_name)
 
-        k8s_client = KubernetesClient()
-        current_context = k8s_client.get_current_context_namespace()
+        current_context = HyperPodManager.get_context()
 
         return hp_cluster_details, current_context
     except botocore.exceptions.NoRegionError:
