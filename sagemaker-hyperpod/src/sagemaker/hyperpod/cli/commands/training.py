@@ -13,6 +13,7 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_config import (
     Spec,
     Template,
 )
+from sagemaker.hyperpod.inference.config.common import Metadata
 import tempfile
 from sagemaker.hyperpod.cli.constants.hp_pytorch_command_constants import HELP_TEXT
 from ruamel.yaml import YAML
@@ -37,13 +38,12 @@ def pytorch_create(version, config):
         # Create job with or without namespace
         if namespace is None:
             job = HyperPodPytorchJob(
-                name=job_name,
+                metadata=Metadata(name=job_name),
                 spec=spec
             )
         else:
             job = HyperPodPytorchJob(
-                name=job_name,
-                namespace=namespace,
+                metadata=Metadata(name=job_name, namespace=namespace),
                 spec=spec
             )
 
@@ -106,8 +106,8 @@ def list_jobs(namespace: str):
 
                 # Format row
                 row = ''.join([
-                    f"{job.name:<{widths[0]}}",
-                    f"{job.namespace:<{widths[1]}}",
+                    f"{job.metadata.name:<{widths[0]}}",
+                    f"{job.metadata.namespace:<{widths[1]}}",
                     f"{status:<{widths[2]}}",
                     f"{age:<{widths[3]}}"
                 ])
@@ -133,8 +133,8 @@ def pytorch_describe(job_name: str, namespace: str):
         # Print basic info
         click.echo("\nJob Details:")
         click.echo("=" * 80)
-        click.echo(f"Name:           {job.name}")
-        click.echo(f"Namespace:      {job.namespace}")
+        click.echo(f"Name:           {job.metadata.name}")
+        click.echo(f"Namespace:      {job.metadata.namespace}")
         click.echo(f"API Version:    {job.apiVersion}")
         click.echo(f"Kind:           {job.kind}")
 
@@ -210,16 +210,32 @@ def pytorch_delete(job_name: str, namespace: str):
 def pytorch_list_pods(job_name: str, namespace: str):
     """List all HyperPod PyTorch pods corresponding to the job"""
     try:
-        job = HyperPodPytorchJob.get(job_name=job_name, namespace=namespace)
-        job.list_pods()
-        click.echo("Listing pods for job: " + job_name)
+        job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
+        pods = job.list_pods()
 
-        # if not jobs:
-        #     click.echo("No jobs found.")
-        #     return
-        #
-        # click.echo("\nJobs:")
-        # click.echo(jobs)
+        if not pods:
+            click.echo(f"\nNo pods found for job: {job_name}")
+            return
+
+        # Define headers and widths
+        headers = ['POD NAME', 'NAMESPACE']
+        widths = [50, 20]
+
+        # Print header
+        click.echo(f"\nPods for job: {job_name}")
+        header = ''.join(f"{h:<{w}}" for h, w in zip(headers, widths))
+        click.echo("\n" + header)
+        click.echo("-" * sum(widths))
+
+        # Print each pod
+        for pod in pods:
+            row = ''.join([
+                f"{pod:<{widths[0]}}",
+                f"{namespace:<{widths[1]}}"
+            ])
+            click.echo(row)
+
+        click.echo()
 
     except Exception as e:
         raise click.UsageError(f"Failed to list jobs: {str(e)}")
@@ -230,15 +246,30 @@ def pytorch_list_pods(job_name: str, namespace: str):
 def pytorch_get_logs(pod_name: str,namespace: str):
     """List all HyperPod PyTorch pods corresponding to the job"""
     try:
-        #jobs = HyperPodPytorchJob.list(namespace=namespace)
         click.echo("Listing logs for pod: " + pod_name)
+        logs = HyperPodPytorchJob.get_logs_from_pod(pod_name=pod_name)
 
-        # if not jobs:
-        #     click.echo("No jobs found.")
-        #     return
-        #
-        # click.echo("\nJobs:")
-        # click.echo(jobs)
+        if not logs:
+            click.echo("No logs available.")
+            return
+
+        # Split logs into lines and display them
+        log_lines = logs.split('\n')
+        for line in log_lines:
+            if line.strip():  # Skip empty lines
+                # Color coding based on log level
+                if 'ERROR' in line.upper():
+                    click.secho(line, fg='red')
+                elif 'WARNING' in line.upper():
+                    click.secho(line, fg='yellow')
+                elif 'INFO' in line.upper():
+                    click.secho(line, fg='green')
+                else:
+                    click.echo(line)
+
+        click.echo("\nEnd of logs")
+        click.echo("=" * 80)
+
 
     except Exception as e:
         raise click.UsageError(f"Failed to list jobs: {str(e)}")
