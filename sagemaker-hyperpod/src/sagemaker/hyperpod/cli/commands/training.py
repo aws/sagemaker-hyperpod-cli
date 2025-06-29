@@ -241,13 +241,15 @@ def pytorch_list_pods(job_name: str, namespace: str):
         raise click.UsageError(f"Failed to list jobs: {str(e)}")
 
 @click.command("hp-pytorch-job")
+@click.option('--job-name', required=True, help='Job name')
 @click.option('--pod-name', required=True, help='Job name')
 @click.option('--namespace', '-n', default='default', help='Namespace')
-def pytorch_get_logs(pod_name: str,namespace: str):
+def pytorch_get_logs(job_name: str,pod_name: str,namespace: str):
     """List all HyperPod PyTorch pods corresponding to the job"""
     try:
         click.echo("Listing logs for pod: " + pod_name)
-        logs = HyperPodPytorchJob.get_logs_from_pod(pod_name=pod_name)
+        job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
+        logs = job.get_logs_from_pod(pod_name=pod_name)
 
         if not logs:
             click.echo("No logs available.")
