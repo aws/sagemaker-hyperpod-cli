@@ -90,4 +90,20 @@ def pytorch_describe(job_name: str, namespace: str):
     except Exception as e:
         raise click.UsageError(f"Failed to describe job: {str(e)}")
 
+@click.command("hp-pytorch-job")
+@click.option('--job-name',  required=True,help='Job name')
+@click.option('--namespace', '-n', default='default', help='Namespace')
+def pytorch_delete(job_name: str, namespace: str):
+    """Describe a HyperPod PyTorch job"""
+    try:
+        job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
+        job.delete()
+
+        if job is None:
+            raise click.UsageError(f"Job {job_name} not found in namespace {namespace}")
+
+
+    except Exception as e:
+        raise click.UsageError(f"Failed to describe job: {str(e)}")
+
 
