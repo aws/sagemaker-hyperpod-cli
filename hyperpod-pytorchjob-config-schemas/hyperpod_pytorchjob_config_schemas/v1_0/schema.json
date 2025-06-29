@@ -13,10 +13,6 @@
       "description": "Kubernetes namespace",
       "default": "default"
     },
-    "job-kind": {
-      "type": "string",
-      "default": "HyperPodPyTorchJob"
-    },
     "image": {
       "type": "string",
       "description": "Docker image for training"
@@ -28,11 +24,7 @@
       },
       "description": "Command to run in the container"
     },
-    "entry-script": {
-      "type": "string",
-      "description": "Entry script for the job"
-    },
-    "script-args": {
+    "args": {
       "type": "array",
       "items": {
         "type": "string"
@@ -93,20 +85,11 @@
       "type": "string",
       "description": "Priority class for job scheduling"
     },
-    "auto-resume": {
-      "type": "boolean",
-      "default": false,
-      "description": "Auto resume capability (not supported)"
-    },
     "max-retry": {
       "type": "integer",
       "minimum": 0,
       "default": 0,
       "description": "Maximum number of job retries"
-    },
-    "restart-policy": {
-      "type": "string",
-      "description": "Restart policy (not supported - always synchronized restarts)"
     },
     "volumes": {
       "type": "array",
@@ -122,21 +105,9 @@
       },
       "description": "List of persistent volume claims"
     },
-    "results-dir": {
-      "type": "string",
-      "description": "Directory to store results (part of entry script)"
-    },
     "service-account-name": {
       "type": "string",
       "description": "Service account name"
-    },
-    "pre-script": {
-      "type": "string",
-      "description": "Script to run before main job (part of entry script)"
-    },
-    "post-script": {
-      "type": "string",
-      "description": "Script to run after main job (part of entry script)"
     }
   },
   "required": ["job-name", "image"],
