@@ -16,7 +16,7 @@ import json
 import sys
 import botocore.config
 from collections import defaultdict
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import boto3
 import click
@@ -63,6 +63,7 @@ from hyperpod_cli.utils import (
     get_eks_cluster_name,
     get_hyperpod_cluster_region,
 )
+from sagemaker.hyperpod.hyperpod_manager import HyperPodManager
 from sagemaker.hyperpod.utils import get_monitoring_config, is_observability_addon_enabled
 
 RATE_LIMIT = 4
@@ -521,6 +522,72 @@ def set_cluster_context(
             f"Unexpected error happens when try to connect to cluster {cluster_name}. Error: {e}"
         )
         sys.exit(1)
+
+
+@click.command()
+@click.option(
+    "--cluster-name",
+    type=click.STRING,
+    required=True,
+    help="Required. The HyperPod cluster name to configure with.",
+)
+@click.option(
+    "--region",
+    type=click.STRING,
+    required=False,
+    help="Optional. The region that the HyperPod and EKS clusters are located. If not specified, it will be set to the region from the current AWS account credentials.",
+)
+@click.option(
+    "--debug",
+    is_flag=True,
+    help="Enable debug mode",
+)
+def get_cluster_context(
+    cluster_name: str,
+    region: Optional[str],
+    debug: bool,
+) -> Tuple[Any, str]:
+    """
+    Get all the context related to a Cluster
+
+    Args:
+        cluster_name (str): The name of the HyperPod EKS cluster to connect to.
+        debug (bool): Enable debug mode.
+        region (Optional[str]): The AWS region where the HyperPod EKS cluster resides.
+            If not provided, the default region from the AWS credentials will be used.
+
+    Returns:
+        None
+    """
+    if debug:
+        set_logging_level(logger, logging.DEBUG)
+    validator = ClusterValidator()
+    botocore_config = botocore.config.Config(
+        user_agent_extra=get_user_agent_extra_suffix()
+    )
+    session = boto3.Session(region_name=region) if region else boto3.Session()
+    if not validator.validate_aws_credential(session):
+        logger.error("Cannot connect to HyperPod cluster due to aws credentials error")
+        sys.exit(1)
+
+    try:
+        sm_client = get_sagemaker_client(session, botocore_config)
+        hp_cluster_details = sm_client.describe_cluster(ClusterName=cluster_name)
+
+        current_context = HyperPodManager.get_context()
+
+        return hp_cluster_details, current_context
+    except botocore.exceptions.NoRegionError:
+        logger.error(
+            f"Please ensure you configured AWS default region or use '--region' argument to specify the region"
+        )
+        sys.exit(1)
+    except Exception as e:
+        logger.error(
+            f"Unexpected error happens when try to fetch cluster context for {cluster_name}. Error: {e}"
+        )
+        sys.exit(1)
+
 
 
 @click.command()
