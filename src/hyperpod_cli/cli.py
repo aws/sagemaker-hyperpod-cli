@@ -16,7 +16,6 @@ import importlib.metadata
 from hyperpod_cli.commands.cluster import (
     set_cluster_context,
     list_cluster,
-    metrics,
     get_cluster_context,
     get_cluster_monitoring_config,
 )
