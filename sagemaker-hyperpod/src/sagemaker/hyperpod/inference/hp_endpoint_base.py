@@ -3,42 +3,36 @@ from kubernetes import config as k8s_config
 from sagemaker.hyperpod.inference.config.constants import *
 import yaml
 from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
-    JumpStartModelSpec,
+    _HPJumpStartEndpoint,
 )
 from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
-    InferenceEndpointConfigSpec,
+    _HPEndpoint,
 )
 from types import SimpleNamespace
 import boto3
-from sagemaker_core.main.resources import Endpoint
-
-
-def get_current_region():
-    session = boto3.session.Session()
-    return session.region_name
+from sagemaker.hyperpod.hyperpod_manager import HyperPodManager
+import re
 
 
 class HPEndpointBase:
-    _endpoint = None
+    @classmethod
+    def get_current_region(cls):
+        eks_arn = HyperPodManager.get_context()
+        eks_arn_pattern = r"arn:aws:eks:([\w-]+):\d+:cluster/[\w-]+"
+        match = re.match(eks_arn_pattern, eks_arn)
 
-    def get_name(self):
-        if not self._endpoint or not hasattr(self._endpoint, "endpoint_name"):
-            print(f"Endpoint is not set!")
+        if match:
+            return match.group(1)
 
-        print(f"Endpoint name is: {self._endpoint.endpoint_name}")
+        region = boto3.session.Session().region_name
+        print(
+            f"WARNING: Failed to get region from Kubernetes context. Using default session region: {region}"
+        )
+
+        return region
 
     @classmethod
-    def get(
-        cls,
-        endpoint_name: str,
-        region: str = None,
-    ):
-        if not region:
-            region = get_current_region()
-
-        return Endpoint.get(endpoint_name, region=region)
-
-    def _validate_connection(self):
+    def _validate_connection(cls):
         try:
             k8s_config.load_kube_config()
             v1 = client.CoreV1Api()
@@ -46,14 +40,15 @@ class HPEndpointBase:
         except Exception as e:
             return False
 
+    @classmethod
     def call_create_api(
-        self,
+        cls,
         name: str,
         kind: str,
         namespace: str,
-        spec: JumpStartModelSpec | InferenceEndpointConfigSpec,
+        spec: _HPJumpStartEndpoint | _HPEndpoint,
     ):
-        if not self._validate_connection():
+        if not cls._validate_connection():
             raise Exception(
                 "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
             )
@@ -67,8 +62,6 @@ class HPEndpointBase:
             "spec": spec.model_dump(exclude_none=True),
         }
 
-        print("\nDeploying model and endpoint using config:\n", yaml.dump(body))
-
         try:
             custom_api.create_namespaced_custom_object(
                 group=INFERENCE_GROUP,
@@ -79,18 +72,42 @@ class HPEndpointBase:
             )
 
             print(
-                "\nDeploying model and its endpoint... The process may take a few minutes."
+                "Deploying model and its endpoint... The process may take a few minutes."
             )
         except Exception as e:
             print(f"\nFailed to deploy model and its endpoint: {e}")
 
+    @classmethod
+    def call_list_api(
+        cls,
+        kind: str,
+        namespace: str,
+    ):
+        if not cls._validate_connection():
+            raise Exception(
+                "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
+            )
+
+        custom_api = client.CustomObjectsApi()
+
+        try:
+            return custom_api.list_namespaced_custom_object(
+                group=INFERENCE_GROUP,
+                version=INFERENCE_API_VERSION,
+                namespace=namespace,
+                plural=KIND_PLURAL_MAP[kind],
+            )
+        except Exception as e:
+            print(f"\nFailed to list endpoint: {e}")
+
+    @classmethod
     def call_get_api(
-        self,
+        cls,
         name: str,
         kind: str,
         namespace: str,
     ):
-        if not self._validate_connection():
+        if not cls._validate_connection():
             raise Exception(
                 "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
             )
@@ -109,12 +126,12 @@ class HPEndpointBase:
             print(f"\nFailed to get endpoint details: {e}")
 
     def call_delete_api(
-        self,
+        cls,
         name: str,
         kind: str,
         namespace: str,
     ):
-        if not self._validate_connection():
+        if not cls._validate_connection():
             raise Exception(
                 "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
             )
@@ -132,34 +149,3 @@ class HPEndpointBase:
             print(f"Deleting model and its endpoint...")
         except Exception as e:
             print(f"Failed to delete endpoint details: {e}")
-
-    def call_list_api(
-        self,
-        kind: str,
-        namespace: str,
-    ):
-        if not self._validate_connection():
-            raise Exception(
-                "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
-            )
-
-        custom_api = client.CustomObjectsApi()
-
-        try:
-            return custom_api.list_namespaced_custom_object(
-                group=INFERENCE_GROUP,
-                version=INFERENCE_API_VERSION,
-                namespace=namespace,
-                plural=KIND_PLURAL_MAP[kind],
-            )
-        except Exception as e:
-            print(f"\nFailed to list endpoint: {e}")
-
-    def invoke(self, body, **kwargs):
-        if self._endpoint is None:
-            raise Exception("Endpoint not initialized. Please set endpoint first.")
-
-        try:
-            self._endpoint.invoke(body, **kwargs)
-        except Exception as e:
-            print(f"\nFailed to invoke endpoint: {e}")
