@@ -16,7 +16,7 @@ import importlib.metadata
 from hyperpod_cli.commands.cluster import (
     set_cluster_context,
     list_cluster,
-    metrics,
+    get_cluster_context,
     get_cluster_monitoring_config,
 )
 from hyperpod_cli.commands.job import (
@@ -70,6 +70,7 @@ def cli():
 
 cli.add_command(list_cluster)
 cli.add_command(set_cluster_context)
+cli.add_command(get_cluster_context)
 cli.add_command(get_cluster_monitoring_config)
 cli.add_command(start_job)
 cli.add_command(get_job)
