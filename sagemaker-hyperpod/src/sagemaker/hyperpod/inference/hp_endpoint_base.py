@@ -174,6 +174,7 @@ class HPEndpointBase:
     def get_logs(
         cls,
         pod: str,
+        container: str = None,
         namespace="default",
     ):
         if not cls._validate_connection():
@@ -189,12 +190,13 @@ class HPEndpointBase:
         )
 
         # if pod has multiple containers, get logs in the first container
-        container_name = pod_details.spec.containers[0].name
+        if not container:
+            container = pod_details.spec.containers[0].name
 
         logs = v1.read_namespaced_pod_log(
             name=pod,
             namespace=namespace,
-            container=container_name,
+            container=container,
             timestamps=True,
         )
 
