@@ -2960,7 +2960,7 @@ class RunPolicy(BaseModel):
 class _HyperPodPytorchJob(BaseModel):
     """Config defines the desired state of HyperPodPytorchJob"""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     nprocPerNode: str = Field(
         default="auto",
