@@ -64,7 +64,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             print("Successful submitted HyperPodPytorchJob!")
         except Exception as e:
             print(f"Failed to create HyperPodPytorchJob {self.metadata.name}!")
-            _handel_exception(e, self.metadata.name, self.metadata.namespace)
+            _handle_exception(e, self.metadata.name, self.metadata.namespace)
 
     @classmethod
     def list(cls, namespace="default") -> List["HyperPodPytorchJob"]:
@@ -85,7 +85,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             return _load_hp_job_list(hp_job_list)
         except Exception as e:
             print(f"Failed to list HyperpodPytorchJobs!")
-            _handel_exception(e, "", namespace)
+            _handle_exception(e, "", namespace)
 
     def delete(self):
         if not validate_cluster_connection():
@@ -106,7 +106,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             print(f"Successful deleted HyperPodPytorchJob!")
         except Exception as e:
             print(f"Failed to delete HyperPodPytorchJob {self.metadata.name}!")
-            _handel_exception(e, self.metadata.name, self.metadata.namespace)
+            _handle_exception(e, self.metadata.name, self.metadata.namespace)
 
     @classmethod
     def get(cls, name, namespace="default") -> "HyperPodPytorchJob":
@@ -128,7 +128,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             return _load_hp_job(response)
         except Exception as e:
             print(f"Failed to describe HyperPodPytorchJob {name}: {e}")
-            _handel_exception(e, name, namespace)
+            _handle_exception(e, name, namespace)
 
     def refresh(self) -> "HyperPodPytorchJob":
         if not validate_cluster_connection():
@@ -151,7 +151,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             )
         except Exception as e:
             print(f"Failed to refresh HyperPodPytorchJob {self.metadata.name}!")
-            _handel_exception(e, self.metadata.name, self.metadata.namespace)
+            _handle_exception(e, self.metadata.name, self.metadata.namespace)
 
     def list_pods(self) -> List[str]:
         if not validate_cluster_connection():
@@ -172,28 +172,35 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             return pods
         except Exception as e:
             print(f"Failed to list pod in namespace {self.metadata.namespace}!")
-            _handel_exception(e, self.metadata.name, self.metadata.namespace)
+            _handle_exception(e, self.metadata.name, self.metadata.namespace)
 
-    def get_logs_from_pod(self, pod_name: str) -> str:
+    def get_logs_from_pod(self, pod_name: str, container: Optional[str] = None) -> str:
         if not validate_cluster_connection():
             raise Exception(
                 "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
             )
+
+        if container is None:
+            # If container name is not set, get logs from the first container in the pod
+            container = self.replicaSpecs[0].template.spec.containers[0].name
 
         try:
             config.load_kube_config()
             v1 = client.CoreV1Api()
 
             logs = v1.read_namespaced_pod_log(
-                name=pod_name, namespace=self.metadata.namespace, timestamps=True
+                name=pod_name,
+                namespace=self.metadata.namespace,
+                timestamps=True,
+                container=container,
             )
             return logs
         except Exception as e:
             print(f"Failed to get logs from pod {pod_name}!")
-            _handel_exception(e, self.metadata.name, self.metadata.namespace)
+            _handle_exception(e, self.metadata.name, self.metadata.namespace)
 
 
-def _handel_exception(e: Exception, name: str, namespace: str):
+def _handle_exception(e: Exception, name: str, namespace: str):
     print("exception type", type(e))
     if isinstance(e, ApiException):
         if e.status == 401:
