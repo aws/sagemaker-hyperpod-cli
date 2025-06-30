@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jumpstart_inference_config_schemas"
+version = "1.0"
+description = "Versioned JSON-schema + Pydantic models for JumpStart configs"
+requires-python = ">=3.8"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["jumpstart_inference_config_schemas*"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+# for each versioned subpackage, include schema.json
+"jumpstart_inference_config_schemas.v1_0" = ["schema.json"]
+# "jumpstart_inference_config_schemas.v2_0" = ["schema.json"]
