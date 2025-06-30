@@ -34,10 +34,10 @@ setup(
         "zstandard==0.15.2",
     ],
     entry_points={
-            "console_scripts": [
-                "hyp=sagemaker.hyperpod.cli.cli:cli",
-            ],
-        },
+        "console_scripts": [
+            "hyp=sagemaker.hyperpod.cli.cli:cli",
+        ],
+    },
     check_format=True,
     # Enable type checking
     test_mypy=True,

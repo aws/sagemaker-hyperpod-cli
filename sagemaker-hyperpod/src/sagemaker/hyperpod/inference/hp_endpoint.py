@@ -62,7 +62,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         response = self.call_get_api(
             name=self.modelName,
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
-            namespace=self.namespace,
+            namespace=self.metadata.namespace,
         )
 
         self.status = InferenceEndpointConfigStatus.model_validate(

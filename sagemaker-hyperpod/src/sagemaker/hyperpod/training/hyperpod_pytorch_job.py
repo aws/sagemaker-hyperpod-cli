@@ -8,7 +8,12 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_status import (
 from sagemaker.hyperpod.inference.config.common import Metadata
 from kubernetes import client, config
 from kubernetes.client.exceptions import ApiException
-from kubernetes.dynamic.exceptions import ResourceNotFoundError, ForbiddenError, InternalServerError, ConflictError
+from kubernetes.dynamic.exceptions import (
+    ResourceNotFoundError,
+    ForbiddenError,
+    InternalServerError,
+    ConflictError,
+)
 from typing import List, Optional
 from sagemaker.hyperpod.training.utils import (
     validate_cluster_connection,
@@ -217,18 +222,23 @@ def _handel_exception(e: Exception, name: str, namespace: str):
         if e.status == 404:
             raise Exception(f"Resource '{name}' not found in '{namespace}'.") from e
         elif e.status == 403:
-            raise Exception(f"Access denied to resource '{name}' in '{namespace}'.") from e
+            raise Exception(
+                f"Access denied to resource '{name}' in '{namespace}'."
+            ) from e
         elif e.status == 409:
-            raise Exception(f"Resource '{name}' already exists in '{namespace}'.") from e
+            raise Exception(
+                f"Resource '{name}' already exists in '{namespace}'."
+            ) from e
         elif 500 <= e.status < 600:
             raise Exception("Kubernetes API internal server error.") from e
         else:
             raise Exception(f"Unhandled Kubernetes error: {e.status} {e.reason}") from e
-    
+
     if isinstance(e, ValidationError):
         raise Exception("Response did not match expected schema.") from e
 
     raise e
+
 
 def _load_hp_job(response: dict) -> HyperPodPytorchJob:
     name = response["metadata"]["name"]

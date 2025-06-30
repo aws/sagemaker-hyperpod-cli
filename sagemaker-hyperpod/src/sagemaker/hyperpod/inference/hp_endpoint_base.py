@@ -1,7 +1,6 @@
 from kubernetes import client
 from kubernetes import config as k8s_config
 from sagemaker.hyperpod.inference.config.constants import *
-import yaml
 from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
     _HPJumpStartEndpoint,
 )
@@ -25,9 +24,6 @@ class HPEndpointBase:
             return match.group(1)
 
         region = boto3.session.Session().region_name
-        print(
-            f"WARNING: Failed to get region from Kubernetes context. Using default session region: {region}"
-        )
 
         return region
 
@@ -70,12 +66,8 @@ class HPEndpointBase:
                 plural=KIND_PLURAL_MAP[kind],
                 body=body,
             )
-
-            print(
-                "Deploying model and its endpoint... The process may take a few minutes."
-            )
         except Exception as e:
-            print(f"\nFailed to deploy model and its endpoint: {e}")
+            raise Exception(f"Failed to deploy model and its endpoint: {e}")
 
     @classmethod
     def call_list_api(
@@ -98,7 +90,7 @@ class HPEndpointBase:
                 plural=KIND_PLURAL_MAP[kind],
             )
         except Exception as e:
-            print(f"\nFailed to list endpoint: {e}")
+            raise Exception(f"Failed to list endpoint: {e}")
 
     @classmethod
     def call_get_api(
@@ -123,7 +115,7 @@ class HPEndpointBase:
                 name=name,
             )
         except Exception as e:
-            print(f"\nFailed to get endpoint details: {e}")
+            raise Exception(f"Failed to get endpoint details: {e}")
 
     def call_delete_api(
         cls,
@@ -146,6 +138,5 @@ class HPEndpointBase:
                 plural=KIND_PLURAL_MAP[kind],
                 name=name,
             )
-            print(f"Deleting model and its endpoint...")
         except Exception as e:
-            print(f"Failed to delete endpoint details: {e}")
+            raise Exception(f"Failed to delete endpoint details: {e}")
