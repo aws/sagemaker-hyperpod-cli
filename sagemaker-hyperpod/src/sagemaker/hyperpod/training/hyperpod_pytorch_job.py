@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import ConfigDict, Field, ValidationError
 from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_config import (
     _HyperPodPytorchJob,
 )
@@ -8,12 +8,6 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_status import (
 from sagemaker.hyperpod.inference.config.common import Metadata
 from kubernetes import client, config
 from kubernetes.client.exceptions import ApiException
-from kubernetes.dynamic.exceptions import (
-    ResourceNotFoundError,
-    ForbiddenError,
-    InternalServerError,
-    ConflictError,
-)
 from typing import List, Optional
 from sagemaker.hyperpod.training.utils import (
     validate_cluster_connection,
@@ -26,42 +20,16 @@ PLURAL = "hyperpodpytorchjobs"
 KIND = "HyperPodPyTorchJob"
 
 
-class HyperPodPytorchJob(BaseModel):
+class HyperPodPytorchJob(_HyperPodPytorchJob):
     model_config = ConfigDict(extra="forbid")
 
     metadata: Metadata = Field(
         description="The metadata of the HyperPodPytorchJob",
     )
 
-    apiVersion: str = Field(
-        default=f"{TRAINING_GROUP}/{API_VERSION}",
-        alias="api_version",
-        description="K8s API version",
-        frozen=True,
-    )
-
-    kind: str = Field(
-        default=KIND,
-        description="K8s kind",
-        frozen=True,
-    )
-
-    spec: _HyperPodPytorchJob = Field(
-        default=None,
-        description="Model spec of the HyperPodPytorchJob",
-    )
-
     status: Optional[HyperPodPytorchJobStatus] = Field(
         default=None, description="The status of the HyperPodPytorchJob"
     )
-
-    def config(self):
-        return {
-            "apiVersion": self.apiVersion,
-            "kind": self.kind,
-            "metadata": self.metadata.model_dump(),
-            "spec": self.spec.model_dump(),
-        }
 
     def create(self):
         if not validate_cluster_connection():
@@ -69,10 +37,19 @@ class HyperPodPytorchJob(BaseModel):
                 "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
             )
 
+        spec = _HyperPodPytorchJob(**self.model_dump(by_alias=True, exclude_none=True))
+
+        config = {
+            "apiVersion": f"{TRAINING_GROUP}/{API_VERSION}",
+            "kind": KIND,
+            "metadata": self.metadata.model_dump(),
+            "spec": spec.model_dump(),
+        }
+
         custom_api = client.CustomObjectsApi()
         print(
             "Deploying HyperPodPytorchJob with config:\n",
-            yaml.dump(self.config()),
+            yaml.dump(config),
             sep="",
         )
 
@@ -82,7 +59,7 @@ class HyperPodPytorchJob(BaseModel):
                 version=API_VERSION,
                 namespace=self.metadata.namespace,
                 plural=PLURAL,
-                body=self.config(),
+                body=config,
             )
             print("Successful submitted HyperPodPytorchJob!")
         except Exception as e:
@@ -107,7 +84,7 @@ class HyperPodPytorchJob(BaseModel):
             )
             return _load_hp_job_list(hp_job_list)
         except Exception as e:
-            print(f"Failed to list HyperpodPytorchJobs: {e}!")
+            print(f"Failed to list HyperpodPytorchJobs!")
             _handel_exception(e, "", namespace)
 
     def delete(self):
@@ -219,12 +196,14 @@ class HyperPodPytorchJob(BaseModel):
 def _handel_exception(e: Exception, name: str, namespace: str):
     print("exception type", type(e))
     if isinstance(e, ApiException):
-        if e.status == 404:
-            raise Exception(f"Resource '{name}' not found in '{namespace}'.") from e
+        if e.status == 401:
+            raise Exception(f"Credentials unauthorized.") from e
         elif e.status == 403:
             raise Exception(
                 f"Access denied to resource '{name}' in '{namespace}'."
             ) from e
+        if e.status == 404:
+            raise Exception(f"Resource '{name}' not found in '{namespace}'.") from e
         elif e.status == 409:
             raise Exception(
                 f"Resource '{name}' already exists in '{namespace}'."
@@ -255,7 +234,11 @@ def _load_hp_job(response: dict) -> HyperPodPytorchJob:
     else:
         status = None
 
-    job = HyperPodPytorchJob(metadata=metadata, spec=spec, status=status)
+    job = HyperPodPytorchJob(
+        metadata=metadata,
+        status=status,
+        **spec.model_dump(by_alias=True, exclude_none=True),
+    )
     return job
 
 
