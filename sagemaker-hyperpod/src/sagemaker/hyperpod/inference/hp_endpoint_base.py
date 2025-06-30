@@ -141,9 +141,8 @@ class HPEndpointBase:
         except Exception as e:
             raise Exception(f"Failed to delete endpoint details: {e}")
 
-    def get_logs(self):
+    def get_logs(self, since_hour: int = 24):
         """Get logs from operator pod in hyperpod-inference-operator-system namespace."""
-
         if not self._validate_connection():
             raise Exception(
                 "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
@@ -167,6 +166,7 @@ class HPEndpointBase:
             name=pod_name,
             namespace="hyperpod-inference-operator-system",
             timestamps=True,
+            since_seconds=3600 * since_hour,
         )
 
         return logs
