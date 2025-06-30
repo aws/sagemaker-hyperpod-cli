@@ -23,39 +23,35 @@ from importlib.metadata import entry_points
 from hyperpod_pytorchjob_config_schemas.registry import SCHEMA_REGISTRY
 
 
-
-
 @click.command("hp-pytorch-job")
 @click.option("--version", default="1.0", help="Schema version to use")
-@generate_click_command(schema_pkg="hyperpod_pytorchjob_config_schemas", registry=SCHEMA_REGISTRY,)
+@generate_click_command(
+    schema_pkg="hyperpod_pytorchjob_config_schemas",
+    registry=SCHEMA_REGISTRY,
+)
 def pytorch_create(version, config):
     """Submit a PyTorch job using a configuration file"""
     try:
         click.echo(f"Using version: {version}")
-        job_name = config.get('name')
+        job_name = config.get("name")
         namespace = config.get("namespace")
         spec = config.get("spec")
         # Create job with or without namespace
         if namespace is None:
-            job = HyperPodPytorchJob(
-                metadata=Metadata(name=job_name),
-                spec=spec
-            )
+            job = HyperPodPytorchJob(metadata=Metadata(name=job_name), spec=spec)
         else:
             job = HyperPodPytorchJob(
-                metadata=Metadata(name=job_name, namespace=namespace),
-                spec=spec
+                metadata=Metadata(name=job_name, namespace=namespace), spec=spec
             )
 
         job.create()
-
 
     except Exception as e:
         raise click.UsageError(f"Failed to create job: {str(e)}")
 
 
 @click.command("hp-pytorch-job")
-@click.option('--namespace', '-n', default='default', help='Namespace')
+@click.option("--namespace", "-n", default="default", help="Namespace")
 def list_jobs(namespace: str):
     """List all HyperPod PyTorch jobs"""
     try:
@@ -66,11 +62,11 @@ def list_jobs(namespace: str):
             return
 
         # Define headers and widths
-        headers = ['NAME', 'NAMESPACE', 'STATUS', 'AGE']
+        headers = ["NAME", "NAMESPACE", "STATUS", "AGE"]
         widths = [30, 20, 15, 15]
 
         # Print header
-        header = ''.join(f"{h:<{w}}" for h, w in zip(headers, widths))
+        header = "".join(f"{h:<{w}}" for h, w in zip(headers, widths))
         click.echo("\n" + header)
         click.echo("-" * sum(widths))
 
@@ -88,10 +84,15 @@ def list_jobs(namespace: str):
                 age = "N/A"
                 if job.status and job.status.conditions:
                     # Find the 'Created' condition to get the start time
-                    created_condition = next((c for c in job.status.conditions if c.type == 'Created'), None)
+                    created_condition = next(
+                        (c for c in job.status.conditions if c.type == "Created"), None
+                    )
                     if created_condition and created_condition.lastTransitionTime:
                         from datetime import datetime, timezone
-                        start_time = datetime.fromisoformat(created_condition.lastTransitionTime.replace('Z', '+00:00'))
+
+                        start_time = datetime.fromisoformat(
+                            created_condition.lastTransitionTime.replace("Z", "+00:00")
+                        )
                         now = datetime.now(timezone.utc)
                         delta = now - start_time
                         if delta.days > 0:
@@ -105,12 +106,14 @@ def list_jobs(namespace: str):
                                 age = f"{minutes}m"
 
                 # Format row
-                row = ''.join([
-                    f"{job.metadata.name:<{widths[0]}}",
-                    f"{job.metadata.namespace:<{widths[1]}}",
-                    f"{status:<{widths[2]}}",
-                    f"{age:<{widths[3]}}"
-                ])
+                row = "".join(
+                    [
+                        f"{job.metadata.name:<{widths[0]}}",
+                        f"{job.metadata.namespace:<{widths[1]}}",
+                        f"{status:<{widths[2]}}",
+                        f"{age:<{widths[3]}}",
+                    ]
+                )
                 click.echo(row)
 
             click.echo()  # Add empty line at the end
@@ -120,8 +123,8 @@ def list_jobs(namespace: str):
 
 
 @click.command("hp-pytorch-job")
-@click.option('--job-name', required=True, help='Job name')
-@click.option('--namespace', '-n', default='default', help='Namespace')
+@click.option("--job-name", required=True, help="Job name")
+@click.option("--namespace", "-n", default="default", help="Namespace")
 def pytorch_describe(job_name: str, namespace: str):
     """Describe a HyperPod PyTorch job"""
     try:
@@ -167,7 +170,9 @@ def pytorch_describe(job_name: str, namespace: str):
         click.echo("\nRun Policy:")
         click.echo("-" * 80)
         click.echo(f"Clean Pod Policy:          {job.spec.runPolicy.cleanPodPolicy}")
-        click.echo(f"TTL Seconds After Finished: {job.spec.runPolicy.ttlSecondsAfterFinished}")
+        click.echo(
+            f"TTL Seconds After Finished: {job.spec.runPolicy.ttlSecondsAfterFinished}"
+        )
 
         # Print Status
         click.echo("\nStatus:")
@@ -183,13 +188,13 @@ def pytorch_describe(job_name: str, namespace: str):
                         click.echo(f"  Message:            {condition.message}")
                     click.echo()
 
-
     except Exception as e:
         raise click.UsageError(f"Failed to describe job: {str(e)}")
 
+
 @click.command("hp-pytorch-job")
-@click.option('--job-name',  required=True,help='Job name')
-@click.option('--namespace', '-n', default='default', help='Namespace')
+@click.option("--job-name", required=True, help="Job name")
+@click.option("--namespace", "-n", default="default", help="Namespace")
 def pytorch_delete(job_name: str, namespace: str):
     """Describe a HyperPod PyTorch job"""
     try:
@@ -199,14 +204,13 @@ def pytorch_delete(job_name: str, namespace: str):
         if job is None:
             raise click.UsageError(f"Job {job_name} not found in namespace {namespace}")
 
-
     except Exception as e:
         raise click.UsageError(f"Failed to describe job: {str(e)}")
 
 
 @click.command("hp-pytorch-job")
-@click.option('--job-name', required=True, help='Job name')
-@click.option('--namespace', '-n', default='default', help='Namespace')
+@click.option("--job-name", required=True, help="Job name")
+@click.option("--namespace", "-n", default="default", help="Namespace")
 def pytorch_list_pods(job_name: str, namespace: str):
     """List all HyperPod PyTorch pods corresponding to the job"""
     try:
@@ -218,21 +222,18 @@ def pytorch_list_pods(job_name: str, namespace: str):
             return
 
         # Define headers and widths
-        headers = ['POD NAME', 'NAMESPACE']
+        headers = ["POD NAME", "NAMESPACE"]
         widths = [50, 20]
 
         # Print header
         click.echo(f"\nPods for job: {job_name}")
-        header = ''.join(f"{h:<{w}}" for h, w in zip(headers, widths))
+        header = "".join(f"{h:<{w}}" for h, w in zip(headers, widths))
         click.echo("\n" + header)
         click.echo("-" * sum(widths))
 
         # Print each pod
         for pod in pods:
-            row = ''.join([
-                f"{pod:<{widths[0]}}",
-                f"{namespace:<{widths[1]}}"
-            ])
+            row = "".join([f"{pod:<{widths[0]}}", f"{namespace:<{widths[1]}}"])
             click.echo(row)
 
         click.echo()
@@ -240,11 +241,12 @@ def pytorch_list_pods(job_name: str, namespace: str):
     except Exception as e:
         raise click.UsageError(f"Failed to list jobs: {str(e)}")
 
+
 @click.command("hp-pytorch-job")
-@click.option('--job-name', required=True, help='Job name')
-@click.option('--pod-name', required=True, help='Job name')
-@click.option('--namespace', '-n', default='default', help='Namespace')
-def pytorch_get_logs(job_name: str,pod_name: str,namespace: str):
+@click.option("--job-name", required=True, help="Job name")
+@click.option("--pod-name", required=True, help="Job name")
+@click.option("--namespace", "-n", default="default", help="Namespace")
+def pytorch_get_logs(job_name: str, pod_name: str, namespace: str):
     """List all HyperPod PyTorch pods corresponding to the job"""
     try:
         click.echo("Listing logs for pod: " + pod_name)
@@ -256,22 +258,21 @@ def pytorch_get_logs(job_name: str,pod_name: str,namespace: str):
             return
 
         # Split logs into lines and display them
-        log_lines = logs.split('\n')
+        log_lines = logs.split("\n")
         for line in log_lines:
             if line.strip():  # Skip empty lines
                 # Color coding based on log level
-                if 'ERROR' in line.upper():
-                    click.secho(line, fg='red')
-                elif 'WARNING' in line.upper():
-                    click.secho(line, fg='yellow')
-                elif 'INFO' in line.upper():
-                    click.secho(line, fg='green')
+                if "ERROR" in line.upper():
+                    click.secho(line, fg="red")
+                elif "WARNING" in line.upper():
+                    click.secho(line, fg="yellow")
+                elif "INFO" in line.upper():
+                    click.secho(line, fg="green")
                 else:
                     click.echo(line)
 
         click.echo("\nEnd of logs")
         click.echo("=" * 80)
-
 
     except Exception as e:
         raise click.UsageError(f"Failed to list jobs: {str(e)}")

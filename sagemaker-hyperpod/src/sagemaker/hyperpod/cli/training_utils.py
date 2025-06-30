@@ -3,6 +3,7 @@ import pkgutil
 import click
 from typing import Callable, Optional, Mapping, Type
 
+
 def load_schema_for_version(
     version: str,
     base_package: str,
@@ -53,8 +54,8 @@ def generate_click_command(
             if value is None:
                 return None
             # Remove brackets and split by comma
-            value = value.strip('[]')
-            return [item.strip() for item in value.split(',') if item.strip()]
+            value = value.strip("[]")
+            return [item.strip() for item in value.split(",") if item.strip()]
 
         # 1) the wrapper click will call
         def wrapped_func(*args, **kwargs):
@@ -83,25 +84,27 @@ def generate_click_command(
                 default=None,
                 help=(
                     "JSON object of environment variables, e.g. "
-                    "'{\"VAR1\":\"foo\",\"VAR2\":\"bar\"}'"
+                    '\'{"VAR1":"foo","VAR2":"bar"}\''
                 ),
                 metavar="JSON",
             )(wrapped_func)
             wrapped_func = click.option(
                 "--resources-limits",
                 callback=_parse_json_flag,
-                help="JSON object of resource limits, e.g. '{\"cpu\":\"2\",\"memory\":\"4Gi\"}'",
+                help='JSON object of resource limits, e.g. \'{"cpu":"2","memory":"4Gi"}\'',
                 metavar="JSON",
             )(wrapped_func)
 
             wrapped_func = click.option(
                 "--resources-requests",
                 callback=_parse_json_flag,
-                help="JSON object of resource requests, e.g. '{\"cpu\":\"1\",\"memory\":\"2Gi\"}'",
+                help='JSON object of resource requests, e.g. \'{"cpu":"1","memory":"2Gi"}\'',
                 metavar="JSON",
             )(wrapped_func)
 
-            excluded_props = set(["version", "env", "resources_limits", "resources_requests"])
+            excluded_props = set(
+                ["version", "env", "resources_limits", "resources_requests"]
+            )
 
         elif schema_pkg == "hyperpod_pytorchjob_config_schemas":
             wrapped_func = click.option(
@@ -111,14 +114,14 @@ def generate_click_command(
                 default=None,
                 help=(
                     "JSON object of environment variables, e.g. "
-                    "'{\"VAR1\":\"foo\",\"VAR2\":\"bar\"}'"
+                    '\'{"VAR1":"foo","VAR2":"bar"}\''
                 ),
                 metavar="JSON",
             )(wrapped_func)
             wrapped_func = click.option(
                 "--label_selector",
                 callback=_parse_json_flag,
-                help="JSON object of resource limits, e.g. '{\"cpu\":\"2\",\"memory\":\"4Gi\"}'",
+                help='JSON object of resource limits, e.g. \'{"cpu":"2","memory":"4Gi"}\'',
                 metavar="JSON",
             )(wrapped_func)
 
@@ -127,7 +130,7 @@ def generate_click_command(
                 "command": "List of command arguments",
                 "args": "List of script arguments, e.g. '[--batch-size, 32, --learning-rate, 0.001]'",
                 "volumes": "List of volumes, e.g. '[vol1, vol2, vol3]'",
-                "persistent_volume_claims": "List of persistent volume claims, e.g. '[pvc1, pvc2]'"
+                "persistent_volume_claims": "List of persistent volume claims, e.g. '[pvc1, pvc2]'",
             }
 
             for param_name, help_text in list_params.items():
@@ -140,8 +143,17 @@ def generate_click_command(
                     metavar="LIST",
                 )(wrapped_func)
 
-
-            excluded_props = set(["version", "environment", "label_selector", "command", "args", "volumes", "persistent_volume_claims" ])
+            excluded_props = set(
+                [
+                    "version",
+                    "environment",
+                    "label_selector",
+                    "command",
+                    "args",
+                    "volumes",
+                    "persistent_volume_claims",
+                ]
+            )
 
         schema = load_schema_for_version(version_key or "1.0", schema_pkg)
         props = schema.get("properties", {})
