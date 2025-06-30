@@ -140,3 +140,62 @@ class HPEndpointBase:
             )
         except Exception as e:
             raise Exception(f"Failed to delete endpoint details: {e}")
+
+    @classmethod
+    def get_operator_logs(cls, since_hours: int):
+        if not cls._validate_connection():
+            raise Exception(
+                "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
+            )
+
+        v1 = client.CoreV1Api()
+
+        pods = v1.list_namespaced_pod(namespace="hyperpod-inference-operator-system")
+
+        if not pods.items:
+            raise Exception(
+                "No pod found in namespace hyperpod-inference-operator-system"
+            )
+
+        # Get logs from first pod
+        first_pod = pods.items[0]
+        pod_name = first_pod.metadata.name
+
+        logs = v1.read_namespaced_pod_log(
+            name=pod_name,
+            namespace=OPERATOR_NAMESPACE,
+            timestamps=True,
+            since_seconds=3600 * since_hours,
+        )
+
+        return logs
+
+    @classmethod
+    def get_logs(
+        cls,
+        pod: str,
+        namespace="default",
+    ):
+        if not cls._validate_connection():
+            raise Exception(
+                "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
+            )
+
+        v1 = client.CoreV1Api()
+
+        pod_details = v1.read_namespaced_pod(
+            name=pod,
+            namespace=namespace,
+        )
+
+        # if pod has multiple containers, get logs in the first container
+        container_name = pod_details.spec.containers[0].name
+
+        logs = v1.read_namespaced_pod_log(
+            name=pod,
+            namespace=namespace,
+            container=container_name,
+            timestamps=True,
+        )
+
+        return logs
