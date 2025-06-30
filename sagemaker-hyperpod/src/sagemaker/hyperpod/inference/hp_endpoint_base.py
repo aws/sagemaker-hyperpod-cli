@@ -170,13 +170,13 @@ class HPEndpointBase:
 
         return logs
 
+    @classmethod
     def get_logs(
-        self,
+        cls,
         pod: str,
         namespace="default",
-        since_hours: int = 24,
     ):
-        if not self._validate_connection():
+        if not cls._validate_connection():
             raise Exception(
                 "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
             )
@@ -196,7 +196,6 @@ class HPEndpointBase:
             namespace=namespace,
             container=container_name,
             timestamps=True,
-            since_seconds=3600 * since_hours,
         )
 
         return logs
