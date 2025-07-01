@@ -32,7 +32,7 @@ setup(
         "requests==2.32.3",
         "tqdm==4.66.5",
         "zstandard==0.15.2",
-        "ruamel-yaml==0.18.13"
+        "ruamel-yaml==0.18.13",
     ],
     entry_points={
         "console_scripts": [

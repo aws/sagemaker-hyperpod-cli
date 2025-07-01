@@ -25,7 +25,9 @@ from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
     registry=JS_REG,
 )
 def js_create(namespace, version, js_endpoint):
-    click.echo(f"✅ Schema {version} verified. Creating endpoint {js_endpoint.model.modelId} with instance type {js_endpoint.server.instanceType}.")
+    click.echo(
+        f"✅ Schema {version} verified. Creating endpoint {js_endpoint.model.modelId} with instance type {js_endpoint.server.instanceType}."
+    )
     js_endpoint.create(namespace=namespace)
 
 
@@ -43,7 +45,9 @@ def js_create(namespace, version, js_endpoint):
     registry=C_REG,
 )
 def custom_create(namespace, version, custom_endpoint):
-    click.echo(f"✅ Schema {version} verified. Creating endpoint {custom_endpoint.modelName} with instance type {custom_endpoint.instanceType}.")
+    click.echo(
+        f"✅ Schema {version} verified. Creating endpoint {custom_endpoint.modelName} with instance type {custom_endpoint.instanceType}."
+    )
     custom_endpoint.create(namespace=namespace)
 
 
@@ -83,7 +87,7 @@ def custom_invoke(
     click.echo(result)
 
 
-#LIST
+# LIST
 @click.command("hyp-jumpstart-endpoint")
 @click.option(
     "--namespace",
@@ -292,6 +296,7 @@ def custom_get_logs(
     my_endpoint = HPEndpoint.model_construct()
     logs = my_endpoint.get_logs(pod=pod_name, container=container, namespace=namespace)
     click.echo(logs)
+
 
 @click.command("hyp-jumpstart-endpoint")
 @click.option(

@@ -1,5 +1,4 @@
 from kubernetes import client
-from kubernetes import config as k8s_config
 from sagemaker.hyperpod.inference.config.constants import *
 from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
     _HPJumpStartEndpoint,
@@ -11,6 +10,12 @@ from types import SimpleNamespace
 import boto3
 from sagemaker.hyperpod.hyperpod_manager import HyperPodManager
 import re
+from sagemaker.hyperpod.common.utils import (
+    validate_cluster_connection,
+    handel_exception,
+)
+import logging
+import yaml
 
 
 class HPEndpointBase:
@@ -28,15 +33,6 @@ class HPEndpointBase:
         return region
 
     @classmethod
-    def _validate_connection(cls):
-        try:
-            k8s_config.load_kube_config()
-            v1 = client.CoreV1Api()
-            return True
-        except Exception as e:
-            return False
-
-    @classmethod
     def call_create_api(
         cls,
         name: str,
@@ -44,7 +40,7 @@ class HPEndpointBase:
         namespace: str,
         spec: _HPJumpStartEndpoint | _HPEndpoint,
     ):
-        if not cls._validate_connection():
+        if not validate_cluster_connection():
             raise Exception(
                 "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
             )
@@ -58,6 +54,8 @@ class HPEndpointBase:
             "spec": spec.model_dump(exclude_none=True),
         }
 
+        logging.debug("Deploying endpoint with config:\n%s", yaml.dump(body))
+
         try:
             custom_api.create_namespaced_custom_object(
                 group=INFERENCE_GROUP,
@@ -67,7 +65,8 @@ class HPEndpointBase:
                 body=body,
             )
         except Exception as e:
-            raise Exception(f"Failed to deploy model and its endpoint: {e}")
+            logging.debug(f"Failed to create endpoint in namespace {namespace}!")
+            handel_exception(e, name, namespace)
 
     @classmethod
     def call_list_api(
@@ -75,7 +74,7 @@ class HPEndpointBase:
         kind: str,
         namespace: str,
     ):
-        if not cls._validate_connection():
+        if not validate_cluster_connection():
             raise Exception(
                 "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
             )
@@ -90,7 +89,8 @@ class HPEndpointBase:
                 plural=KIND_PLURAL_MAP[kind],
             )
         except Exception as e:
-            raise Exception(f"Failed to list endpoint: {e}")
+            logging.debug(f"Failed to create endpoint in namespace {namespace}!")
+            handel_exception(e, "", namespace)
 
     @classmethod
     def call_get_api(
@@ -99,7 +99,7 @@ class HPEndpointBase:
         kind: str,
         namespace: str,
     ):
-        if not cls._validate_connection():
+        if not validate_cluster_connection():
             raise Exception(
                 "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
             )
@@ -115,7 +115,8 @@ class HPEndpointBase:
                 name=name,
             )
         except Exception as e:
-            raise Exception(f"Failed to get endpoint details: {e}")
+            logging.debug(f"Failed to get endpoint details in namespace {namespace}!")
+            handel_exception(e, name, namespace)
 
     def call_delete_api(
         cls,
@@ -123,7 +124,7 @@ class HPEndpointBase:
         kind: str,
         namespace: str,
     ):
-        if not cls._validate_connection():
+        if not validate_cluster_connection():
             raise Exception(
                 "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
             )
@@ -139,11 +140,12 @@ class HPEndpointBase:
                 name=name,
             )
         except Exception as e:
-            raise Exception(f"Failed to delete endpoint details: {e}")
+            logging.debug(f"Failed to delete endpoint in namespace {namespace}!")
+            handel_exception(e, name, namespace)
 
     @classmethod
-    def get_operator_logs(cls, since_hours: int):
-        if not cls._validate_connection():
+    def get_operator_logs(cls, since_hours: float):
+        if not validate_cluster_connection():
             raise Exception(
                 "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
             )
@@ -161,12 +163,18 @@ class HPEndpointBase:
         first_pod = pods.items[0]
         pod_name = first_pod.metadata.name
 
-        logs = v1.read_namespaced_pod_log(
-            name=pod_name,
-            namespace=OPERATOR_NAMESPACE,
-            timestamps=True,
-            since_seconds=3600 * since_hours,
-        )
+        try:
+            logs = v1.read_namespaced_pod_log(
+                name=pod_name,
+                namespace=OPERATOR_NAMESPACE,
+                timestamps=True,
+                since_seconds=int(3600 * since_hours),
+            )
+        except Exception as e:
+            logging.debug(
+                f"Failed to get logs from operator pod {pod_name} in namespace {OPERATOR_NAMESPACE}!"
+            )
+            handel_exception(e, pod_name, OPERATOR_NAMESPACE)
 
         return logs
 
@@ -177,7 +185,7 @@ class HPEndpointBase:
         container: str = None,
         namespace="default",
     ):
-        if not cls._validate_connection():
+        if not validate_cluster_connection():
             raise Exception(
                 "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
             )
@@ -193,11 +201,15 @@ class HPEndpointBase:
         if not container:
             container = pod_details.spec.containers[0].name
 
-        logs = v1.read_namespaced_pod_log(
-            name=pod,
-            namespace=namespace,
-            container=container,
-            timestamps=True,
-        )
+        try:
+            logs = v1.read_namespaced_pod_log(
+                name=pod,
+                namespace=namespace,
+                container=container,
+                timestamps=True,
+            )
+        except Exception as e:
+            logging.debug(f"Failed to get logs from pod {pod}!")
+            handel_exception(e, pod, namespace)
 
         return logs
