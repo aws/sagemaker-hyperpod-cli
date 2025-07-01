@@ -8,6 +8,8 @@ from sagemaker.hyperpod.inference.hp_endpoint_base import HPEndpointBase
 from typing import Dict, List, Optional, Self
 from sagemaker_core.main.resources import Endpoint
 from pydantic import Field
+import logging
+from pydantic import ValidationError
 
 
 class HPEndpoint(_HPEndpoint, HPEndpointBase):
@@ -18,7 +20,12 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         self,
         name=None,
         namespace="default",
+        debug=False,
     ) -> None:
+
+        if debug:
+            logging.basicConfig(level=logging.DEBUG)
+
         spec = _HPEndpoint(**self.model_dump(by_alias=True, exclude_none=True))
 
         if not name:
@@ -59,8 +66,13 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         )
 
     def refresh(self) -> Self:
+        if not self.metadata:
+            raise Exception(
+                "Metadata not found! Please provide object name and namespace in metadata field."
+            )
+
         response = self.call_get_api(
-            name=self.modelName,
+            name=self.metadata.name,
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace=self.metadata.namespace,
         )
@@ -98,12 +110,17 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
             namespace=namespace,
         )
 
-        spec = response["spec"]
-
-        endpoint = HPEndpoint.model_validate(spec, by_name=True)
-        endpoint.status = InferenceEndpointConfigStatus.model_validate(
-            response["status"], by_name=True
-        )
+        endpoint = HPEndpoint.model_validate(response["spec"], by_name=True)
+        status = response.get("status")
+        if status is not None:
+            try:
+                endpoint.status = InferenceEndpointConfigStatus.model_validate(
+                    status, by_name=True
+                )
+            except ValidationError:
+                endpoint.status = None
+        else:
+            endpoint.status = None
         endpoint.metadata = Metadata.model_validate(response["metadata"], by_name=True)
 
         return endpoint

@@ -5,12 +5,14 @@ from typing import Callable, Optional, Mapping, Type
 
 from jumpstart_inference_config_schemas.registry import SCHEMA_REGISTRY
 
+
 def load_schema_for_version(version: str, schema_pkg: str) -> dict:
     ver_pkg = f"{schema_pkg}.v{version.replace('.', '_')}"
     raw = pkgutil.get_data(ver_pkg, "schema.json")
     if raw is None:
         raise click.ClickException(f"Could not load schema.json for version {version}")
     return json.loads(raw)
+
 
 def generate_click_command(
     *,
@@ -43,7 +45,7 @@ def generate_click_command(
             flat = Model(**kwargs)
             domain = flat.to_domain()
             return func(namespace, version, domain)
-        
+
         # 2) inject the special JSON‐env flag before everything else
         wrapped_func = click.option(
             "--env",
@@ -52,31 +54,47 @@ def generate_click_command(
             default=None,
             help=(
                 "JSON object of environment variables, e.g. "
-                "'{\"VAR1\":\"foo\",\"VAR2\":\"bar\"}'"
+                '\'{"VAR1":"foo","VAR2":"bar"}\''
             ),
             metavar="JSON",
         )(wrapped_func)
+
+        wrapped_func = click.option(
+            "--dimensions",
+            callback=_parse_json_flag,
+            type=str,
+            default=None,
+            help=("JSON object of dimensions, e.g. " '\'{"VAR1":"foo","VAR2":"bar"}\''),
+            metavar="JSON",
+        )(wrapped_func)
+
         wrapped_func = click.option(
             "--resources-limits",
             callback=_parse_json_flag,
-            help="JSON object of resource limits, e.g. '{\"cpu\":\"2\",\"memory\":\"4Gi\"}'",
+            help='JSON object of resource limits, e.g. \'{"cpu":"2","memory":"4Gi"}\'',
             metavar="JSON",
         )(wrapped_func)
 
         wrapped_func = click.option(
             "--resources-requests",
             callback=_parse_json_flag,
-            help="JSON object of resource requests, e.g. '{\"cpu\":\"1\",\"memory\":\"2Gi\"}'",
+            help='JSON object of resource requests, e.g. \'{"cpu":"1","memory":"2Gi"}\'',
             metavar="JSON",
         )(wrapped_func)
 
         # 3) auto-inject all schema.json fields
         schema = load_schema_for_version(version_key or "1.0", schema_pkg)
-        props  = schema.get("properties", {})
-        reqs   = set(schema.get("required", []))
+        props = schema.get("properties", {})
+        reqs = set(schema.get("required", []))
 
         for name, spec in reversed(list(props.items())):
-            if name in ("version", "env", "resources_limits", "resources_requests"):
+            if name in (
+                "version",
+                "env",
+                "dimensions",
+                "resources_limits",
+                "resources_requests",
+            ):
                 continue
 
             # infer click type

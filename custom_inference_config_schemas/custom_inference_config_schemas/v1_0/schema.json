@@ -120,6 +120,65 @@
       "additionalProperties": {
         "type": ["integer", "string"]
       }
+    },
+    "dimensions": {
+      "type": ["object", "null"],
+      "description": "CloudWatch Metric dimensions as key–value pairs",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "metric_collection_period": {
+      "type": "integer",
+      "description": "Defines the Period for CloudWatch query",
+      "default": 300
+    },
+    "metric_collection_start_time": {
+      "type": "integer",
+      "description": "Defines the StartTime for CloudWatch query",
+      "default": 300
+    },
+    "metric_name": {
+      "type": ["string", "null"],
+      "description": "Metric name to query for CloudWatch trigger"
+    },
+    "metric_stat": {
+      "type": "string",
+      "description": "Statistics metric to be used by Trigger. Defines the Stat for the CloudWatch query. Default is Average.",
+      "default": "Average"
+    },
+    "metric_type": {
+      "type": "string",
+      "description": "The type of metric to be used by HPA. `Average` – Uses average value per pod; `Value` – Uses absolute metric value.",
+      "enum": ["Value", "Average"],
+      "default": "Average"
+    },
+    "min_value": {
+      "type": "number",
+      "description": "Minimum metric value used in case of empty response from CloudWatch. Default is 0.",
+      "default": 0
+    },
+    "cloud_watch_trigger_name": {
+      "type": ["string", "null"],
+      "description": "Name for the CloudWatch trigger"
+    },
+    "cloud_watch_trigger_namespace": {
+      "type": ["string", "null"],
+      "description": "AWS CloudWatch namespace for the metric"
+    },
+    "target_value": {
+      "type": ["number", "null"],
+      "description": "Target value for the CloudWatch metric"
+    },
+    "use_cached_metrics": {
+      "type": "boolean",
+      "description": "Enable caching of metric values during polling interval. Default is true.",
+      "default": true
+    },
+    "invocation_endpoint": {
+      "type": "string",
+      "description": "The invocation endpoint of the model server. http://<host>:<port>/ would be pre-populated based on the other fields. Please fill in the path after http://<host>:<port>/ specific to your model server.",
+      "default": "invocations"
     }
   }
 }

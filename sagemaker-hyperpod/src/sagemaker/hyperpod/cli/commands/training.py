@@ -45,7 +45,7 @@ def pytorch_create(version, config):
         # Prepare job kwargs
         job_kwargs = {
             "metadata": Metadata(**metadata_kwargs),
-            "replica_specs": spec.get("replica_specs", [])
+            "replica_specs": spec.get("replica_specs", []),
         }
 
         # Add nproc_per_node if present

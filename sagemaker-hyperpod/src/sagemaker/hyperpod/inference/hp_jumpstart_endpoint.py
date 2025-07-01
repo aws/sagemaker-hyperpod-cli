@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Self
 from sagemaker_core.main.resources import Endpoint
 from pydantic import Field
 from pydantic import ValidationError
+import logging
 
 
 class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
@@ -19,7 +20,10 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         self,
         name=None,
         namespace="default",
+        debug=False,
     ) -> None:
+        if debug:
+            logging.basicConfig(level=logging.DEBUG)
 
         spec = _HPJumpStartEndpoint(**self.model_dump(by_alias=True, exclude_none=True))
 
@@ -62,8 +66,13 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         )
 
     def refresh(self) -> Self:
+        if not self.metadata:
+            raise Exception(
+                "Metadata not found! Please provide object name and namespace in metadata field."
+            )
+
         response = HPJumpStartEndpoint.call_get_api(
-            name=self.model.modelId,
+            name=self.metadata.name,
             kind=JUMPSTART_MODEL_KIND,
             namespace=self.metadata.namespace,
         )
@@ -102,7 +111,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         )
 
         endpoint = HPJumpStartEndpoint.model_validate(response["spec"], by_name=True)
-        status   = response.get("status")
+        status = response.get("status")
         if status is not None:
             try:
                 endpoint.status = JumpStartModelStatus.model_validate(
