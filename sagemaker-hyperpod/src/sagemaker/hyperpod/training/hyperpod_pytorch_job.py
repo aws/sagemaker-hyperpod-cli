@@ -12,7 +12,7 @@ from kubernetes.client.exceptions import ApiException
 from typing import List, Optional
 from sagemaker.hyperpod.common.utils import (
     validate_cluster_connection,
-    handel_exception,
+    handle_exception,
 )
 import yaml
 import logging
@@ -70,7 +70,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             logging.debug("Successful submitted HyperPodPytorchJob!")
         except Exception as e:
             logging.debug(f"Failed to create HyperPodPytorchJob {self.metadata.name}!")
-            handel_exception(e, self.metadata.name, self.metadata.namespace)
+            handle_exception(e, self.metadata.name, self.metadata.namespace)
 
     @classmethod
     def list(cls, namespace="default") -> List["HyperPodPytorchJob"]:
@@ -91,7 +91,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             return _load_hp_job_list(hp_job_list)
         except Exception as e:
             logging.debug(f"Failed to list HyperpodPytorchJobs!")
-            handel_exception(e, "", namespace)
+            handle_exception(e, "", namespace)
 
     def delete(self):
         if not validate_cluster_connection():
@@ -112,7 +112,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             logging.debug(f"Successful deleted HyperPodPytorchJob!")
         except Exception as e:
             logging.debug(f"Failed to delete HyperPodPytorchJob {self.metadata.name}!")
-            handel_exception(e, self.metadata.name, self.metadata.namespace)
+            handle_exception(e, self.metadata.name, self.metadata.namespace)
 
     @classmethod
     def get(cls, name, namespace="default") -> "HyperPodPytorchJob":
@@ -134,7 +134,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             return _load_hp_job(response)
         except Exception as e:
             logging.debug(f"Failed to describe HyperPodPytorchJob {name}: {e}")
-            handel_exception(e, name, namespace)
+            handle_exception(e, name, namespace)
 
     def refresh(self) -> "HyperPodPytorchJob":
         if not validate_cluster_connection():
@@ -157,7 +157,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             )
         except Exception as e:
             logging.debug(f"Failed to refresh HyperPodPytorchJob {self.metadata.name}!")
-            handel_exception(e, self.metadata.name, self.metadata.namespace)
+            handle_exception(e, self.metadata.name, self.metadata.namespace)
 
     def list_pods(self) -> List[str]:
         if not validate_cluster_connection():
@@ -178,7 +178,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             return pods
         except Exception as e:
             logging.debug(f"Failed to list pod in namespace {self.metadata.namespace}!")
-            handel_exception(e, self.metadata.name, self.metadata.namespace)
+            handle_exception(e, self.metadata.name, self.metadata.namespace)
 
     def get_logs_from_pod(self, pod_name: str, container: Optional[str] = None) -> str:
         if not validate_cluster_connection():
@@ -203,7 +203,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             return logs
         except Exception as e:
             logging.debug(f"Failed to get logs from pod {pod_name}!")
-            handel_exception(e, self.metadata.name, self.metadata.namespace)
+            handle_exception(e, self.metadata.name, self.metadata.namespace)
 
 
 def _load_hp_job(response: dict) -> HyperPodPytorchJob:

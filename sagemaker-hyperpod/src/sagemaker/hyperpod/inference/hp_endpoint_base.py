@@ -12,7 +12,7 @@ from sagemaker.hyperpod.hyperpod_manager import HyperPodManager
 import re
 from sagemaker.hyperpod.common.utils import (
     validate_cluster_connection,
-    handel_exception,
+    handle_exception,
 )
 import logging
 import yaml
@@ -66,7 +66,7 @@ class HPEndpointBase:
             )
         except Exception as e:
             logging.debug(f"Failed to create endpoint in namespace {namespace}!")
-            handel_exception(e, name, namespace)
+            handle_exception(e, name, namespace)
 
     @classmethod
     def call_list_api(
@@ -90,7 +90,7 @@ class HPEndpointBase:
             )
         except Exception as e:
             logging.debug(f"Failed to create endpoint in namespace {namespace}!")
-            handel_exception(e, "", namespace)
+            handle_exception(e, "", namespace)
 
     @classmethod
     def call_get_api(
@@ -116,7 +116,7 @@ class HPEndpointBase:
             )
         except Exception as e:
             logging.debug(f"Failed to get endpoint details in namespace {namespace}!")
-            handel_exception(e, name, namespace)
+            handle_exception(e, name, namespace)
 
     def call_delete_api(
         cls,
@@ -141,7 +141,7 @@ class HPEndpointBase:
             )
         except Exception as e:
             logging.debug(f"Failed to delete endpoint in namespace {namespace}!")
-            handel_exception(e, name, namespace)
+            handle_exception(e, name, namespace)
 
     @classmethod
     def get_operator_logs(cls, since_hours: float):
@@ -174,7 +174,7 @@ class HPEndpointBase:
             logging.debug(
                 f"Failed to get logs from operator pod {pod_name} in namespace {OPERATOR_NAMESPACE}!"
             )
-            handel_exception(e, pod_name, OPERATOR_NAMESPACE)
+            handle_exception(e, pod_name, OPERATOR_NAMESPACE)
 
         return logs
 
@@ -210,6 +210,6 @@ class HPEndpointBase:
             )
         except Exception as e:
             logging.debug(f"Failed to get logs from pod {pod}!")
-            handel_exception(e, pod, namespace)
+            handle_exception(e, pod, namespace)
 
         return logs
