@@ -36,14 +36,28 @@ def pytorch_create(version, config):
         job_name = config.get("name")
         namespace = config.get("namespace")
         spec = config.get("spec")
-        # Create job with or without namespace
-        if namespace is None:
-            job = HyperPodPytorchJob(metadata=Metadata(name=job_name), spec=spec)
-        else:
-            job = HyperPodPytorchJob(
-                metadata=Metadata(name=job_name, namespace=namespace), spec=spec
-            )
 
+        # Prepare metadata
+        metadata_kwargs = {"name": job_name}
+        if namespace:
+            metadata_kwargs["namespace"] = namespace
+
+        # Prepare job kwargs
+        job_kwargs = {
+            "metadata": Metadata(**metadata_kwargs),
+            "replica_specs": spec.get("replica_specs", [])
+        }
+
+        # Add nproc_per_node if present
+        if "nproc_per_node" in spec:
+            job_kwargs["nproc_per_node"] = spec["nproc_per_node"]
+
+        # Add run_policy if present
+        if "run_policy" in spec:
+            job_kwargs["run_policy"] = spec["run_policy"]
+
+        # Create job
+        job = HyperPodPytorchJob(**job_kwargs)
         job.create()
 
     except Exception as e:
@@ -138,16 +152,14 @@ def pytorch_describe(job_name: str, namespace: str):
         click.echo("=" * 80)
         click.echo(f"Name:           {job.metadata.name}")
         click.echo(f"Namespace:      {job.metadata.namespace}")
-        click.echo(f"API Version:    {job.apiVersion}")
-        click.echo(f"Kind:           {job.kind}")
 
         # Print Spec details
         click.echo("\nSpec:")
         click.echo("-" * 80)
-        click.echo(f"Processes per Node: {job.spec.nprocPerNode}")
+        click.echo(f"Processes per Node: {job.nprocPerNode}")
 
         # Print Replica Specs
-        for replica in job.spec.replicaSpecs:
+        for replica in job.replicaSpecs:
             click.echo(f"\nReplica Spec:")
             click.echo(f"  Name:     {replica.name}")
             click.echo(f"  Replicas: {replica.replicas}")
@@ -169,9 +181,9 @@ def pytorch_describe(job_name: str, namespace: str):
         # Print Run Policy
         click.echo("\nRun Policy:")
         click.echo("-" * 80)
-        click.echo(f"Clean Pod Policy:          {job.spec.runPolicy.cleanPodPolicy}")
+        click.echo(f"Clean Pod Policy:          {job.runPolicy.cleanPodPolicy}")
         click.echo(
-            f"TTL Seconds After Finished: {job.spec.runPolicy.ttlSecondsAfterFinished}"
+            f"TTL Seconds After Finished: {job.runPolicy.ttlSecondsAfterFinished}"
         )
 
         # Print Status

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List, Dict, Union
-from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_config import _HyperPodPytorchJob, ReplicaSpec, RunPolicy, Template, Metadata, Spec
+from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_config import ReplicaSpec, RunPolicy, Template, Metadata, Spec
 
 
 class PyTorchJobConfig(BaseModel):
@@ -28,7 +28,7 @@ class PyTorchJobConfig(BaseModel):
 
 
 
-    def to_domain(self) -> _HyperPodPytorchJob:
+    def to_domain(self) -> Dict:
         """
         Convert flat config to domain model (HyperPodPytorchJobSpec)
         """
@@ -36,13 +36,6 @@ class PyTorchJobConfig(BaseModel):
         container = {
         "name": self.job_name,
         "image": self.image,
-        }
-
-        # Add resources if needed (could be moved to SDK default)
-        container["resources"] = {
-        "limits": {
-            "nvidia.com/gpu": 8
-        }
         }
 
         # Add optional container fields only if they're not None
@@ -157,5 +150,5 @@ class PyTorchJobConfig(BaseModel):
         # Create and return the domain model
         return { "name":self.job_name ,
                  "namespace":self.namespace,
-                 "spec":_HyperPodPytorchJob(**job_kwargs)
+                 "spec":job_kwargs
                  }
