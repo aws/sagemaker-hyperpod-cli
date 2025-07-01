@@ -13,6 +13,15 @@ from sagemaker.hyperpod.cli.commands.training import (
     pytorch_list_pods,
     pytorch_get_logs,
 )
+from sagemaker.hyperpod.cli.commands.inference import (
+    js_create, custom_create, 
+    custom_invoke,
+    js_list, custom_list, 
+    js_describe, custom_describe, 
+    js_delete, custom_delete,
+    js_get_logs, custom_get_logs,
+    js_get_operator_logs, custom_get_operator_logs
+)
 from sagemaker.hyperpod.cli.constants.hp_pytorch_command_constants import HELP_TEXT
 
 
@@ -28,46 +37,79 @@ class CLICommand(click.Group):
 
 @cli.group(cls=CLICommand)
 def create():
-    """HyperPod PyTorch commands"""
+    """HyperPod commands"""
     pass
 
 
 @cli.group(cls=CLICommand)
 def list():
-    """HyperPod PyTorch commands"""
+    """HyperPod commands"""
     pass
 
 
 @cli.group(cls=CLICommand)
 def describe():
-    """HyperPod PyTorch commands"""
+    """HyperPod commands"""
     pass
 
 
 @cli.group(cls=CLICommand)
 def delete():
-    """HyperPod PyTorch commands"""
+    """HyperPod commands"""
     pass
 
 
 @cli.group(cls=CLICommand)
 def list_pods():
-    """HyperPod PyTorch commands"""
+    """HyperPod commands"""
     pass
 
 
 @cli.group(cls=CLICommand)
 def get_logs():
-    """HyperPod PyTorch commands"""
+    """HyperPod commands"""
+    pass
+
+
+@cli.group(cls=CLICommand)
+def get_operator_logs():
+    """HyperPod commands"""
+    pass
+
+
+@cli.group(cls=CLICommand)
+def invoke():
+    """HyperPod commands"""
     pass
 
 
 create.add_command(pytorch_create)
+create.add_command(js_create)
+create.add_command(custom_create)
+
 list.add_command(list_jobs)
+list.add_command(js_list)
+list.add_command(custom_list)
+
 describe.add_command(pytorch_describe)
+describe.add_command(js_describe)
+describe.add_command(custom_describe)
+
 delete.add_command(pytorch_delete)
+delete.add_command(js_delete)
+delete.add_command(custom_delete)
+
 list_pods.add_command(pytorch_list_pods)
+
 get_logs.add_command(pytorch_get_logs)
+get_logs.add_command(js_get_logs)
+get_logs.add_command(custom_get_logs)
+
+get_operator_logs.add_command(js_get_operator_logs)
+get_operator_logs.add_command(custom_get_operator_logs)
+
+invoke.add_command(custom_invoke)
+invoke.add_command(custom_invoke, name="hyp-jumpstart-endpoint")
 
 
 if __name__ == "__main__":

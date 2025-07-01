@@ -32,13 +32,6 @@ from hyperpod_cli.commands.pod import (
     get_log,
 )
 
-from hyperpod_cli.commands.inference import (
-    js_create, custom_create, 
-    custom_invoke,
-    js_list, custom_list, 
-    js_get, custom_get, 
-    js_delete, custom_delete
-)
 
 HELP_TEXT = """
 Find more information at: https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod.html
@@ -70,38 +63,9 @@ class HyperPodCommandGroup(click.Group):
     def format_help(self, ctx, formatter):
         click.echo(HELP_TEXT)
 
-class CLICommand(click.Group):
-    def format_help(self, ctx, formatter):
-        click.echo(HELP_TEXT)
-
 @click.group(cls=HyperPodCommandGroup)
 @click.version_option(version=VERSION)
 def cli():
-    pass
-
-@cli.group(cls=CLICommand)
-def create():
-    """HyperPod PyTorch commands"""
-    pass
-
-@cli.group(cls=CLICommand)
-def invoke():
-    """HyperPod PyTorch commands"""
-    pass
-
-@cli.group(cls=CLICommand)
-def list():
-    """HyperPod PyTorch commands"""
-    pass
-
-@cli.group(cls=CLICommand)
-def get():
-    """HyperPod PyTorch commands"""
-    pass
-
-@cli.group(cls=CLICommand)
-def delete():
-    """HyperPod PyTorch commands"""
     pass
 
 
@@ -117,21 +81,6 @@ cli.add_command(patch_job)
 cli.add_command(exec)
 cli.add_command(list_pods)
 cli.add_command(get_log)
-
-create.add_command(js_create)
-create.add_command(custom_create)
-
-invoke.add_command(custom_invoke)
-invoke.add_command(custom_invoke, name="hyp-jumpstart-endpoint")
-
-list.add_command(js_list)
-list.add_command(custom_list)
-
-get.add_command(js_get)
-get.add_command(custom_get)
-
-delete.add_command(js_delete)
-delete.add_command(custom_delete)
 
 
 if __name__ == "__main__":
