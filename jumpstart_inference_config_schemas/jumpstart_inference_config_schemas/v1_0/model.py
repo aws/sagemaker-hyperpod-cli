@@ -48,7 +48,7 @@ class FlatHPJumpStartEndpoint(BaseModel):
         pattern=r"^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$",
     )
 
-    tls_output_s3_uri: Optional[str] = Field(
+    tls_certificate_output_s3_uri: Optional[str] = Field(
         None,
         alias="tls_certificate_output_s3_uri",
         description="S3 URI to write the TLS certificate (optional)",
@@ -67,9 +67,7 @@ class FlatHPJumpStartEndpoint(BaseModel):
         )
         sage_ep = SageMakerEndpoint(name=self.endpoint_name)
         tls = (
-            TlsConfig(tls_certificate_output_s3_uri=self.tls_output_s3_uri)
-            if self.tls_output_s3_uri
-            else None
+            TlsConfig(tls_certificate_output_s3_uri=self.tls_certificate_output_s3_uri)
         )
         return HPJumpStartEndpoint(
             model=model,

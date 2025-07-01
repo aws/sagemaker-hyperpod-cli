@@ -82,9 +82,9 @@ class FlatHPEndpoint(BaseModel):
     )
 
     # tls_config
-    tls_output_s3_uri: Optional[str] = Field(
+    tls_certificate_output_s3_uri: Optional[str] = Field(
         None,
-        alias="tls_output_s3_uri",
+        alias="tls_certificate_output_s3_uri",
         description="S3 URI for TLS certificate output",
         pattern=r"^s3://([^/]+)/?(.*)$",
     )
@@ -231,12 +231,10 @@ class FlatHPEndpoint(BaseModel):
                 for k, v in self.env.items()
             ]
 
-        dim_vars = None
+        dim_vars: list[Dimensions] = []
         if self.dimensions:
-            dim_vars = [
-                Dimensions(name=k, value=v)
-                for k, v in self.dimensions.items()
-            ]
+            for name, value in self.dimensions.items():
+                dim_vars.append(Dimensions(name=name, value=value))
         
         cloud_watch_trigger = CloudWatchTrigger(
             dimensions=dim_vars,
@@ -286,7 +284,7 @@ class FlatHPEndpoint(BaseModel):
             fsx_storage=fsx,
         )
 
-        tls = TlsConfig(tls_certificate_output_s3_uri=self.tls_output_s3_uri)
+        tls = TlsConfig(tls_certificate_output_s3_uri=self.tls_certificate_output_s3_uri)
 
         invocation_port = ModelInvocationPort(
             container_port=self.container_port,
