@@ -1,5 +1,4 @@
-from pydantic import ConfigDict, Field, ValidationError
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_config import (
     _HyperPodPytorchJob,
 )
@@ -8,7 +7,6 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_status import (
 )
 from sagemaker.hyperpod.inference.config.common import Metadata
 from kubernetes import client, config
-from kubernetes.client.exceptions import ApiException
 from typing import List, Optional
 from sagemaker.hyperpod.common.utils import (
     validate_cluster_connection,

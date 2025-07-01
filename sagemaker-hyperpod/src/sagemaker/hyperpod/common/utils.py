@@ -2,7 +2,6 @@ from kubernetes import client
 from kubernetes import config as k8s_config
 from pydantic import ValidationError
 from kubernetes.client.exceptions import ApiException
-import logging
 
 
 def validate_cluster_connection():
