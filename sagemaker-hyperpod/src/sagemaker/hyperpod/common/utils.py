@@ -2,7 +2,6 @@ from kubernetes import client
 from kubernetes import config as k8s_config
 from pydantic import ValidationError
 from kubernetes.client.exceptions import ApiException
-import logging
 
 
 def validate_cluster_connection():
@@ -14,16 +13,16 @@ def validate_cluster_connection():
         return False
 
 
-def handel_exception(e: Exception, name: str, namespace: str):
-    logging.debug("exception type: %s", type(e))
-
+def handle_exception(e: Exception, name: str, namespace: str):
     if isinstance(e, ApiException):
-        if e.status == 404:
-            raise Exception(f"Resource '{name}' not found in '{namespace}'.") from e
+        if e.status == 401:
+            raise Exception(f"Credentials unauthorized.") from e
         elif e.status == 403:
             raise Exception(
                 f"Access denied to resource '{name}' in '{namespace}'."
             ) from e
+        if e.status == 404:
+            raise Exception(f"Resource '{name}' not found in '{namespace}'.") from e
         elif e.status == 409:
             raise Exception(
                 f"Resource '{name}' already exists in '{namespace}'."
