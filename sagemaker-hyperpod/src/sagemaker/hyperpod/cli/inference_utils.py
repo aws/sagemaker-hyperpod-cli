@@ -56,6 +56,19 @@ def generate_click_command(
             ),
             metavar="JSON",
         )(wrapped_func)
+
+        wrapped_func = click.option(
+            "--dimensions",
+            callback=_parse_json_flag,
+            type=str,
+            default=None,
+            help=(
+                "JSON object of dimensions, e.g. "
+                "'{\"VAR1\":\"foo\",\"VAR2\":\"bar\"}'"
+            ),
+            metavar="JSON",
+        )(wrapped_func)
+
         wrapped_func = click.option(
             "--resources-limits",
             callback=_parse_json_flag,
@@ -76,7 +89,7 @@ def generate_click_command(
         reqs   = set(schema.get("required", []))
 
         for name, spec in reversed(list(props.items())):
-            if name in ("version", "env", "resources_limits", "resources_requests"):
+            if name in ("version", "env", "dimensions", "resources_limits", "resources_requests"):
                 continue
 
             # infer click type
