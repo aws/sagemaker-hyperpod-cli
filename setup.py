@@ -78,7 +78,6 @@ setup(
     entry_points={
         "console_scripts": [
             "hyperpod=hyperpod_cli.cli:cli",
-            "hyp=hyperpod_cli.cli:cli",
         ],
     },
     check_format=True,

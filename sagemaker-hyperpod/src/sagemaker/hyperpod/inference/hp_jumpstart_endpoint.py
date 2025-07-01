@@ -8,6 +8,7 @@ from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
 from typing import Dict, List, Optional, Self
 from sagemaker_core.main.resources import Endpoint
 from pydantic import Field
+from pydantic import ValidationError
 
 
 class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
@@ -101,9 +102,16 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         )
 
         endpoint = HPJumpStartEndpoint.model_validate(response["spec"], by_name=True)
-        endpoint.status = JumpStartModelStatus.model_validate(
-            response["status"], by_name=True
-        )
+        status   = response.get("status")
+        if status is not None:
+            try:
+                endpoint.status = JumpStartModelStatus.model_validate(
+                    status, by_name=True
+                )
+            except ValidationError:
+                endpoint.status = None
+        else:
+            endpoint.status = None
         endpoint.metadata = Metadata.model_validate(response["metadata"], by_name=True)
 
         return endpoint
