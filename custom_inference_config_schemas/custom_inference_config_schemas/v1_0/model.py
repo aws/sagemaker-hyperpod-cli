@@ -12,6 +12,9 @@ from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     ModelVolumeMount,
     Resources,
     Worker,
+    Dimensions,
+    AutoScalingSpec,
+    CloudWatchTrigger
 )
 from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
 
@@ -149,6 +152,77 @@ class FlatHPEndpoint(BaseModel):
         description="Resource requests for the worker",
     )
 
+    # Dimensions
+    dimensions: Optional[Dict[str, str]] = Field(
+        None,
+        alias="dimensions",
+        description="CloudWatch Metric dimensions as key–value pairs"
+    )
+
+    # CloudWatch Trigger
+    metric_collection_period: Optional[int] = Field(
+        300,
+        description="Defines the Period for CloudWatch query"
+    )
+    metric_collection_start_time: Optional[int] = Field(
+        300,
+        description="Defines the StartTime for CloudWatch query"
+    )
+    metric_name: Optional[str] = Field(
+        None,
+        description="Metric name to query for CloudWatch trigger"
+    )
+    metric_stat: Optional[str] = Field(
+        "Average",
+        description=(
+            "Statistics metric to be used by Trigger. "
+            "Defines the Stat for the CloudWatch query. Default is Average."
+        )
+    )
+    metric_type: Optional[Literal["Value", "Average"]] = Field(
+        "Average",
+        description=(
+            "The type of metric to be used by HPA. "
+            "`Average` – Uses average value per pod; "
+            "`Value` – Uses absolute metric value."
+        )
+    )
+    min_value: Optional[float] = Field(
+        0,
+        description=(
+            "Minimum metric value used in case of empty response "
+            "from CloudWatch. Default is 0."
+        )
+    )
+    cloud_watch_trigger_name: Optional[str] = Field(
+        None,
+        description="Name for the CloudWatch trigger"
+    )
+    cloud_watch_trigger_namespace: Optional[str] = Field(
+        None,
+        description="AWS CloudWatch namespace for the metric"
+    )
+    target_value: Optional[float] = Field(
+        None,
+        description="Target value for the CloudWatch metric"
+    )
+    use_cached_metrics: Optional[bool] = Field(
+        True,
+        description=(
+            "Enable caching of metric values during polling interval. "
+            "Default is true."
+        )
+    )
+
+    invocation_endpoint: Optional[str] = Field(
+        default="invocations",
+        description=(
+            "The invocation endpoint of the model server. "
+            "http://<host>:<port>/ would be pre-populated based on the other fields. "
+            "Please fill in the path after http://<host>:<port>/ specific to your model server.",
+        )
+    )
+
     def to_domain(self) -> HPEndpoint:
         env_vars = None
         if self.env:
@@ -156,6 +230,32 @@ class FlatHPEndpoint(BaseModel):
                 EnvironmentVariables(name=k, value=v)
                 for k, v in self.env.items()
             ]
+
+        dim_vars = None
+        if self.dimensions:
+            dim_vars = [
+                Dimensions(name=k, value=v)
+                for k, v in self.dimensions.items()
+            ]
+        
+        cloud_watch_trigger = CloudWatchTrigger(
+            dimensions=dim_vars,
+            metric_collection_period=self.metric_collection_period,
+            metric_collection_start_time=self.metric_collection_start_time,
+            metric_name=self.metric_name,
+            metric_stat=self.metric_stat,
+            metric_type=self.metric_type,
+            min_value=self.min_value,
+            name=self.cloud_watch_trigger_name,
+            namespace=self.cloud_watch_trigger_namespace,
+            target_value=self.target_value,
+            use_cached_metrics=self.use_cached_metrics,
+        ) 
+
+        auto_scaling_spec = AutoScalingSpec(
+            cloud_watch_trigger = cloud_watch_trigger
+        )
+
         # nested metrics
         metrics = Metrics(
             enabled=self.metrics_enabled,
@@ -215,4 +315,6 @@ class FlatHPEndpoint(BaseModel):
             model_version=self.model_version,
             tls_config=tls,
             worker=worker,
+            invocation_endpoint=self.invocation_endpoint,
+            auto_scaling_spec=auto_scaling_spec
         )
