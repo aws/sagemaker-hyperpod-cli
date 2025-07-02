@@ -15,12 +15,12 @@ from unittest import mock
 from unittest.mock import MagicMock
 from kubernetes.client import V1SelfSubjectAccessReview
 from kubernetes.client import AuthorizationV1Api
-from hyperpod_cli.service.self_subject_access_review import SelfSubjectAccessReview
+from sagemaker.hyperpod.cli.service.self_subject_access_review import SelfSubjectAccessReview
 
 
 class TestSelfSubjectAccessReview(unittest.TestCase):
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_self_subject_access_review_success(self, mock_kubernetes_client):
         # Mock the Kubernetes API response
         mock_auth_v1_api = MagicMock(spec=AuthorizationV1Api)

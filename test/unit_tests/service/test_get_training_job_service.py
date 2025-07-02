@@ -14,12 +14,12 @@ import unittest
 from unittest import mock
 from unittest.mock import MagicMock
 
-from hyperpod_cli.clients.kubernetes_client import (
+from sagemaker.hyperpod.cli.clients.kubernetes_client import (
     KubernetesClient,
 )
 from kubernetes.client import V1ResourceAttributes
 
-from hyperpod_cli.service.get_training_job import (
+from sagemaker.hyperpod.cli.service.get_training_job import (
     GetTrainingJob,
 )
 
@@ -34,8 +34,8 @@ class GetTrainingJobTest(unittest.TestCase):
         self.mock_k8s_client = MagicMock(spec=KubernetesClient)
         self.mock_get_training_job = GetTrainingJob()
 
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_get_training_job_with_namespace(
         self,
         mock_kubernetes_client: mock.Mock,
@@ -51,8 +51,8 @@ class GetTrainingJobTest(unittest.TestCase):
         )
         self.assertIn("pytorch-simple", result)
 
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_get_training_job_without_namespace(
         self,
         mock_kubernetes_client: mock.Mock,
@@ -67,9 +67,9 @@ class GetTrainingJobTest(unittest.TestCase):
         result = self.mock_get_training_job.get_training_job("sample-job", None, None)
         self.assertIn("pytorch-simple", result)
 
-    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_get_training_job_namespace_auto_discover(
         self,
         mock_kubernetes_client: mock.Mock,
@@ -99,8 +99,8 @@ class GetTrainingJobTest(unittest.TestCase):
         )
         self.assertIn("pytorch-simple", result)
 
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_get_training_job_with_verbose(
         self,
         mock_kubernetes_client: mock.Mock,
@@ -115,8 +115,8 @@ class GetTrainingJobTest(unittest.TestCase):
         result = self.mock_get_training_job.get_training_job("sample-job", None, True)
         self.assertIn("pytorch-simple", result)
 
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_get_training_job_with_verbose_with_no_output(
         self,
         mock_kubernetes_client: mock.Mock,
@@ -129,8 +129,8 @@ class GetTrainingJobTest(unittest.TestCase):
         result = self.mock_get_training_job.get_training_job("sample-job", None, True)
         self.assertIn("", result)
 
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_get_training_job_without_verbose_with_no_output(
         self,
         mock_kubernetes_client: mock.Mock,
@@ -143,8 +143,8 @@ class GetTrainingJobTest(unittest.TestCase):
         result = self.mock_get_training_job.get_training_job("sample-job", None, False)
         self.assertIn("", result)
 
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_get_training_job_without_verbose_without_metadata(
         self,
         mock_kubernetes_client: mock.Mock,
@@ -157,8 +157,8 @@ class GetTrainingJobTest(unittest.TestCase):
         result = self.mock_get_training_job.get_training_job("sample-job", None, False)
         self.assertIn("test_status", result)
 
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_get_training_job_with_verbose_with_values(
         self,
         mock_kubernetes_client: mock.Mock,
@@ -177,8 +177,8 @@ class GetTrainingJobTest(unittest.TestCase):
         result = self.mock_get_training_job.get_training_job("sample-job", None, True)
         self.assertIn("pytorch-simple", result)
 
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_get_training_job_with_verbose_without_metadata(
         self,
         mock_kubernetes_client: mock.Mock,
@@ -196,8 +196,8 @@ class GetTrainingJobTest(unittest.TestCase):
         result = self.mock_get_training_job.get_training_job("sample-job", None, True)
         self.assertIn("test_status", result)
 
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_get_training_job_with_verbose_without_metadata_api_exception(
         self,
         mock_kubernetes_client: mock.Mock,

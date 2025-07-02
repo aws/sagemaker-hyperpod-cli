@@ -36,7 +36,7 @@ from kubernetes.config import (
     KUBE_CONFIG_DEFAULT_LOCATION,
 )
 
-from hyperpod_cli.clients.kubernetes_client import (
+from sagemaker.hyperpod.cli.clients.kubernetes_client import (
     KubernetesClient,
 )
 

@@ -14,8 +14,8 @@ import unittest
 from unittest import mock
 from unittest.mock import MagicMock
 
-from hyperpod_cli.clients.kubernetes_client import KubernetesClient
-from hyperpod_cli.service.get_namespaces import GetNamespaces
+from sagemaker.hyperpod.cli.clients.kubernetes_client import KubernetesClient
+from sagemaker.hyperpod.cli.service.get_namespaces import GetNamespaces
 
 
 class TestGetNamespaces(unittest.TestCase):
@@ -24,7 +24,7 @@ class TestGetNamespaces(unittest.TestCase):
         self.mock_k8s_client = MagicMock(spec=KubernetesClient)
         self.mock_get_namespaces = GetNamespaces()
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_get_namespaces_success(self, mock_kubernetes_client):
         mock_core_v1_api = MagicMock()
         mock_kubernetes_client.return_value = self.mock_k8s_client
@@ -45,7 +45,7 @@ class TestGetNamespaces(unittest.TestCase):
 
         self.assertEqual(namespaces, ["namespace1", "namespace2"])
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_get_namespaces_pagination(self, mock_kubernetes_client):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         mock_core_v1_api = MagicMock()
@@ -74,7 +74,7 @@ class TestGetNamespaces(unittest.TestCase):
         self.assertEqual(mock_core_v1_api.list_namespace.call_count, 2)
 
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_get_sagemaker_managed_namespaces(self, mock_kubernetes_client):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         mock_core_v1_api = MagicMock()
