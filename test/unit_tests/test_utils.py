@@ -16,7 +16,7 @@ from io import StringIO
 from unittest import mock
 from unittest.mock import patch, mock_open
 
-from hyperpod_cli.utils import (
+from sagemaker.hyperpod.cli.utils import (
     get_name_from_arn,
     get_sagemaker_client,
     set_logging_level,

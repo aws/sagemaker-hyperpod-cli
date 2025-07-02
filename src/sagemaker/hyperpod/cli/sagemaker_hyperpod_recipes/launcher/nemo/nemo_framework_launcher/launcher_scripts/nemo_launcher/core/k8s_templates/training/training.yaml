@@ -1,0 +1,97 @@
+{{ $config := .Values.trainingConfig }}
+{{ $ibResourceName := .Values.trainingConfig.ibResourceName }}
+{{ $ibNetworkAnnotation := .Values.trainingConfig.ibNetworkAnnotation }}
+{{ $ibCount := .Values.trainingConfig.ibCount }}
+
+apiVersion: kubeflow.org/v1
+kind: PyTorchJob
+metadata:
+  name: nlp-training
+  labels:
+    app: nlp-training
+spec:
+  pytorchReplicaSpecs:
+    Worker:
+      replicas: {{ .Values.image.nodes }}
+      template:
+        {{- if $ibNetworkAnnotation }}
+        metadata:
+          annotations:
+            k8s.v1.cni.cncf.io/networks: {{ $ibNetworkAnnotation }}
+        {{- end }}
+        spec:
+          containers:
+          - name: pytorch
+            image: {{ .Values.image.trainingImage }}
+            env:
+              {{- range $key, $value := $config.envVars }}
+              - name: {{ $key }}
+                value: {{ $value | quote }}
+              {{- end}}
+            {{ if eq $config.wandbKey "nil" }}
+            command: ["torchrun"]
+            args:
+              - "--nnodes={{ .Values.image.nodes }}"
+              - "--rdzv-backend=c10d"
+              - "--rdzv-endpoint=nlp-training-worker-0"
+              - "--nproc_per_node={{ .Values.image.numGPUs }}"
+              - "/opt/NeMo/examples/nlp/language_modeling/megatron_gpt_pretraining.py"
+              - "--config-path=/config"
+              - "--config-name=config.yaml"
+            {{ else }}
+            command: ["bash", "-c"]
+            args:
+              - "wandb login {{ $config.wandbKey }} && torchrun --nnodes={{ .Values.image.nodes }} --rdzv-backend=c10d --rdzv-endpoint=nlp-training-worker-0 --nproc_per_node={{ .Values.image.numGPUs }} /opt/NeMo/examples/nlp/language_modeling/megatron_gpt_pretraining.py --config-path=/config --config-name=config.yaml"
+            {{ end }}
+            imagePullPolicy: Always
+            securityContext:
+              capabilities:
+                add: [ "IPC_LOCK" ]
+            resources:
+              requests:
+                nvidia.com/gpu: {{ .Values.image.numGPUs }}
+                {{- if and (kindIs "slice" $ibResourceName) (kindIs "slice" $ibCount) }}
+                {{- range $i, $val := $ibResourceName }}
+                {{ $val }}: {{ index $ibCount $i }}
+                {{- end }}
+                {{- else }}
+                {{ $ibResourceName }}: {{ $ibCount }}
+                {{- end }}
+              limits:
+                nvidia.com/gpu: {{ .Values.image.numGPUs }}
+                {{- if and (kindIs "slice" $ibResourceName) (kindIs "slice" $ibCount) }}
+                {{- range $i, $val := $ibResourceName }}
+                {{ $val }}: {{ index $ibCount $i }}
+                {{- end }}
+                {{- else }}
+                {{ $ibResourceName }}: {{ $ibCount }}
+                {{- end }}
+            volumeMounts:
+            - mountPath: {{ $config.NFSPath }}
+              name: workspace
+            - mountPath: /dev/shm
+              name: dshm
+            - mountPath: /config
+              name: training-config
+          restartPolicy: Never
+          imagePullSecrets:
+          - name: {{ .Values.image.pullSecret }}
+
+          volumes:
+          - name: workspace
+            nfs:
+              server: {{ $config.NFSServer }}
+              path: {{ $config.NFSPath }}
+
+          - name: dshm
+            emptyDir:
+              medium: Memory
+              sizeLimit: {{ $config.shmSize }}
+
+          - configMap:
+              name: training-config
+            name: training-config
+
+          {{ if ne $config.dnsPolicy "nil" }}
+          dnsPolicy: {{ $config.dnsPolicy }}
+          {{ end }}

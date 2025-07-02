@@ -14,10 +14,10 @@ import unittest
 from unittest import mock
 from unittest.mock import MagicMock
 
-from hyperpod_cli.clients.kubernetes_client import (
+from sagemaker.hyperpod.cli.clients.kubernetes_client import (
     KubernetesClient,
 )
-from hyperpod_cli.service.cancel_training_job import (
+from sagemaker.hyperpod.cli.service.cancel_training_job import (
     CancelTrainingJob,
 )
 
@@ -29,7 +29,7 @@ class CancelTrainingJobTest(unittest.TestCase):
         self.mock_k8s_client = MagicMock(spec=KubernetesClient)
 
     @mock.patch("subprocess.run")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_cancel_training_job_with_namespace(
         self,
         mock_kubernetes_client: mock.Mock,
@@ -44,7 +44,7 @@ class CancelTrainingJobTest(unittest.TestCase):
         mock_subprocess_run.assert_called_once()
 
     @mock.patch("subprocess.run")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_cancel_training_job_without_namespace(
         self,
         mock_kubernetes_client: mock.Mock,
@@ -58,7 +58,7 @@ class CancelTrainingJobTest(unittest.TestCase):
         mock_subprocess_run.assert_called_once()
 
     @mock.patch("subprocess.run")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_cancel_training_job_api_exception(
         self,
         mock_kubernetes_client: mock.Mock,
@@ -73,9 +73,9 @@ class CancelTrainingJobTest(unittest.TestCase):
             self.mock_cancel_training_job.cancel_training_job("sample-job", None)
         mock_subprocess_run.assert_not_called()
 
-    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
+    @mock.patch("sagemaker.hyperpod.cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
     @mock.patch("subprocess.run")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_cancel_training_job_auto_discover_namespace(
         self,
         mock_kubernetes_client: mock.Mock,
