@@ -23,10 +23,11 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         namespace="default",
         debug=False,
     ) -> None:
-
+        logging.basicConfig()
         if debug:
-            logging.basicConfig(level=logging.DEBUG)
-
+            self.get_logger().setLevel(logging.DEBUG)
+        else:
+            self.get_logger().setLevel(logging.INFO)
         spec = _HPEndpoint(**self.model_dump(by_alias=True, exclude_none=True))
 
         if not name:
@@ -42,6 +43,10 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         self.metadata = Metadata(
             name=name,
             namespace=namespace,
+        )
+
+        self.get_logger().info(
+            "Creating sagemaker model and endpoint. This may take a few minutes..."
         )
 
     def create_from_dict(
@@ -64,6 +69,10 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         self.metadata = Metadata(
             name=name,
             namespace=namespace,
+        )
+
+        self.get_logger().info(
+            "Creating sagemaker model and endpoint. This may take a few minutes..."
         )
 
     def refresh(self) -> Self:

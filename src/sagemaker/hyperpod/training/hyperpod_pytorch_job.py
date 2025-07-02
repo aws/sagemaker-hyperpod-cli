@@ -32,14 +32,23 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
         default=None, description="The status of the HyperPodPytorchJob"
     )
 
+    @classmethod
+    def get_logger(cls):
+        return logging.getLogger(__name__)
+
     def create(self, debug=False):
         if not validate_cluster_connection():
             raise Exception(
                 "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
             )
 
+        logger = self.get_logger()
+        logging.basicConfig()
+
         if debug:
-            logging.basicConfig(level=logging.DEBUG)
+            logger.setLevel(logging.DEBUG)
+        else:
+            logger.setLevel(logging.INFO)
 
         spec = _HyperPodPytorchJob(**self.model_dump(by_alias=True, exclude_none=True))
 
@@ -51,7 +60,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
         }
 
         custom_api = client.CustomObjectsApi()
-        logging.debug(
+        logger.debug(
             "Deploying HyperPodPytorchJob with config:\n",
             yaml.dump(config),
             sep="",
@@ -65,9 +74,9 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
                 plural=PLURAL,
                 body=config,
             )
-            logging.debug("Successful submitted HyperPodPytorchJob!")
+            logger.debug("Successful submitted HyperPodPytorchJob!")
         except Exception as e:
-            logging.debug(f"Failed to create HyperPodPytorchJob {self.metadata.name}!")
+            logger.debug(f"Failed to create HyperPodPytorchJob {self.metadata.name}!")
             handle_exception(e, self.metadata.name, self.metadata.namespace)
 
     @classmethod
@@ -88,7 +97,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             )
             return _load_hp_job_list(hp_job_list)
         except Exception as e:
-            logging.debug(f"Failed to list HyperpodPytorchJobs!")
+            cls.get_logger().debug(f"Failed to list HyperpodPytorchJobs!")
             handle_exception(e, "", namespace)
 
     def delete(self):
@@ -107,9 +116,11 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
                 plural=PLURAL,
                 name=self.metadata.name,
             )
-            logging.debug(f"Successful deleted HyperPodPytorchJob!")
+            self.get_logger().debug(f"Successful deleted HyperPodPytorchJob!")
         except Exception as e:
-            logging.debug(f"Failed to delete HyperPodPytorchJob {self.metadata.name}!")
+            self.get_logger().debug(
+                f"Failed to delete HyperPodPytorchJob {self.metadata.name}!"
+            )
             handle_exception(e, self.metadata.name, self.metadata.namespace)
 
     @classmethod
@@ -131,7 +142,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             )
             return _load_hp_job(response)
         except Exception as e:
-            logging.debug(f"Failed to describe HyperPodPytorchJob {name}: {e}")
+            cls.get_logger().debug(f"Failed to describe HyperPodPytorchJob {name}: {e}")
             handle_exception(e, name, namespace)
 
     def refresh(self) -> "HyperPodPytorchJob":
@@ -154,7 +165,9 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
                 response["status"], by_name=True
             )
         except Exception as e:
-            logging.debug(f"Failed to refresh HyperPodPytorchJob {self.metadata.name}!")
+            self.get_logger().debug(
+                f"Failed to refresh HyperPodPytorchJob {self.metadata.name}!"
+            )
             handle_exception(e, self.metadata.name, self.metadata.namespace)
 
     def list_pods(self) -> List[str]:
@@ -175,7 +188,9 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
                     pods.append(pod.metadata.name)
             return pods
         except Exception as e:
-            logging.debug(f"Failed to list pod in namespace {self.metadata.namespace}!")
+            self.get_logger().debug(
+                f"Failed to list pod in namespace {self.metadata.namespace}!"
+            )
             handle_exception(e, self.metadata.name, self.metadata.namespace)
 
     def get_logs_from_pod(self, pod_name: str, container: Optional[str] = None) -> str:
@@ -200,7 +215,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             )
             return logs
         except Exception as e:
-            logging.debug(f"Failed to get logs from pod {pod_name}!")
+            self.get_logger().debug(f"Failed to get logs from pod {pod_name}!")
             handle_exception(e, self.metadata.name, self.metadata.namespace)
 
 
