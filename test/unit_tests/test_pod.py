@@ -14,17 +14,14 @@ import unittest
 from unittest import mock
 from unittest.mock import MagicMock
 
-import click
 from click.testing import CliRunner
 
-from hyperpod_cli.commands.pod import (
+from sagemaker.hyperpod.cli.commands.pod import (
     exec,
     get_log,
 )
-from hyperpod_cli.service.exec_command import (
-    ExecCommand,
-)
-from hyperpod_cli.service.get_logs import GetLogs
+from sagemaker.hyperpod.cli.service.exec_command import ExecCommand
+from sagemaker.hyperpod.cli.service.get_logs import GetLogs
 
 
 class PodTest(unittest.TestCase):
@@ -33,9 +30,9 @@ class PodTest(unittest.TestCase):
         self.mock_get_job_log = MagicMock(spec=GetLogs)
         self.mock_exec_command = MagicMock(spec=ExecCommand)
 
-    @mock.patch("hyperpod_cli.service.get_logs.GetLogs")
-    @mock.patch("hyperpod_cli.service.get_logs.GetLogs.get_training_job_logs")
-    @mock.patch("hyperpod_cli.service.get_logs.GetLogs.generate_cloudwatch_link")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_logs.GetLogs")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_logs.GetLogs.get_training_job_logs")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_logs.GetLogs.generate_cloudwatch_link")
     def test_get_logs_happy_case(
         self,
         mock_get_logs_service_and_generate_cloudwatch_link: mock.Mock,
@@ -56,9 +53,9 @@ class PodTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
-    @mock.patch("hyperpod_cli.service.get_logs.GetLogs")
-    @mock.patch("hyperpod_cli.service.get_logs.GetLogs.get_training_job_logs")
-    @mock.patch("hyperpod_cli.service.get_logs.GetLogs.generate_cloudwatch_link")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_logs.GetLogs")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_logs.GetLogs.get_training_job_logs")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_logs.GetLogs.generate_cloudwatch_link")
     @mock.patch("logging.Logger.debug")
     def test_get_logs_happy_case_debug_mode(
         self,
@@ -84,9 +81,9 @@ class PodTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         mock_debug.assert_called()
 
-    @mock.patch("hyperpod_cli.service.get_logs.GetLogs")
-    @mock.patch("hyperpod_cli.service.get_logs.GetLogs.get_training_job_logs")
-    @mock.patch("hyperpod_cli.service.get_logs.GetLogs.generate_cloudwatch_link")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_logs.GetLogs")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_logs.GetLogs.get_training_job_logs")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_logs.GetLogs.generate_cloudwatch_link")
     def test_describe_job_happy_case_with_namespace(
         self,
         mock_get_logs_service_and_generate_cloudwatch_link: mock.Mock,
@@ -140,8 +137,8 @@ class PodTest(unittest.TestCase):
         )
         self.assertEqual(2, result.exit_code)
 
-    @mock.patch("hyperpod_cli.service.get_logs.GetLogs")
-    @mock.patch("hyperpod_cli.service.get_logs.GetLogs.get_training_job_logs")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_logs.GetLogs")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_logs.GetLogs.get_training_job_logs")
     def test_describe_job_when_subprocess_command_gives_exception(
         self,
         mock_get_logs_service_and_get_logs: mock.Mock,
@@ -164,8 +161,8 @@ class PodTest(unittest.TestCase):
             result.output,
         )
 
-    @mock.patch("hyperpod_cli.service.exec_command.ExecCommand")
-    @mock.patch("hyperpod_cli.service.exec_command.ExecCommand.exec_command")
+    @mock.patch("sagemaker.hyperpod.cli.service.exec_command.ExecCommand")
+    @mock.patch("sagemaker.hyperpod.cli.service.exec_command.ExecCommand.exec_command")
     def test_exec_command_happy_case(
         self,
         mock_exec_command_service_and_exec_command: mock.Mock,
@@ -186,8 +183,8 @@ class PodTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
-    @mock.patch("hyperpod_cli.service.exec_command.ExecCommand")
-    @mock.patch("hyperpod_cli.service.exec_command.ExecCommand.exec_command")
+    @mock.patch("sagemaker.hyperpod.cli.service.exec_command.ExecCommand")
+    @mock.patch("sagemaker.hyperpod.cli.service.exec_command.ExecCommand.exec_command")
     @mock.patch("logging.Logger.debug")
     def test_exec_command_happy_case_debug_mode(
         self,
@@ -212,8 +209,8 @@ class PodTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         mock_debug.assert_called()
 
-    @mock.patch("hyperpod_cli.service.exec_command.ExecCommand")
-    @mock.patch("hyperpod_cli.service.exec_command.ExecCommand.exec_command")
+    @mock.patch("sagemaker.hyperpod.cli.service.exec_command.ExecCommand")
+    @mock.patch("sagemaker.hyperpod.cli.service.exec_command.ExecCommand.exec_command")
     def test_exec_command_all_pods(
         self,
         mock_exec_command_service_and_exec_command: mock.Mock,
@@ -233,8 +230,8 @@ class PodTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
-    @mock.patch("hyperpod_cli.service.exec_command.ExecCommand")
-    @mock.patch("hyperpod_cli.service.exec_command.ExecCommand.exec_command")
+    @mock.patch("sagemaker.hyperpod.cli.service.exec_command.ExecCommand")
+    @mock.patch("sagemaker.hyperpod.cli.service.exec_command.ExecCommand.exec_command")
     def test_exec_command_all_pods_with_namespace(
         self,
         mock_exec_command_service_and_exec_command: mock.Mock,
@@ -256,8 +253,8 @@ class PodTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
-    @mock.patch("hyperpod_cli.service.exec_command.ExecCommand")
-    @mock.patch("hyperpod_cli.service.exec_command.ExecCommand.exec_command")
+    @mock.patch("sagemaker.hyperpod.cli.service.exec_command.ExecCommand")
+    @mock.patch("sagemaker.hyperpod.cli.service.exec_command.ExecCommand.exec_command")
     def test_exec_command_all_pods_throw_Exception(
         self,
         mock_exec_command_service_and_exec_command: mock.Mock,

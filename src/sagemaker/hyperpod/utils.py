@@ -1,4 +1,3 @@
-import json
 import re
 from typing import Optional
 
@@ -8,7 +7,7 @@ import yaml
 from sagemaker.hyperpod.constants import AMAZON_HYPERPOD_OBSERVABILITY, GRAFANA_DASHBOARD_UID
 from sagemaker.hyperpod.observability.MonitoringConfig import MonitoringConfig
 # ToDO : move below functions to SDK util method instead of importing from CLI
-from hyperpod_cli.utils import get_eks_cluster_name, get_hyperpod_cluster_region
+from sagemaker.hyperpod.cli.utils import get_eks_cluster_name, get_hyperpod_cluster_region
 
 def is_observability_addon_enabled(eks_cluster_name):
     response = boto3.client("eks").list_addons(clusterName=eks_cluster_name, maxResults=50)

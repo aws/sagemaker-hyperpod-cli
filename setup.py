@@ -32,7 +32,7 @@ subprocess.call(
 # subdirectory structure if they exist.
 sagemaker_hyperpod_recipes = []
 for root, dirs, files in os.walk(
-    "src/hyperpod_cli/sagemaker_hyperpod_recipes"
+        "src/sagemaker/hyperpod/cli/sagemaker_hyperpod_recipes"
 ):
     sagemaker_hyperpod_recipes.append(
         (
@@ -74,6 +74,7 @@ setup(
         "tox==4.18.0",
         "ruff==0.6.2",
         "hera-workflows==5.16.3",
+        "sagemaker-core<2.0.0"
     ],
     entry_points={
         "console_scripts": [

@@ -13,18 +13,17 @@
 import unittest
 import click
 import subprocess
-import pytest
 import os
 import yaml
 from unittest import mock
-from unittest.mock import MagicMock, mock_open
+from unittest.mock import MagicMock
 
 from click.testing import CliRunner
 from kubernetes.client import (
     V1Namespace, 
     V1ObjectMeta,
 )
-from hyperpod_cli.commands.job import (
+from sagemaker.hyperpod.cli.commands.job import (
     cancel_job,
     get_job,
     get_user_name,
@@ -35,18 +34,10 @@ from hyperpod_cli.commands.job import (
     suppress_standard_output_context,
     validate_only_config_file_argument,
 )
-from hyperpod_cli.service.cancel_training_job import (
-    CancelTrainingJob,
-)
-from hyperpod_cli.service.get_training_job import (
-    GetTrainingJob,
-)
-from hyperpod_cli.service.list_pods import (
-    ListPods,
-)
-from hyperpod_cli.service.list_training_jobs import (
-    ListTrainingJobs,
-)
+from sagemaker.hyperpod.cli.service.cancel_training_job import CancelTrainingJob
+from sagemaker.hyperpod.cli.service.get_training_job import GetTrainingJob
+from sagemaker.hyperpod.cli.service.list_pods import ListPods
+from sagemaker.hyperpod.cli.service.list_training_jobs import ListTrainingJobs
 
 VALID_CONFIG_FILE_DATA = "cluster:\n  cluster_type: k8s\n  instance_type: ml.g5.xlarge\n  cluster_config: {pullPolicy: IfNotPresent}"
 
@@ -62,8 +53,8 @@ class JobTest(unittest.TestCase):
         # Patch gettext for now because see some issues locally for localization
         mock.patch("gettext.dgettext", lambda domain, message: message).start()
         
-    @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob")
-    @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob.get_training_job")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_training_job.GetTrainingJob")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_training_job.GetTrainingJob.get_training_job")
     def test_get_job_happy_case(
         self,
         mock_get_training_job_service_and_get_job: mock.Mock,
@@ -75,8 +66,8 @@ class JobTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("example-job", result.output)
 
-    @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob")
-    @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob.get_training_job")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_training_job.GetTrainingJob")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_training_job.GetTrainingJob.get_training_job")
     @mock.patch("logging.Logger.debug")
     def test_get_job_happy_case_debug_mode(
         self,
@@ -91,8 +82,8 @@ class JobTest(unittest.TestCase):
         self.assertIn("example-job", result.output)
         mock_debug.assert_called()
 
-    @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob")
-    @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob.get_training_job")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_training_job.GetTrainingJob")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_training_job.GetTrainingJob.get_training_job")
     def test_get_job_happy_case_with_namespace(
         self,
         mock_get_training_job_service_and_get_job: mock.Mock,
@@ -112,8 +103,8 @@ class JobTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("example-job", result.output)
 
-    @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob")
-    @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob.get_training_job")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_training_job.GetTrainingJob")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_training_job.GetTrainingJob.get_training_job")
     def test_get_job_happy_case_with_namespace_and_verbose(
         self,
         mock_get_training_job_service_and_get_job: mock.Mock,
@@ -134,8 +125,8 @@ class JobTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("example-job", result.output)
 
-    @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob")
-    @mock.patch("hyperpod_cli.service.get_training_job.GetTrainingJob.get_training_job")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_training_job.GetTrainingJob")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_training_job.GetTrainingJob.get_training_job")
     def test_get_job_when_subprocess_command_gives_exception(
         self,
         mock_get_training_job_service_and_get_job: mock.Mock,
@@ -150,9 +141,9 @@ class JobTest(unittest.TestCase):
             result.output,
         )
 
-    @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_training_jobs.ListTrainingJobs")
     @mock.patch(
-        "hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
+        "sagemaker.hyperpod.cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
     )
     def test_list_job_happy_case(
         self,
@@ -165,9 +156,9 @@ class JobTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("jobs", result.output)
 
-    @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_training_jobs.ListTrainingJobs")
     @mock.patch(
-        "hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
+        "sagemaker.hyperpod.cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
     )
     @mock.patch("logging.Logger.debug")
     def test_list_job_happy_case_debug_mode(
@@ -183,9 +174,9 @@ class JobTest(unittest.TestCase):
         self.assertIn("jobs", result.output)
         mock_debug.assert_called()
 
-    @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_training_jobs.ListTrainingJobs")
     @mock.patch(
-        "hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
+        "sagemaker.hyperpod.cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
     )
     def test_list_job_happy_case_with_namespace(
         self,
@@ -198,9 +189,9 @@ class JobTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("jobs", result.output)
 
-    @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_training_jobs.ListTrainingJobs")
     @mock.patch(
-        "hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
+        "sagemaker.hyperpod.cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
     )
     def test_list_job_happy_case_with_all_namespace(
         self,
@@ -213,9 +204,9 @@ class JobTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("jobs", result.output)
 
-    @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_training_jobs.ListTrainingJobs")
     @mock.patch(
-        "hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
+        "sagemaker.hyperpod.cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
     )
     def test_list_job_happy_case_with_all_namespace_and_selector(
         self,
@@ -228,9 +219,9 @@ class JobTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("jobs", result.output)
 
-    @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_training_jobs.ListTrainingJobs")
     @mock.patch(
-        "hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
+        "sagemaker.hyperpod.cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
     )
     def test_list_job_happy_case_with_bad_field(
         self,
@@ -242,9 +233,9 @@ class JobTest(unittest.TestCase):
         result = self.runner.invoke(list_jobs, ["--job-name", "kubeflow"])
         self.assertEqual(result.exit_code, 2)
 
-    @mock.patch("hyperpod_cli.service.list_training_jobs.ListTrainingJobs")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_training_jobs.ListTrainingJobs")
     @mock.patch(
-        "hyperpod_cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
+        "sagemaker.hyperpod.cli.service.list_training_jobs.ListTrainingJobs.list_training_jobs"
     )
     def test_list_job_when_subprocess_command_gives_exception(
         self,
@@ -260,7 +251,7 @@ class JobTest(unittest.TestCase):
             result.output,
         )
     
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     def test_list_job_when_namespace_not_exist(
         self,
         mock_kubernetes_client: mock.Mock,
@@ -272,8 +263,8 @@ class JobTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 1)
         self.assertIn("Namespace abcdef does not exist!", result.output)
 
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods.list_pods_for_training_job")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods.list_pods_for_training_job")
     def test_list_pods_happy_case(
         self,
         mock_list_training_job_service_and_list_jobs: mock.Mock,
@@ -287,8 +278,8 @@ class JobTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods.list_pods_for_training_job")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods.list_pods_for_training_job")
     @mock.patch("logging.Logger.debug")
     def test_list_pods_happy_case_debug_mode(
         self,
@@ -309,8 +300,8 @@ class JobTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         mock_debug.assert_called()
 
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods.list_pods_for_training_job")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods.list_pods_for_training_job")
     def test_list_pods_happy_case_with_namespace(
         self,
         mock_list_training_job_service_and_list_jobs: mock.Mock,
@@ -339,8 +330,8 @@ class JobTest(unittest.TestCase):
             result.output,
         )
 
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods.list_pods_for_training_job")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods.list_pods_for_training_job")
     def test_list_pods_when_subprocess_command_gives_exception(
         self,
         mock_list_training_job_service_and_list_jobs: mock.Mock,
@@ -358,9 +349,9 @@ class JobTest(unittest.TestCase):
             result.output,
         )
 
-    @mock.patch("hyperpod_cli.service.cancel_training_job.CancelTrainingJob")
+    @mock.patch("sagemaker.hyperpod.cli.service.cancel_training_job.CancelTrainingJob")
     @mock.patch(
-        "hyperpod_cli.service.cancel_training_job.CancelTrainingJob.cancel_training_job"
+        "sagemaker.hyperpod.cli.service.cancel_training_job.CancelTrainingJob.cancel_training_job"
     )
     def test_cancel_job_happy_case(
         self,
@@ -376,9 +367,9 @@ class JobTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("{}\n", result.output)
 
-    @mock.patch("hyperpod_cli.service.cancel_training_job.CancelTrainingJob")
+    @mock.patch("sagemaker.hyperpod.cli.service.cancel_training_job.CancelTrainingJob")
     @mock.patch(
-        "hyperpod_cli.service.cancel_training_job.CancelTrainingJob.cancel_training_job"
+        "sagemaker.hyperpod.cli.service.cancel_training_job.CancelTrainingJob.cancel_training_job"
     )
     @mock.patch("logging.Logger.debug")
     def test_cancel_job_happy_case_debug_mode(
@@ -401,9 +392,9 @@ class JobTest(unittest.TestCase):
         self.assertIn("{}\n", result.output)
         mock_debug.assert_called()
 
-    @mock.patch("hyperpod_cli.service.cancel_training_job.CancelTrainingJob")
+    @mock.patch("sagemaker.hyperpod.cli.service.cancel_training_job.CancelTrainingJob")
     @mock.patch(
-        "hyperpod_cli.service.cancel_training_job.CancelTrainingJob.cancel_training_job"
+        "sagemaker.hyperpod.cli.service.cancel_training_job.CancelTrainingJob.cancel_training_job"
     )
     def test_cancel_job_happy_case_with_namespace(
         self,
@@ -433,9 +424,9 @@ class JobTest(unittest.TestCase):
             result.output,
         )
 
-    @mock.patch("hyperpod_cli.service.cancel_training_job.CancelTrainingJob")
+    @mock.patch("sagemaker.hyperpod.cli.service.cancel_training_job.CancelTrainingJob")
     @mock.patch(
-        "hyperpod_cli.service.cancel_training_job.CancelTrainingJob.cancel_training_job"
+        "sagemaker.hyperpod.cli.service.cancel_training_job.CancelTrainingJob.cancel_training_job"
     )
     def test_cancel_job_when_subprocess_command_gives_exception(
         self,
@@ -458,9 +449,9 @@ class JobTest(unittest.TestCase):
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args(
         self,
@@ -510,9 +501,9 @@ class JobTest(unittest.TestCase):
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_default_label_selector_config(
         self,
@@ -593,9 +584,9 @@ class JobTest(unittest.TestCase):
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_label_selector_preferred_instance_type(
         self,
@@ -673,9 +664,9 @@ class JobTest(unittest.TestCase):
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_with_namespace(
         self,
@@ -723,9 +714,9 @@ class JobTest(unittest.TestCase):
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
     @mock.patch("logging.Logger.debug")
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_debug_mode(
         self,
@@ -773,9 +764,9 @@ class JobTest(unittest.TestCase):
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_gpu(
         self,
@@ -820,9 +811,9 @@ class JobTest(unittest.TestCase):
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_custom_label_selection(
         self,
@@ -866,8 +857,8 @@ class JobTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
 
     @mock.patch("yaml.dump")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_label_selection_not_json_str(
         self,
@@ -900,8 +891,8 @@ class JobTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 1)
 
     @mock.patch("yaml.dump")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_pre_script_and_post_script(
         self,
@@ -947,8 +938,8 @@ class JobTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 1)
 
     @mock.patch("yaml.dump")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_label_selection_invalid_values(
         self,
@@ -980,15 +971,15 @@ class JobTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 1)
 
-    @mock.patch("hyperpod_cli.commands.job.validate_yaml_content")
-    @mock.patch("hyperpod_cli.commands.job.verify_and_load_yaml")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.validate_yaml_content")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.verify_and_load_yaml")
     @mock.patch('subprocess.run')
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_config_file(
         self,
@@ -1025,15 +1016,15 @@ class JobTest(unittest.TestCase):
         print(result.exception)
         self.assertEqual(result.exit_code, 0)
 
-    @mock.patch("hyperpod_cli.commands.job.validate_yaml_content")
-    @mock.patch("hyperpod_cli.commands.job.verify_and_load_yaml")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.validate_yaml_content")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.verify_and_load_yaml")
     @mock.patch('subprocess.run')
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_config_file_absolute_path(
         self,
@@ -1071,8 +1062,8 @@ class JobTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
 
     @mock.patch("yaml.safe_load")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_invalid_template(
         self,
@@ -1102,7 +1093,7 @@ class JobTest(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 1)
 
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_aws_credentials_error(
         self,
@@ -1129,7 +1120,7 @@ class JobTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 1)
 
     @mock.patch("os.path.exists", return_value=False)
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("os.path.isabs", return_value=True)
     @mock.patch(
         "os.path.split",
@@ -1138,7 +1129,7 @@ class JobTest(unittest.TestCase):
             "file.yaml",
         ),
     )
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_invalid_config_file_path(
         self,
@@ -1163,7 +1154,7 @@ class JobTest(unittest.TestCase):
 
     @mock.patch("os.path.exists")
     @mock.patch("os.path.join")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("os.path.isabs", return_value=True)
     @mock.patch(
         "os.path.split",
@@ -1172,7 +1163,7 @@ class JobTest(unittest.TestCase):
             "file.yaml",
         ),
     )
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_invalid_config_file(
         self,
@@ -1202,9 +1193,9 @@ class JobTest(unittest.TestCase):
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_command_failed(
         self,
@@ -1245,7 +1236,7 @@ class JobTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 1)
 
     @mock.patch(
-        "hyperpod_cli.validators.job_validator.JobValidator.validate_start_job_args",
+        "sagemaker.hyperpod.cli.validators.job_validator.JobValidator.validate_start_job_args",
         return_value=False,
     )
     def test_start_job_with_invalid_args(self, mock_validate):
@@ -1266,9 +1257,9 @@ class JobTest(unittest.TestCase):
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_auto_resume_enabled(
         self,
@@ -1315,9 +1306,9 @@ class JobTest(unittest.TestCase):
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_deep_health_check_passed_nodes_only(
         self,
@@ -1364,9 +1355,9 @@ class JobTest(unittest.TestCase):
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_with_kueue(
         self,
@@ -1415,9 +1406,9 @@ class JobTest(unittest.TestCase):
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_with_kueue_invalid(
         self,
@@ -1465,9 +1456,9 @@ class JobTest(unittest.TestCase):
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_with_service_account(
         self,
@@ -1514,9 +1505,9 @@ class JobTest(unittest.TestCase):
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_with_persistent_volume_claims(
         self,
@@ -1563,9 +1554,9 @@ class JobTest(unittest.TestCase):
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_with_local_volume(
         self,
@@ -1611,13 +1602,13 @@ class JobTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
 
     @mock.patch("subprocess.run")
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_namespace_auto_discover(
         self,
@@ -1662,17 +1653,17 @@ class JobTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
     
     @mock.patch('subprocess.run')
-    @mock.patch("hyperpod_cli.commands.job._get_auto_fill_queue_name")
-    @mock.patch("hyperpod_cli.commands.job.validate_yaml_content")
-    @mock.patch("hyperpod_cli.commands.job.verify_and_load_yaml")
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job._get_auto_fill_queue_name")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.validate_yaml_content")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.verify_and_load_yaml")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_namespace_auto_fill_queue_name(
         self,
@@ -1734,14 +1725,14 @@ class JobTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
 
     @mock.patch("subprocess.run")
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_cli_args_namespace_with_priority(
         self,
@@ -1797,8 +1788,8 @@ class JobTest(unittest.TestCase):
         self.assertIn("'kueue.x-k8s.io/priority-class': 'test-priority'", str(args[0]))
         self.assertEqual(result.exit_code, 0)
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
     def test_patch_job_with_namespace_success(self, mock_discover_accessible_namespace, mock_kubernetes_client):
         mock_client = MagicMock()
         mock_kubernetes_client.return_value = mock_client
@@ -1834,8 +1825,8 @@ class JobTest(unittest.TestCase):
 
         self.assertEqual(("test-workload-name", "test-namespace", {'spec': {'active': False}}), args)
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
     def test_patch_job_unsupported_patch_type(self, mock_discover_accessible_namespace, mock_kubernetes_client):
         mock_client = MagicMock()
         mock_kubernetes_client.return_value = mock_client
@@ -1867,8 +1858,8 @@ class JobTest(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 1)
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
     def test_patch_job_invalid_number_workloads(self, mock_discover_accessible_namespace, mock_kubernetes_client):
         mock_client = MagicMock()
         mock_kubernetes_client.return_value = mock_client
@@ -1965,9 +1956,9 @@ class JobTest(unittest.TestCase):
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_recipe(
         self,
@@ -2004,9 +1995,9 @@ class JobTest(unittest.TestCase):
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_recipe_and_override_parameters(
         self,
@@ -2051,9 +2042,9 @@ class JobTest(unittest.TestCase):
     @mock.patch("yaml.dump")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_recipe_invalid_override_parameters(
         self,
@@ -2093,9 +2084,9 @@ class JobTest(unittest.TestCase):
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.remove", return_value=None)
     @mock.patch("logging.Logger.debug")
-    @mock.patch("hyperpod_cli.utils.get_cluster_console_url")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.commands.job.JobValidator")
+    @mock.patch("sagemaker.hyperpod.cli.utils.get_cluster_console_url")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.commands.job.JobValidator")
     @mock.patch("boto3.Session")
     def test_start_job_with_recipe_debug_mode(
         self,

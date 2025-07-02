@@ -16,7 +16,7 @@ import time
 
 import pytest
 
-from hyperpod_cli.utils import setup_logger
+from sagemaker.hyperpod.cli.utils import setup_logger
 from test.integration_tests.abstract_integration_tests import (
     AbstractIntegrationTests,
 )
