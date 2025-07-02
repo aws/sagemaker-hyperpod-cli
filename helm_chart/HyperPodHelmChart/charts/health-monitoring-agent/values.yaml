@@ -1,2 +1,2 @@
 namespace: "aws-hyperpod"
-hmaimage: "905418368575.dkr.ecr.us-west-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.448.0_1.0.115.0"
+hmaimage: "905418368575.dkr.ecr.us-west-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.552.0_1.0.161.0"
