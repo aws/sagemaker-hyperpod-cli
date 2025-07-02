@@ -144,6 +144,9 @@ class TestTrainingCommands(unittest.TestCase):
         mock_hyperpod_pytorch_job.list.assert_called_once_with(
             namespace="test-namespace"
         )
+        self.assertIn("NAME", result.output)
+        self.assertIn("job1", result.output)
+        self.assertIn("job2", result.output)
 
     @patch("sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob")
     def test_list_jobs_empty(self, mock_hyperpod_pytorch_job):
