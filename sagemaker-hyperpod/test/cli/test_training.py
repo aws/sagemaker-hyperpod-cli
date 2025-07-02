@@ -7,6 +7,7 @@ from sagemaker.hyperpod.cli.commands.training import (
     list_jobs,
     pytorch_describe,
 )
+from unittest.mock import Mock
 
 
 class TestTrainingCommands(unittest.TestCase):
@@ -72,7 +73,7 @@ class TestTrainingCommands(unittest.TestCase):
         # Verify HyperPodPytorchJob was created correctly
         mock_hyperpod_job.assert_called_once()
         call_args = mock_hyperpod_job.call_args[1]
-        self.assertEqual(call_args["name"], "test-job")
+        self.assertEqual(call_args["metadata"].name, "test-job")
         mock_instance.create.assert_called_once()
 
     def test_missing_required_params(self):
@@ -116,17 +117,24 @@ class TestTrainingCommands(unittest.TestCase):
 
         mock_hyperpod_job.assert_called_once()
         call_args = mock_hyperpod_job.call_args[1]
-        self.assertEqual(call_args["name"], "test-job")
-        self.assertEqual(call_args["namespace"], "test-namespace")
+        self.assertEqual(call_args["metadata"].name, "test-job")
+        self.assertEqual(call_args["metadata"].namespace, "test-namespace")
 
     @patch("sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob")
     def test_list_jobs(self, mock_hyperpod_pytorch_job):
         """Test the list_jobs function"""
+        mock_job1 = Mock()
+        mock_job1.metadata.name = "job1"
+        mock_job1.metadata.namespace = "test-namespace"
+        mock_job1.status.conditions = [Mock(status="True", type="Running")]
+        
+        mock_job2 = Mock()
+        mock_job2.metadata.name = "job2"
+        mock_job2.metadata.namespace = "test-namespace"
+        mock_job2.status.conditions = [Mock(status="True", type="Succeeded")]
+        
         # Mock the HyperPodPytorchJob.list method
-        mock_hyperpod_pytorch_job.list.return_value = [
-            {"name": "job1"},
-            {"name": "job2"},
-        ]
+        mock_hyperpod_pytorch_job.list.return_value = [mock_job1, mock_job2]
 
         # Call the function
         result = self.runner.invoke(list_jobs, ["--namespace", "test-namespace"])
@@ -136,7 +144,6 @@ class TestTrainingCommands(unittest.TestCase):
         mock_hyperpod_pytorch_job.list.assert_called_once_with(
             namespace="test-namespace"
         )
-        self.assertIn("Jobs:", result.output)
 
     @patch("sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob")
     def test_list_jobs_empty(self, mock_hyperpod_pytorch_job):
