@@ -79,7 +79,6 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "hyperpod=sagemaker.hyperpod.cli.hyperpod_cli:cli",
             "hyp=sagemaker.hyperpod.cli.hyp_cli:cli",
         ],
     },
