@@ -127,12 +127,12 @@ class TestTrainingCommands(unittest.TestCase):
         mock_job1.metadata.name = "job1"
         mock_job1.metadata.namespace = "test-namespace"
         mock_job1.status.conditions = [Mock(status="True", type="Running")]
-        
+
         mock_job2 = Mock()
         mock_job2.metadata.name = "job2"
         mock_job2.metadata.namespace = "test-namespace"
         mock_job2.status.conditions = [Mock(status="True", type="Succeeded")]
-        
+
         # Mock the HyperPodPytorchJob.list method
         mock_hyperpod_pytorch_job.list.return_value = [mock_job1, mock_job2]
 

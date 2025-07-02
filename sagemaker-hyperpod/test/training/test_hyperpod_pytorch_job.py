@@ -52,7 +52,9 @@ class TestHyperPodPytorchJob(unittest.TestCase):
             run_policy=run_policy,
         )
 
-    @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection")
+    @patch(
+        "sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection"
+    )
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.client.CustomObjectsApi")
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.logging")
     def test_create_success(self, mock_logging, mock_custom_api, mock_validate):
@@ -68,7 +70,9 @@ class TestHyperPodPytorchJob(unittest.TestCase):
         mock_api_instance.create_namespaced_custom_object.assert_called_once()
         mock_logging.debug.assert_called()
 
-    @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection")
+    @patch(
+        "sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection"
+    )
     def test_create_cluster_connection_failure(self, mock_validate):
         """Test job creation with cluster connection failure"""
         mock_validate.return_value = False
@@ -76,25 +80,35 @@ class TestHyperPodPytorchJob(unittest.TestCase):
         with self.assertRaises(Exception) as context:
             self.job.create()
 
-        self.assertIn("Failed to connect to the Kubernetes cluster", str(context.exception))
+        self.assertIn(
+            "Failed to connect to the Kubernetes cluster", str(context.exception)
+        )
 
-    @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection")
+    @patch(
+        "sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection"
+    )
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.client.CustomObjectsApi")
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.handle_exception")
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.logging")
-    def test_create_api_exception(self, mock_logging, mock_handle_exception, mock_custom_api, mock_validate):
+    def test_create_api_exception(
+        self, mock_logging, mock_handle_exception, mock_custom_api, mock_validate
+    ):
         """Test job creation with API exception"""
         mock_validate.return_value = True
         mock_api_instance = MagicMock()
         mock_custom_api.return_value = mock_api_instance
-        mock_api_instance.create_namespaced_custom_object.side_effect = ApiException(status=409)
+        mock_api_instance.create_namespaced_custom_object.side_effect = ApiException(
+            status=409
+        )
 
         self.job.create()
 
         mock_handle_exception.assert_called_once()
         mock_logging.debug.assert_called()
 
-    @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection")
+    @patch(
+        "sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection"
+    )
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.client.CustomObjectsApi")
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job._load_hp_job_list")
     def test_list_success(self, mock_load_list, mock_custom_api, mock_validate):
@@ -104,7 +118,9 @@ class TestHyperPodPytorchJob(unittest.TestCase):
         mock_custom_api.return_value = mock_api_instance
         mock_response = {"items": [{"metadata": {"name": "test-job"}}]}
         mock_api_instance.list_namespaced_custom_object.return_value = mock_response
-        mock_load_list.return_value = [HyperPodPytorchJob(metadata=Metadata(name="test-job"))]
+        mock_load_list.return_value = [
+            HyperPodPytorchJob(metadata=Metadata(name="test-job"))
+        ]
 
         result = HyperPodPytorchJob.list("test-namespace")
 
@@ -116,9 +132,13 @@ class TestHyperPodPytorchJob(unittest.TestCase):
             plural="hyperpodpytorchjobs",
         )
         mock_load_list.assert_called_once_with(mock_response)
-        self.assertEqual(result, [HyperPodPytorchJob(metadata=Metadata(name="test-job"))])
+        self.assertEqual(
+            result, [HyperPodPytorchJob(metadata=Metadata(name="test-job"))]
+        )
 
-    @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection")
+    @patch(
+        "sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection"
+    )
     def test_list_cluster_connection_failure(self, mock_validate):
         """Test job listing with cluster connection failure"""
         mock_validate.return_value = False
@@ -126,9 +146,13 @@ class TestHyperPodPytorchJob(unittest.TestCase):
         with self.assertRaises(Exception) as context:
             HyperPodPytorchJob.list()
 
-        self.assertIn("Failed to connect to the Kubernetes cluster", str(context.exception))
+        self.assertIn(
+            "Failed to connect to the Kubernetes cluster", str(context.exception)
+        )
 
-    @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection")
+    @patch(
+        "sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection"
+    )
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.client.CustomObjectsApi")
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.logging")
     def test_delete_success(self, mock_logging, mock_custom_api, mock_validate):
@@ -148,7 +172,9 @@ class TestHyperPodPytorchJob(unittest.TestCase):
         )
         mock_logging.debug.assert_called()
 
-    @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection")
+    @patch(
+        "sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection"
+    )
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.client.CustomObjectsApi")
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job._load_hp_job")
     def test_get_success(self, mock_load_job, mock_custom_api, mock_validate):
@@ -198,7 +224,9 @@ class TestHyperPodPytorchJob(unittest.TestCase):
         mock_load_job.assert_called_once_with(mock_response)
         self.assertEqual(result, expected_job)
 
-    @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection")
+    @patch(
+        "sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection"
+    )
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.client.CustomObjectsApi")
     def test_refresh_success(self, mock_custom_api, mock_validate):
         """Test successful job refresh"""
@@ -221,7 +249,9 @@ class TestHyperPodPytorchJob(unittest.TestCase):
         )
         self.assertIsInstance(self.job.status, HyperPodPytorchJobStatus)
 
-    @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection")
+    @patch(
+        "sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection"
+    )
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.config.load_kube_config")
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.client.CoreV1Api")
     def test_list_pods_success(self, mock_core_api, mock_load_config, mock_validate):
@@ -248,10 +278,14 @@ class TestHyperPodPytorchJob(unittest.TestCase):
         mock_api_instance.list_namespaced_pod.assert_called_once_with("default")
         self.assertEqual(result, ["test-job-pod-0", "test-job-pod-1"])
 
-    @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection")
+    @patch(
+        "sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection"
+    )
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.config.load_kube_config")
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.client.CoreV1Api")
-    def test_get_logs_from_pod_success(self, mock_core_api, mock_load_config, mock_validate):
+    def test_get_logs_from_pod_success(
+        self, mock_core_api, mock_load_config, mock_validate
+    ):
         """Test successful log retrieval from pod"""
         mock_validate.return_value = True
         mock_api_instance = MagicMock()
@@ -268,10 +302,14 @@ class TestHyperPodPytorchJob(unittest.TestCase):
         )
         self.assertEqual(result, "test logs")
 
-    @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection")
+    @patch(
+        "sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection"
+    )
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.config.load_kube_config")
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.client.CoreV1Api")
-    def test_get_logs_from_pod_with_container_name(self, mock_core_api, mock_load_config, mock_validate):
+    def test_get_logs_from_pod_with_container_name(
+        self, mock_core_api, mock_load_config, mock_validate
+    ):
         """Test log retrieval with specific container name"""
         mock_validate.return_value = True
         mock_api_instance = MagicMock()

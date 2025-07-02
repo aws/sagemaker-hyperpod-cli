@@ -20,6 +20,10 @@ import yaml
 
 class HPEndpointBase:
     @classmethod
+    def get_logger(cls):
+        return logging.getLogger(__name__)
+
+    @classmethod
     def get_current_region(cls):
         eks_arn = HyperPodManager.get_context()
         eks_arn_pattern = r"arn:aws:eks:([\w-]+):\d+:cluster/[\w-]+"
@@ -45,6 +49,8 @@ class HPEndpointBase:
                 "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
             )
 
+        logger = cls.get_logger()
+
         custom_api = client.CustomObjectsApi()
 
         body = {
@@ -54,7 +60,7 @@ class HPEndpointBase:
             "spec": spec.model_dump(exclude_none=True),
         }
 
-        logging.debug("Deploying endpoint with config:\n%s", yaml.dump(body))
+        logger.debug("Creating endpoint with config:\n%s", yaml.dump(body))
 
         try:
             custom_api.create_namespaced_custom_object(
@@ -65,7 +71,7 @@ class HPEndpointBase:
                 body=body,
             )
         except Exception as e:
-            logging.debug(f"Failed to create endpoint in namespace {namespace}!")
+            logger.debug(f"Failed to create endpoint in namespace {namespace}!")
             handle_exception(e, name, namespace)
 
     @classmethod
@@ -89,7 +95,6 @@ class HPEndpointBase:
                 plural=KIND_PLURAL_MAP[kind],
             )
         except Exception as e:
-            logging.debug(f"Failed to create endpoint in namespace {namespace}!")
             handle_exception(e, "", namespace)
 
     @classmethod
@@ -115,11 +120,10 @@ class HPEndpointBase:
                 name=name,
             )
         except Exception as e:
-            logging.debug(f"Failed to get endpoint details in namespace {namespace}!")
             handle_exception(e, name, namespace)
 
     def call_delete_api(
-        cls,
+        self,
         name: str,
         kind: str,
         namespace: str,
@@ -140,7 +144,6 @@ class HPEndpointBase:
                 name=name,
             )
         except Exception as e:
-            logging.debug(f"Failed to delete endpoint in namespace {namespace}!")
             handle_exception(e, name, namespace)
 
     @classmethod
@@ -171,9 +174,6 @@ class HPEndpointBase:
                 since_seconds=int(3600 * since_hours),
             )
         except Exception as e:
-            logging.debug(
-                f"Failed to get logs from operator pod {pod_name} in namespace {OPERATOR_NAMESPACE}!"
-            )
             handle_exception(e, pod_name, OPERATOR_NAMESPACE)
 
         return logs
@@ -209,7 +209,6 @@ class HPEndpointBase:
                 timestamps=True,
             )
         except Exception as e:
-            logging.debug(f"Failed to get logs from pod {pod}!")
             handle_exception(e, pod, namespace)
 
         return logs

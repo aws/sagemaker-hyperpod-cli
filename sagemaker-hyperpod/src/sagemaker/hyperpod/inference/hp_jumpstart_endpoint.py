@@ -22,8 +22,11 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         namespace="default",
         debug=False,
     ) -> None:
+        logging.basicConfig()
         if debug:
-            logging.basicConfig(level=logging.DEBUG)
+            self.get_logger().setLevel(logging.DEBUG)
+        else:
+            self.get_logger().setLevel(logging.INFO)
 
         spec = _HPJumpStartEndpoint(**self.model_dump(by_alias=True, exclude_none=True))
 
@@ -40,6 +43,10 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         self.metadata = Metadata(
             name=name,
             namespace=namespace,
+        )
+
+        self.get_logger().info(
+            "Creating JumpStart model and sagemaker endpoint. This may take a few minutes..."
         )
 
     def create_from_dict(
@@ -65,10 +72,14 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
             namespace=namespace,
         )
 
+        self.get_logger().info(
+            "Creating JumpStart model and sagemaker endpoint. This may take a few minutes..."
+        )
+
     def refresh(self) -> Self:
         if not self.metadata:
             raise Exception(
-                "Metadata not found! Please provide object name and namespace in metadata field."
+                "Metadata is empty. Please provide name and namespace in metadata field."
             )
 
         response = HPJumpStartEndpoint.call_get_api(
