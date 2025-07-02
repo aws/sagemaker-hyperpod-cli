@@ -19,7 +19,7 @@ from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
     default="default",
     help="Optional. The namespace of the jumpstart model to create. Default set to 'default'",
 )
-@click.option("--version", default="1.0.0", help="Schema version to use")
+@click.option("--version", default="1.0", help="Schema version to use")
 @generate_click_command(
     schema_pkg="jumpstart_inference_config_schemas",
     registry=JS_REG,
@@ -39,7 +39,7 @@ def js_create(namespace, version, js_endpoint):
     default="default",
     help="Optional. The namespace of the jumpstart model to create. Default set to 'default'",
 )
-@click.option("--version", default="1.0.0", help="Schema version to use")
+@click.option("--version", default="1.0", help="Schema version to use")
 @generate_click_command(
     schema_pkg="custom_inference_config_schemas",
     registry=C_REG,
