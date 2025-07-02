@@ -5,7 +5,7 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_config import (
 from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_status import (
     HyperPodPytorchJobStatus,
 )
-from sagemaker.hyperpod.inference.config.common import Metadata
+from sagemaker.hyperpod.common.config import Metadata
 from kubernetes import client, config
 from typing import List, Optional
 from sagemaker.hyperpod.common.utils import (

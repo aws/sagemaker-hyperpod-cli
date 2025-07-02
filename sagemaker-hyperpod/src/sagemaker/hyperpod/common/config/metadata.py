@@ -1,5 +1,5 @@
-from typing import Dict, List, Optional
-from pydantic import Field, ConfigDict, BaseModel
+from typing import Dict, Optional
+from pydantic import Field, BaseModel
 
 
 class Metadata(BaseModel):

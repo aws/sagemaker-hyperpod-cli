@@ -3,7 +3,7 @@ from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     InferenceEndpointConfigStatus,
     _HPEndpoint,
 )
-from sagemaker.hyperpod.inference.config.common import Metadata
+from sagemaker.hyperpod.common.config import Metadata
 from sagemaker.hyperpod.inference.hp_endpoint_base import HPEndpointBase
 from typing import Dict, List, Optional, Self
 from sagemaker_core.main.resources import Endpoint
