@@ -13,21 +13,61 @@ chmod 700 get_helm.sh
 
 ## 2. Package structure
 
+Here are the list of dependent charts and plugins that can be installed as part of the HyperPod Helm chart. Features required for HyperPod Resiliency are recommended to enable cluster resiliency. Features required for HyperPod Task Governance are optional but help set access control on your cluster. More information about orchestration features for cluster admins [here](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks.html).
+
 | Chart Name                   | Usage                                                                                                                                                                                   | Required For | Enable by default |
 |------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|-------------------|
-| Cluster role and binding     | Defines cluster-wide roles and bindings for Kubernetes resources, allowing cluster administrators to assign and manage permissions across the entire cluster.                           |              | No                |
-| Team role and binging        | Defines cluster and namespaced roles and bindings, allowing cluster administrators to create scientist roles with sufficient permissions to submit jobs to the accessible teams.        |              | No                |
-| Deep health check            | Implements advanced health checks for Kubernetes services and pods to ensure deep monitoring of resource status and functionality beyond basic liveness and readiness probes.           |     [Deep Health Check](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks-resiliency-deep-health-checks.html)         | Yes               |
-| Health monitoring agent      | Deploys an agent to continuously monitor the health of Kubernetes applications, providing detailed insights and alerting for potential issues.                                          |     [Health Checks done by Health Monitoring Agent](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks-resiliency-health-monitoring-agent.html)         | Yes               |
-| Job auto restart             | Configures automatic restart policies for Kubernetes jobs, ensuring failed or terminated jobs are restarted based on predefined conditions for high availability.                       |              | Yes               |
+| Cluster role and binding     | Defines cluster-wide roles and bindings for Kubernetes resources, allowing cluster administrators to assign and manage permissions across the entire cluster.                           | HyperPod Task Governance             | No                |
+| Team role and binding        | Defines cluster and namespaced roles and bindings, allowing cluster administrators to create scientist roles with sufficient permissions to submit jobs to the accessible teams.        | HyperPod Task Governance             | No                |
+| Deep health check            | Implements advanced health checks for Kubernetes services and pods to ensure deep monitoring of resource status and functionality beyond basic liveness and readiness probes.           | HyperPod Resiliency             | Yes               |
+| Health monitoring agent      | Deploys an agent to continuously monitor the health of Kubernetes applications, providing detailed insights and alerting for potential issues.                                          | HyperPod Resiliency             | Yes               |
+| Job auto restart             | Configures automatic restart policies for Kubernetes jobs, ensuring failed or terminated jobs are restarted based on predefined conditions for high availability.                       | HyperPod Resiliency             | Yes               |
 | MLflow                       | Installs the MLflow platform for managing machine learning experiments, tracking models, and storing model artifacts in a scalable manner within the Kubernetes cluster.                |              | No                |
-| MPI Operators                | Orchestrates MPI (Message Passing Interface) jobs on Kubernetes, providing an efficient way to manage distributed machine learning or high-performance computing (HPC) workloads.       |              | Yes               |
-| namespaced-role-and-bindings | Creates roles and role bindings within a specific namespace to manage fine-grained access control for Kubernetes resources in a limited scope.                                          |              | No                |
-| neuron-device-plugin         | Deploys the AWS Neuron device plugin for Kubernetes, enabling support for AWS Inferentia chips to accelerate machine learning model inference workloads.                                |              | Yes               |
-| storage                      | Manages persistent storage resources for Kubernetes applications, ensuring that data is retained and accessible across pod restarts and cluster upgrades.                               |              | No                |
-| training-operators           | Installs operators for managing various machine learning training jobs, such as TensorFlow, PyTorch, and MXNet, providing native Kubernetes support for distributed training workloads. |              | Yes               |
-| HyperPod patching            | Deploys the RBAC and controller resources needed for orchestrating rolling updates and patching workflows in SageMaker HyperPod clusters. Includes pod eviction and node monitoring.    |              | Yes               |
-| aws-efa-k8s-device-plugin    | This plugin enables AWS Elastic Fabric Adapter (EFA) metrics on the EKS clusters.                                                                                                        |              | Yes               |
+| MPI Operators                | Orchestrates MPI (Message Passing Interface) jobs on Kubernetes, providing an efficient way to manage distributed machine learning or high-performance computing (HPC) workloads.       | HyperPod Resiliency             | Yes               |
+| Namespaced Role and Bindings | Creates roles and role bindings within a specific namespace to manage fine-grained access control for Kubernetes resources in a limited scope.                                          | HyperPod Task Governance             | No                |
+| Storage                      | Manages persistent storage resources for Kubernetes applications, ensuring that data is retained and accessible across pod restarts and cluster upgrades.                               |              | No                |
+| Training Operators           | Installs operators for managing various machine learning training jobs, such as TensorFlow, PyTorch, and MXNet, providing native Kubernetes support for distributed training workloads. |              | Yes               |
+| HyperPod patching            | Deploys the RBAC and controller resources needed for orchestrating rolling updates and patching workflows in SageMaker HyperPod clusters. Includes pod eviction and node monitoring.    | HyperPod Resiliency             | Yes               |
+
+The following plugins are only required for HyperPod Resiliency if you are using the following supported devices, such as GPU/Neuron instances, unless you install these plugins on your own. 
+
+| Plugin Name                   | Usage                                                                                                                                                                                   | Required For | Enable by default |
+|------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|-------------------|
+| neuron-device-plugin         | Deploys the AWS Neuron device plugin for Kubernetes, enabling support for AWS Inferentia chips to accelerate machine learning model inference workloads.                                | HyperPod Resiliency with AWS Neuron             | Yes               |
+| aws-efa-k8s-device-plugin    | This plugin enables AWS Elastic Fabric Adapter (EFA) metrics on the EKS clusters.                                                                                                        | HyperPod Resiliency with AWS EFA             | Yes               |
+| nvidia-device-plugin         | This plugin is a Daemon set that exposes number of GPUs on each node, keeps track health metrics, and enables running GPU enabled containers in EKS clusters.                                 | HyperPod Resiliency with Nvidia GPUs             | Yes               |
+
+If you install these plugins on your own, make sure that the following configurations are set to work with your HyperPod EKS clusters:
+
+Tolerations (across all plugins):
+```
+- key: sagemaker.amazonaws.com/node-health-status
+  operator: Equal
+  value: Unschedulable
+  effect: NoSchedule
+```
+
+Node Affinities (for neuron and nvidia plugins):
+```
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: "node.kubernetes.io/instance-type"
+              operator: In
+              values:
+                - <your HyperPod instance types>
+```
+
+Supported Instance Labels (for efa plugin):
+Set this in your values.yaml
+```
+supportedInstanceLabels:
+    values:
+     - <your HyperPod instance types>
+```
+
 
 ## 3. Test the Chart Locally
 
