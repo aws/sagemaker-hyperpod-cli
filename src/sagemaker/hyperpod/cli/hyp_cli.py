@@ -122,6 +122,11 @@ get_operator_logs.add_command(custom_get_operator_logs)
 invoke.add_command(custom_invoke)
 invoke.add_command(custom_invoke, name="hyp-jumpstart-endpoint")
 
+cli.add_command(list_cluster)
+cli.add_command(set_cluster_context)
+cli.add_command(get_cluster_context)
+cli.add_command(get_cluster_monitoring_config)
+
 
 if __name__ == "__main__":
     cli()
