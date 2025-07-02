@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 import click
 from click.testing import CliRunner
-from sagemaker.hyperpod.cli.cli import cli, create, list, describe
+from sagemaker.hyperpod.cli.hyp_cli import cli, create, list, describe
 from sagemaker.hyperpod.cli.commands.training import (
     pytorch_create,
     list_jobs,

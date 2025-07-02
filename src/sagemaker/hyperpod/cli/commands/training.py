@@ -13,7 +13,7 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_config import (
     Spec,
     Template,
 )
-from sagemaker.hyperpod.common.config import Metadata
+from sagemaker.hyperpod.common.config.metadata import Metadata
 import tempfile
 from sagemaker.hyperpod.cli.constants.hp_pytorch_command_constants import HELP_TEXT
 from typing import List, Dict, Any, Optional, Callable, get_args, get_origin, Literal

@@ -38,7 +38,7 @@ for root, dirs, files in os.walk(
         (
             os.path.relpath(
                 root,
-                "src/hyperpod_cli/sagemaker_hyperpod_recipes",
+                "src/sagemaker/hyperpod/cli/sagemaker_hyperpod_recipes",
             ),
             [os.path.join(root, f) for f in files],
         )
@@ -74,11 +74,13 @@ setup(
         "tox==4.18.0",
         "ruff==0.6.2",
         "hera-workflows==5.16.3",
-        "sagemaker-core<2.0.0"
+        "sagemaker-core<2.0.0",
+        "pydantic==2.11.7"
     ],
     entry_points={
         "console_scripts": [
-            "hyperpod=hyperpod_cli.cli:cli",
+            "hyperpod=sagemaker.hyperpod.cli.hyperpod_cli:cli",
+            "hyp=sagemaker.hyperpod.cli.hyp_cli:cli",
         ],
     },
     check_format=True,
