@@ -1,6 +1,7 @@
 from sagemaker.hyperpod.inference.config.constants import *
 from sagemaker.hyperpod.inference.hp_endpoint_base import HPEndpointBase
 from sagemaker.hyperpod.common.config.metadata import Metadata
+from sagemaker.hyperpod.common.utils import append_uuid
 from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
     _HPJumpStartEndpoint,
     JumpStartModelStatus,
@@ -31,7 +32,10 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         spec = _HPJumpStartEndpoint(**self.model_dump(by_alias=True, exclude_none=True))
 
         if not name:
-            name = spec.model.modelId
+            name = append_uuid(spec.model.modelId)
+
+        if spec.sageMakerEndpoint and spec.sageMakerEndpoint.name:
+            spec.sageMakerEndpoint.name = append_uuid(spec.sageMakerEndpoint.name)
 
         if not namespace:
             namespace = get_default_namespace()
@@ -61,7 +65,10 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         spec = _HPJumpStartEndpoint.model_validate(input, by_name=True)
 
         if not name:
-            name = spec.model.modelId
+            name = append_uuid(spec.model.modelId)
+
+        if spec.sageMakerEndpoint and spec.sageMakerEndpoint.name:
+            spec.sageMakerEndpoint.name = append_uuid(spec.sageMakerEndpoint.name)
 
         if not namespace:
             namespace = get_default_namespace()

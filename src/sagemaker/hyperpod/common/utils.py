@@ -3,6 +3,7 @@ from kubernetes import config as k8s_config
 from pydantic import ValidationError
 from kubernetes.client.exceptions import ApiException
 from kubernetes import config
+import uuid
 
 
 def validate_cluster_connection():
@@ -37,13 +38,13 @@ def handle_exception(e: Exception, name: str, namespace: str):
             raise Exception(f"Credentials unauthorized.") from e
         elif e.status == 403:
             raise Exception(
-                f"Access denied to resource '{name}' in '{namespace}'."
+                f"Access denied to resource '{name}' in namespace '{namespace}'."
             ) from e
         if e.status == 404:
-            raise Exception(f"Resource '{name}' not found in '{namespace}'.") from e
+            raise Exception(f"Resource '{name}' not found in namespace '{namespace}'.") from e
         elif e.status == 409:
             raise Exception(
-                f"Resource '{name}' already exists in '{namespace}'."
+                f"Resource '{name}' already exists in namespace '{namespace}'."
             ) from e
         elif 500 <= e.status < 600:
             raise Exception("Kubernetes API internal server error.") from e
@@ -54,3 +55,6 @@ def handle_exception(e: Exception, name: str, namespace: str):
         raise Exception("Response did not match expected schema.") from e
 
     raise e
+
+def append_uuid(name: str) -> str:
+    return f"{name}-{str(uuid.uuid4())[:4]}"

@@ -1,5 +1,6 @@
 from sagemaker.hyperpod.common.config.metadata import Metadata
 from sagemaker.hyperpod.inference.config.constants import *
+from sagemaker.hyperpod.common.utils import append_uuid
 from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     InferenceEndpointConfigStatus,
     _HPEndpoint,
@@ -27,13 +28,17 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
             self.get_logger().setLevel(logging.DEBUG)
         else:
             self.get_logger().setLevel(logging.INFO)
+
         spec = _HPEndpoint(**self.model_dump(by_alias=True, exclude_none=True))
 
         if not name:
-            name = spec.modelName
+            name = append_uuid(spec.modelName)
 
         if not namespace:
             namespace = get_default_namespace()
+
+        if spec.endpointName:
+            spec.endpointName = append_uuid(spec.endpointName)
 
         self.call_create_api(
             name=name,  # use model name as metadata name
@@ -60,10 +65,13 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         spec = _HPEndpoint.model_validate(input, by_name=True)
 
         if not name:
-            name = spec.modelName
+            name = append_uuid(spec.modelName)
 
         if not namespace:
             namespace = get_default_namespace()
+
+        if spec.endpointName:
+            spec.endpointName = append_uuid(spec.endpointName)
 
         self.call_create_api(
             name=name,  # use model name as metadata name

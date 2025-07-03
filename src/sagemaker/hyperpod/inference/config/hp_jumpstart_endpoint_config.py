@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List, Dict, Union, Literal
+from sagemaker.hyperpod.common.config import *
 
 
 class Dimensions(BaseModel):

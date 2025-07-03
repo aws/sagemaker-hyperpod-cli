@@ -29,7 +29,7 @@ class TestHandleException(unittest.TestCase):
         with self.assertRaises(Exception) as context:
             handle_exception(exception, "test-job", "default")
         self.assertIn(
-            "Resource 'test-job' not found in 'default'", str(context.exception)
+            "Resource 'test-job' not found in namespace 'default'", str(context.exception)
         )
 
     def test_handle_api_exception_409(self):
