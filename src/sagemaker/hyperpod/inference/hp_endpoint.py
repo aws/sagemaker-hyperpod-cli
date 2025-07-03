@@ -161,6 +161,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace=self.metadata.namespace,
         )
+        self.get_logger().info(f"Deleting HPEndpoint: {self.metadata.name}...")
 
     def invoke(self, body, content_type="application/json"):
         if not self.endpointName:

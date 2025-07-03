@@ -161,6 +161,9 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
             kind=JUMPSTART_MODEL_KIND,
             namespace=self.metadata.namespace,
         )
+        self.get_logger().info(
+            f"Deleting JumpStart model and sagemaker endpoint: {self.metadata.name}. This may take a few minutes..."
+        )
 
     def invoke(self, body, content_type="application/json"):
         if not self.sageMakerEndpoint or not self.sageMakerEndpoint.name:

@@ -11,7 +11,6 @@ import re
 import logging
 
 KUBE_CONFIG_PATH = os.path.expanduser(KUBE_CONFIG_DEFAULT_LOCATION)
-TEMP_KUBE_CONFIG_FILE = "/tmp/kubeconfig"
 
 
 class HyperPodManager:
@@ -146,7 +145,7 @@ class HyperPodManager:
         eks_cluster_arn = response["Orchestrator"]["Eks"]["ClusterArn"]
         eks_name = instance._get_eks_name_from_arn(eks_cluster_arn)
 
-        instance._update_kube_config(eks_name, region, TEMP_KUBE_CONFIG_FILE)
+        instance._update_kube_config(eks_name, region)
         instance._set_current_context(eks_cluster_arn, namespace)
 
         if namespace:
@@ -163,5 +162,5 @@ class HyperPodManager:
             return current_context
         except Exception as e:
             raise Exception(
-                f"Failed to get current context: {e}. Check your config file at {TEMP_KUBE_CONFIG_FILE}"
+                f"Failed to get current context: {e}. Check your config file at {KUBE_CONFIG_DEFAULT_LOCATION}"
             )
