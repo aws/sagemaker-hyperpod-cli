@@ -2,6 +2,7 @@ import click
 import json
 import boto3
 from typing import Optional
+from tabulate import tabulate
 
 from sagemaker.hyperpod.cli.inference_utils import generate_click_command
 from jumpstart_inference_config_schemas.registry import SCHEMA_REGISTRY as JS_REG
@@ -104,8 +105,18 @@ def js_list(
     """
 
     endpoints = HPJumpStartEndpoint.model_construct().list(namespace)
-    out = [ep.metadata.model_dump() for ep in endpoints]
-    click.echo(json.dumps(out, indent=2))
+    data = [ep.metadata.model_dump() for ep in endpoints]
+
+    if not data:
+        click.echo("No endpoints found")
+        return
+
+    headers = ["name", "namespace", "labels"]
+    rows = [
+        [item.get("name", ""), item.get("namespace", ""), item.get("labels", "")]
+        for item in data
+    ]
+    click.echo(tabulate(rows, headers=headers, tablefmt="github"))
 
 
 @click.command("hyp-custom-endpoint")
@@ -124,8 +135,18 @@ def custom_list(
     """
 
     endpoints = HPEndpoint.model_construct().list(namespace)
-    out = [ep.metadata.model_dump() for ep in endpoints]
-    click.echo(json.dumps(out, indent=2))
+    data = [ep.metadata.model_dump() for ep in endpoints]
+
+    if not data:
+        click.echo("No endpoints found")
+        return
+
+    headers = ["name", "namespace", "labels"]
+    rows = [
+        [item.get("name", ""), item.get("namespace", ""), item.get("labels", "")]
+        for item in data
+    ]
+    click.echo(tabulate(rows, headers=headers, tablefmt="github"))
 
 
 @click.command("hyp-jumpstart-endpoint")
@@ -142,16 +163,86 @@ def custom_list(
     default="default",
     help="Optional. The namespace of the jumpstart model to describe. Default set to 'default'.",
 )
+@click.option(
+    "--full",
+    type=click.BOOL,
+    is_flag=True,
+    default=False,
+    required=False,
+    help="Optional. If set to `True`, the full json will be displayed",
+)
 def js_describe(
     name: str,
     namespace: Optional[str],
+    full: bool
 ):
     """
     Describe a jumpstart model endpoint with provided name and namespace.
     """
 
     my_endpoint = HPJumpStartEndpoint.model_construct().get(name, namespace)
-    click.echo(json.dumps(my_endpoint.model_dump(), indent=2))
+    data = my_endpoint.model_dump()
+
+    if full:
+        click.echo("\nFull JSON:")
+        click.echo(json.dumps(data, indent=2))
+
+    else:
+        summary = [
+            ("Deployment State:",       data.get("status", {}).get("deploymentStatus", {}).get("deploymentObjectOverallState")),
+            ("Model ID:",               data.get("model", {}).get("modelId")),
+            ("Instance Type:",          data.get("server", {}).get("instanceType")),
+            ("Accept eula:",            data.get("model", {}).get("acceptEula")),
+            ("Model Version:",          data.get("model", {}).get("modelVersion")),
+            ("TLS Cert. Output S3 URI:",data.get("tlsConfig", {}).get("tlsCertificateOutputS3Uri")),
+        ]
+        click.echo(tabulate(summary, tablefmt="plain"))
+
+        click.echo("\nSageMaker Endpoint:")
+        ep_rows = [
+                ("State:",         data.get("status", {}).get("endpoints", {}).get("sagemaker", {}).get("state")),
+                ("Name:",          data.get("sageMakerEndpoint", {}).get("name")),
+                ("ARN:",           data.get("status", {}).get("endpoints", {}).get("sagemaker", {}).get("endpointArn")),
+        ]
+        click.echo(tabulate(ep_rows, tablefmt="plain"))
+
+        click.echo("\nConditions:")
+        conds = data.get("status", {}).get("conditions", [])
+        if conds:
+            headers = ["TYPE", "STATUS", "LAST TRANSITION", "LAST UPDATE", "MESSAGE"]
+            rows = [
+                [
+                    c.get("type", ""),
+                    c.get("status", ""),
+                    c.get("lastTransitionTime", ""),
+                    c.get("lastUpdateTime", ""),
+                    c.get("message") or ""
+                ]
+                for c in conds
+            ]
+            click.echo(tabulate(rows, headers=headers, tablefmt="github"))
+        else:
+            click.echo("  <none>")
+
+        click.echo("\nDeploymentStatus Conditions:")
+        dep_status = data.get("status", {}).get("deploymentStatus", {})
+        dep_conds = dep_status.get("status", {}).get("conditions", [])
+        if dep_conds:
+            headers = ["TYPE", "STATUS", "LAST TRANSITION", "LAST UPDATE", "MESSAGE"]
+            rows = [
+                [
+                    c.get("type", ""),
+                    c.get("status", ""),
+                    c.get("lastTransitionTime", ""),
+                    c.get("lastUpdateTime", ""),
+                    c.get("message") or ""
+                ]
+                for c in dep_conds
+            ]
+            click.echo(tabulate(rows, headers=headers, tablefmt="github"))
+        else:
+            click.echo("  <none>")
+
 
 
 @click.command("hyp-custom-endpoint")
@@ -168,16 +259,167 @@ def js_describe(
     default="default",
     help="Optional. The namespace of the custom model to describe. Default set to 'default'.",
 )
+@click.option(
+    "--full",
+    type=click.BOOL,
+    is_flag=True,
+    default=False,
+    required=False,
+    help="Optional. If set to `True`, the full json will be displayed",
+)
 def custom_describe(
     name: str,
     namespace: Optional[str],
+    full: bool
 ):
     """
     Describe a custom model endpoint with provided name and namespace.
     """
 
     my_endpoint = HPEndpoint.model_construct().get(name, namespace)
-    click.echo(json.dumps(my_endpoint.model_dump(), indent=2))
+    data = my_endpoint.model_dump()
+
+    if full:
+        click.echo("\nFull JSON:")
+        click.echo(json.dumps(data, indent=2))
+
+    else:
+        summary = [
+            ("Deployment State:",           data.get("status", {}).get("deploymentStatus", {}).get("deploymentObjectOverallState")),
+            ("Invocation Endpoint",         data.get("invocationEndpoint")),
+            ("Instance Type",               data.get("instanceType")),
+            ("Metrics Enabled",             data.get("metrics", {}).get("enabled")),
+            ("Model Name",                  data.get("modelName")),
+            ("Model Version",               data.get("modelVersion")),
+            ("Model Source Type",           data.get("modelSourceConfig", {}).get("modelSourceType")),
+            ("Model Location",              data.get("modelSourceConfig", {}).get("modelLocation")),
+            ("Prefetch Enabled",            data.get("modelSourceConfig", {}).get("prefetchEnabled")),
+            ("TLS Cert S3 URI",             data.get("tlsConfig", {}).get("tlsCertificateOutputS3Uri")),
+            ("FSx DNS Name",                data.get("modelSourceConfig", {}).get("fsxStorage", {}).get("dnsName")),
+            ("FSx File System ID",          data.get("modelSourceConfig", {}).get("fsxStorage", {}).get("fileSystemId")),
+            ("FSx Mount Name",              data.get("modelSourceConfig", {}).get("fsxStorage", {}).get("mountName")),
+            ("S3 Bucket Name",              data.get("modelSourceConfig", {}).get("s3Storage", {}).get("bucketName")),
+            ("S3 Region",                   data.get("modelSourceConfig", {}).get("s3Storage", {}).get("region")),
+            ("Image URI",                   data.get("imageUri") 
+                                            or data.get("worker", {}).get("image")),
+            ("Container Port",              data.get("containerPort")
+                                            or data.get("worker", {})
+                                                    .get("modelInvocationPort", {})
+                                                    .get("containerPort")),
+            ("Model Volume Mount Path",     data.get("modelVolumeMountPath")
+                                            or data.get("worker", {})
+                                                    .get("modelVolumeMount", {})
+                                                    .get("mountPath")),
+            ("Model Volume Mount Name",     data.get("modelVolumeMountName")
+                                            or data.get("worker", {})
+                                                    .get("modelVolumeMount", {})
+                                                    .get("name")),
+            ("Resources Limits",            data.get("resourcesLimits")
+                                            or data.get("worker", {})
+                                                    .get("resources", {})
+                                                    .get("limits")),
+            ("Resources Requests",          data.get("resourcesRequests")
+                                            or data.get("worker", {})
+                                                    .get("resources", {})
+                                                    .get("requests")),
+            ("Dimensions",                  data.get("dimensions")
+                                            or data.get("autoScalingSpec", {})
+                                                    .get("cloudWatchTrigger", {})
+                                                    .get("dimensions")),
+            ("Metric Collection Period",    data.get("metricCollectionPeriod")
+                                            or data.get("autoScalingSpec", {})
+                                                    .get("cloudWatchTrigger", {})
+                                                    .get("metricCollectionPeriod")),
+            ("Metric Collection Start Time",data.get("metricCollectionStartTime")
+                                            or data.get("autoScalingSpec", {})
+                                                    .get("cloudWatchTrigger", {})
+                                                    .get("metricCollectionStartTime")),
+            ("Metric Name",                 data.get("metricName")
+                                            or data.get("autoScalingSpec", {})
+                                                    .get("cloudWatchTrigger", {})
+                                                    .get("metricName")),
+            ("Metric Stat",                 data.get("metricStat")
+                                            or data.get("autoScalingSpec", {})
+                                                    .get("cloudWatchTrigger", {})
+                                                    .get("metricStat")),
+            ("Metric Type",                 data.get("metricType")
+                                            or data.get("autoScalingSpec", {})
+                                                    .get("cloudWatchTrigger", {})
+                                                    .get("metricType")),
+            ("Min Value",                   data.get("minValue")
+                                            or data.get("autoScalingSpec", {})
+                                                    .get("cloudWatchTrigger", {})
+                                                    .get("minValue")),
+            ("CW Trigger Name",             data.get("cloudWatchTriggerName")
+                                            or data.get("autoScalingSpec", {})
+                                                    .get("cloudWatchTrigger", {})
+                                                    .get("name")),
+            ("CW Trigger Namespace",        data.get("cloudWatchTriggerNamespace")
+                                            or data.get("autoScalingSpec", {})
+                                                    .get("cloudWatchTrigger", {})
+                                                    .get("namespace")),
+            ("Target Value",                data.get("targetValue")
+                                            or data.get("autoScalingSpec", {})
+                                                    .get("cloudWatchTrigger", {})
+                                                    .get("targetValue")),
+            ("Use Cached Metrics",          data.get("useCachedMetrics")
+                                            or data.get("autoScalingSpec", {})
+                                                    .get("cloudWatchTrigger", {})
+                                                    .get("useCachedMetrics")),
+        ]
+
+        click.echo(tabulate(summary, tablefmt="plain"))
+
+        click.echo("\nSageMaker Endpoint:")
+        status     = data.get("status")     or {}
+        endpoints  = status.get("endpoints") or {}
+        sagemaker_info = endpoints.get("sagemaker")
+        if not sagemaker_info:
+            click.secho("  <no SageMaker endpoint information available>", fg="yellow")
+        else:
+            ep_rows = [
+                    ("State:",         data.get("status", {}).get("endpoints", {}).get("sagemaker", {}).get("state")),
+                    ("Name:",          data.get("sageMakerEndpoint", {}).get("name")),
+                    ("ARN:",           data.get("status", {}).get("endpoints", {}).get("sagemaker", {}).get("endpointArn")),
+            ]
+            click.echo(tabulate(ep_rows, tablefmt="plain"))
+
+        click.echo("\nConditions:")
+        conds = data.get("status", {}).get("conditions", [])
+        if conds:
+            headers = ["TYPE", "STATUS", "LAST TRANSITION", "LAST UPDATE", "MESSAGE"]
+            rows = [
+                [
+                    c.get("type", ""),
+                    c.get("status", ""),
+                    c.get("lastTransitionTime", ""),
+                    c.get("lastUpdateTime", ""),
+                    c.get("message") or ""
+                ]
+                for c in conds
+            ]
+            click.echo(tabulate(rows, headers=headers, tablefmt="github"))
+        else:
+            click.echo("  <none>")
+
+        click.echo("\nDeploymentStatus Conditions:")
+        dep_status = data.get("status", {}).get("deploymentStatus", {})
+        dep_conds = dep_status.get("status", {}).get("conditions", [])
+        if dep_conds:
+            headers = ["TYPE", "STATUS", "LAST TRANSITION", "LAST UPDATE", "MESSAGE"]
+            rows = [
+                [
+                    c.get("type", ""),
+                    c.get("status", ""),
+                    c.get("lastTransitionTime", ""),
+                    c.get("lastUpdateTime", ""),
+                    c.get("message") or ""
+                ]
+                for c in dep_conds
+            ]
+            click.echo(tabulate(rows, headers=headers, tablefmt="github"))
+        else:
+            click.echo("  <none>")
 
 
 @click.command("hyp-jumpstart-endpoint")
@@ -301,12 +543,12 @@ def custom_get_logs(
 @click.command("hyp-jumpstart-endpoint")
 @click.option(
     "--since-hours",
-    type=click.INT,
+    type=click.FLOAT,
     required=True,
     help="Required. The time frame to get logs for.",
 )
 def js_get_operator_logs(
-    since_hours: int,
+    since_hours: float,
 ):
     """
     Get specific pod log for jumpstart model endpoint.
@@ -319,12 +561,12 @@ def js_get_operator_logs(
 @click.command("hyp-custom-endpoint")
 @click.option(
     "--since-hours",
-    type=click.INT,
+    type=click.FLOAT,
     required=True,
     help="Required. The time frame get logs for.",
 )
 def custom_get_operator_logs(
-    since_hours: int,
+    since_hours: float,
 ):
     """
     Get specific pod log for custom model endpoint.
