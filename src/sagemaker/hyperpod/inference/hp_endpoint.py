@@ -7,7 +7,7 @@ from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
 )
 from sagemaker.hyperpod.inference.hp_endpoint_base import HPEndpointBase
 from sagemaker.hyperpod.common.utils import get_default_namespace
-from typing import Dict, List, Optional, Self
+from typing import Dict, List, Optional
 from sagemaker_core.main.resources import Endpoint
 from pydantic import Field, ValidationError
 import logging
@@ -89,7 +89,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
             "Creating sagemaker model and endpoint. This may take a few minutes..."
         )
 
-    def refresh(self) -> Self:
+    def refresh(self):
         if not self.metadata:
             raise Exception(
                 "Metadata not found! Please provide object name and namespace in metadata field."

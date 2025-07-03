@@ -7,7 +7,7 @@ from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
     JumpStartModelStatus,
 )
 from sagemaker.hyperpod.common.utils import get_default_namespace
-from typing import Dict, List, Optional, Self
+from typing import Dict, List, Optional
 from sagemaker_core.main.resources import Endpoint
 from pydantic import Field, ValidationError
 import logging
@@ -89,7 +89,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
             "Creating JumpStart model and sagemaker endpoint. This may take a few minutes..."
         )
 
-    def refresh(self) -> Self:
+    def refresh(self):
         if not self.metadata:
             raise Exception(
                 "Metadata is empty. Please provide name and namespace in metadata field."
@@ -130,7 +130,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         return endpoints
 
     @classmethod
-    def get(cls, name: str, namespace: str = None) -> Self:
+    def get(cls, name: str, namespace: str = None):
         if not namespace:
             namespace = get_default_namespace()
 
