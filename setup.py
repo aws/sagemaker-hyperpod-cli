@@ -46,9 +46,16 @@ for root, dirs, files in os.walk(
 
 setup(
     data_files=sagemaker_hyperpod_recipes,
-    name="hyperpod",
-    version="2.0.0",
+    name="sagemaker-hyperpod",
+    version="3.0.0",
+    description="Amazon SageMaker HyperPod SDK and CLI",
+    long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
+    author="Amazon Web Services",
+    url="https://github.com/aws/sagemaker-hyperpod-cli",
     packages=find_packages(where="src", exclude=("test",)),
+    package_dir={"": "src"},
+    python_requires=">=3.8",
     install_requires=[
         "click==8.1.7",
         "awscli>=1.34.9",
@@ -82,6 +89,16 @@ setup(
             "hyp=sagemaker.hyperpod.cli.hyp_cli:cli",
         ],
     },
+    classifiers=[
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: Apache Software License",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+    ],
     check_format=True,
     # Enable type checking
     test_mypy=True,

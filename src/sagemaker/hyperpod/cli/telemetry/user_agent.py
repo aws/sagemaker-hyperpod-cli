@@ -30,7 +30,7 @@ def get_user_agent_extra_suffix():
     """
     suffix = "cli/{}#{}".format(
         CLI_PREFIX,
-        importlib.metadata.version("hyperpod"),
+        importlib.metadata.version("sagemaker-hyperpod"),
     )
 
     return suffix
