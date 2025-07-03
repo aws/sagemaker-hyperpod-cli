@@ -8,9 +8,8 @@ from sagemaker.hyperpod.inference.hp_endpoint_base import HPEndpointBase
 from typing import Dict, List, Optional
 from typing_extensions import Self
 from sagemaker_core.main.resources import Endpoint
-from pydantic import Field
+from pydantic import Field, ValidationError
 import logging
-from pydantic import ValidationError
 
 
 class HPEndpoint(_HPEndpoint, HPEndpointBase):

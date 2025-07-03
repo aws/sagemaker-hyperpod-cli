@@ -8,8 +8,7 @@ from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
 from typing import Dict, List, Optional
 from typing_extensions import Self
 from sagemaker_core.main.resources import Endpoint
-from pydantic import Field
-from pydantic import ValidationError
+from pydantic import Field, ValidationError
 import logging
 
 

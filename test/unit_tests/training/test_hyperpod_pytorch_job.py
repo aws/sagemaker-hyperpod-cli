@@ -2,23 +2,19 @@ import unittest
 from unittest.mock import patch, MagicMock
 from kubernetes.client.exceptions import ApiException
 
-from sagemaker.hyperpod.training.hyperpod_pytorch_job import (
+from sagemaker.hyperpod.training import (
     HyperPodPytorchJob,
-    _load_hp_job,
-    _load_hp_job_list,
-)
-from sagemaker.hyperpod.common.config import Metadata
-from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_status import (
     HyperPodPytorchJobStatus,
-)
-from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_config import (
     Container,
     ReplicaSpec,
     Resources,
     RunPolicy,
     Spec,
     Template,
+    _load_hp_job,
+    _load_hp_job_list,
 )
+from sagemaker.hyperpod.common.config import Metadata
 
 
 class TestHyperPodPytorchJob(unittest.TestCase):
