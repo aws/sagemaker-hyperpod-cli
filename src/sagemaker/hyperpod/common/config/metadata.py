@@ -9,7 +9,7 @@ class Metadata(BaseModel):
         description="Name must match the name of one entry in pod.spec.resourceClaims of the Pod where this field is used. It makes that resource available inside a container."
     )
     namespace: Optional[str] = Field(
-        default="default",
+        default=None,
         description="Name must match the name of one entry in pod.spec.resourceClaims of the Pod where this field is used. It makes that resource available inside a container.",
     )
     labels: Optional[Dict[str, str]] = Field(

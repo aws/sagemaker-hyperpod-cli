@@ -1,194 +1,134 @@
 import unittest
-from unittest.mock import patch, MagicMock
-import pytest
+from unittest.mock import MagicMock, patch
 from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
 from sagemaker.hyperpod.inference.config.constants import *
+from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import Model, Server,SageMakerEndpoint, TlsConfig, EnvironmentVariables
 
 
 class TestHPJumpStartEndpoint(unittest.TestCase):
     def setUp(self):
-        self.endpoint = HPJumpStartEndpoint()
 
-    # Tests for _validate_inputs
-    def test_validate_inputs_valid_parameters(self):
-        # Should not raise any exceptions
-        self.endpoint._validate_inputs(
-            model_id="model-123", instance_type="ml.g4dn.xlarge"
+        # create configs
+        model=Model(
+            model_id='huggingface-eqa-bert-base-cased',
+        )
+        server=Server(
+            instance_type='ml.c5.2xlarge',
+        )
+        endpoint_name=SageMakerEndpoint(name='bert-testing-jumpstart-7-2-2')
+        tls_config=TlsConfig(tls_certificate_output_s3_uri='s3://bugbash-02-bucket-269413952707-us-east-2')
+
+        # create spec
+        self.endpoint=HPJumpStartEndpoint(
+            model=model,
+            server=server,
+            sage_maker_endpoint=endpoint_name,
+            tls_config=tls_config,
         )
 
-    def test_validate_inputs_none_parameters(self):
-        with pytest.raises(
-            ValueError, match="Must provide both model_id and instance_type."
-        ):
-            self.endpoint._validate_inputs(
-                model_id=None, instance_type="ml.g4dn.xlarge"
-            )
-
-        with pytest.raises(
-            ValueError, match="Must provide both model_id and instance_type."
-        ):
-            self.endpoint._validate_inputs(model_id="model-123", instance_type=None)
-
-        with pytest.raises(
-            ValueError, match="Must provide both model_id and instance_type."
-        ):
-            self.endpoint._validate_inputs(model_id=None, instance_type=None)
-
-    def test_validate_inputs_invalid_types(self):
-        with pytest.raises(
-            TypeError, match="model_id must be of type str, got <class 'int'>"
-        ):
-            self.endpoint._validate_inputs(model_id=123, instance_type="ml.g4dn.xlarge")
-
-        with pytest.raises(
-            TypeError, match="instance_type must be of type str, got <class 'int'>"
-        ):
-            self.endpoint._validate_inputs(model_id="model-123", instance_type=456)
-
-    @patch("sagemaker.hyperpod.inference.hp_jumpstart_endpoint.datetime")
-    def test_get_default_endpoint_name(self, mock_datetime):
-        # Setup mock datetime
-        mock_now = mock_datetime.now.return_value
-        mock_now.strftime.return_value = "230101-120000-123456"
-
-        # Test the method
-        result = HPJumpStartEndpoint()._get_default_endpoint_name("test-model")
-
-        # Verify results
-        self.assertEqual(result, "test-model-230101-120000-123456")
-        mock_datetime.now.assert_called_once()
-        mock_now.strftime.assert_called_once_with("%y%m%d-%H%M%S-%f")
-
-    @patch.object(HPJumpStartEndpoint, "_validate_inputs")
-    @patch.object(HPJumpStartEndpoint, "_get_default_endpoint_name")
     @patch.object(HPJumpStartEndpoint, "call_create_api")
-    def test_create(
-        self, mock_call_create_api, mock_get_default_endpoint_name, mock_validate_inputs
-    ):
-        # Setup mocks
-        mock_get_default_endpoint_name.return_value = "test-model-230101-120000-123456"
-
-        with patch("sagemaker_core.main.resources.Endpoint.get") as mock_endpoint_get:
-            mock_endpoint_instance = MagicMock()
-            mock_endpoint_get.return_value = mock_endpoint_instance
-
-            # Call the method
-            HPJumpStartEndpoint.create(
-                namespace="test-namespace",
-                model_id="test-model",
-                instance_type="ml.g4dn.xlarge",
-            )
-
-            # Verify method calls
-            mock_validate_inputs.assert_called_once_with("test-model", "ml.g4dn.xlarge")
-
-            mock_get_default_endpoint_name.assert_called_once_with("test-model")
-
-            mock_call_create_api.assert_called_once()
-
-    @patch.object(HPJumpStartEndpoint, "call_create_api")
-    @patch("boto3.session.Session")
-    @patch("sagemaker_core.main.resources.Endpoint.get")
-    def test_create_from_spec(
-        self, mock_get_endpoint, mock_session, mock_call_create_api
-    ):
-        # Setup mocks
-        mock_session_instance = MagicMock()
-        mock_session_instance.region_name = "us-west-2"
-        mock_session.return_value = mock_session_instance
-
-        mock_endpoint = MagicMock()
-        mock_get_endpoint.return_value = mock_endpoint
-
-        # Create a mock spec with proper structure
-        mock_spec = MagicMock()
-        mock_model = MagicMock()
-        mock_model.modelId = "test-model-id"
-        mock_spec.model = mock_model
-
-        mock_sage_maker_endpoint = MagicMock()
-        mock_sage_maker_endpoint.name = "test-endpoint"
-        mock_spec.sageMakerEndpoint = mock_sage_maker_endpoint
-
-        # Call the method
-        HPJumpStartEndpoint.create_from_spec(spec=mock_spec, namespace="test-namespace")
-
-        # Verify call_create_api was called with correct parameters
-        mock_call_create_api.assert_called_once_with(
-            name="test-model-id",
+    def test_create(self, mock_create_api):
+        self.endpoint.model = MagicMock()
+        self.endpoint.model.modelId = "test-model-id"
+        
+        self.endpoint.create(name="test-name", namespace="test-ns")
+        
+        mock_create_api.assert_called_once_with(
+            name="test-name",
             kind=JUMPSTART_MODEL_KIND,
-            namespace="test-namespace",
-            spec=mock_spec,
+            namespace="test-ns",
+            spec=unittest.mock.ANY
         )
+        self.assertEqual(self.endpoint.metadata.name, "test-name")
 
     @patch.object(HPJumpStartEndpoint, "call_create_api")
-    def test_create_from_dict(self, mock_call_create_api):
-        # Setup test data
+    def test_create_from_dict(self, mock_create_api):
         input_dict = {
-            "model": {"model_id": "test-model"},
-            "server": {"instance_type": "ml.g4dn.xlarge"},
-            "sageMakerEndpoint": {"name": "test-endpoint"},
+            "model": {"modelId": "test-model"},
+            "server":{"instance_type":'ml.c5.2xlarge'}
         }
-
-        with patch("sagemaker_core.main.resources.Endpoint.get") as mock_endpoint_get:
-            mock_endpoint_instance = MagicMock()
-            mock_endpoint_get.return_value = mock_endpoint_instance
-
-            # Call the method
-            HPJumpStartEndpoint.create_from_dict(
-                input=input_dict, namespace="test-namespace"
-            )
-
-            # Verify call_create_api was called with correct parameters
-            mock_call_create_api.assert_called_once()
-
-    @patch.object(HPJumpStartEndpoint, "call_list_api")
-    def test_list_endpoints(self, mock_call_list_api):
-        mock_call_list_api.return_value = {"items": []}
-
-        # Call the method with print capture
-        HPJumpStartEndpoint.list(namespace="test-namespace")
-
-        # Verify call_list_api was called with correct parameters
-        mock_call_list_api.assert_called_once_with(
-            kind=JUMPSTART_MODEL_KIND, namespace="test-namespace"
-        )
+        
+        self.endpoint.create_from_dict(input_dict, name="test-name", namespace="test-ns")
+        
+        mock_create_api.assert_called_once()
 
     @patch.object(HPJumpStartEndpoint, "call_get_api")
-    def test_describe_endpoint(self, mock_call_get_api):
-        # Setup mock response
-        mock_response = {
-            "metadata": {"name": "endpoint-1", "managedFields": {"field1": "value1"}}
+    def test_refresh(self, mock_get_api):
+        self.endpoint.metadata = MagicMock()
+        self.endpoint.metadata.name = "test-name"
+        self.endpoint.metadata.namespace = "test-ns"
+        mock_get_api.return_value = {"status": {"state": "DeploymentComplete"}}
+        
+        result = self.endpoint.refresh()
+        
+        mock_get_api.assert_called_once_with(
+            name="test-name",
+            kind=JUMPSTART_MODEL_KIND,
+            namespace="test-ns"
+        )
+        self.assertEqual(result, self.endpoint)
+
+    @patch.object(HPJumpStartEndpoint, "get")
+    @patch.object(HPJumpStartEndpoint, "call_list_api")
+    def test_list(self, mock_list_api, mock_get):
+        mock_list_api.return_value = {"items": [{"metadata": {"name": "test-endpoint"}}]}
+        mock_get.return_value = MagicMock()
+        
+        result = HPJumpStartEndpoint.list(namespace="test-ns")
+        
+        mock_list_api.assert_called_once_with(
+            kind=JUMPSTART_MODEL_KIND,
+            namespace="test-ns"
+        )
+        mock_get.assert_called_once_with("test-endpoint", namespace="test-ns")
+        self.assertIsInstance(result, list)
+
+    @patch.object(HPJumpStartEndpoint, "call_get_api")
+    def test_get(self, mock_get_api):
+        mock_get_api.return_value = {
+            "spec": {
+                "model": {"modelId": "test-model"},
+                "server":{"instance_type":'ml.c5.2xlarge'}
+            },
+            "status": {"state": "Ready"},
+            "metadata": {"name": "test-name", "namespace": "test-ns"}
         }
-        mock_call_get_api.return_value = mock_response
-
-        # Call the method with print capture
-        with patch(
-            "sagemaker.hyperpod.inference.hp_jumpstart_endpoint.yaml.dump"
-        ) as mock_yaml_dump:
-            HPJumpStartEndpoint.describe_endpoint(
-                name="test-endpoint", namespace="test-namespace"
-            )
-
-            # Verify call_get_api was called with correct parameters
-            mock_call_get_api.assert_called_once_with(
-                name="test-endpoint",
-                kind=JUMPSTART_MODEL_KIND,
-                namespace="test-namespace",
-            )
-
-            # Verify managedFields was removed and yaml.dump was called
-            expected_response = {"metadata": {"name": "endpoint-1"}}
-            mock_yaml_dump.assert_called_once_with(expected_response)
+        
+        result = HPJumpStartEndpoint.get("test-name", namespace="test-ns")
+        
+        mock_get_api.assert_called_once_with(
+            name="test-name",
+            kind=JUMPSTART_MODEL_KIND,
+            namespace="test-ns"
+        )
+        self.assertIsInstance(result, HPJumpStartEndpoint)
 
     @patch.object(HPJumpStartEndpoint, "call_delete_api")
-    def test_delete_endpoint(self, mock_call_delete_api):
-        # Call the method
-        HPJumpStartEndpoint.delete_endpoint(
-            name="test-endpoint", namespace="test-namespace"
+    def test_delete(self, mock_delete_api):
+        self.endpoint.metadata = MagicMock()
+        self.endpoint.metadata.name = "test-name"
+        self.endpoint.metadata.namespace = "test-ns"
+        
+        self.endpoint.delete()
+        
+        mock_delete_api.assert_called_once_with(
+            name="test-name",
+            kind=JUMPSTART_MODEL_KIND,
+            namespace="test-ns"
         )
 
-        # Verify call_delete_api was called with correct parameters
-        mock_call_delete_api.assert_called_once_with(
-            name="test-endpoint", kind=JUMPSTART_MODEL_KIND, namespace="test-namespace"
+    @patch("sagemaker_core.main.resources.Endpoint.get")
+    def test_invoke(self, mock_endpoint_get):
+        self.endpoint.sageMakerEndpoint = MagicMock()
+        self.endpoint.sageMakerEndpoint.name = "test-endpoint"
+        mock_endpoint = MagicMock()
+        mock_endpoint.invoke.return_value = "response"
+        mock_endpoint_get.return_value = mock_endpoint
+        
+        result = self.endpoint.invoke({"input": "test"})
+        
+        mock_endpoint_get.assert_called_once()
+        mock_endpoint.invoke.assert_called_once_with(
+            body={"input": "test"}, content_type="application/json"
         )
+        self.assertEqual(result, "response")

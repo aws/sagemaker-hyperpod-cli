@@ -5,8 +5,8 @@ from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     _HPEndpoint,
 )
 from sagemaker.hyperpod.inference.hp_endpoint_base import HPEndpointBase
-from typing import Dict, List, Optional
-from typing_extensions import Self
+from sagemaker.hyperpod.common.utils import get_default_namespace
+from typing import Dict, List, Optional, Self
 from sagemaker_core.main.resources import Endpoint
 from pydantic import Field, ValidationError
 import logging
@@ -19,7 +19,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
     def create(
         self,
         name=None,
-        namespace="default",
+        namespace=None,
         debug=False,
     ) -> None:
         logging.basicConfig()
@@ -31,6 +31,9 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
 
         if not name:
             name = spec.modelName
+
+        if not namespace:
+            namespace = get_default_namespace()
 
         self.call_create_api(
             name=name,  # use model name as metadata name
@@ -51,12 +54,16 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
     def create_from_dict(
         self,
         input: Dict,
-        namespace: str = "default",
+        name: str = None,
+        namespace: str = None,
     ) -> None:
         spec = _HPEndpoint.model_validate(input, by_name=True)
 
         if not name:
             name = spec.modelName
+
+        if not namespace:
+            namespace = get_default_namespace()
 
         self.call_create_api(
             name=name,  # use model name as metadata name
@@ -95,8 +102,11 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
     @classmethod
     def list(
         cls,
-        namespace: str = "default",
+        namespace: str = None,
     ) -> List[Endpoint]:
+        if not namespace:
+            namespace = get_default_namespace()
+
         response = cls.call_list_api(
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace=namespace,
@@ -112,7 +122,10 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         return endpoints
 
     @classmethod
-    def get(cls, name: str, namespace: str = "default") -> Endpoint:
+    def get(cls, name: str, namespace: str = None) -> Endpoint:
+        if not namespace:
+            namespace = get_default_namespace()
+
         response = cls.call_get_api(
             name=name,
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,

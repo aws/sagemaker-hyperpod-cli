@@ -5,8 +5,8 @@ from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
     _HPJumpStartEndpoint,
     JumpStartModelStatus,
 )
-from typing import Dict, List, Optional
-from typing_extensions import Self
+from sagemaker.hyperpod.common.utils import get_default_namespace
+from typing import Dict, List, Optional, Self
 from sagemaker_core.main.resources import Endpoint
 from pydantic import Field, ValidationError
 import logging
@@ -19,7 +19,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
     def create(
         self,
         name=None,
-        namespace="default",
+        namespace=None,
         debug=False,
     ) -> None:
         logging.basicConfig()
@@ -32,6 +32,9 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
 
         if not name:
             name = spec.model.modelId
+
+        if not namespace:
+            namespace = get_default_namespace()
 
         self.call_create_api(
             name=name,  # use model name as metadata name
@@ -53,12 +56,15 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         self,
         input: Dict,
         name: str = None,
-        namespace: str = "default",
+        namespace: str = None,
     ) -> None:
         spec = _HPJumpStartEndpoint.model_validate(input, by_name=True)
 
         if not name:
             name = spec.model.modelId
+
+        if not namespace:
+            namespace = get_default_namespace()
 
         self.call_create_api(
             name=name,  # use model name as metadata name
@@ -97,8 +103,11 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
     @classmethod
     def list(
         cls,
-        namespace: str = "default",
+        namespace: str = None,
     ) -> List[Endpoint]:
+        if not namespace:
+            namespace = get_default_namespace()
+
         response = cls.call_list_api(
             kind=JUMPSTART_MODEL_KIND,
             namespace=namespace,
@@ -114,7 +123,10 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         return endpoints
 
     @classmethod
-    def get(cls, name: str, namespace: str = "default") -> Self:
+    def get(cls, name: str, namespace: str = None) -> Self:
+        if not namespace:
+            namespace = get_default_namespace()
+
         response = cls.call_get_api(
             name=name,
             kind=JUMPSTART_MODEL_KIND,

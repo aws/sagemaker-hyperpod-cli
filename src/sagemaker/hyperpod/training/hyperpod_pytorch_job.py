@@ -11,6 +11,7 @@ from typing import List, Optional
 from sagemaker.hyperpod.common.utils import (
     validate_cluster_connection,
     handle_exception,
+    get_default_namespace,
 )
 import yaml
 import logging
@@ -52,18 +53,20 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
 
         spec = _HyperPodPytorchJob(**self.model_dump(by_alias=True, exclude_none=True))
 
+        if not self.metadata.namespace:
+            self.metadata.namespace = get_default_namespace()
+
         config = {
             "apiVersion": f"{TRAINING_GROUP}/{API_VERSION}",
             "kind": KIND,
-            "metadata": self.metadata.model_dump(),
-            "spec": spec.model_dump(),
+            "metadata": self.metadata.model_dump(exclude_none=True),
+            "spec": spec.model_dump(exclude_none=True),
         }
 
         custom_api = client.CustomObjectsApi()
         logger.debug(
-            "Deploying HyperPodPytorchJob with config:\n",
+            "Deploying HyperPodPytorchJob with config:\n%s",
             yaml.dump(config),
-            sep="",
         )
 
         try:
@@ -80,7 +83,10 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             handle_exception(e, self.metadata.name, self.metadata.namespace)
 
     @classmethod
-    def list(cls, namespace="default") -> List["HyperPodPytorchJob"]:
+    def list(cls, namespace=None) -> List["HyperPodPytorchJob"]:
+        if namespace is None:
+            namespace = get_default_namespace()
+
         if not validate_cluster_connection():
             raise Exception(
                 "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
@@ -124,7 +130,10 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             handle_exception(e, self.metadata.name, self.metadata.namespace)
 
     @classmethod
-    def get(cls, name, namespace="default") -> "HyperPodPytorchJob":
+    def get(cls, name, namespace=None) -> "HyperPodPytorchJob":
+        if namespace is None:
+            namespace = get_default_namespace()
+
         if not validate_cluster_connection():
             raise Exception(
                 "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."

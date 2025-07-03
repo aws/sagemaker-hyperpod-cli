@@ -1,5 +1,4 @@
 import boto3
-from tabulate import tabulate
 from kubernetes import config
 import yaml
 from typing import Optional
@@ -9,12 +8,17 @@ from kubernetes.config import (
 import os
 import subprocess
 import re
+import logging
 
 KUBE_CONFIG_PATH = os.path.expanduser(KUBE_CONFIG_DEFAULT_LOCATION)
 TEMP_KUBE_CONFIG_FILE = "/tmp/kubeconfig"
 
 
 class HyperPodManager:
+    @classmethod
+    def get_logger(self):
+        return logging.getLogger(__name__)
+
     def _get_eks_name_from_arn(self, arn: str) -> str:
 
         pattern = r"arn:aws:eks:[\w-]+:\d+:cluster/([\w-]+)"
@@ -25,7 +29,8 @@ class HyperPodManager:
         else:
             raise RuntimeError("cannot get EKS cluster name")
 
-    def _is_eks_orchestrator(self, sagemaker_client, cluster_name: str):
+    @classmethod
+    def _is_eks_orchestrator(cls, sagemaker_client, cluster_name: str):
         response = sagemaker_client.describe_cluster(ClusterName=cluster_name)
         return "Eks" in response["Orchestrator"]
 
@@ -86,7 +91,7 @@ class HyperPodManager:
                 if namespace is not None:
                     context["context"]["namespace"] = namespace
                 else:
-                    context["context"].pop("namespace", None)
+                    context["context"]["namespace"] = "default"
                 exist = True
 
         if not exist:
@@ -107,8 +112,6 @@ class HyperPodManager:
         cls,
         region: Optional[str] = None,
     ):
-        instance = cls()
-
         client = boto3.client("sagemaker", region_name=region)
         clusters = client.list_clusters()
 
@@ -118,15 +121,16 @@ class HyperPodManager:
         for cluster in clusters["ClusterSummaries"]:
             cluster_name = cluster["ClusterName"]
 
-            if instance._is_eks_orchestrator(client, cluster_name):
-                eks_clusters.append(("EKS", cluster_name))
+            if cls._is_eks_orchestrator(client, cluster_name):
+                eks_clusters.append(cluster_name)
             else:
-                slurm_clusters.append((cluster_name, "Slurm"))
-
-        table_data = eks_clusters + slurm_clusters
-        headers = ["Orchestrator", "Cluster Name"]
-
-        print(tabulate(table_data, headers=headers))
+                slurm_clusters.append(cluster_name)
+        
+        return {
+            "Eks": eks_clusters,
+            "Slurm": slurm_clusters
+        }
+        
 
     @classmethod
     def set_context(
@@ -145,7 +149,10 @@ class HyperPodManager:
         instance._update_kube_config(eks_name, region, TEMP_KUBE_CONFIG_FILE)
         instance._set_current_context(eks_cluster_arn, namespace)
 
-        print(f"Successfully set current cluster as: {cluster_name}")
+        if namespace:
+            cls.get_logger().info(f"Successfully set current context as: {cluster_name}, namespace: {namespace}")
+        else:
+            cls.get_logger().info(f"Successfully set current context as: {cluster_name}")
 
     @classmethod
     def get_context(cls):
@@ -155,6 +162,6 @@ class HyperPodManager:
             ]
             return current_context
         except Exception as e:
-            print(
+            raise Exception(
                 f"Failed to get current context: {e}. Check your config file at {TEMP_KUBE_CONFIG_FILE}"
             )

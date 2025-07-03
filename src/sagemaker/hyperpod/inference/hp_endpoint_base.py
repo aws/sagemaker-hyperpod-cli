@@ -15,9 +15,11 @@ import re
 from sagemaker.hyperpod.common.utils import (
     validate_cluster_connection,
     handle_exception,
+    get_default_namespace,
 )
 import logging
 import yaml
+from kubernetes import config
 
 
 class HPEndpointBase:
@@ -44,7 +46,7 @@ class HPEndpointBase:
         name: str,
         kind: str,
         namespace: str,
-        spec: Union[_HPJumpStartEndpoint , _HPEndpoint],
+        spec: Union[_HPJumpStartEndpoint, _HPEndpoint],
     ):
         if not validate_cluster_connection():
             raise Exception(

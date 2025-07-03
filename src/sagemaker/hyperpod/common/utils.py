@@ -2,6 +2,7 @@ from kubernetes import client
 from kubernetes import config as k8s_config
 from pydantic import ValidationError
 from kubernetes.client.exceptions import ApiException
+from kubernetes import config
 
 
 def validate_cluster_connection():
@@ -11,6 +12,23 @@ def validate_cluster_connection():
         return True
     except Exception as e:
         return False
+
+
+def get_default_namespace():
+    _, active_context = config.list_kube_config_contexts()
+
+    if active_context and "context" in active_context:
+        if (
+            "namespace" in active_context["context"]
+            and active_context["context"]["namespace"]
+        ):
+            return active_context["context"]["namespace"]
+        else:
+            return "default"
+    else:
+        raise Exception(
+            "No active context. Please use set_context() method to set current context."
+        )
 
 
 def handle_exception(e: Exception, name: str, namespace: str):

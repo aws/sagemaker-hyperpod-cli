@@ -1,322 +1,178 @@
-# import unittest
-# from unittest.mock import patch, MagicMock
-# import pytest
-# from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
-# from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
-#     InferenceEndpointConfigSpec,
-# )
-# from sagemaker.hyperpod.inference.config.constants import *
-#
-#
-# class TestHPEndpoint(unittest.TestCase):
-#     def setUp(self):
-#         self.endpoint = HPEndpoint()
-#
-#     def test_validate_inputs_valid_parameters_s3(self):
-#         # Test with valid S3 parameters
-#         self.endpoint._validate_inputs(
-#             model_name="test-model",
-#             instance_type="ml.g4dn.xlarge",
-#             image="test-image:latest",
-#             container_port=8080,
-#             model_source_type="s3",
-#             bucket_name="test-bucket",
-#             bucket_region="us-west-2",
-#             fsx_dns_name=None,
-#             fsx_file_system_id=None,
-#             fsx_mount_name=None,
-#             model_volume_mount_name="test-mount",
-#         )
-#         # No exception should be raised
-#
-#     def test_validate_inputs_valid_parameters_fsx(self):
-#         self.endpoint._validate_inputs(
-#             model_name="test-model",
-#             instance_type="ml.g4dn.xlarge",
-#             image="test-image:latest",
-#             container_port=8080,
-#             model_source_type="fsx",
-#             bucket_name=None,
-#             bucket_region=None,
-#             fsx_dns_name="test-dns",
-#             fsx_file_system_id="fs-12345",
-#             fsx_mount_name="test-mount",
-#             model_volume_mount_name="test-mount",
-#         )
-#         # No exception should be raised
-#
-#     def test_validate_inputs_missing_required_params(self):
-#         # Test with missing required parameters
-#         with pytest.raises(
-#             ValueError,
-#             match="When spec is None, model_name, instance_type, image, container_port, and model_source_type must be provided",
-#         ):
-#             self.endpoint._validate_inputs(
-#                 model_name=None,
-#                 instance_type="ml.g4dn.xlarge",
-#                 image="test-image:latest",
-#                 container_port=8080,
-#                 model_source_type="s3",
-#                 bucket_name="test-bucket",
-#                 bucket_region="us-west-2",
-#                 fsx_dns_name=None,
-#                 fsx_file_system_id=None,
-#                 fsx_mount_name=None,
-#                 model_volume_mount_name="test-mount",
-#             )
-#
-#     def test_validate_inputs_invalid_model_source_type(self):
-#         # Test with invalid model_source_type
-#         with pytest.raises(
-#             TypeError, match="model_source_type must be either 'fsx' or 's3'"
-#         ):
-#             self.endpoint._validate_inputs(
-#                 model_name="test-model",
-#                 instance_type="ml.g4dn.xlarge",
-#                 image="test-image:latest",
-#                 container_port=8080,
-#                 model_source_type="invalid",
-#                 bucket_name="test-bucket",
-#                 bucket_region="us-west-2",
-#                 fsx_dns_name=None,
-#                 fsx_file_system_id=None,
-#                 fsx_mount_name=None,
-#                 model_volume_mount_name="test-mount",
-#             )
-#
-#     def test_validate_inputs_missing_s3_params(self):
-#         # Test with missing S3 parameters
-#         with pytest.raises(
-#             ValueError,
-#             match="When model_source_type is 's3', bucket_name and bucket_region must be provided",
-#         ):
-#             self.endpoint._validate_inputs(
-#                 model_name="test-model",
-#                 instance_type="ml.g4dn.xlarge",
-#                 image="test-image:latest",
-#                 container_port=8080,
-#                 model_source_type="s3",
-#                 bucket_name=None,
-#                 bucket_region="us-west-2",
-#                 fsx_dns_name=None,
-#                 fsx_file_system_id=None,
-#                 fsx_mount_name=None,
-#                 model_volume_mount_name="test-mount",
-#             )
-#
-#     def test_validate_inputs_missing_fsx_params(self):
-#         # Test with missing FSx parameters
-#         with pytest.raises(
-#             ValueError,
-#             match="When model_source_type is 'fsx', fsx_file_system_id must be provided",
-#         ):
-#             self.endpoint._validate_inputs(
-#                 model_name="test-model",
-#                 instance_type="ml.g4dn.xlarge",
-#                 image="test-image:latest",
-#                 container_port=8080,
-#                 model_source_type="fsx",
-#                 bucket_name=None,
-#                 bucket_region=None,
-#                 fsx_dns_name="test-dns",
-#                 fsx_file_system_id=None,
-#                 fsx_mount_name="test-mount",
-#                 model_volume_mount_name="test-mount",
-#             )
-#
-#     @patch("sagemaker.hyperpod.inference.hp_endpoint.datetime")
-#     def test_get_default_endpoint_name(self, mock_datetime):
-#         # Setup mock datetime
-#         mock_now = mock_datetime.now.return_value
-#         mock_now.strftime.return_value = "230101-120000-123456"
-#
-#         # Test the method
-#         result = self.endpoint._get_default_endpoint_name("test-model")
-#
-#         # Verify results
-#         self.assertEqual(result, "test-model-230101-120000-123456")
-#         mock_datetime.now.assert_called_once()
-#         mock_now.strftime.assert_called_once_with("%y%m%d-%H%M%S-%f")
-#
-#     # Tests for create method
-#     @patch("sagemaker_core.main.resources.Endpoint.get")
-#     @patch.object(HPEndpoint, "_validate_inputs")
-#     @patch.object(HPEndpoint, "_get_default_endpoint_name")
-#     @patch.object(HPEndpoint, "call_create_api")
-#     def test_create_with_s3(
-#         self,
-#         mock_call_create_api,
-#         mock_get_default_endpoint_name,
-#         mock_validate_inputs,
-#         mock_get_endpoint,
-#     ):
-#         mock_get_endpoint.return_value = MagicMock()
-#         mock_get_default_endpoint_name.return_value = "test-model-230101-120000-123456"
-#
-#         # Create a mock spec with model_name attribute
-#         mock_spec = MagicMock()
-#         mock_spec.model_name = "test-model"  # Fix: use model_name instead of modelName
-#
-#         # Patch InferenceEndpointConfigSpec to return our mock
-#         HPEndpoint.create(
-#             namespace="test-namespace",
-#             model_name="test-model",
-#             instance_type="ml.g4dn.xlarge",
-#             image="test-image:latest",
-#             container_port=8080,
-#             model_source_type="s3",
-#             bucket_name="test-bucket",
-#             bucket_region="us-west-2",
-#             model_volume_mount_name="test-mount",
-#         )
-#
-#         # Verify _validate_inputs was called with correct parameters
-#         mock_validate_inputs.assert_called_once()
-#
-#         # Verify _get_default_endpoint_name was called with correct parameters
-#         mock_get_default_endpoint_name.assert_called_once_with("test-model")
-#
-#         # Verify call_create_api was called with correct parameters
-#         mock_call_create_api.assert_called_once()
-#
-#     @patch("sagemaker_core.main.resources.Endpoint.get")
-#     @patch.object(HPEndpoint, "_validate_inputs")
-#     @patch.object(HPEndpoint, "_get_default_endpoint_name")
-#     @patch.object(HPEndpoint, "call_create_api")
-#     def test_create_with_fsx(
-#         self,
-#         mock_call_create_api,
-#         mock_get_default_endpoint_name,
-#         mock_validate_inputs,
-#         mock_get_endpoint,
-#     ):
-#         # Setup mocks
-#         mock_get_default_endpoint_name.return_value = "test-model-230101-120000-123456"
-#         mock_get_endpoint.return_value = MagicMock()
-#
-#         # Patch InferenceEndpointConfigSpec to return our mock
-#         HPEndpoint.create(
-#             namespace="test-namespace",
-#             model_name="test-model",
-#             instance_type="ml.g4dn.xlarge",
-#             image="test-image:latest",
-#             container_port=8080,
-#             model_source_type="fsx",
-#             fsx_dns_name="test-dns",
-#             fsx_file_system_id="fs-12345",
-#             fsx_mount_name="test-mount",
-#             model_volume_mount_name="test-mount",
-#         )
-#
-#         # Verify call_create_api was called with correct parameters
-#         mock_call_create_api.assert_called_once()
-#
-#     @patch.object(HPEndpoint, "call_create_api")
-#     @patch("boto3.session.Session")
-#     @patch("sagemaker_core.main.resources.Endpoint.get")
-#     def test_create_from_spec(
-#         self, mock_get_endpoint, mock_session, mock_call_create_api
-#     ):
-#         # Setup mocks
-#         mock_session_instance = MagicMock()
-#         mock_session_instance.region_name = "us-west-2"
-#         mock_session.return_value = mock_session_instance
-#
-#         mock_endpoint = MagicMock()
-#         mock_get_endpoint.return_value = mock_endpoint
-#
-#         # Create a mock spec with proper attributes
-#         mock_spec = MagicMock(spec=InferenceEndpointConfigSpec)
-#         mock_spec.modelName = "test-model"  # Use snake_case
-#         mock_spec.endpointName = "test-endpoint"  # Add endpoint_name attribute
-#
-#         # Call the method
-#         result = HPEndpoint.create_from_spec(spec=mock_spec, namespace="test-namespace")
-#
-#         # Verify call_create_api was called with correct parameters
-#         mock_call_create_api.assert_called_once_with(
-#             name=mock_spec.modelName,
-#             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
-#             namespace="test-namespace",
-#             spec=mock_spec,
-#         )
-#
-#     @patch("sagemaker_core.main.resources.Endpoint.get")
-#     @patch.object(HPEndpoint, "call_create_api")
-#     def test_create_from_dict(self, mock_call_create_api, mock_get_endpoint):
-#         mock_get_endpoint.return_value = MagicMock()
-#
-#         # Setup test data
-#         input_dict = {
-#             "endpointName": "test-endpoint",
-#             "instanceType": "ml.g4dn.xlarge",
-#             "modelName": "test-model",
-#             "worker": {
-#                 "image": "test-image:latest",
-#                 "modelInvocationPort": {"container_port": 8080},
-#                 "modelVolumeMount": {"name": "volume-mount"},
-#                 "resources": {},
-#             },
-#             "modelSourceConfig": {
-#                 "modelSourceType": "s3",
-#                 "s3Storage": {"bucket_name": "test-bucket", "region": "us-west-2"},
-#             },
-#         }
-#
-#         # Call the method
-#         HPEndpoint.create_from_dict(input=input_dict, namespace="test-namespace")
-#
-#         # Verify call_create_api was called with correct parameters
-#         mock_call_create_api.assert_called_once()
-#
-#     @patch.object(HPEndpoint, "call_list_api")
-#     def test_list_endpoints(self, mock_call_list_api):
-#         mock_response = {"items": [{"metadata": {"name": "endpoint-1"}}]}
-#         mock_call_list_api.return_value = mock_response
-#
-#         # Call the method
-#         result = HPEndpoint.list(namespace="test-namespace")
-#
-#         # Verify call_list_api was called with correct parameters
-#         mock_call_list_api.assert_called_once_with(
-#             kind=INFERENCE_ENDPOINT_CONFIG_KIND, namespace="test-namespace"
-#         )
-#
-#         # Verify result
-#         self.assertEqual(result, mock_response)
-#
-#     @patch.object(HPEndpoint, "call_get_api")
-#     def test_describe_endpoint(self, mock_call_get_api):
-#         mock_response = {"metadata": {"name": "endpoint-1"}}
-#         mock_call_get_api.return_value = mock_response
-#
-#         result = HPEndpoint.describe_endpoint(
-#             name="endpoint-1", namespace="test-namespace"
-#         )
-#
-#         # Verify call_get_api was called with correct parameters
-#         mock_call_get_api.assert_called_once_with(
-#             name="endpoint-1",
-#             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
-#             namespace="test-namespace",
-#         )
-#
-#         # Verify result
-#         self.assertEqual(result, mock_response)
-#
-#     @patch.object(HPEndpoint, "call_delete_api")
-#     def test_delete_endpoint(self, mock_call_delete_api):
-#         # Setup mock response
-#         mock_call_delete_api.return_value = None
-#
-#         # Call the method
-#         result = HPEndpoint.delete_endpoint(
-#             name="endpoint-1", namespace="test-namespace"
-#         )
-#
-#         # Verify call_delete_api was called with correct parameters
-#         mock_call_delete_api.assert_called_once_with(
-#             name="endpoint-1",
-#             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
-#             namespace="test-namespace",
-#         )
+import unittest
+from unittest.mock import MagicMock, patch
+from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
+from sagemaker.hyperpod.inference.config.hp_endpoint_config import CloudWatchTrigger, Dimensions, PrometheusTrigger, AutoScalingSpec, ModelMetrics, Metrics, FsxStorage, S3Storage, ModelSourceConfig, Tags, TlsConfig, ConfigMapKeyRef, FieldRef, ResourceFieldRef, SecretKeyRef, ValueFrom, EnvironmentVariables, ModelInvocationPort, ModelVolumeMount, Claims, Resources, Worker
+from sagemaker.hyperpod.inference.config.constants import *
+
+
+class TestHPEndpoint(unittest.TestCase):
+    def setUp(self):
+        tls_config=TlsConfig(tls_certificate_output_s3_uri='s3://tls-bucket-inf1-beta2')
+
+        model_source_config = ModelSourceConfig(
+            model_source_type='s3',
+            model_location="deepseek15b",
+            s3_storage=S3Storage(
+                bucket_name='test-model-s3-zhaoqi',
+                region='us-east-2',
+            ),
+        )
+
+        environment_variables = [
+            EnvironmentVariables(name="HF_MODEL_ID", value="/opt/ml/model"),
+            EnvironmentVariables(name="SAGEMAKER_PROGRAM", value="inference.py"),
+            EnvironmentVariables(name="SAGEMAKER_SUBMIT_DIRECTORY", value="/opt/ml/model/code"),
+            EnvironmentVariables(name="MODEL_CACHE_ROOT", value="/opt/ml/model"),
+            EnvironmentVariables(name="SAGEMAKER_ENV", value="1"),
+        ]
+
+        worker = Worker(
+            image='763104351884.dkr.ecr.us-east-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.4.0-tgi2.3.1-gpu-py311-cu124-ubuntu22.04-v2.0',
+            model_volume_mount=ModelVolumeMount(
+                name='model-weights',
+            ),
+            model_invocation_port=ModelInvocationPort(container_port=8080),
+            resources=Resources(
+                    requests={"cpu": "30000m", "nvidia.com/gpu": 1, "memory": "100Gi"},
+                    limits={"nvidia.com/gpu": 1}
+            ),
+            environment_variables=environment_variables,
+        )
+
+        # Create dimensions
+        dimensions = [
+            Dimensions(name="EndpointName", value="test-endpoint-name-07-01-2"),
+            Dimensions(name="VariantName", value="AllTraffic")
+        ]
+
+        # Create CloudWatch trigger
+        cloudwatch_trigger = CloudWatchTrigger(
+            dimensions=dimensions,
+            metric_collection_period=30,
+            metric_name="Invocations",
+            metric_stat="Sum",
+            metric_type="Average",
+            min_value=0.0,
+            name="SageMaker-Invocations",
+            namespace="AWS/SageMaker",
+            target_value=10,
+            use_cached_metrics=False
+        )
+
+        # Create autoscaling spec
+        auto_scaling_spec = AutoScalingSpec(
+            cloud_watch_trigger=cloudwatch_trigger
+        )
+
+        # Create metrics
+        metrics = Metrics(enabled=True)
+
+        self.endpoint = HPEndpoint(
+            endpoint_name='s3-test-endpoint-name',
+            instance_type='ml.g5.8xlarge',
+            model_name='deepseek15b-test-model-name',  
+            tls_config=tls_config,
+            model_source_config=model_source_config,
+            worker=worker,
+            auto_scaling_spec=auto_scaling_spec,
+            metrics=metrics,
+        )
+
+    @patch.object(HPEndpoint, "call_create_api")
+    def test_create(self, mock_create_api):
+        self.endpoint.modelName = "test-model"
+        
+        self.endpoint.create(name="test-name", namespace="test-ns")
+        
+        mock_create_api.assert_called_once_with(
+            name="test-name",
+            kind=INFERENCE_ENDPOINT_CONFIG_KIND,
+            namespace="test-ns",
+            spec=unittest.mock.ANY
+        )
+        self.assertEqual(self.endpoint.metadata.name, "test-name")
+
+    @patch.object(HPEndpoint, "call_create_api")
+    def test_create_from_dict(self, mock_create_api):
+        input_dict = self.endpoint.model_dump(exclude_none=True)
+        
+        self.endpoint.create_from_dict(input_dict, namespace="test-ns")
+        
+        mock_create_api.assert_called_once()
+
+    @patch.object(HPEndpoint, "call_get_api")
+    def test_refresh(self, mock_get_api):
+        self.endpoint.metadata = MagicMock()
+        self.endpoint.metadata.name = "test-name"
+        self.endpoint.metadata.namespace = "test-ns"
+        mock_get_api.return_value = {"status": {"state": "DeploymentComplete"}}
+        
+        result = self.endpoint.refresh()
+        
+        mock_get_api.assert_called_once_with(
+            name="test-name",
+            kind=INFERENCE_ENDPOINT_CONFIG_KIND,
+            namespace="test-ns"
+        )
+        self.assertEqual(result, self.endpoint)
+
+    @patch.object(HPEndpoint, "get")
+    @patch.object(HPEndpoint, "call_list_api")
+    def test_list(self, mock_list_api, mock_get):
+        mock_list_api.return_value = {"items": [{"metadata": {"name": "test-endpoint"}}]}
+        mock_get.return_value = MagicMock()
+        
+        result = HPEndpoint.list(namespace="test-ns")
+        
+        mock_list_api.assert_called_once_with(
+            kind=INFERENCE_ENDPOINT_CONFIG_KIND,
+            namespace="test-ns"
+        )
+        mock_get.assert_called_once_with("test-endpoint", namespace="test-ns")
+        self.assertIsInstance(result, list)
+
+    @patch.object(HPEndpoint, "call_get_api")
+    def test_get(self, mock_get_api):
+        mock_get_api.return_value = {
+            "spec": self.endpoint.model_dump(exclude_none=True),
+            "status": {"state": "DeploymentComplete"},
+            "metadata": {"name": self.endpoint.modelName, "namespace": "test-ns"}
+        }
+        
+        result = HPEndpoint.get(self.endpoint.modelName, namespace="test-ns")
+        
+        mock_get_api.assert_called_once_with(
+            name=self.endpoint.modelName,
+            kind=INFERENCE_ENDPOINT_CONFIG_KIND,
+            namespace="test-ns"
+        )
+        self.assertIsInstance(result, HPEndpoint)
+
+    @patch.object(HPEndpoint, "call_delete_api")
+    def test_delete(self, mock_delete_api):
+        self.endpoint.metadata = MagicMock()
+        self.endpoint.metadata.name = "test-name"
+        self.endpoint.metadata.namespace = "test-ns"
+        
+        self.endpoint.delete()
+        
+        mock_delete_api.assert_called_once_with(
+            name="test-name",
+            kind=INFERENCE_ENDPOINT_CONFIG_KIND,
+            namespace="test-ns"
+        )
+
+    @patch("sagemaker_core.main.resources.Endpoint.get")
+    def test_invoke(self, mock_endpoint_get):
+        self.endpoint.endpointName = "test-endpoint"
+        mock_endpoint = MagicMock()
+        mock_endpoint.invoke.return_value = "response"
+        mock_endpoint_get.return_value = mock_endpoint
+        
+        result = self.endpoint.invoke({"input": "test"})
+        
+        mock_endpoint_get.assert_called_once()
+        mock_endpoint.invoke.assert_called_once_with(
+            body={"input": "test"}, content_type="application/json"
+        )
+        self.assertEqual(result, "response")
