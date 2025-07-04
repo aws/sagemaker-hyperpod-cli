@@ -99,7 +99,7 @@ Notes:
 
   If needed, please run `chmod +700 ./install_rig_dependencies.sh` to allow the script to execute.
 
-⚠️ Note: RIG installation depends on the Helm release name. If the above commands were modified for standard Helm installation (i.e. no longer `helm install dependencies...` where `dependencies` is the release name), then please update the STANDARD_HELM_RELEASE_NAME in install_rig_dependencies.sh before running
+⚠️ Note: RIG installation depends on the Helm release name. If the above commands were modified for standard Helm installation (i.e. no longer 'helm install dependencies...' where 'dependencies' is the release name), then please update the STANDARD_HELM_RELEASE_NAME in install_rig_dependencies.sh before running
 
 ⚠️ Note: This will require the yq utility with version >= 4 (e.g. https://github.com/mikefarah/yq/releases/tag/v4)
 
@@ -113,7 +113,7 @@ The image URI for this component is region-specific. See https://github.com/aws/
 To ensure this feature works as intended, please be sure to use the correct image URI.
 
 For installations that have already deployed, the image URI can be updated (corrected) using a 'kubectl patch' command. For example:
-    kubectl patch daemonset health-monitoring-agent -n aws-hyperpod --patch '{spec: {template: {spec: {containers: [{name: health-monitoring-agent, image: 767398015722.dkr.ecr.us-east-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.448.0_1.0.115.0}]}}}}'
+    kubectl patch daemonset health-monitoring-agent -n aws-hyperpod --patch '{"spec": {"template": {"spec": {"containers": [{"name": "health-monitoring-agent", "image": "767398015722.dkr.ecr.us-east-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.448.0_1.0.115.0"}]}}}}'
 
 ## 5. Create Team Role
 

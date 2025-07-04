@@ -402,7 +402,7 @@ assert_addons_enabled() {
         response=$(kubectl get $kind $name -n $namespace --no-headers 2>&1)
         if [[ "$response" == *"Error from server (NotFound)"* ]] || [ -z "$response" ]; then
             echo "Namespace $namespace does not exist or No $kind $name found in namespace $namespace. Please ensure CNI, CoreDNS add-ons enabled, and that standard HyperPod Helm chart is installed for this cluster before installing RIG dependencies."
-	    echo "⚠️ Note: RIG installation depends on the Helm release name. If the standard Helm installation command/release name changed (i.e. no longer `helm install dependencies...` where `dependencies` is the release name), then please update the RELEASE_NAME in install_rig_dependencies.sh before running"
+	    echo "⚠️ Note: RIG installation depends on the Helm release name. If the standard Helm installation command/release name changed (i.e. no longer 'helm install dependencies...' where 'dependencies' is the release name), then please update the RELEASE_NAME in install_rig_dependencies.sh before running"
             exit 1
         fi
     done
