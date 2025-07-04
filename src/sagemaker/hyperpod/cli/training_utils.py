@@ -61,6 +61,7 @@ def generate_click_command(
         def wrapped_func(*args, **kwargs):
             # extract version
             version = version_key or kwargs.pop("version", "1.0")
+            debug = kwargs.pop("debug", False)
 
             # look up the model class
             Model = registry.get(version)
@@ -72,7 +73,7 @@ def generate_click_command(
             domain_config = flat.to_domain()
 
             # call your handler
-            return func(version, domain_config)
+            return func(version, debug, domain_config)
 
         # 2) inject click options from JSON Schema
         excluded_props = set(["version"])

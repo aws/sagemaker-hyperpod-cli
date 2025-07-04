@@ -6,13 +6,6 @@ import shutil
 import subprocess
 from pathlib import Path
 from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob
-from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_config import (
-    Container,
-    _HyperPodPytorchJob,
-    ReplicaSpec,
-    Spec,
-    Template,
-)
 from sagemaker.hyperpod.common.config.metadata import Metadata
 import tempfile
 from sagemaker.hyperpod.cli.constants.hp_pytorch_command_constants import HELP_TEXT
@@ -24,17 +17,20 @@ from hyperpod_pytorchjob_config_schemas.registry import SCHEMA_REGISTRY
 
 @click.command("hp-pytorch-job")
 @click.option("--version", default="1.0", help="Schema version to use")
+@click.option("--debug", default=False, help="Enable debug mode")
 @generate_click_command(
     schema_pkg="hyperpod_pytorchjob_config_schemas",
     registry=SCHEMA_REGISTRY,
 )
-def pytorch_create(version, config):
+def pytorch_create(version, debug, config):
     """Submit a PyTorch job using a configuration file"""
     try:
         click.echo(f"Using version: {version}")
         job_name = config.get("name")
         namespace = config.get("namespace")
         spec = config.get("spec")
+        # nproc_per_node = config.get("nproc_per_node", None)
+        # run_policy = config.get("run_policy", None)
 
         # Prepare metadata
         metadata_kwargs = {"name": job_name}
@@ -44,20 +40,20 @@ def pytorch_create(version, config):
         # Prepare job kwargs
         job_kwargs = {
             "metadata": Metadata(**metadata_kwargs),
-            "replica_specs": spec.get("replica_specs", []),
+            "replica_specs": spec.get("replica_specs"),
         }
 
         # Add nproc_per_node if present
         if "nproc_per_node" in spec:
-            job_kwargs["nproc_per_node"] = spec["nproc_per_node"]
+            job_kwargs["nproc_per_node"] = spec.get("nproc_per_node")
 
         # Add run_policy if present
         if "run_policy" in spec:
-            job_kwargs["run_policy"] = spec["run_policy"]
+            job_kwargs["run_policy"] = spec.get("run_policy")
 
         # Create job
         job = HyperPodPytorchJob(**job_kwargs)
-        job.create()
+        job.create(debug=debug)
 
     except Exception as e:
         raise click.UsageError(f"Failed to create job: {str(e)}")
