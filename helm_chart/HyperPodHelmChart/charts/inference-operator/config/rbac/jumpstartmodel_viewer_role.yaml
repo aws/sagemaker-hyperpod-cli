@@ -3,9 +3,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    app.kubernetes.io/name: {{ .Values.namePrefix }}App
-  name: {{ .Values.namePrefix }}jumpstartmodels-viewer-role
-  namespace: {{ .Values.namePrefix }}system
+    app.kubernetes.io/name: {{ .Values.namePrefix }}
+  name: {{ .Values.namePrefix }}-jumpstartmodels-viewer-role
+  namespace: {{ .Values.shortPrefix }}-system
 rules:
 - apiGroups:
   - inference.sagemaker.aws.amazon.com

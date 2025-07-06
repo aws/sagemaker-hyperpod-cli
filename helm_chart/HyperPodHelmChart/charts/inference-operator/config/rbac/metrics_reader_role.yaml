@@ -2,8 +2,8 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ .Values.namePrefix }}metrics-reader
-  namespace: {{ .Values.namePrefix }}system
+  name: {{ .Values.namePrefix }}-metrics-reader
+  namespace: {{ .Values.shortPrefix }}-system
 rules:
 - nonResourceURLs:
   - "/metrics"

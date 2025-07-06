@@ -38,6 +38,8 @@
 {{- fail "Unsupported AWS Region" -}}
 {{- end -}}
 
+{{- if or (not (hasKey .Values.image "repository")) (not .Values.image.repository) -}}
 {{- $_ := set .Values.image "repository" (index .Values.image.repositoryDomainMap $region) -}}
+{{- end -}}
 
 {{- end -}}

@@ -4,9 +4,9 @@ kind: Namespace
 metadata:
   labels:
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: {{ .Values.namePrefix }}App
-    control-plane: {{ .Values.namePrefix }}controller-manager
-  name: {{ .Values.namePrefix }}system
+    app.kubernetes.io/name: {{ .Values.namePrefix }}
+    control-plane: {{ .Values.namePrefix }}-controller-manager
+  name: {{ .Values.shortPrefix }}-system
 ---
 {{- range $component, $config := .Values.components }}
 {{- if $config.enabled }}

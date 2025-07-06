@@ -2,8 +2,8 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ .Values.namePrefix }}metrics-auth-role
-  namespace: {{ .Values.namePrefix }}system
+  name: {{ .Values.namePrefix }}-metrics-auth-role
+  namespace: {{ .Values.shortPrefix }}-system
 rules:
 - apiGroups:
   - authentication.k8s.io

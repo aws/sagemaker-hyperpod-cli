@@ -3,10 +3,10 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   labels:
-    control-plane: {{ .Values.namePrefix }}controller-manager
-    app.kubernetes.io/name: deploymentoperator
-  name: {{ .Values.namePrefix }}controller-manager-metrics-monitor
-  namespace: {{ .Values.namePrefix }}system
+    control-plane: {{ .Values.namePrefix }}-controller-manager
+    app.kubernetes.io/name: {{ .Values.namePrefix }}
+  name: {{ .Values.namePrefix }}-controller-manager-metrics-monitor
+  namespace: {{ .Values.shortPrefix }}-system
 spec:
   endpoints:
     - path: /metrics
@@ -26,4 +26,4 @@ spec:
         insecureSkipVerify: true
   selector:
     matchLabels:
-      control-plane: {{ .Values.namePrefix }}controller-manager
+      control-plane: {{ .Values.namePrefix }}-controller-manager

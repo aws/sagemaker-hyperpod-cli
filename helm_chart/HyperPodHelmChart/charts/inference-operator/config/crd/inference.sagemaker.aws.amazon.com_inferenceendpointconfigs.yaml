@@ -203,16 +203,18 @@ spec:
                     type: integer
                 type: object
               endpointName:
-                description: Name used for Sagemaker Endpoint
+                description: |-
+                  Name of a SageMaker endpoint to be created for this InferenceEndpointConfig.
+                  The default value of empty string, when used, will skip endpoint creation.
                 maxLength: 63
-                pattern: ^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}
+                pattern: ^$|^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$
                 type: string
               instanceType:
                 description: Instance Type to deploy the model on
                 pattern: ^ml\..*
                 type: string
               invocationEndpoint:
-                default: invoke
+                default: invocations
                 description: |-
                   The invocation endpoint of the model server. http://<host>:<port>/ would be pre-populated based on the other fields.
                   Please fill in the path after http://<host>:<port>/ specific to your model server.
@@ -221,7 +223,7 @@ spec:
                 description: Configuration for metrics collection and exposure
                 properties:
                   enabled:
-                    default: false
+                    default: true
                     description: Enable metrics collection for this model deployment
                     type: boolean
                   metricsScrapeIntervalSeconds:
@@ -564,7 +566,6 @@ spec:
                 - resources
                 type: object
             required:
-            - endpointName
             - instanceType
             - modelName
             - modelSourceConfig

@@ -219,7 +219,7 @@ spec:
                 description: Configuration for metrics collection and exposure
                 properties:
                   enabled:
-                    default: false
+                    default: true
                     description: Enable metrics collection for this model deployment
                     type: boolean
                   metricsScrapeIntervalSeconds:
@@ -309,11 +309,12 @@ spec:
               sageMakerEndpoint:
                 properties:
                   name:
+                    default: ""
+                    description: Name of a SageMaker endpoint to be created for this JumpStartModel.
+                      The default value of empty string, when used, will skip endpoint creation.
                     maxLength: 63
-                    pattern: ^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$
+                    pattern: ^$|^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$
                     type: string
-                required:
-                - name
                 type: object
               server:
                 properties:
@@ -340,7 +341,6 @@ spec:
                 type: object
             required:
             - model
-            - sageMakerEndpoint
             - server
             type: object
           status:

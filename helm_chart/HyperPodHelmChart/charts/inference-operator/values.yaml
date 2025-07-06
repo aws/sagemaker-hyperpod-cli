@@ -1,9 +1,9 @@
-namePrefix: "hyperpod-inference-operator-"
-
+namePrefix: "hyperpod-inference-operator"
+shortPrefix: "hyperpod-inference"
 region: ""
 eksClusterName: ""
 
-image: 
+image:
   repositoryDomainMap:
     us-east-2: 061051259071.dkr.ecr.us-east-2.amazonaws.com
     eu-north-1: 850995554027.dkr.ecr.eu-north-1.amazonaws.com
@@ -20,8 +20,10 @@ image:
     ap-southeast-1: 474668384327.dkr.ecr.ap-southeast-1.amazonaws.com
     ap-southeast-4: 311141544681.dkr.ecr.ap-southeast-4.amazonaws.com
     ap-southeast-3: 158128612970.dkr.ecr.ap-southeast-3.amazonaws.com
+    eu-south-2: 025050981094.dkr.ecr.eu-south-2.amazonaws.com
   tag: v1.0.0
   pullPolicy: Always
+  repository:
 hyperpodClusterArn:
 executionRoleArn:
 jumpstartGatedModelDownloadRoleArn: ""

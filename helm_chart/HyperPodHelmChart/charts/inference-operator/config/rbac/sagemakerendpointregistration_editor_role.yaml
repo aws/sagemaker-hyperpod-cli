@@ -4,8 +4,8 @@ kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/name: AWSCrescendoInferenceOperator
-  name: {{ .Values.namePrefix }}sagemakerendpointregistration-editor-role
-  namespace: {{ .Values.namePrefix }}system
+  name: {{ .Values.namePrefix }}-sagemakerendpointregistration-editor-role
+  namespace: {{ .Values.shortPrefix }}-system
 rules:
 - apiGroups:
   - inference.sagemaker.aws.amazon.com
