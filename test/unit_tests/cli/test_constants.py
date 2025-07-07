@@ -14,5 +14,3 @@ class TestConstants(unittest.TestCase):
         self.assertIn("Usage:", HELP_TEXT)
 
 
-if __name__ == "__main__":
-    unittest.main()

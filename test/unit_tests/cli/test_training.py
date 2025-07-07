@@ -221,6 +221,3 @@ class TestTrainingCommands(unittest.TestCase):
         self.assertNotEqual(result.exit_code, 0)
         self.assertIn("Failed to describe job", result.output)
 
-
-if __name__ == "__main__":
-    unittest.main()

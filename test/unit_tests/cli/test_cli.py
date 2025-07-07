@@ -82,5 +82,3 @@ class TestCLI(unittest.TestCase):
         self.assertIn("HyperPod PyTorch Job CLI", result.output)
 
 
-if __name__ == "__main__":
-    unittest.main()
