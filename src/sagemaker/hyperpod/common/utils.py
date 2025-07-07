@@ -4,6 +4,12 @@ from pydantic import ValidationError
 from kubernetes.client.exceptions import ApiException
 from kubernetes import config
 import uuid
+import re
+import boto3
+import json
+from typing import List
+
+EKS_ARN_PATTERN = r"arn:aws:eks:([\w-]+):\d+:cluster/([\w-]+)"
 
 
 def validate_cluster_connection():
@@ -41,7 +47,9 @@ def handle_exception(e: Exception, name: str, namespace: str):
                 f"Access denied to resource '{name}' in namespace '{namespace}'."
             ) from e
         if e.status == 404:
-            raise Exception(f"Resource '{name}' not found in namespace '{namespace}'.") from e
+            raise Exception(
+                f"Resource '{name}' not found in namespace '{namespace}'."
+            ) from e
         elif e.status == 409:
             raise Exception(
                 f"Resource '{name}' already exists in namespace '{namespace}'."
@@ -56,5 +64,49 @@ def handle_exception(e: Exception, name: str, namespace: str):
 
     raise e
 
+
 def append_uuid(name: str) -> str:
     return f"{name}-{str(uuid.uuid4())[:4]}"
+
+
+def get_eks_name_from_arn(arn: str) -> str:
+    match = re.match(EKS_ARN_PATTERN, arn)
+
+    if match:
+        return match.group(2)
+    else:
+        raise RuntimeError("cannot get EKS cluster name")
+
+
+def get_region_from_eks_arn(arn: str) -> str:
+    match = re.match(EKS_ARN_PATTERN, arn)
+
+    if match:
+        return match.group(1)
+    else:
+        raise RuntimeError("cannot get region from EKS ARN")
+
+
+def get_jumpstart_model_instance_types(model_id, region) -> List[str]:
+    client = boto3.client("sagemaker", region_name=region)
+
+    response = client.describe_hub_content(
+        HubName="SageMakerPublicHub", HubContentType="Model", HubContentName=model_id
+    )
+
+    content = json.loads(response["HubContentDocument"])
+    instance_types = content["SupportedInferenceInstanceTypes"]
+
+    return instance_types
+
+
+def get_cluster_instance_types(cluster, region) -> set:
+    instance_types = set({})
+
+    sagemaker_client = boto3.client("sagemaker", region_name=region)
+    response = sagemaker_client.describe_cluster(ClusterName=cluster)
+
+    for instance_group in response["InstanceGroups"]:
+        instance_types.add(instance_group["InstanceType"])
+
+    return instance_types

@@ -9,7 +9,6 @@ JUMPSTART_MODEL_KIND = "JumpStartModel"
 JUMPSTART_MODEL_PLURAL = "jumpstartmodels"
 INFERENCE_ENDPOINT_CONFIG_KIND = "InferenceEndpointConfig"
 INFERENCE_ENDPOINT_CONFIG_PLURAL = "inferenceendpointconfigs"
-MODEL_HUB_NAME = "SageMakerPublicHub"
 DEFAULT_MOUNT_PATH = "/opt/ml/model"
 OPERATOR_NAMESPACE = "hyperpod-inference-operator-system"
 

@@ -1,16 +1,22 @@
+from typing import Dict, List, Optional
+from pydantic import Field, ValidationError
+import logging
 from sagemaker.hyperpod.inference.config.constants import *
 from sagemaker.hyperpod.inference.hp_endpoint_base import HPEndpointBase
 from sagemaker.hyperpod.common.config.metadata import Metadata
-from sagemaker.hyperpod.common.utils import append_uuid
+
+from sagemaker.hyperpod.hyperpod_manager import HyperPodManager
+from sagemaker_core.main.resources import Endpoint
 from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
     _HPJumpStartEndpoint,
     JumpStartModelStatus,
 )
-from sagemaker.hyperpod.common.utils import get_default_namespace
-from typing import Dict, List, Optional
-from sagemaker_core.main.resources import Endpoint
-from pydantic import Field, ValidationError
-import logging
+from sagemaker.hyperpod.common.utils import (
+    append_uuid,
+    get_jumpstart_model_instance_types,
+    get_cluster_instance_types,
+    get_default_namespace,
+)
 
 
 class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
@@ -34,11 +40,15 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         if not name:
             name = append_uuid(spec.model.modelId)
 
+        endpoint_name = ""
         if spec.sageMakerEndpoint and spec.sageMakerEndpoint.name:
             spec.sageMakerEndpoint.name = append_uuid(spec.sageMakerEndpoint.name)
+            endpoint_name = spec.sageMakerEndpoint.name
 
         if not namespace:
             namespace = get_default_namespace()
+
+        self.validate_instance_type(spec.model.modelId, spec.server.instanceType)
 
         self.call_create_api(
             name=name,  # use model name as metadata name
@@ -53,7 +63,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         )
 
         self.get_logger().info(
-            "Creating JumpStart model and sagemaker endpoint. This may take a few minutes..."
+            f"Creating JumpStart model and sagemaker endpoint. Metadata name: {name}. Endpoint name: {endpoint_name}.\n The process may take a few minutes..."
         )
 
     def create_from_dict(
@@ -67,8 +77,10 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         if not name:
             name = append_uuid(spec.model.modelId)
 
+        endpoint_name = ""
         if spec.sageMakerEndpoint and spec.sageMakerEndpoint.name:
             spec.sageMakerEndpoint.name = append_uuid(spec.sageMakerEndpoint.name)
+            endpoint_name = spec.sageMakerEndpoint.name
 
         if not namespace:
             namespace = get_default_namespace()
@@ -86,7 +98,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         )
 
         self.get_logger().info(
-            "Creating JumpStart model and sagemaker endpoint. This may take a few minutes..."
+            f"Creating JumpStart model and sagemaker endpoint. Metadata name: {name}. Endpoint name: {endpoint_name}.\n The process may take a few minutes..."
         )
 
     def refresh(self):
@@ -170,7 +182,42 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
             raise Exception("SageMaker endpoint name not found in this object!")
 
         endpoint = Endpoint.get(
-            self.sageMakerEndpoint.name, region=HPJumpStartEndpoint.get_current_region()
+            self.sageMakerEndpoint.name, region=HyperPodManager.get_current_region()
         )
 
         return endpoint.invoke(body=body, content_type=content_type)
+
+    def validate_instance_type(self, model_id: str, instance_type: str):
+        model_types = None
+        cluster_instance_types = None
+
+        # verify supported instance types from model hub
+        try:
+            model_types = get_jumpstart_model_instance_types(
+                model_id, HyperPodManager.get_current_region()
+            )
+        except Exception as e:
+            self.get_logger().warning(
+                f"Failed to fetch supported instance type from SageMakerPublicHub content: {e}"
+            )
+
+        if model_types and (instance_type not in model_types):
+            raise Exception(
+                f"Instance type {instance_type} not supported by JumpStart model {model_id}. Supported types are {model_types}"
+            )
+
+        # verify supported instance types from HyperPod cluster
+        try:
+            cluster_instance_types = get_cluster_instance_types(
+                cluster=HyperPodManager.get_current_cluster(),
+                region=HyperPodManager.get_current_region(),
+            )
+        except Exception as e:
+            self.get_logger().warning(
+                f"Failed to get instance types from HyperPod cluster: {e}"
+            )
+
+        if cluster_instance_types and (instance_type not in cluster_instance_types):
+            raise Exception(
+                f"Current HyperPod cluster does not have instance type {instance_type}. Supported instance types are {cluster_instance_types}"
+            )

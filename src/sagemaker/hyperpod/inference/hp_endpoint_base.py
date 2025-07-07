@@ -1,5 +1,7 @@
 from typing import Union
-
+import logging
+import yaml
+from types import SimpleNamespace
 from kubernetes import client
 from sagemaker.hyperpod.inference.config.constants import *
 from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
@@ -8,37 +10,16 @@ from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
 from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     _HPEndpoint,
 )
-from types import SimpleNamespace
-import boto3
-from sagemaker.hyperpod.hyperpod_manager import HyperPodManager
-import re
 from sagemaker.hyperpod.common.utils import (
     validate_cluster_connection,
     handle_exception,
-    get_default_namespace,
 )
-import logging
-import yaml
-from kubernetes import config
 
 
 class HPEndpointBase:
     @classmethod
     def get_logger(cls):
         return logging.getLogger(__name__)
-
-    @classmethod
-    def get_current_region(cls):
-        eks_arn = HyperPodManager.get_context()
-        eks_arn_pattern = r"arn:aws:eks:([\w-]+):\d+:cluster/[\w-]+"
-        match = re.match(eks_arn_pattern, eks_arn)
-
-        if match:
-            return match.group(1)
-
-        region = boto3.session.Session().region_name
-
-        return region
 
     @classmethod
     def call_create_api(

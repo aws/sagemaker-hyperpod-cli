@@ -1,12 +1,12 @@
 from sagemaker.hyperpod.common.config.metadata import Metadata
 from sagemaker.hyperpod.inference.config.constants import *
-from sagemaker.hyperpod.common.utils import append_uuid
+from sagemaker.hyperpod.common.utils import append_uuid, get_default_namespace
 from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     InferenceEndpointConfigStatus,
     _HPEndpoint,
 )
 from sagemaker.hyperpod.inference.hp_endpoint_base import HPEndpointBase
-from sagemaker.hyperpod.common.utils import get_default_namespace
+from sagemaker.hyperpod.hyperpod_manager import HyperPodManager
 from typing import Dict, List, Optional
 from sagemaker_core.main.resources import Endpoint
 from pydantic import Field, ValidationError
@@ -53,7 +53,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         )
 
         self.get_logger().info(
-            "Creating sagemaker model and endpoint. This may take a few minutes..."
+            "Creating sagemaker model and endpoint. Metadata name: {name}. Endpoint name: {spec.endpointName}.\n The process may take a few minutes..."
         )
 
     def create_from_dict(
@@ -86,7 +86,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         )
 
         self.get_logger().info(
-            "Creating sagemaker model and endpoint. This may take a few minutes..."
+            "Creating sagemaker model and endpoint. Metadata name: {name}. Endpoint name: {spec.endpointName}.\n The process may take a few minutes..."
         )
 
     def refresh(self):
@@ -168,7 +168,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
             raise Exception("SageMaker endpoint name not found in this object!")
 
         endpoint = Endpoint.get(
-            self.endpointName, region=HPEndpoint.get_current_region()
+            self.endpointName, region=HyperPodManager.get_current_region()
         )
 
         return endpoint.invoke(body=body, content_type=content_type)

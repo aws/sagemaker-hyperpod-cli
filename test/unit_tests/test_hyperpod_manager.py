@@ -5,17 +5,9 @@ from sagemaker.hyperpod.hyperpod_manager import HyperPodManager
 
 
 class TestHyperPodManager(unittest.TestCase):
-    def setUp(self):
-        self.manager = HyperPodManager()
 
-    def test_get_eks_name_from_arn_valid(self):
-        arn = "arn:aws:eks:us-west-2:123456789012:cluster/my-cluster"
-        result = self.manager._get_eks_name_from_arn(arn)
-        self.assertEqual(result, "my-cluster")
 
-    def test_get_eks_name_from_arn_invalid(self):
-        with self.assertRaises(RuntimeError):
-            self.manager._get_eks_name_from_arn("invalid:arn:format")
+
 
     def test_is_eks_orchestrator_true(self):
         mock_client = MagicMock()
@@ -94,7 +86,7 @@ class TestHyperPodManager(unittest.TestCase):
             self.assertEqual(result["Eks"], ["eks-cluster"])
 
     @patch("boto3.client")
-    @patch.object(HyperPodManager, "_get_eks_name_from_arn")
+    @patch("sagemaker.hyperpod.common.utils.get_eks_name_from_arn")
     @patch.object(HyperPodManager, "_update_kube_config")
     @patch.object(HyperPodManager, "_set_current_context")
     def test_set_context(self, mock_set_context, mock_update_config, mock_get_name, mock_boto3_client):
@@ -127,3 +119,44 @@ class TestHyperPodManager(unittest.TestCase):
 
         # Verify
         mock_list_contexts.assert_called_once()
+
+    @patch("sagemaker.hyperpod.common.utils.get_region_from_eks_arn")
+    @patch.object(HyperPodManager, "get_context")
+    @patch.object(HyperPodManager, "list_clusters")
+    @patch("boto3.client")
+    def test_get_current_cluster(self, mock_boto3_client, mock_list_clusters, mock_get_context, mock_get_region):
+        mock_get_context.return_value = "arn:aws:eks:us-west-2:123456789012:cluster/my-cluster"
+        mock_get_region.return_value = "us-west-2"
+        mock_list_clusters.return_value = ["my-cluster"]
+        
+        mock_client = MagicMock()
+        mock_boto3_client.return_value = mock_client
+        mock_client.describe_cluster.return_value = {
+            "Orchestrator": {"Eks": {"ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/my-cluster"}}
+        }
+        
+        result = HyperPodManager.get_current_cluster()
+        
+        self.assertEqual(result, "my-cluster")
+
+    @patch("sagemaker.hyperpod.common.utils.get_region_from_eks_arn")
+    @patch.object(HyperPodManager, "get_context")
+    def test_get_current_region(self, mock_get_context, mock_get_region):
+        mock_get_context.return_value = "arn:aws:eks:us-west-2:123456789012:cluster/my-cluster"
+        mock_get_region.return_value = "us-west-2"
+        
+        result = HyperPodManager.get_current_region()
+        
+        self.assertEqual(result, "us-west-2")
+
+    @patch("boto3.session.Session")
+    @patch("sagemaker.hyperpod.common.utils.get_region_from_eks_arn")
+    @patch.object(HyperPodManager, "get_context")
+    def test_get_current_region_fallback(self, mock_get_context, mock_get_region, mock_session):
+        mock_get_context.return_value = "arn:aws:eks:us-west-2:123456789012:cluster/my-cluster"
+        mock_get_region.side_effect = Exception("Failed to parse ARN")
+        mock_session.return_value.region_name = "us-east-1"
+        
+        result = HyperPodManager.get_current_region()
+        
+        self.assertEqual(result, "us-east-1")

@@ -1,7 +1,15 @@
 import unittest
-from sagemaker.hyperpod.common.utils import handle_exception
+from sagemaker.hyperpod.common.utils import (
+    handle_exception,
+    append_uuid,
+    get_eks_name_from_arn,
+    get_region_from_eks_arn,
+    validate_cluster_connection,
+    get_default_namespace,
+)
 from kubernetes.client.exceptions import ApiException
 from pydantic import ValidationError
+from unittest.mock import patch, MagicMock
 
 
 class TestHandleException(unittest.TestCase):
@@ -20,7 +28,8 @@ class TestHandleException(unittest.TestCase):
         with self.assertRaises(Exception) as context:
             handle_exception(exception, "test-job", "default")
         self.assertIn(
-            "Access denied to resource 'test-job' in 'default'", str(context.exception)
+            "Access denied to resource 'test-job' in namespace 'default'",
+            str(context.exception),
         )
 
     def test_handle_api_exception_404(self):
@@ -29,7 +38,8 @@ class TestHandleException(unittest.TestCase):
         with self.assertRaises(Exception) as context:
             handle_exception(exception, "test-job", "default")
         self.assertIn(
-            "Resource 'test-job' not found in namespace 'default'", str(context.exception)
+            "Resource 'test-job' not found in namespace 'default'",
+            str(context.exception),
         )
 
     def test_handle_api_exception_409(self):
@@ -38,7 +48,8 @@ class TestHandleException(unittest.TestCase):
         with self.assertRaises(Exception) as context:
             handle_exception(exception, "test-job", "default")
         self.assertIn(
-            "Resource 'test-job' already exists in 'default'", str(context.exception)
+            "Resource 'test-job' already exists in namespace 'default'",
+            str(context.exception),
         )
 
     def test_handle_api_exception_500(self):
@@ -69,3 +80,37 @@ class TestHandleException(unittest.TestCase):
         exception = ValueError("test error")
         with self.assertRaises(ValueError):
             handle_exception(exception, "test-job", "default")
+
+
+class TestUtilityFunctions(unittest.TestCase):
+    """Test utility functions"""
+
+    def test_append_uuid(self):
+        """Test append_uuid function"""
+        result = append_uuid("test-job")
+        self.assertTrue(result.startswith("test-job-"))
+        self.assertEqual(len(result.split("-")[-1]), 4)
+
+    def test_get_eks_name_from_arn_valid(self):
+        """Test get_eks_name_from_arn with valid ARN"""
+        arn = "arn:aws:eks:us-west-2:123456789012:cluster/my-cluster"
+        result = get_eks_name_from_arn(arn)
+        self.assertEqual(result, "my-cluster")
+
+    def test_get_eks_name_from_arn_invalid(self):
+        """Test get_eks_name_from_arn with invalid ARN"""
+        with self.assertRaises(RuntimeError) as context:
+            get_eks_name_from_arn("invalid:arn:format")
+        self.assertIn("cannot get EKS cluster name", str(context.exception))
+
+    def test_get_region_from_eks_arn_valid(self):
+        """Test get_region_from_eks_arn with valid ARN"""
+        arn = "arn:aws:eks:us-west-2:123456789012:cluster/my-cluster"
+        result = get_region_from_eks_arn(arn)
+        self.assertEqual(result, "us-west-2")
+
+    def test_get_region_from_eks_arn_invalid(self):
+        """Test get_region_from_eks_arn with invalid ARN"""
+        with self.assertRaises(RuntimeError) as context:
+            get_region_from_eks_arn("invalid:arn:format")
+        self.assertIn("cannot get region from EKS ARN", str(context.exception))

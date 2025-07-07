@@ -1,14 +1,17 @@
 import boto3
+import os
+import subprocess
+import logging
 from kubernetes import config
 import yaml
 from typing import Optional
 from kubernetes.config import (
     KUBE_CONFIG_DEFAULT_LOCATION,
 )
-import os
-import subprocess
-import re
-import logging
+from sagemaker.hyperpod.common.utils import (
+    get_eks_name_from_arn,
+    get_region_from_eks_arn,
+)
 
 KUBE_CONFIG_PATH = os.path.expanduser(KUBE_CONFIG_DEFAULT_LOCATION)
 
@@ -18,23 +21,14 @@ class HyperPodManager:
     def get_logger(self):
         return logging.getLogger(__name__)
 
-    def _get_eks_name_from_arn(self, arn: str) -> str:
-
-        pattern = r"arn:aws:eks:[\w-]+:\d+:cluster/([\w-]+)"
-        match = re.match(pattern, arn)
-
-        if match:
-            return match.group(1)
-        else:
-            raise RuntimeError("cannot get EKS cluster name")
-
     @classmethod
     def _is_eks_orchestrator(cls, sagemaker_client, cluster_name: str):
         response = sagemaker_client.describe_cluster(ClusterName=cluster_name)
         return "Eks" in response["Orchestrator"]
 
+    @classmethod
     def _update_kube_config(
-        self,
+        cls,
         eks_name: str,
         region: Optional[str] = None,
         config_file: Optional[str] = None,
@@ -67,8 +61,9 @@ class HyperPodManager:
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failed to update kubeconfig: {e}")
 
+    @classmethod
     def _set_current_context(
-        self,
+        cls,
         context_name: str,
         namespace: Optional[str] = None,
     ) -> None:
@@ -124,12 +119,8 @@ class HyperPodManager:
                 eks_clusters.append(cluster_name)
             else:
                 slurm_clusters.append(cluster_name)
-        
-        return {
-            "Eks": eks_clusters,
-            "Slurm": slurm_clusters
-        }
-        
+
+        return {"Eks": eks_clusters, "Slurm": slurm_clusters}
 
     @classmethod
     def set_context(
@@ -138,20 +129,23 @@ class HyperPodManager:
         region: Optional[str] = None,
         namespace: Optional[str] = None,
     ):
-        instance = cls()
         client = boto3.client("sagemaker", region_name=region)
 
         response = client.describe_cluster(ClusterName=cluster_name)
         eks_cluster_arn = response["Orchestrator"]["Eks"]["ClusterArn"]
-        eks_name = instance._get_eks_name_from_arn(eks_cluster_arn)
+        eks_name = get_eks_name_from_arn(eks_cluster_arn)
 
-        instance._update_kube_config(eks_name, region)
-        instance._set_current_context(eks_cluster_arn, namespace)
+        cls._update_kube_config(eks_name, region)
+        cls._set_current_context(eks_cluster_arn, namespace)
 
         if namespace:
-            cls.get_logger().info(f"Successfully set current context as: {cluster_name}, namespace: {namespace}")
+            cls.get_logger().info(
+                f"Successfully set current context as: {cluster_name}, namespace: {namespace}"
+            )
         else:
-            cls.get_logger().info(f"Successfully set current context as: {cluster_name}")
+            cls.get_logger().info(
+                f"Successfully set current context as: {cluster_name}"
+            )
 
     @classmethod
     def get_context(cls):
@@ -164,3 +158,28 @@ class HyperPodManager:
             raise Exception(
                 f"Failed to get current context: {e}. Check your config file at {KUBE_CONFIG_DEFAULT_LOCATION}"
             )
+
+    @classmethod
+    def get_current_cluster(cls):
+        current_context = cls.get_context()
+        region = get_region_from_eks_arn(current_context)
+
+        hyperpod_clusters = cls.list_clusters(region)["Eks"]
+        client = boto3.client("sagemaker", region_name=region)
+
+        for cluster_name in hyperpod_clusters:
+            response = client.describe_cluster(ClusterName=cluster_name)
+            if response["Orchestrator"]["Eks"]["ClusterArn"] == current_context:
+                return cluster_name
+
+        raise Exception(
+            f"Failed to get current Hyperpod cluster name. Check your config file at {KUBE_CONFIG_DEFAULT_LOCATION}"
+        )
+
+    @classmethod
+    def get_current_region(cls):
+        eks_arn = cls.get_context()
+        try:
+            return get_region_from_eks_arn(eks_arn)
+        except:
+            return boto3.session.Session().region_name
