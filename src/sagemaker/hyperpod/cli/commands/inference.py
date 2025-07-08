@@ -26,9 +26,6 @@ from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
     registry=JS_REG,
 )
 def js_create(namespace, version, js_endpoint):
-    click.echo(
-        f"✅ Schema {version} verified. Creating endpoint {js_endpoint.model.modelId} with instance type {js_endpoint.server.instanceType}."
-    )
     js_endpoint.create(namespace=namespace)
 
 
@@ -46,9 +43,6 @@ def js_create(namespace, version, js_endpoint):
     registry=C_REG,
 )
 def custom_create(namespace, version, custom_endpoint):
-    click.echo(
-        f"✅ Schema {version} verified. Creating endpoint {custom_endpoint.modelName} with instance type {custom_endpoint.instanceType}."
-    )
     custom_endpoint.create(namespace=namespace)
 
 
@@ -190,6 +184,9 @@ def js_describe(
     else:
         summary = [
             ("Deployment State:",       data.get("status", {}).get("deploymentStatus", {}).get("deploymentObjectOverallState")),
+            ("Metadata Name:",          data.get("metadata", {}).get("name", {})),
+            ("Namespace:",              data.get("metadata", {}).get("namespace", {})),
+            ("Label:",                  data.get("metadata", {}).get("label", {})),
             ("Model ID:",               data.get("model", {}).get("modelId")),
             ("Instance Type:",          data.get("server", {}).get("instanceType")),
             ("Accept eula:",            data.get("model", {}).get("acceptEula")),
@@ -199,12 +196,18 @@ def js_describe(
         click.echo(tabulate(summary, tablefmt="plain"))
 
         click.echo("\nSageMaker Endpoint:")
-        ep_rows = [
-                ("State:",         data.get("status", {}).get("endpoints", {}).get("sagemaker", {}).get("state")),
-                ("Name:",          data.get("sageMakerEndpoint", {}).get("name")),
-                ("ARN:",           data.get("status", {}).get("endpoints", {}).get("sagemaker", {}).get("endpointArn")),
-        ]
-        click.echo(tabulate(ep_rows, tablefmt="plain"))
+        status     = data.get("status")     or {}
+        endpoints  = status.get("endpoints") or {}
+        sagemaker_info = endpoints.get("sagemaker")
+        if not sagemaker_info:
+            click.secho("  <no SageMaker endpoint information available>", fg="yellow")
+        else:
+            ep_rows = [
+                    ("State:",         data.get("status", {}).get("endpoints", {}).get("sagemaker", {}).get("state")),
+                    ("Name:",          data.get("sageMakerEndpoint", {}).get("name")),
+                    ("ARN:",           data.get("status", {}).get("endpoints", {}).get("sagemaker", {}).get("endpointArn")),
+            ]
+            click.echo(tabulate(ep_rows, tablefmt="plain"))
 
         click.echo("\nConditions:")
         conds = data.get("status", {}).get("conditions", [])
@@ -286,6 +289,9 @@ def custom_describe(
     else:
         summary = [
             ("Deployment State:",           data.get("status", {}).get("deploymentStatus", {}).get("deploymentObjectOverallState")),
+            ("Metadata Name:",          data.get("metadata", {}).get("name", {})),
+            ("Namespace:",              data.get("metadata", {}).get("namespace", {})),
+            ("Label:",                  data.get("metadata", {}).get("label", {})),
             ("Invocation Endpoint",         data.get("invocationEndpoint")),
             ("Instance Type",               data.get("instanceType")),
             ("Metrics Enabled",             data.get("metrics", {}).get("enabled")),
@@ -445,7 +451,6 @@ def js_delete(
     """
     my_endpoint = HPJumpStartEndpoint.model_construct().get(name, namespace)
     my_endpoint.delete()
-    click.echo(f"✅ Endpoint {name} deleted.")
 
 
 @click.command("hyp-custom-endpoint")
@@ -471,7 +476,6 @@ def custom_delete(
     """
     my_endpoint = HPEndpoint.model_construct().get(name, namespace)
     my_endpoint.delete()
-    click.echo(f"✅ Endpoint {name} deleted.")
 
 
 @click.command("hyp-jumpstart-endpoint")

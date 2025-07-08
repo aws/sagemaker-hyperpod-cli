@@ -53,7 +53,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         )
 
         self.get_logger().info(
-            "Creating sagemaker model and endpoint. Metadata name: {name}. Endpoint name: {spec.endpointName}.\n The process may take a few minutes..."
+            f"Creating sagemaker model and endpoint. Metadata name: {name}. Endpoint name: {spec.endpointName}.\n The process may take a few minutes..."
         )
 
     def create_from_dict(
@@ -86,7 +86,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         )
 
         self.get_logger().info(
-            "Creating sagemaker model and endpoint. Metadata name: {name}. Endpoint name: {spec.endpointName}.\n The process may take a few minutes..."
+            f"Creating sagemaker model and endpoint. Metadata name: {name}. Endpoint name: {spec.endpointName}.\n The process may take a few minutes..."
         )
 
     def refresh(self):
