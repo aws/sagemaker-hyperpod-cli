@@ -44,10 +44,21 @@ def get_monitoring_config() -> Optional[MonitoringConfig]:
     response = boto3.client("eks").describe_addon(clusterName=eks_cluster_name, addonName=AMAZON_HYPERPOD_OBSERVABILITY)
     config_values = yaml.safe_load(response['addon']['configurationValues'])
 
-    prometheus_url = config_values['ampWorkspace']['prometheusEndpoint']
-    region = get_hyperpod_cluster_region()
-    workspace_arn = config_values['amgWorkspace']['arn']
-    grafana_url = build_grafana_url(get_grafana_ws_name_from_arn(workspace_arn), region, GRAFANA_DASHBOARD_UID)
-    metrics_data = config_values['metricsProvider']
+    try:
+        prometheus_url = config_values['ampWorkspace']['prometheusEndpoint']
+    except KeyError:
+        prometheus_url = None
+    try:
+        region = get_hyperpod_cluster_region()
+        workspace_arn = config_values['amgWorkspace']['arn']
+        grafana_url = build_grafana_url(
+            get_grafana_ws_name_from_arn(workspace_arn) if workspace_arn else "default-workspace", region,
+            GRAFANA_DASHBOARD_UID)
+    except KeyError:
+        grafana_url = None
+    try:
+        metrics_data = config_values['metricsProvider']
+    except KeyError:
+        metrics_data = None
 
     return MonitoringConfig(grafanaURL=grafana_url, prometheusURL=prometheus_url, availableMetrics=metrics_data)
