@@ -69,16 +69,16 @@ class TestCLI(unittest.TestCase):
         # Test create command help format
         result = self.runner.invoke(create, ["--help"])
         self.assertEqual(result.exit_code, 0)
-        self.assertIn("HyperPod PyTorch Job CLI", result.output)
+        self.assertIn("Usage: create [OPTIONS] COMMAND [ARGS]", result.output)
 
         # Test list command help format
         result = self.runner.invoke(list, ["--help"])
         self.assertEqual(result.exit_code, 0)
-        self.assertIn("HyperPod PyTorch Job CLI", result.output)
+        self.assertIn("Usage: list [OPTIONS] COMMAND [ARGS]", result.output)
 
         # Test describe command help format
         result = self.runner.invoke(describe, ["--help"])
         self.assertEqual(result.exit_code, 0)
-        self.assertIn("HyperPod PyTorch Job CLI", result.output)
+        self.assertIn("Usage: describe [OPTIONS] COMMAND [ARGS]", result.output)
 
 

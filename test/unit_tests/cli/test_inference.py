@@ -7,7 +7,6 @@ from sagemaker.hyperpod.cli.commands.inference import (
     js_list, custom_list,
     js_describe, custom_describe,
     js_delete, custom_delete,
-    js_get_logs, custom_get_logs,
     js_get_operator_logs, custom_get_operator_logs
 )
 import jumpstart_inference_config_schemas.registry as jreg
@@ -94,16 +93,6 @@ def test_js_delete(mock_hp):
     result = runner.invoke(js_delete, ['--name', 'n', '--namespace', 'ns'])
     assert result.exit_code == 0
     ep.delete.assert_called_once()
-
-
-@patch('sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint')
-def test_js_get_logs(mock_hp):
-    inst = Mock(get_logs=Mock(return_value="logs"))
-    mock_hp.model_construct.return_value = inst
-    runner = CliRunner()
-    result = runner.invoke(js_get_logs, ['--pod-name', 'p', '--namespace', 'ns'])
-    assert result.exit_code == 0
-    assert 'logs' in result.output
 
 
 @patch('sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint')
@@ -232,16 +221,6 @@ def test_custom_delete(mock_hp):
     result = runner.invoke(custom_delete, ['--name', 'n', '--namespace', 'ns'])
     assert result.exit_code == 0
     ep.delete.assert_called_once()
-
-
-@patch('sagemaker.hyperpod.cli.commands.inference.HPEndpoint')
-def test_custom_get_logs(mock_hp):
-    inst = Mock(get_logs=Mock(return_value='l'))
-    mock_hp.model_construct.return_value = inst
-    runner = CliRunner()
-    result = runner.invoke(custom_get_logs, ['--pod-name', 'p', '--namespace', 'ns'])
-    assert result.exit_code == 0
-    assert 'l' in result.output
 
 
 @patch('sagemaker.hyperpod.cli.commands.inference.HPEndpoint')

@@ -26,12 +26,9 @@ from sagemaker.hyperpod.cli.commands.inference import (
     custom_describe,
     js_delete,
     custom_delete,
-    js_get_logs,
-    custom_get_logs,
     js_get_operator_logs,
     custom_get_operator_logs,
 )
-from sagemaker.hyperpod.cli.constants.hp_pytorch_command_constants import HELP_TEXT
 
 
 @click.group()
@@ -40,55 +37,54 @@ def cli():
 
 
 class CLICommand(click.Group):
-    def format_help(self, ctx, formatter):
-        click.echo(HELP_TEXT)
+    pass
 
 
 @cli.group(cls=CLICommand)
 def create():
-    """HyperPod commands"""
+    """Create a jumpstart model endpoint, a custom model endpoint, or a pytorch job."""
     pass
 
 
 @cli.group(cls=CLICommand)
 def list():
-    """HyperPod commands"""
+    """List all jumpstart model endpoints, custom model endpoints, or pytorch jobs."""
     pass
 
 
 @cli.group(cls=CLICommand)
 def describe():
-    """HyperPod commands"""
+    """Describe a jumpstart model endpoint, a custom model endpoint, or a pytorch job."""
     pass
 
 
 @cli.group(cls=CLICommand)
 def delete():
-    """HyperPod commands"""
-    pass
-
-
-@cli.group(cls=CLICommand)
-def list_pods():
-    """HyperPod commands"""
-    pass
-
-
-@cli.group(cls=CLICommand)
-def get_logs():
-    """HyperPod commands"""
-    pass
-
-
-@cli.group(cls=CLICommand)
-def get_operator_logs():
-    """HyperPod commands"""
+    """Delete a jumpstart model endpoint, a custom model endpoint, or a pytorch job."""
     pass
 
 
 @cli.group(cls=CLICommand)
 def invoke():
-    """HyperPod commands"""
+    """Invoke a jumpstart model endpoint or a custom model endpoint."""
+    pass
+
+
+@cli.group(cls=CLICommand)
+def get_operator_logs():
+    """Get operator logs for jumpstart model endpoint, custom model endpoint or pytorch job."""
+    pass
+
+
+@cli.group(cls=CLICommand)
+def list_pods():
+    """List all pods for pytorch jobs."""
+    pass
+
+
+@cli.group(cls=CLICommand)
+def get_logs():
+    """Get specific pod logs for a pytorch job."""
     pass
 
 
@@ -109,10 +105,7 @@ delete.add_command(js_delete)
 delete.add_command(custom_delete)
 
 list_pods.add_command(pytorch_list_pods)
-
 get_logs.add_command(pytorch_get_logs)
-get_logs.add_command(js_get_logs)
-get_logs.add_command(custom_get_logs)
 
 get_operator_logs.add_command(js_get_operator_logs)
 get_operator_logs.add_command(custom_get_operator_logs)

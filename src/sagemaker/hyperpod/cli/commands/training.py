@@ -8,7 +8,6 @@ from pathlib import Path
 from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob
 from sagemaker.hyperpod.common.config import Metadata
 import tempfile
-from sagemaker.hyperpod.cli.constants.hp_pytorch_command_constants import HELP_TEXT
 from typing import List, Dict, Any, Optional, Callable, get_args, get_origin, Literal
 from sagemaker.hyperpod.cli.training_utils import generate_click_command
 from importlib.metadata import entry_points
@@ -23,7 +22,7 @@ from hyperpod_pytorchjob_config_schemas.registry import SCHEMA_REGISTRY
     registry=SCHEMA_REGISTRY,
 )
 def pytorch_create(version, debug, config):
-    """Submit a PyTorch job using a configuration file"""
+    """Create a PyTorch job"""
     try:
         click.echo(f"Using version: {version}")
         job_name = config.get("name")
@@ -201,7 +200,7 @@ def pytorch_describe(job_name: str, namespace: str):
 @click.option("--job-name", required=True, help="Job name")
 @click.option("--namespace", "-n", default="default", help="Namespace")
 def pytorch_delete(job_name: str, namespace: str):
-    """Describe a HyperPod PyTorch job"""
+    """Delete a HyperPod PyTorch job"""
     try:
         job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
         job.delete()
@@ -252,7 +251,7 @@ def pytorch_list_pods(job_name: str, namespace: str):
 @click.option("--pod-name", required=True, help="Job name")
 @click.option("--namespace", "-n", default="default", help="Namespace")
 def pytorch_get_logs(job_name: str, pod_name: str, namespace: str):
-    """List all HyperPod PyTorch pods corresponding to the job"""
+    """Get specific logs from pod corresponding to the job"""
     try:
         click.echo("Listing logs for pod: " + pod_name)
         job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)

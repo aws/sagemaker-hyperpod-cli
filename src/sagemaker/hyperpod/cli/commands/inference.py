@@ -18,7 +18,7 @@ from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
     type=click.STRING,
     required=False,
     default="default",
-    help="Optional. The namespace of the jumpstart model to create. Default set to 'default'",
+    help="Optional. The namespace of the jumpstart model endpoint to create. Default set to 'default'",
 )
 @click.option("--version", default="1.0", help="Schema version to use")
 @generate_click_command(
@@ -26,6 +26,10 @@ from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
     registry=JS_REG,
 )
 def js_create(namespace, version, js_endpoint):
+    """
+    Create a jumpstart model endpoint.
+    """
+
     js_endpoint.create(namespace=namespace)
 
 
@@ -35,7 +39,7 @@ def js_create(namespace, version, js_endpoint):
     type=click.STRING,
     required=False,
     default="default",
-    help="Optional. The namespace of the jumpstart model to create. Default set to 'default'",
+    help="Optional. The namespace of the jumpstart model endpoint to create. Default set to 'default'",
 )
 @click.option("--version", default="1.0", help="Schema version to use")
 @generate_click_command(
@@ -43,6 +47,10 @@ def js_create(namespace, version, js_endpoint):
     registry=C_REG,
 )
 def custom_create(namespace, version, custom_endpoint):
+    """
+    Create a custom model endpoint.
+    """
+
     custom_endpoint.create(namespace=namespace)
 
 
@@ -52,7 +60,7 @@ def custom_create(namespace, version, custom_endpoint):
     "--endpoint-name",
     type=click.STRING,
     required=True,
-    help="Required. The endpoint name of the custom model to invoke.",
+    help="Required. The name of the model endpoint to invoke.",
 )
 @click.option(
     "--body",
@@ -65,7 +73,7 @@ def custom_invoke(
     body: str,
 ):
     """
-    Invoke a custom model endpoint.
+    Invoke a model endpoint.
     """
     try:
         payload = json.dumps(json.loads(body))
@@ -89,7 +97,7 @@ def custom_invoke(
     type=click.STRING,
     required=False,
     default="default",
-    help="Optional. The namespace of the jumpstart model to list. Default set to 'default'",
+    help="Optional. The namespace of the jumpstart model endpoint to list. Default set to 'default'",
 )
 def js_list(
     namespace: Optional[str],
@@ -99,15 +107,15 @@ def js_list(
     """
 
     endpoints = HPJumpStartEndpoint.model_construct().list(namespace)
-    data = [ep.metadata.model_dump() for ep in endpoints]
+    data = [ep.model_dump() for ep in endpoints]
 
     if not data:
         click.echo("No endpoints found")
         return
 
-    headers = ["name", "namespace", "labels"]
+    headers = ["name", "namespace", "labels", "status"]
     rows = [
-        [item.get("name", ""), item.get("namespace", ""), item.get("labels", "")]
+        [item.get("metadata", {}).get("name", ""), item.get("metadata", {}).get("namespace", ""), item.get("metadata", {}).get("labels", ""),  item.get("status", {}).get("deploymentStatus", {}).get("deploymentObjectOverallState")]
         for item in data
     ]
     click.echo(tabulate(rows, headers=headers, tablefmt="github"))
@@ -119,25 +127,25 @@ def js_list(
     type=click.STRING,
     required=False,
     default="default",
-    help="Optional. The namespace of the Custom model to list. Default set to 'default'",
+    help="Optional. The namespace of the custom model endpoint to list. Default set to 'default'",
 )
 def custom_list(
     namespace: Optional[str],
 ):
     """
-    List Custom model endpoints with provided namespace.
+    List custom model endpoints with provided namespace.
     """
 
     endpoints = HPEndpoint.model_construct().list(namespace)
-    data = [ep.metadata.model_dump() for ep in endpoints]
+    data = [ep.model_dump() for ep in endpoints]
 
     if not data:
         click.echo("No endpoints found")
         return
 
-    headers = ["name", "namespace", "labels"]
+    headers = ["name", "namespace", "labels", "status"]
     rows = [
-        [item.get("name", ""), item.get("namespace", ""), item.get("labels", "")]
+        [item.get("metadata", {}).get("name", ""), item.get("metadata", {}).get("namespace", ""), item.get("metadata", {}).get("labels", ""),  item.get("status", {}).get("deploymentStatus", {}).get("deploymentObjectOverallState")]
         for item in data
     ]
     click.echo(tabulate(rows, headers=headers, tablefmt="github"))
@@ -148,14 +156,14 @@ def custom_list(
     "--name",
     type=click.STRING,
     required=True,
-    help="Required. The names of the jumpstart model to describe.",
+    help="Required. The name of the jumpstart model endpoint to describe.",
 )
 @click.option(
     "--namespace",
     type=click.STRING,
     required=False,
     default="default",
-    help="Optional. The namespace of the jumpstart model to describe. Default set to 'default'.",
+    help="Optional. The namespace of the jumpstart model endpoint to describe. Default set to 'default'.",
 )
 @click.option(
     "--full",
@@ -211,7 +219,7 @@ def js_describe(
 
         click.echo("\nConditions:")
         conds = data.get("status", {}).get("conditions", [])
-        if conds:
+        if isinstance(conds, list) and conds:
             headers = ["TYPE", "STATUS", "LAST TRANSITION", "LAST UPDATE", "MESSAGE"]
             rows = [
                 [
@@ -221,7 +229,7 @@ def js_describe(
                     c.get("lastUpdateTime", ""),
                     c.get("message") or ""
                 ]
-                for c in conds
+                for c in conds if isinstance(c, dict)
             ]
             click.echo(tabulate(rows, headers=headers, tablefmt="github"))
         else:
@@ -230,7 +238,7 @@ def js_describe(
         click.echo("\nDeploymentStatus Conditions:")
         dep_status = data.get("status", {}).get("deploymentStatus", {})
         dep_conds = dep_status.get("status", {}).get("conditions", [])
-        if dep_conds:
+        if isinstance(dep_conds, list) and dep_conds:
             headers = ["TYPE", "STATUS", "LAST TRANSITION", "LAST UPDATE", "MESSAGE"]
             rows = [
                 [
@@ -240,12 +248,11 @@ def js_describe(
                     c.get("lastUpdateTime", ""),
                     c.get("message") or ""
                 ]
-                for c in dep_conds
+                for c in dep_conds if isinstance(c, dict)
             ]
             click.echo(tabulate(rows, headers=headers, tablefmt="github"))
         else:
             click.echo("  <none>")
-
 
 
 @click.command("hyp-custom-endpoint")
@@ -253,14 +260,14 @@ def js_describe(
     "--name",
     type=click.STRING,
     required=True,
-    help="Required. The names of the custom model to describe.",
+    help="Required. The name of the custom model endpoint to describe.",
 )
 @click.option(
     "--namespace",
     type=click.STRING,
     required=False,
     default="default",
-    help="Optional. The namespace of the custom model to describe. Default set to 'default'.",
+    help="Optional. The namespace of the custom model endpoint to describe. Default set to 'default'.",
 )
 @click.option(
     "--full",
@@ -289,9 +296,9 @@ def custom_describe(
     else:
         summary = [
             ("Deployment State:",           data.get("status", {}).get("deploymentStatus", {}).get("deploymentObjectOverallState")),
-            ("Metadata Name:",          data.get("metadata", {}).get("name", {})),
-            ("Namespace:",              data.get("metadata", {}).get("namespace", {})),
-            ("Label:",                  data.get("metadata", {}).get("label", {})),
+            ("Metadata Name:",              data.get("metadata", {}).get("name", {})),
+            ("Namespace:",                  data.get("metadata", {}).get("namespace", {})),
+            ("Label:",                      data.get("metadata", {}).get("label", {})),
             ("Invocation Endpoint",         data.get("invocationEndpoint")),
             ("Instance Type",               data.get("instanceType")),
             ("Metrics Enabled",             data.get("metrics", {}).get("enabled")),
@@ -392,7 +399,7 @@ def custom_describe(
 
         click.echo("\nConditions:")
         conds = data.get("status", {}).get("conditions", [])
-        if conds:
+        if isinstance(conds, list) and conds:
             headers = ["TYPE", "STATUS", "LAST TRANSITION", "LAST UPDATE", "MESSAGE"]
             rows = [
                 [
@@ -402,7 +409,7 @@ def custom_describe(
                     c.get("lastUpdateTime", ""),
                     c.get("message") or ""
                 ]
-                for c in conds
+                for c in conds if isinstance(c, dict)
             ]
             click.echo(tabulate(rows, headers=headers, tablefmt="github"))
         else:
@@ -411,7 +418,7 @@ def custom_describe(
         click.echo("\nDeploymentStatus Conditions:")
         dep_status = data.get("status", {}).get("deploymentStatus", {})
         dep_conds = dep_status.get("status", {}).get("conditions", [])
-        if dep_conds:
+        if isinstance(dep_conds, list) and dep_conds:
             headers = ["TYPE", "STATUS", "LAST TRANSITION", "LAST UPDATE", "MESSAGE"]
             rows = [
                 [
@@ -421,7 +428,7 @@ def custom_describe(
                     c.get("lastUpdateTime", ""),
                     c.get("message") or ""
                 ]
-                for c in dep_conds
+                for c in dep_conds if isinstance(c, dict)
             ]
             click.echo(tabulate(rows, headers=headers, tablefmt="github"))
         else:
@@ -433,14 +440,14 @@ def custom_describe(
     "--name",
     type=click.STRING,
     required=True,
-    help="Required. The names of the jumpstart model to delete.",
+    help="Required. The name of the jumpstart model endpoint to delete.",
 )
 @click.option(
     "--namespace",
     type=click.STRING,
     required=False,
     default="default",
-    help="Optional. The namespace of the jumpstart model to delete. Default set to 'default'.",
+    help="Optional. The namespace of the jumpstart model endpoint to delete. Default set to 'default'.",
 )
 def js_delete(
     name: str,
@@ -458,14 +465,14 @@ def js_delete(
     "--name",
     type=click.STRING,
     required=True,
-    help="Required. The names of the custom model to delete.",
+    help="Required. The names of the custom model endpoint to delete.",
 )
 @click.option(
     "--namespace",
     type=click.STRING,
     required=False,
     default="default",
-    help="Optional. The namespace of the custom model to delete. Default set to 'default'.",
+    help="Optional. The namespace of the custom model endpoint to delete. Default set to 'default'.",
 )
 def custom_delete(
     name: str,
@@ -480,72 +487,6 @@ def custom_delete(
 
 @click.command("hyp-jumpstart-endpoint")
 @click.option(
-    "--pod-name",
-    type=click.STRING,
-    required=True,
-    help="Required. The pod name to get logs for.",
-)
-@click.option(
-    "--container",
-    type=click.STRING,
-    required=False,
-    help="Optional. The container name to get logs for.",
-)
-@click.option(
-    "--namespace",
-    type=click.STRING,
-    required=False,
-    default="default",
-    help="Optional. The namespace of the jumpstart model to get logs for. Default set to 'default'.",
-)
-def js_get_logs(
-    pod_name: str,
-    container: Optional[str],
-    namespace: Optional[str],
-):
-    """
-    Get specific pod log for jumpstart model endpoint.
-    """
-    my_endpoint = HPJumpStartEndpoint.model_construct()
-    logs = my_endpoint.get_logs(pod=pod_name, container=container, namespace=namespace)
-    click.echo(logs)
-
-
-@click.command("hyp-custom-endpoint")
-@click.option(
-    "--pod-name",
-    type=click.STRING,
-    required=True,
-    help="Required. The pod name to get logs for.",
-)
-@click.option(
-    "--container",
-    type=click.STRING,
-    required=False,
-    help="Optional. The container name to get logs for.",
-)
-@click.option(
-    "--namespace",
-    type=click.STRING,
-    required=False,
-    default="default",
-    help="Optional. The namespace of the custom model to get logs for. Default set to 'default'.",
-)
-def custom_get_logs(
-    pod_name: str,
-    container: Optional[str],
-    namespace: Optional[str],
-):
-    """
-    Get specific pod log for custom model endpoint.
-    """
-    my_endpoint = HPEndpoint.model_construct()
-    logs = my_endpoint.get_logs(pod=pod_name, container=container, namespace=namespace)
-    click.echo(logs)
-
-
-@click.command("hyp-jumpstart-endpoint")
-@click.option(
     "--since-hours",
     type=click.FLOAT,
     required=True,
@@ -555,7 +496,7 @@ def js_get_operator_logs(
     since_hours: float,
 ):
     """
-    Get specific pod log for jumpstart model endpoint.
+    Get operator logs for jumpstart model endpoint in the set time frame.
     """
     my_endpoint = HPJumpStartEndpoint.model_construct()
     logs = my_endpoint.get_operator_logs(since_hours=since_hours)
@@ -573,7 +514,7 @@ def custom_get_operator_logs(
     since_hours: float,
 ):
     """
-    Get specific pod log for custom model endpoint.
+    Get operator logs for custom model endpoint in the set time frame.
     """
     my_endpoint = HPEndpoint.model_construct()
     logs = my_endpoint.get_operator_logs(since_hours=since_hours)
