@@ -168,6 +168,7 @@ class PyTorchJobConfig(BaseModel):
             job_kwargs["run_policy"] = RunPolicy(
                 clean_pod_policy="None", job_max_retry_count=self.max_retry
             )
+
         # Create base return dictionary
         result = {
             "name": self.job_name,

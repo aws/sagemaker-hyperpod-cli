@@ -13,6 +13,7 @@ from sagemaker.hyperpod.common.utils import (
     handle_exception,
     get_default_namespace,
 )
+from sagemaker.hyperpod.common.utils import append_uuid
 import yaml
 import logging
 
@@ -52,6 +53,9 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             logger.setLevel(logging.INFO)
 
         spec = _HyperPodPytorchJob(**self.model_dump(by_alias=True, exclude_none=True))
+
+        # Unique job name
+        self.metadata.name = append_uuid(self.metadata.name)
 
         if not self.metadata.namespace:
             self.metadata.namespace = get_default_namespace()

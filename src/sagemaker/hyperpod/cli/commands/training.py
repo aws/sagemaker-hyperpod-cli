@@ -6,7 +6,7 @@ import shutil
 import subprocess
 from pathlib import Path
 from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob
-from sagemaker.hyperpod.common.config.metadata import Metadata
+from sagemaker.hyperpod.common.config import Metadata
 import tempfile
 from sagemaker.hyperpod.cli.constants.hp_pytorch_command_constants import HELP_TEXT
 from typing import List, Dict, Any, Optional, Callable, get_args, get_origin, Literal
@@ -29,8 +29,6 @@ def pytorch_create(version, debug, config):
         job_name = config.get("name")
         namespace = config.get("namespace")
         spec = config.get("spec")
-        # nproc_per_node = config.get("nproc_per_node", None)
-        # run_policy = config.get("run_policy", None)
 
         # Prepare metadata
         metadata_kwargs = {"name": job_name}

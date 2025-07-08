@@ -98,6 +98,32 @@ class TestHyperPodPytorchJob(unittest.TestCase):
 
         mock_handle_exception.assert_called_once()
 
+    @patch('sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection')
+    @patch('sagemaker.hyperpod.training.hyperpod_pytorch_job.client.CustomObjectsApi')
+    @patch('sagemaker.hyperpod.training.hyperpod_pytorch_job.append_uuid')
+    def test_create_appends_uuid(self, mock_append_uuid, mock_custom_api, mock_validate):
+        """Test that create method appends UUID to job name"""
+        mock_validate.return_value = True
+        mock_api_instance = MagicMock()
+        mock_custom_api.return_value = mock_api_instance
+
+        # Mock the append_uuid function to return a predictable value
+        mock_append_uuid.return_value = "test-job-1234"
+
+        original_name = self.job.metadata.name
+        self.job.create()
+
+        # Assert that append_uuid was called with the original job name
+        mock_append_uuid.assert_called_once_with(original_name)
+
+        # Assert that the job's name was updated
+        self.assertEqual(self.job.metadata.name, "test-job-1234")
+
+        # Assert that the create_namespaced_custom_object was called with the new name
+        call_args = mock_api_instance.create_namespaced_custom_object.call_args
+        self.assertIn('body', call_args[1])
+        self.assertEqual(call_args[1]['body']['metadata']['name'], "test-job-1234")
+
     @patch(
         "sagemaker.hyperpod.training.hyperpod_pytorch_job.validate_cluster_connection"
     )
