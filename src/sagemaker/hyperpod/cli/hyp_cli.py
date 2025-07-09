@@ -7,7 +7,7 @@ from pydantic import BaseModel, ValidationError, Field
 from typing import Optional
 
 from sagemaker.hyperpod.cli.commands.cluster import list_cluster, set_cluster_context, get_cluster_context, \
-    get_cluster_monitoring_config
+    get_monitoring
 from sagemaker.hyperpod.cli.commands.training import (
     pytorch_create,
     list_jobs,
@@ -116,7 +116,7 @@ invoke.add_command(custom_invoke, name="hyp-jumpstart-endpoint")
 cli.add_command(list_cluster)
 cli.add_command(set_cluster_context)
 cli.add_command(get_cluster_context)
-cli.add_command(get_cluster_monitoring_config)
+cli.add_command(get_monitoring)
 
 
 if __name__ == "__main__":

@@ -62,7 +62,7 @@ setup(
         "awscli-cwlogs>=1.4.6",
         "boto3>=1.35.3,<2.0",
         "botocore>=1.35.6 ",
-        "kubernetes==30.1.0",
+        "kubernetes==33.1.0",
         "pyyaml==6.0.2",
         "ratelimit==2.2.1",
         "tabulate==0.9.0",

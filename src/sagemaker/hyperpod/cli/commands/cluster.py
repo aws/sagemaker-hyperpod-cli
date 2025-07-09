@@ -564,12 +564,12 @@ def get_cluster_context(
 @click.option("--grafana", is_flag=True, help="Returns Grafana Dashboard URL")
 @click.option("--prometheus", is_flag=True, help="Returns Prometheus Workspace URL")
 @click.option("--list", is_flag=True, help="Returns list of available metrics")
-def get_cluster_monitoring_config(grafana: bool, prometheus: bool, list: bool) -> None:
+def get_monitoring(grafana: bool, prometheus: bool, list: bool) -> None:
     """Get monitoring configurations for Hyperpod cluster"""
     try:
         if not any([grafana, prometheus, list]):
             print("Error: Please select at least one option")
-            print("Usage : hyp get-cluster-monitoring-config --grafana/--prometheus/--list/--help")
+            print("Usage : hyp get-monitoring --grafana/--prometheus/--list/--help")
             return
         if not is_observability_addon_enabled(get_eks_cluster_name()):
             print("Observability addon is not enabled for this cluster")
