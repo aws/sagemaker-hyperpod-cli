@@ -1,5 +1,4 @@
 from kubernetes import client
-from kubernetes import config as k8s_config
 from pydantic import ValidationError
 from kubernetes.client.exceptions import ApiException
 from kubernetes import config
@@ -15,7 +14,7 @@ EKS_ARN_PATTERN = r"arn:aws:eks:([\w-]+):\d+:cluster/([\w-]+)"
 
 def validate_cluster_connection():
     try:
-        k8s_config.load_kube_config()
+        config.load_kube_config()
         v1 = client.CoreV1Api()
         return True
     except Exception as e:

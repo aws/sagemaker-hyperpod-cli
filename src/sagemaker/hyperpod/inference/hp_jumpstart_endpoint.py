@@ -225,9 +225,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
                 region=HyperPodManager.get_current_region(),
             )
         except Exception as e:
-            logger.warning(
-                f"Failed to get instance types from HyperPod cluster: {e}"
-            )
+            logger.warning(f"Failed to get instance types from HyperPod cluster: {e}")
 
         if cluster_instance_types and (instance_type not in cluster_instance_types):
             raise Exception(

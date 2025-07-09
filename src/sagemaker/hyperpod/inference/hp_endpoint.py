@@ -15,7 +15,6 @@ from sagemaker.hyperpod.hyperpod_manager import HyperPodManager
 from typing import Dict, List, Optional
 from sagemaker_core.main.resources import Endpoint
 from pydantic import Field, ValidationError
-import logging
 
 
 class HPEndpoint(_HPEndpoint, HPEndpointBase):
@@ -198,9 +197,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
                 region=HyperPodManager.get_current_region(),
             )
         except Exception as e:
-            logger.warning(
-                f"Failed to get instance types from HyperPod cluster: {e}"
-            )
+            logger.warning(f"Failed to get instance types from HyperPod cluster: {e}")
 
         if cluster_instance_types and (instance_type not in cluster_instance_types):
             raise Exception(

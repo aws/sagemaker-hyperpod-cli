@@ -14,6 +14,7 @@ from sagemaker.hyperpod.common.utils import (
     validate_cluster_connection,
     handle_exception,
     setup_logging,
+    get_default_namespace,
 )
 
 
@@ -170,7 +171,7 @@ class HPEndpointBase:
         cls,
         pod: str,
         container: str = None,
-        namespace="default",
+        namespace=None,
     ):
         if not validate_cluster_connection():
             raise Exception(
@@ -178,6 +179,9 @@ class HPEndpointBase:
             )
 
         v1 = client.CoreV1Api()
+
+        if not namespace:
+            namespace = get_default_namespace()
 
         pod_details = v1.read_namespaced_pod(
             name=pod,
@@ -199,3 +203,38 @@ class HPEndpointBase:
             handle_exception(e, pod, namespace)
 
         return logs
+
+    @classmethod
+    def list_pods(cls, namespace=None):
+        if not validate_cluster_connection():
+            raise Exception(
+                "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
+            )
+
+        if not namespace:
+            namespace = get_default_namespace()
+
+        v1 = client.CoreV1Api()
+        response = v1.list_namespaced_pod(namespace=namespace)
+
+        pods = []
+        for item in response.items:
+            pods.append(item.metadata.name)
+
+        return pods
+
+    @classmethod
+    def list_namespaces(cls):
+        if not validate_cluster_connection():
+            raise Exception(
+                "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
+            )
+
+        v1 = client.CoreV1Api()
+        response = v1.list_namespace()
+
+        namespaces = []
+        for item in response.items:
+            namespaces.append(item.metadata.name)
+
+        return namespaces
