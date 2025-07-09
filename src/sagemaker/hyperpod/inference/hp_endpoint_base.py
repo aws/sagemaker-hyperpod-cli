@@ -2,7 +2,7 @@ from typing import Union
 import logging
 import yaml
 from types import SimpleNamespace
-from kubernetes import client
+from kubernetes import client, config
 from sagemaker.hyperpod.inference.config.constants import *
 from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
     _HPJumpStartEndpoint,
@@ -11,7 +11,6 @@ from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     _HPEndpoint,
 )
 from sagemaker.hyperpod.common.utils import (
-    validate_cluster_connection,
     handle_exception,
     setup_logging,
     get_default_namespace,
@@ -19,6 +18,14 @@ from sagemaker.hyperpod.common.utils import (
 
 
 class HPEndpointBase:
+    is_kubeconfig_loaded = False
+
+    @classmethod
+    def verify_kube_config(cls):
+        if not cls.is_kubeconfig_loaded:
+            config.load_kube_config()
+            cls.is_kubeconfig_loaded = True
+
     @classmethod
     def get_logger(cls):
         return logging.getLogger(__name__)
@@ -31,10 +38,7 @@ class HPEndpointBase:
         namespace: str,
         spec: Union[_HPJumpStartEndpoint, _HPEndpoint],
     ):
-        if not validate_cluster_connection():
-            raise Exception(
-                "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
-            )
+        cls.verify_kube_config()
 
         logger = cls.get_logger()
         logger = setup_logging(logger)
@@ -68,10 +72,7 @@ class HPEndpointBase:
         kind: str,
         namespace: str,
     ):
-        if not validate_cluster_connection():
-            raise Exception(
-                "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
-            )
+        cls.verify_kube_config()
 
         custom_api = client.CustomObjectsApi()
 
@@ -92,10 +93,7 @@ class HPEndpointBase:
         kind: str,
         namespace: str,
     ):
-        if not validate_cluster_connection():
-            raise Exception(
-                "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
-            )
+        cls.verify_kube_config()
 
         custom_api = client.CustomObjectsApi()
 
@@ -116,10 +114,7 @@ class HPEndpointBase:
         kind: str,
         namespace: str,
     ):
-        if not validate_cluster_connection():
-            raise Exception(
-                "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
-            )
+        self.verify_kube_config()
 
         custom_api = client.CustomObjectsApi()
 
@@ -136,10 +131,7 @@ class HPEndpointBase:
 
     @classmethod
     def get_operator_logs(cls, since_hours: float):
-        if not validate_cluster_connection():
-            raise Exception(
-                "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
-            )
+        cls.verify_kube_config()
 
         v1 = client.CoreV1Api()
 
@@ -173,10 +165,7 @@ class HPEndpointBase:
         container: str = None,
         namespace=None,
     ):
-        if not validate_cluster_connection():
-            raise Exception(
-                "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
-            )
+        cls.verify_kube_config()
 
         v1 = client.CoreV1Api()
 
@@ -206,10 +195,7 @@ class HPEndpointBase:
 
     @classmethod
     def list_pods(cls, namespace=None):
-        if not validate_cluster_connection():
-            raise Exception(
-                "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
-            )
+        cls.verify_kube_config()
 
         if not namespace:
             namespace = get_default_namespace()
@@ -225,10 +211,7 @@ class HPEndpointBase:
 
     @classmethod
     def list_namespaces(cls):
-        if not validate_cluster_connection():
-            raise Exception(
-                "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
-            )
+        cls.verify_kube_config()
 
         v1 = client.CoreV1Api()
         response = v1.list_namespace()

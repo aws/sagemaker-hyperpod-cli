@@ -9,7 +9,6 @@ from sagemaker.hyperpod.common.config.metadata import Metadata
 from kubernetes import client, config
 from typing import List, Optional
 from sagemaker.hyperpod.common.utils import (
-    validate_cluster_connection,
     handle_exception,
     get_default_namespace,
     setup_logging,
@@ -34,15 +33,22 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
         default=None, description="The status of the HyperPodPytorchJob"
     )
 
+    is_kubeconfig_loaded: bool = Field(
+        default=False
+    )
+
+    @classmethod
+    def verify_kube_config(cls):
+        if not cls.is_kubeconfig_loaded:
+            config.load_kube_config()
+            cls.is_kubeconfig_loaded = True
+
     @classmethod
     def get_logger(cls):
         return logging.getLogger(__name__)
 
     def create(self, debug=False):
-        if not validate_cluster_connection():
-            raise Exception(
-                "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
-            )
+        self.verify_kube_config()
 
         logger = self.get_logger()
         logger = setup_logging(logger, debug)
@@ -80,13 +86,10 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
 
     @classmethod
     def list(cls, namespace=None) -> List["HyperPodPytorchJob"]:
+        cls.verify_kube_config()
+
         if namespace is None:
             namespace = get_default_namespace()
-
-        if not validate_cluster_connection():
-            raise Exception(
-                "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
-            )
 
         logger = cls.get_logger()
         logger = setup_logging(logger)
@@ -106,10 +109,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             handle_exception(e, "", namespace)
 
     def delete(self):
-        if not validate_cluster_connection():
-            raise Exception(
-                "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
-            )
+        self.verify_kube_config()
 
         logger = self.get_logger()
         logger = setup_logging(logger)
@@ -131,13 +131,10 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
 
     @classmethod
     def get(cls, name, namespace=None) -> "HyperPodPytorchJob":
+        cls.verify_kube_config()
+
         if namespace is None:
             namespace = get_default_namespace()
-
-        if not validate_cluster_connection():
-            raise Exception(
-                "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
-            )
 
         logger = cls.get_logger()
         logger = setup_logging(logger)
@@ -158,10 +155,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             handle_exception(e, name, namespace)
 
     def refresh(self) -> "HyperPodPytorchJob":
-        if not validate_cluster_connection():
-            raise Exception(
-                "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
-            )
+        self.verify_kube_config()
 
         logger = self.get_logger()
         logger = setup_logging(logger)
@@ -184,10 +178,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             handle_exception(e, self.metadata.name, self.metadata.namespace)
 
     def list_pods(self) -> List[str]:
-        if not validate_cluster_connection():
-            raise Exception(
-                "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
-            )
+        self.verify_kube_config()
 
         logger = self.get_logger()
         logger = setup_logging(logger)
@@ -208,10 +199,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             handle_exception(e, self.metadata.name, self.metadata.namespace)
 
     def get_logs_from_pod(self, pod_name: str, container: Optional[str] = None) -> str:
-        if not validate_cluster_connection():
-            raise Exception(
-                "Failed to connect to the Kubernetes cluster. Please check your kubeconfig."
-            )
+        self.verify_kube_config()
 
         logger = self.get_logger()
         logger = setup_logging(logger)

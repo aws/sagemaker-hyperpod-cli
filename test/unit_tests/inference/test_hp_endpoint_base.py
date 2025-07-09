@@ -9,10 +9,8 @@ class TestHPEndpointBase(unittest.TestCase):
         self.base = HPEndpointBase()
 
     @patch("kubernetes.client.CustomObjectsApi")
-    @patch(
-        "sagemaker.hyperpod.common.utils.validate_cluster_connection", return_value=True
-    )
-    def test_call_create_api(self, mock_validate_connection, mock_custom_api):
+    @patch.object(HPEndpointBase, "verify_kube_config")
+    def test_call_create_api(self, mock_verify_config, mock_custom_api):
         mock_spec = MagicMock()
         mock_spec.model_dump.return_value = {"test": "data"}
 
@@ -21,10 +19,8 @@ class TestHPEndpointBase(unittest.TestCase):
         mock_custom_api.return_value.create_namespaced_custom_object.assert_called_once()
 
     @patch("kubernetes.client.CustomObjectsApi")
-    @patch(
-        "sagemaker.hyperpod.common.utils.validate_cluster_connection", return_value=True
-    )
-    def test_call_list_api(self, mock_validate_connection, mock_custom_api):
+    @patch.object(HPEndpointBase, "verify_kube_config")
+    def test_call_list_api(self, mock_verify_config, mock_custom_api):
         mock_custom_api.return_value.list_namespaced_custom_object.return_value = {
             "items": []
         }
@@ -35,10 +31,8 @@ class TestHPEndpointBase(unittest.TestCase):
         self.assertEqual(result, {"items": []})
 
     @patch("kubernetes.client.CustomObjectsApi")
-    @patch(
-        "sagemaker.hyperpod.common.utils.validate_cluster_connection", return_value=True
-    )
-    def test_call_get_api(self, mock_validate_connection, mock_custom_api):
+    @patch.object(HPEndpointBase, "verify_kube_config")
+    def test_call_get_api(self, mock_verify_config, mock_custom_api):
         mock_custom_api.return_value.get_namespaced_custom_object.return_value = {
             "name": "test"
         }
@@ -49,19 +43,15 @@ class TestHPEndpointBase(unittest.TestCase):
         self.assertEqual(result, {"name": "test"})
 
     @patch("kubernetes.client.CustomObjectsApi")
-    @patch(
-        "sagemaker.hyperpod.common.utils.validate_cluster_connection", return_value=True
-    )
-    def test_call_delete_api(self, mock_validate_connection, mock_custom_api):
+    @patch.object(HPEndpointBase, "verify_kube_config")
+    def test_call_delete_api(self, mock_verify_config, mock_custom_api):
         self.base.call_delete_api("test-name", "JumpStartModel", "test-ns")
 
         mock_custom_api.return_value.delete_namespaced_custom_object.assert_called_once()
 
     @patch("kubernetes.client.CoreV1Api")
-    @patch(
-        "sagemaker.hyperpod.common.utils.validate_cluster_connection", return_value=True
-    )
-    def test_get_operator_logs(self, mock_validate_connection, mock_core_api):
+    @patch.object(HPEndpointBase, "verify_kube_config")
+    def test_get_operator_logs(self, mock_verify_config, mock_core_api):
         mock_pod = MagicMock()
         mock_pod.metadata.name = "test-pod"
         mock_core_api.return_value.list_namespaced_pod.return_value.items = [mock_pod]
@@ -78,10 +68,8 @@ class TestHPEndpointBase(unittest.TestCase):
         )
 
     @patch("kubernetes.client.CoreV1Api")
-    @patch(
-        "sagemaker.hyperpod.common.utils.validate_cluster_connection", return_value=True
-    )
-    def test_get_logs(self, mock_validate_connection, mock_core_api):
+    @patch.object(HPEndpointBase, "verify_kube_config")
+    def test_get_logs(self, mock_verify_config, mock_core_api):
         mock_container = MagicMock()
         mock_container.name = "test-container"
         mock_pod = MagicMock()
@@ -100,10 +88,8 @@ class TestHPEndpointBase(unittest.TestCase):
         )
 
     @patch("kubernetes.client.CoreV1Api")
-    @patch(
-        "sagemaker.hyperpod.common.utils.validate_cluster_connection", return_value=True
-    )
-    def test_list_pods(self, mock_validate_connection, mock_core_api):
+    @patch.object(HPEndpointBase, "verify_kube_config")
+    def test_list_pods(self, mock_verify_config, mock_core_api):
         mock_pod1 = MagicMock()
         mock_pod1.metadata.name = "pod1"
         mock_pod2 = MagicMock()
@@ -121,10 +107,8 @@ class TestHPEndpointBase(unittest.TestCase):
         )
 
     @patch("kubernetes.client.CoreV1Api")
-    @patch(
-        "sagemaker.hyperpod.common.utils.validate_cluster_connection", return_value=True
-    )
-    def test_list_namespaces(self, mock_validate_connection, mock_core_api):
+    @patch.object(HPEndpointBase, "verify_kube_config")
+    def test_list_namespaces(self, mock_verify_config, mock_core_api):
         mock_ns1 = MagicMock()
         mock_ns1.metadata.name = "namespace1"
         mock_ns2 = MagicMock()

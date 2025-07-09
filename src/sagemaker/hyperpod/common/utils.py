@@ -20,15 +20,6 @@ EKS_ARN_PATTERN = r"arn:aws:eks:([\w-]+):\d+:cluster/([\w-]+)"
 KUBE_CONFIG_PATH = os.path.expanduser(KUBE_CONFIG_DEFAULT_LOCATION)
 
 
-def validate_cluster_connection():
-    try:
-        config.load_kube_config()
-        v1 = client.CoreV1Api()
-        return True
-    except Exception as e:
-        return False
-
-
 def get_default_namespace():
     _, active_context = config.list_kube_config_contexts()
 
@@ -44,7 +35,6 @@ def get_default_namespace():
         raise Exception(
             "No active context. Please use set_context() method to set current context."
         )
-
 
 def handle_exception(e: Exception, name: str, namespace: str):
     if isinstance(e, ApiException):
