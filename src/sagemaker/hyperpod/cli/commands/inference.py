@@ -114,10 +114,22 @@ def js_list(
         return
 
     headers = ["name", "namespace", "labels", "status"]
-    rows = [
-        [item.get("metadata", {}).get("name", ""), item.get("metadata", {}).get("namespace", ""), item.get("metadata", {}).get("labels", ""),  item.get("status", {}).get("deploymentStatus", {}).get("deploymentObjectOverallState")]
-        for item in data
-    ]
+    rows = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+
+        metadata = item.get("metadata") or {}
+        status = item.get("status") or {}
+        deployment_status = status.get("deploymentStatus") or {}
+
+        row = [
+            metadata.get("name", ""),
+            metadata.get("namespace", ""),
+            metadata.get("labels", ""),
+            deployment_status.get("deploymentObjectOverallState", "")
+        ]
+        rows.append(row)
     click.echo(tabulate(rows, headers=headers, tablefmt="github"))
 
 
@@ -144,10 +156,22 @@ def custom_list(
         return
 
     headers = ["name", "namespace", "labels", "status"]
-    rows = [
-        [item.get("metadata", {}).get("name", ""), item.get("metadata", {}).get("namespace", ""), item.get("metadata", {}).get("labels", ""),  item.get("status", {}).get("deploymentStatus", {}).get("deploymentObjectOverallState")]
-        for item in data
-    ]
+    rows = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+
+        metadata = item.get("metadata") or {}
+        status = item.get("status") or {}
+        deployment_status = status.get("deploymentStatus") or {}
+
+        row = [
+            metadata.get("name", ""),
+            metadata.get("namespace", ""),
+            metadata.get("labels", ""),
+            deployment_status.get("deploymentObjectOverallState", "")
+        ]
+        rows.append(row)
     click.echo(tabulate(rows, headers=headers, tablefmt="github"))
 
 
@@ -190,16 +214,26 @@ def js_describe(
         click.echo(json.dumps(data, indent=2))
 
     else:
+        if not isinstance(data, dict):
+            click.echo("Invalid data received: expected a dictionary.")
+            return
+
+        status = data.get("status") or {}
+        metadata = data.get("metadata") or {}
+        model = data.get("model") or {}
+        server = data.get("server") or {}
+        tls = data.get("tlsConfig") or {}
+
         summary = [
-            ("Deployment State:",       data.get("status", {}).get("deploymentStatus", {}).get("deploymentObjectOverallState")),
-            ("Metadata Name:",          data.get("metadata", {}).get("name", {})),
-            ("Namespace:",              data.get("metadata", {}).get("namespace", {})),
-            ("Label:",                  data.get("metadata", {}).get("label", {})),
-            ("Model ID:",               data.get("model", {}).get("modelId")),
-            ("Instance Type:",          data.get("server", {}).get("instanceType")),
-            ("Accept eula:",            data.get("model", {}).get("acceptEula")),
-            ("Model Version:",          data.get("model", {}).get("modelVersion")),
-            ("TLS Cert. Output S3 URI:",data.get("tlsConfig", {}).get("tlsCertificateOutputS3Uri")),
+            ("Deployment State:",       status.get("deploymentStatus", {}).get("deploymentObjectOverallState", "")),
+            ("Metadata Name:",          metadata.get("name", "")),
+            ("Namespace:",              metadata.get("namespace", "")),
+            ("Label:",                  metadata.get("label", "")),
+            ("Model ID:",               model.get("modelId", "")),
+            ("Instance Type:",          server.get("instanceType", "")),
+            ("Accept eula:",            model.get("acceptEula", "")),
+            ("Model Version:",          model.get("modelVersion", "")),
+            ("TLS Cert. Output S3 URI:",tls.get("tlsCertificateOutputS3Uri", "")),
         ]
         click.echo(tabulate(summary, tablefmt="plain"))
 
@@ -218,7 +252,11 @@ def js_describe(
             click.echo(tabulate(ep_rows, tablefmt="plain"))
 
         click.echo("\nConditions:")
-        conds = data.get("status", {}).get("conditions", [])
+
+        status = data.get("status") if isinstance(data, dict) else {}
+        status = status or {}  
+        conds = status.get("conditions", [])
+
         if isinstance(conds, list) and conds:
             headers = ["TYPE", "STATUS", "LAST TRANSITION", "LAST UPDATE", "MESSAGE"]
             rows = [
@@ -236,8 +274,14 @@ def js_describe(
             click.echo("  <none>")
 
         click.echo("\nDeploymentStatus Conditions:")
-        dep_status = data.get("status", {}).get("deploymentStatus", {})
-        dep_conds = dep_status.get("status", {}).get("conditions", [])
+
+        status = data.get("status") if isinstance(data, dict) else {}
+        status = status or {}
+
+        deployment_status = status.get("deploymentStatus") or {}
+        dep_status_inner = deployment_status.get("status") or {}
+        dep_conds = dep_status_inner.get("conditions") or []
+
         if isinstance(dep_conds, list) and dep_conds:
             headers = ["TYPE", "STATUS", "LAST TRANSITION", "LAST UPDATE", "MESSAGE"]
             rows = [
@@ -294,111 +338,79 @@ def custom_describe(
         click.echo(json.dumps(data, indent=2))
 
     else:
+        if not isinstance(data, dict):
+            click.echo("Invalid data received: expected a dictionary.")
+            return
+
+        # Safe access blocks
+        status = data.get("status") or {}
+        metadata = data.get("metadata") or {}
+        metrics = data.get("metrics") or {}
+        model_source = data.get("modelSourceConfig") or {}
+        s3_storage = model_source.get("s3Storage") or {}
+        fsx_storage = model_source.get("fsxStorage") or {}
+        tls = data.get("tlsConfig") or {}
+        worker = data.get("worker") or {}
+        resources = worker.get("resources") or {}
+        volume_mount = worker.get("modelVolumeMount") or {}
+        model_port = worker.get("modelInvocationPort") or {}
+        cloudwatch = data.get("autoScalingSpec", {}).get("cloudWatchTrigger") or {}
+
         summary = [
-            ("Deployment State:",           data.get("status", {}).get("deploymentStatus", {}).get("deploymentObjectOverallState")),
-            ("Metadata Name:",              data.get("metadata", {}).get("name", {})),
-            ("Namespace:",                  data.get("metadata", {}).get("namespace", {})),
-            ("Label:",                      data.get("metadata", {}).get("label", {})),
-            ("Invocation Endpoint",         data.get("invocationEndpoint")),
-            ("Instance Type",               data.get("instanceType")),
-            ("Metrics Enabled",             data.get("metrics", {}).get("enabled")),
-            ("Model Name",                  data.get("modelName")),
-            ("Model Version",               data.get("modelVersion")),
-            ("Model Source Type",           data.get("modelSourceConfig", {}).get("modelSourceType")),
-            ("Model Location",              data.get("modelSourceConfig", {}).get("modelLocation")),
-            ("Prefetch Enabled",            data.get("modelSourceConfig", {}).get("prefetchEnabled")),
-            ("TLS Cert S3 URI",             data.get("tlsConfig", {}).get("tlsCertificateOutputS3Uri")),
-            ("FSx DNS Name",                data.get("modelSourceConfig", {}).get("fsxStorage", {}).get("dnsName")),
-            ("FSx File System ID",          data.get("modelSourceConfig", {}).get("fsxStorage", {}).get("fileSystemId")),
-            ("FSx Mount Name",              data.get("modelSourceConfig", {}).get("fsxStorage", {}).get("mountName")),
-            ("S3 Bucket Name",              data.get("modelSourceConfig", {}).get("s3Storage", {}).get("bucketName")),
-            ("S3 Region",                   data.get("modelSourceConfig", {}).get("s3Storage", {}).get("region")),
-            ("Image URI",                   data.get("imageUri") 
-                                            or data.get("worker", {}).get("image")),
-            ("Container Port",              data.get("containerPort")
-                                            or data.get("worker", {})
-                                                    .get("modelInvocationPort", {})
-                                                    .get("containerPort")),
-            ("Model Volume Mount Path",     data.get("modelVolumeMountPath")
-                                            or data.get("worker", {})
-                                                    .get("modelVolumeMount", {})
-                                                    .get("mountPath")),
-            ("Model Volume Mount Name",     data.get("modelVolumeMountName")
-                                            or data.get("worker", {})
-                                                    .get("modelVolumeMount", {})
-                                                    .get("name")),
-            ("Resources Limits",            data.get("resourcesLimits")
-                                            or data.get("worker", {})
-                                                    .get("resources", {})
-                                                    .get("limits")),
-            ("Resources Requests",          data.get("resourcesRequests")
-                                            or data.get("worker", {})
-                                                    .get("resources", {})
-                                                    .get("requests")),
-            ("Dimensions",                  data.get("dimensions")
-                                            or data.get("autoScalingSpec", {})
-                                                    .get("cloudWatchTrigger", {})
-                                                    .get("dimensions")),
-            ("Metric Collection Period",    data.get("metricCollectionPeriod")
-                                            or data.get("autoScalingSpec", {})
-                                                    .get("cloudWatchTrigger", {})
-                                                    .get("metricCollectionPeriod")),
-            ("Metric Collection Start Time",data.get("metricCollectionStartTime")
-                                            or data.get("autoScalingSpec", {})
-                                                    .get("cloudWatchTrigger", {})
-                                                    .get("metricCollectionStartTime")),
-            ("Metric Name",                 data.get("metricName")
-                                            or data.get("autoScalingSpec", {})
-                                                    .get("cloudWatchTrigger", {})
-                                                    .get("metricName")),
-            ("Metric Stat",                 data.get("metricStat")
-                                            or data.get("autoScalingSpec", {})
-                                                    .get("cloudWatchTrigger", {})
-                                                    .get("metricStat")),
-            ("Metric Type",                 data.get("metricType")
-                                            or data.get("autoScalingSpec", {})
-                                                    .get("cloudWatchTrigger", {})
-                                                    .get("metricType")),
-            ("Min Value",                   data.get("minValue")
-                                            or data.get("autoScalingSpec", {})
-                                                    .get("cloudWatchTrigger", {})
-                                                    .get("minValue")),
-            ("CW Trigger Name",             data.get("cloudWatchTriggerName")
-                                            or data.get("autoScalingSpec", {})
-                                                    .get("cloudWatchTrigger", {})
-                                                    .get("name")),
-            ("CW Trigger Namespace",        data.get("cloudWatchTriggerNamespace")
-                                            or data.get("autoScalingSpec", {})
-                                                    .get("cloudWatchTrigger", {})
-                                                    .get("namespace")),
-            ("Target Value",                data.get("targetValue")
-                                            or data.get("autoScalingSpec", {})
-                                                    .get("cloudWatchTrigger", {})
-                                                    .get("targetValue")),
-            ("Use Cached Metrics",          data.get("useCachedMetrics")
-                                            or data.get("autoScalingSpec", {})
-                                                    .get("cloudWatchTrigger", {})
-                                                    .get("useCachedMetrics")),
+            ("Deployment State:",           status.get("deploymentStatus", {}).get("deploymentObjectOverallState", "")),
+            ("Metadata Name:",              metadata.get("name", "")),
+            ("Namespace:",                  metadata.get("namespace", "")),
+            ("Label:",                      metadata.get("label", "")),
+            ("Invocation Endpoint",         data.get("invocationEndpoint", "")),
+            ("Instance Type",               data.get("instanceType", "")),
+            ("Metrics Enabled",             metrics.get("enabled", "")),
+            ("Model Name",                  data.get("modelName", "")),
+            ("Model Version",               data.get("modelVersion", "")),
+            ("Model Source Type",           model_source.get("modelSourceType", "")),
+            ("Model Location",              model_source.get("modelLocation", "")),
+            ("Prefetch Enabled",            model_source.get("prefetchEnabled", "")),
+            ("TLS Cert S3 URI",             tls.get("tlsCertificateOutputS3Uri", "")),
+            ("FSx DNS Name",                fsx_storage.get("dnsName", "")),
+            ("FSx File System ID",          fsx_storage.get("fileSystemId", "")),
+            ("FSx Mount Name",              fsx_storage.get("mountName", "")),
+            ("S3 Bucket Name",              s3_storage.get("bucketName", "")),
+            ("S3 Region",                   s3_storage.get("region", "")),
+            ("Image URI",                   data.get("imageUri") or worker.get("image", "")),
+            ("Container Port",              data.get("containerPort") or model_port.get("containerPort", "")),
+            ("Model Volume Mount Path",     data.get("modelVolumeMountPath") or volume_mount.get("mountPath", "")),
+            ("Model Volume Mount Name",     data.get("modelVolumeMountName") or volume_mount.get("name", "")),
+            ("Resources Limits",            data.get("resourcesLimits") or resources.get("limits", "")),
+            ("Resources Requests",          data.get("resourcesRequests") or resources.get("requests", "")),
+            ("Dimensions",                  data.get("dimensions") or cloudwatch.get("dimensions", "")),
+            ("Metric Collection Period",    data.get("metricCollectionPeriod") or cloudwatch.get("metricCollectionPeriod", "")),
+            ("Metric Collection Start Time",data.get("metricCollectionStartTime") or cloudwatch.get("metricCollectionStartTime", "")),
+            ("Metric Name",                 data.get("metricName") or cloudwatch.get("metricName", "")),
+            ("Metric Stat",                 data.get("metricStat") or cloudwatch.get("metricStat", "")),
+            ("Metric Type",                 data.get("metricType") or cloudwatch.get("metricType", "")),
+            ("Min Value",                   data.get("minValue") or cloudwatch.get("minValue", "")),
+            ("CW Trigger Name",             data.get("cloudWatchTriggerName") or cloudwatch.get("name", "")),
+            ("CW Trigger Namespace",        data.get("cloudWatchTriggerNamespace") or cloudwatch.get("namespace", "")),
+            ("Target Value",                data.get("targetValue") or cloudwatch.get("targetValue", "")),
+            ("Use Cached Metrics",          data.get("useCachedMetrics") or cloudwatch.get("useCachedMetrics", "")),
         ]
 
         click.echo(tabulate(summary, tablefmt="plain"))
 
         click.echo("\nSageMaker Endpoint:")
-        status     = data.get("status")     or {}
-        endpoints  = status.get("endpoints") or {}
-        sagemaker_info = endpoints.get("sagemaker")
+        sm_endpoints = status.get("endpoints") or {}
+        sagemaker_info = sm_endpoints.get("sagemaker")
         if not sagemaker_info:
             click.secho("  <no SageMaker endpoint information available>", fg="yellow")
         else:
             ep_rows = [
-                    ("State:",         data.get("status", {}).get("endpoints", {}).get("sagemaker", {}).get("state")),
-                    ("Name:",          data.get("sageMakerEndpoint", {}).get("name")),
-                    ("ARN:",           data.get("status", {}).get("endpoints", {}).get("sagemaker", {}).get("endpointArn")),
+                ("State:", sm_endpoints.get("sagemaker", {}).get("state", "")),
+                ("Name:", data.get("sageMakerEndpoint", {}).get("name", "")),
+                ("ARN:", sm_endpoints.get("sagemaker", {}).get("endpointArn", "")),
             ]
             click.echo(tabulate(ep_rows, tablefmt="plain"))
 
         click.echo("\nConditions:")
-        conds = data.get("status", {}).get("conditions", [])
+        conds = status.get("conditions", [])
         if isinstance(conds, list) and conds:
             headers = ["TYPE", "STATUS", "LAST TRANSITION", "LAST UPDATE", "MESSAGE"]
             rows = [
@@ -416,8 +428,9 @@ def custom_describe(
             click.echo("  <none>")
 
         click.echo("\nDeploymentStatus Conditions:")
-        dep_status = data.get("status", {}).get("deploymentStatus", {})
-        dep_conds = dep_status.get("status", {}).get("conditions", [])
+        deployment_status = status.get("deploymentStatus") or {}
+        dep_status_inner = deployment_status.get("status") or {}
+        dep_conds = dep_status_inner.get("conditions") or []
         if isinstance(dep_conds, list) and dep_conds:
             headers = ["TYPE", "STATUS", "LAST TRANSITION", "LAST UPDATE", "MESSAGE"]
             rows = [
