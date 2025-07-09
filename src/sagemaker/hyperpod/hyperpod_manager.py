@@ -56,11 +56,17 @@ class HyperPodManager:
         if config_file:
             command.extend(["--kubeconfig", config_file])
 
+        # Validate command components
+        if not all(isinstance(arg, str) and arg.strip() for arg in command):
+            raise ValueError("Invalid command arguments")
+
         try:
             # Execute the command to update kubeconfig
             subprocess.run(command, check=True)
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failed to update kubeconfig: {e}")
+        except (OSError, ValueError) as e:
+            raise RuntimeError(f"Invalid command execution: {e}")
 
     @classmethod
     def _set_current_context(
