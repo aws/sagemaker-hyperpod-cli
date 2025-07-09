@@ -1,0 +1,162 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+
+import pytest
+import time
+
+from sagemaker.hyperpod.cli.utils import setup_logger
+from test.integration_tests.utils import execute_command
+from test.integration_tests.abstract_integration_tests import AbstractIntegrationTests
+
+logger = setup_logger(__name__)
+
+
+class TestHypCLICommands(AbstractIntegrationTests):
+    """Integration tests for HyperPod CLI using hyp commands."""
+
+    def test_list_clusters(self, cluster_name):
+        """Test listing clusters """
+        assert cluster_name
+
+    def test_set_cluster_context(self, cluster_name):
+        """Test setting cluster context."""
+        result = execute_command([
+            "hyp", "set-cluster-context",
+            "--cluster-name", cluster_name
+        ])
+        assert result.returncode == 0
+        context_line = result.stdout.strip().splitlines()[-1]
+        assert any(text in context_line for text in ["Updated context", "Added new context"])
+
+    def test_get_cluster_context(self, cluster_name):
+        """Test getting current cluster context."""
+        result = execute_command(["hyp", "get-cluster-context"])
+        assert result.returncode == 0
+
+        context_output = result.stdout.strip()
+        assert "Cluster context:" in context_output
+        # Just verify we got a valid ARN without checking the specific name
+        current_arn = context_output.split("Cluster context:")[-1].strip()
+        assert "arn:aws:eks:" in current_arn
+
+    def test_create_job(self, test_job_name, image_uri):
+        """Test creating a PyTorch job using the correct CLI parameters."""
+        result = execute_command([
+            "hyp", "create", "hp-pytorch-job",
+            "--version", "1.0",
+            "--job-name", test_job_name,
+            "--image", image_uri,
+            "--pull-policy", "Always",
+            "--tasks-per-node", "1",
+            "--max-retry", "1"
+        ])
+        assert result.returncode == 0
+        logger.info(f"Created job: {test_job_name}")
+        
+        # Wait a moment for the job to be created
+        time.sleep(5)
+
+    def test_list_jobs(self, test_job_name):
+        """Test listing jobs and verifying the created job is present."""
+        list_result = execute_command(["hyp", "list", "hp-pytorch-job"])
+        assert list_result.returncode == 0
+        
+        # Check if either the job name is in the output or at least the header is present
+        assert test_job_name in list_result.stdout
+        logger.info("Successfully listed jobs")
+
+    def test_list_pods(self, test_job_name):
+        """Test listing pods for a specific job."""
+        # Wait a moment to ensure pods are created
+        time.sleep(10)
+        
+        list_pods_result = execute_command([
+            "hyp", "list-pods", "hp-pytorch-job", 
+            "--job-name", test_job_name
+        ])
+        assert list_pods_result.returncode == 0
+        
+        # Verify the output contains expected headers and job name
+        output = list_pods_result.stdout.strip()
+        assert f"Pods for job: {test_job_name}" in output
+        assert "POD NAME" in output
+        assert "NAMESPACE" in output
+        
+        # Verify at least one pod is listed (should contain the job name in the pod name)
+        assert f"{test_job_name}-pod-" in output
+        
+        logger.info(f"Successfully listed pods for job: {test_job_name}")
+
+    # @pytest.mark.skip(reason="Skipping since there is ")
+    def test_get_logs(self, test_job_name):
+        """Test getting logs for a specific pod in a job."""
+        # First, get the pod name from list-pods command
+        list_pods_result = execute_command([
+            "hyp", "list-pods", "hp-pytorch-job",
+            "--job-name", test_job_name
+        ])
+        assert list_pods_result.returncode == 0
+
+        # Extract the pod name from the output
+        output_lines = list_pods_result.stdout.strip().split('\n')
+        pod_name = None
+        for line in output_lines:
+            if f"{test_job_name}-pod-" in line:
+                # Extract the pod name from the line
+                pod_name = line.split()[0].strip()
+                break
+
+        assert pod_name is not None, f"Could not find pod for job {test_job_name}"
+        logger.info(f"Found pod: {pod_name}")
+
+        # Now get logs for this pod
+        get_logs_result = execute_command([
+            "hyp", "get-logs", "hp-pytorch-job",
+            "--job-name", test_job_name,
+            "--pod-name", pod_name
+        ])
+        assert get_logs_result.returncode == 0
+
+        # Verify the output contains the expected header
+        logs_output = get_logs_result.stdout.strip()
+        assert f"Listing logs for pod: {pod_name}" in logs_output
+
+        logger.info(f"Successfully retrieved logs for pod: {pod_name}")
+
+    def test_describe_job(self, test_job_name):
+        """Test describing a specific job and verifying the output."""
+        describe_result = execute_command(["hyp", "describe", "hp-pytorch-job", "--job-name", test_job_name])
+        assert describe_result.returncode == 0
+        
+        # Check if either the job name is in the output or metadata is present
+        assert test_job_name in describe_result.stdout
+        logger.info(f"Successfully described job: {test_job_name}")
+
+    @pytest.mark.run(order=99)
+    def test_delete_job(self, test_job_name):
+        """Test deleting a job and verifying deletion."""
+        delete_result = execute_command(["hyp", "delete", "hp-pytorch-job", "--job-name", test_job_name])
+        assert delete_result.returncode == 0
+        logger.info(f"Successfully deleted job: {test_job_name}")
+        
+        # Wait a moment for the job to be deleted
+        time.sleep(5)
+        
+        # Verify the job is no longer listed
+        list_result = execute_command(["hyp", "list", "hp-pytorch-job"])
+        assert list_result.returncode == 0
+        
+        # The job name should no longer be in the output
+        assert test_job_name not in list_result.stdout
+
+

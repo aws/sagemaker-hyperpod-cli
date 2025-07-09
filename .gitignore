@@ -25,3 +25,5 @@ __pycache__/
 # Ignore all contents of result and results directories
 /result/
 /results/
+
+.idea/
