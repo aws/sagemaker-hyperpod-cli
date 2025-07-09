@@ -10,6 +10,10 @@
 
 {{- if not $.Values.tlsCertificateS3Bucket}}
 {{- fail "tlsCertificateS3Bucket must be set via the --set tlsCertificateS3Bucket=<s3 Bucket> flag" -}}
+{{- else -}}
+{{- if not (hasPrefix "s3://" $.Values.tlsCertificateS3Bucket) -}}
+{{- $_ := set $.Values "tlsCertificateS3Bucket" (printf "s3://%s" $.Values.tlsCertificateS3Bucket) -}}
+{{- end -}}
 {{- end -}}
 
 {{- if not .Values.region }}
