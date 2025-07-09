@@ -26,6 +26,10 @@ from sagemaker.hyperpod.cli.commands.inference import (
     custom_describe,
     js_delete,
     custom_delete,
+    js_list_pods,
+    custom_list_pods,
+    js_get_logs,
+    custom_get_logs,
     js_get_operator_logs,
     custom_get_operator_logs,
 )
@@ -65,6 +69,18 @@ def delete():
 
 
 @cli.group(cls=CLICommand)
+def list_pods():
+    """List all pods for jumpstart model endpoint, custom model endpoint or pytorch jobs."""
+    pass
+
+
+@cli.group(cls=CLICommand)
+def get_logs():
+    """Get specific pod logs for a jumpstart model endpoint, custom model endpoint or pytorch job."""
+    pass
+
+
+@cli.group(cls=CLICommand)
 def invoke():
     """Invoke a jumpstart model endpoint or a custom model endpoint."""
     pass
@@ -72,19 +88,7 @@ def invoke():
 
 @cli.group(cls=CLICommand)
 def get_operator_logs():
-    """Get operator logs for jumpstart model endpoint, custom model endpoint or pytorch job."""
-    pass
-
-
-@cli.group(cls=CLICommand)
-def list_pods():
-    """List all pods for pytorch jobs."""
-    pass
-
-
-@cli.group(cls=CLICommand)
-def get_logs():
-    """Get specific pod logs for a pytorch job."""
+    """Get operator logs for jumpstart model endpoint, or custom model endpoint."""
     pass
 
 
@@ -105,7 +109,12 @@ delete.add_command(js_delete)
 delete.add_command(custom_delete)
 
 list_pods.add_command(pytorch_list_pods)
+list_pods.add_command(js_list_pods)
+list_pods.add_command(custom_list_pods)
+
 get_logs.add_command(pytorch_get_logs)
+get_logs.add_command(js_get_logs)
+get_logs.add_command(custom_get_logs)
 
 get_operator_logs.add_command(js_get_operator_logs)
 get_operator_logs.add_command(custom_get_operator_logs)

@@ -14,15 +14,16 @@ from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
 # --------- Test Configuration ---------
 NAMESPACE = "integration"
 REGION = "us-east-2"
-TIMEOUT_MINUTES = 15
-POLL_INTERVAL_SECONDS = 30
+ENDPOINT_NAME = f"custom-sdk-integration"
 
 MODEL_NAME = f"ds-model-integration"
-ENDPOINT_NAME = f"custom-sdk-integration"
 S3_BUCKET = "test-model-s3-zhaoqi"
 MODEL_LOCATION = "deepseek15b"
 IMAGE_URI = "763104351884.dkr.ecr.us-east-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.4.0-tgi2.3.1-gpu-py311-cu124-ubuntu22.04-v2.0"
 TLS_URI = "s3://tls-bucket-inf1-beta2"
+
+TIMEOUT_MINUTES = 15
+POLL_INTERVAL_SECONDS = 30
 
 @pytest.fixture(scope="module")
 def sagemaker_client():
@@ -97,39 +98,32 @@ def custom_endpoint():
         metrics=metrics
     )
 
-def test_create_custom(custom_endpoint):
-    custom_endpoint.create(name=ENDPOINT_NAME, namespace=NAMESPACE)
+def test_create_endpoint(custom_endpoint):
+    custom_endpoint.create(namespace=NAMESPACE)
     assert custom_endpoint.metadata.name == ENDPOINT_NAME
 
-def test_list_custom():
+def test_list_endpoint():
     endpoints = HPEndpoint.list(namespace=NAMESPACE)
     names = [ep.metadata.name for ep in endpoints]
     assert ENDPOINT_NAME in names
 
-def test_get_custom():
+def test_get_endpoint():
     ep = HPEndpoint.get(name=ENDPOINT_NAME, namespace=NAMESPACE)
     assert ep.modelName == MODEL_NAME
 
-def test_js_wait_until_inservice(js_endpoint_name):
+def test_wait_until_inservice():
     """Poll SDK until specific JumpStart endpoint reaches DeploymentComplete"""
-    print(f"Waiting for JumpStart endpoint '{js_endpoint_name}' to be DeploymentComplete...")
+    print(f"Waiting for JumpStart endpoint '{ENDPOINT_NAME}' to be DeploymentComplete...")
     deadline = time.time() + (TIMEOUT_MINUTES * 60)
 
     while time.time() < deadline:
         try:
-            endpoints = HPEndpoint.model_construct().list(NAMESPACE)
-            for ep in endpoints:
-                data = ep.model_dump()
-                name = data.get("metadata", {}).get("name", "")
-                if name != js_endpoint_name:
-                    continue
-                state = data.get("status", {}).get("deploymentStatus", {}).get("deploymentObjectOverallState", "")
-                print(f"Current state for {name}: {state}")
-                if state == "DeploymentComplete":
-                    return
-                elif state == "DeploymentFailed":
-                    pytest.fail("Endpoint deployment failed.")
-                break
+            ep = HPEndpoint.get(name=ENDPOINT_NAME, namespace=NAMESPACE)
+            state = ep.status.deploymentStatus.deploymentObjectOverallState
+            if state == "DeploymentComplete":
+                return
+            elif state == "DeploymentFailed":
+                pytest.fail("Endpoint deployment failed.")
         except Exception as e:
             print(f"Error polling endpoint status: {e}")
 
@@ -137,16 +131,27 @@ def test_js_wait_until_inservice(js_endpoint_name):
 
     pytest.fail("Timed out waiting for endpoint to be DeploymentComplete")
 
-def test_invoke_custom():
+def test_invoke_endpoint():
     ep = HPEndpoint.get(name=ENDPOINT_NAME, namespace=NAMESPACE)
-    response = ep.invoke({"inputs": "What is the capital of USA?"})
+    response = ep.invoke('{"inputs": "What is the capital of USA?"}')
     assert "error" not in str(response).lower()
+    time.sleep(5)
+
 
 def test_get_operator_logs():
     ep = HPEndpoint.get(name=ENDPOINT_NAME, namespace=NAMESPACE)
     logs = ep.get_operator_logs(since_hours=1)
     assert logs
+    time.sleep(5)
 
-def test_delete_custom():
+
+def test_list_pods(runner):
+    ep = HPEndpoint.get(name=ENDPOINT_NAME, namespace=NAMESPACE)
+    pods = ep.list_pods(NAMESPACE)
+    assert pods
+    time.sleep(5)
+
+
+def test_delete_endpoint():
     ep = HPEndpoint.get(name=ENDPOINT_NAME, namespace=NAMESPACE)
     ep.delete()

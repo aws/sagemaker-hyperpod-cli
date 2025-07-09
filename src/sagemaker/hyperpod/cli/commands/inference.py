@@ -521,6 +521,110 @@ def custom_delete(
 
 @click.command("hyp-jumpstart-endpoint")
 @click.option(
+    "--namespace",
+    type=click.STRING,
+    required=False,
+    default="default",
+    help="Optional. The namespace of the jumpstart model to list pods for. Default set to 'default'.",
+)
+def js_list_pods(
+    namespace: Optional[str],
+):
+    """
+    Get specific pod log for jumpstart model endpoint.
+    """
+    my_endpoint = HPJumpStartEndpoint.model_construct()
+    pods = my_endpoint.list_pods(namespace=namespace)
+    click.echo(pods)
+
+
+@click.command("hyp-custom-endpoint")
+@click.option(
+    "--namespace",
+    type=click.STRING,
+    required=False,
+    default="default",
+    help="Optional. The namespace of the custom model to list pods for. Default set to 'default'.",
+)
+def custom_list_pods(
+    namespace: Optional[str],
+):
+    """
+    Get specific pod log for custom model endpoint.
+    """
+    my_endpoint = HPEndpoint.model_construct()
+    pods = my_endpoint.list_pods(namespace=namespace)
+    click.echo(pods)
+
+
+@click.command("hyp-jumpstart-endpoint")
+@click.option(
+    "--pod-name",
+    type=click.STRING,
+    required=True,
+    help="Required. The pod name to get logs for.",
+)
+@click.option(
+    "--container",
+    type=click.STRING,
+    required=False,
+    help="Optional. The container name to get logs for.",
+)
+@click.option(
+    "--namespace",
+    type=click.STRING,
+    required=False,
+    default="default",
+    help="Optional. The namespace of the jumpstart model to get logs for. Default set to 'default'.",
+)
+def js_get_logs(
+    pod_name: str,
+    container: Optional[str],
+    namespace: Optional[str],
+):
+    """
+    Get specific pod log for jumpstart model endpoint.
+    """
+    my_endpoint = HPJumpStartEndpoint.model_construct()
+    logs = my_endpoint.get_logs(pod=pod_name, container=container, namespace=namespace)
+    click.echo(logs)
+
+
+@click.command("hyp-custom-endpoint")
+@click.option(
+    "--pod-name",
+    type=click.STRING,
+    required=True,
+    help="Required. The pod name to get logs for.",
+)
+@click.option(
+    "--container",
+    type=click.STRING,
+    required=False,
+    help="Optional. The container name to get logs for.",
+)
+@click.option(
+    "--namespace",
+    type=click.STRING,
+    required=False,
+    default="default",
+    help="Optional. The namespace of the custom model to get logs for. Default set to 'default'.",
+)
+def custom_get_logs(
+    pod_name: str,
+    container: Optional[str],
+    namespace: Optional[str],
+):
+    """
+    Get specific pod log for custom model endpoint.
+    """
+    my_endpoint = HPEndpoint.model_construct()
+    logs = my_endpoint.get_logs(pod=pod_name, container=container, namespace=namespace)
+    click.echo(logs)
+
+
+@click.command("hyp-jumpstart-endpoint")
+@click.option(
     "--since-hours",
     type=click.FLOAT,
     required=True,

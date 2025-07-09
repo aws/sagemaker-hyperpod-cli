@@ -7,6 +7,8 @@ from sagemaker.hyperpod.cli.commands.inference import (
     js_list, custom_list,
     js_describe, custom_describe,
     js_delete, custom_delete,
+    js_list_pods, custom_list_pods,
+    js_get_logs, custom_get_logs,
     js_get_operator_logs, custom_get_operator_logs
 )
 import jumpstart_inference_config_schemas.registry as jreg
@@ -169,15 +171,25 @@ def test_custom_create_missing_required_args():
     assert 'Missing option' in result.output
 
 
+@patch('sagemaker.hyperpod.cli.commands.inference.Endpoint.get')
 @patch('sagemaker.hyperpod.cli.commands.inference.boto3')
-def test_custom_invoke_success(mock_boto3):
+def test_custom_invoke_success(mock_boto3, mock_endpoint_get):
+    mock_endpoint = Mock()
+    mock_endpoint.endpoint_status = "InService"
+    mock_endpoint_get.return_value = mock_endpoint
+
     mock_body = Mock()
-    mock_body.read.return_value.decode.return_value = '{"ok":true}'
+    mock_body.read.return_value.decode.return_value = '{"ok": true}'
     mock_boto3.client.return_value.invoke_endpoint.return_value = {'Body': mock_body}
+
     runner = CliRunner()
-    result = runner.invoke(custom_invoke, ['--endpoint-name', 'ep', '--body', '{"x":1}'])
-    assert result.exit_code == 0
-    assert 'ok' in result.output
+    result = runner.invoke(custom_invoke, [
+        '--endpoint-name', 'ep',
+        '--body', '{"x": 1}'
+    ])
+
+    assert result.exit_code == 0, result.output
+    assert '"ok": true' in result.output
 
 
 @patch('sagemaker.hyperpod.cli.commands.inference.boto3')
@@ -252,3 +264,39 @@ def test_custom_list_default_namespace(mock_hp):
     result = runner.invoke(custom_list, [])
     assert result.exit_code == 0
     inst.list.assert_called_once_with('default')
+
+@patch('sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint')
+def test_js_list_pods(mock_hp):
+    inst = Mock(list_pods=Mock(return_value="pods"))
+    mock_hp.model_construct.return_value = inst
+    runner = CliRunner()
+    result = runner.invoke(js_list_pods, ['--namespace', 'ns'])
+    assert result.exit_code == 0
+    assert 'pods' in result.output
+
+@patch('sagemaker.hyperpod.cli.commands.inference.HPEndpoint')
+def test_custom_list_pods(mock_hp):
+    inst = Mock(list_pods=Mock(return_value="pods"))
+    mock_hp.model_construct.return_value = inst
+    runner = CliRunner()
+    result = runner.invoke(custom_list_pods, ['--namespace', 'ns'])
+    assert result.exit_code == 0
+    assert 'pods' in result.output
+
+@patch('sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint')
+def test_js_get_logs(mock_hp):
+    inst = Mock(get_logs=Mock(return_value="logs"))
+    mock_hp.model_construct.return_value = inst
+    runner = CliRunner()
+    result = runner.invoke(js_get_logs, ['--pod-name', 'p', '--namespace', 'ns'])
+    assert result.exit_code == 0
+    assert 'logs' in result.output
+
+@patch('sagemaker.hyperpod.cli.commands.inference.HPEndpoint')
+def test_custom_get_logs(mock_hp):
+    inst = Mock(get_logs=Mock(return_value='l'))
+    mock_hp.model_construct.return_value = inst
+    runner = CliRunner()
+    result = runner.invoke(custom_get_logs, ['--pod-name', 'p', '--namespace', 'ns'])
+    assert result.exit_code == 0
+    assert 'l' in result.output

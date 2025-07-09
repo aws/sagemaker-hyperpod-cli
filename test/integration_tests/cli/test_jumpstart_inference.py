@@ -4,7 +4,7 @@ import pytest
 import boto3
 from click.testing import CliRunner
 from sagemaker.hyperpod.cli.commands.inference import (
-    js_create, custom_invoke, js_list, js_describe, js_delete, js_get_operator_logs
+    js_create, custom_invoke, js_list, js_describe, js_delete, js_get_operator_logs, js_list_pods
 )
 from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
 
@@ -21,7 +21,7 @@ def runner():
 
 @pytest.fixture(scope="module")
 def js_endpoint_name():
-    return f"jumpstart-ep-integ"
+    return f"jumpstart-cli-integ"
 
 @pytest.fixture(scope="module")
 def sagemaker_client():
@@ -58,26 +58,19 @@ def test_js_describe(runner, js_endpoint_name):
     assert js_endpoint_name in result.output
 
 
-def test_js_wait_until_inservice(js_endpoint_name):
+def test_wait_until_inservice(js_endpoint_name):
     """Poll SDK until specific JumpStart endpoint reaches DeploymentComplete"""
     print(f"Waiting for JumpStart endpoint '{js_endpoint_name}' to be DeploymentComplete...")
     deadline = time.time() + (TIMEOUT_MINUTES * 60)
 
     while time.time() < deadline:
         try:
-            endpoints = HPJumpStartEndpoint.model_construct().list(NAMESPACE)
-            for ep in endpoints:
-                data = ep.model_dump()
-                name = data.get("metadata", {}).get("name", "")
-                if name != js_endpoint_name:
-                    continue
-                state = data.get("status", {}).get("deploymentStatus", {}).get("deploymentObjectOverallState", "")
-                print(f"Current state for {name}: {state}")
-                if state == "DeploymentComplete":
-                    return
-                elif state == "DeploymentFailed":
-                    pytest.fail("Endpoint deployment failed.")
-                break 
+            ep = HPJumpStartEndpoint.get(name=js_endpoint_name, namespace=NAMESPACE)
+            state = ep.status.deploymentStatus.deploymentObjectOverallState
+            if state == "DeploymentComplete":
+                return
+            elif state == "DeploymentFailed":
+                pytest.fail("Endpoint deployment failed.")
         except Exception as e:
             print(f"Error polling endpoint status: {e}")
 
@@ -93,11 +86,18 @@ def test_custom_invoke(runner, js_endpoint_name):
     ])
     assert result.exit_code == 0
     assert "error" not in result.output.lower()
+    time.sleep(5)
 
 
 def test_js_get_operator_logs(runner):
     result = runner.invoke(js_get_operator_logs, ["--since-hours", "1"])
     assert result.exit_code == 0
+
+
+def test_js_list_pods(runner):
+    result = runner.invoke(js_list_pods, ["--namespace", NAMESPACE])
+    assert result.exit_code == 0
+    time.sleep(5)
 
 
 def test_js_delete(runner, js_endpoint_name):
