@@ -4,24 +4,14 @@ from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
 from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     CloudWatchTrigger,
     Dimensions,
-    PrometheusTrigger,
     AutoScalingSpec,
-    ModelMetrics,
     Metrics,
-    FsxStorage,
     S3Storage,
     ModelSourceConfig,
-    Tags,
     TlsConfig,
-    ConfigMapKeyRef,
-    FieldRef,
-    ResourceFieldRef,
-    SecretKeyRef,
-    ValueFrom,
     EnvironmentVariables,
     ModelInvocationPort,
     ModelVolumeMount,
-    Claims,
     Resources,
     Worker,
 )
@@ -103,16 +93,9 @@ class TestHPEndpoint(unittest.TestCase):
             metrics=metrics,
         )
 
-    @patch("sagemaker.hyperpod.hyperpod_manager.HyperPodManager.get_current_cluster")
-    @patch("sagemaker.hyperpod.hyperpod_manager.HyperPodManager.get_current_region")
-    @patch("sagemaker.hyperpod.common.utils.get_cluster_instance_types")
+    @patch.object(HPEndpoint, "validate_instance_type")
     @patch.object(HPEndpoint, "call_create_api")
-    def test_create(
-        self, mock_create_api, mock_get_cluster_types, mock_get_region, mock_get_cluster
-    ):
-        mock_get_cluster_types.return_value = ["ml.g5.xlarge"]
-        mock_get_region.return_value = "us-west-2"
-        mock_get_cluster.return_value = "test-cluster"
+    def test_create(self, mock_create_api, mock_validate_instance_type):
 
         self.endpoint.create(name="test-name", namespace="test-ns")
 
@@ -124,16 +107,9 @@ class TestHPEndpoint(unittest.TestCase):
         )
         self.assertEqual(self.endpoint.metadata.name, "test-name")
 
-    @patch("sagemaker.hyperpod.hyperpod_manager.HyperPodManager.get_current_cluster")
-    @patch("sagemaker.hyperpod.hyperpod_manager.HyperPodManager.get_current_region")
-    @patch("sagemaker.hyperpod.common.utils.get_cluster_instance_types")
+    @patch.object(HPEndpoint, "validate_instance_type")
     @patch.object(HPEndpoint, "call_create_api")
-    def test_create_from_dict(
-        self, mock_create_api, mock_get_cluster_types, mock_get_region, mock_get_cluster
-    ):
-        mock_get_cluster_types.return_value = ["ml.g5.xlarge"]
-        mock_get_region.return_value = "us-west-2"
-        mock_get_cluster.return_value = "test-cluster"
+    def test_create_from_dict(self, mock_create_api, mock_validate_instance_type):
 
         input_dict = self.endpoint.model_dump(exclude_none=True)
 

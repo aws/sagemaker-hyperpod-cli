@@ -1,17 +1,17 @@
 from sagemaker.hyperpod.common.config.metadata import Metadata
 from sagemaker.hyperpod.inference.config.constants import *
-from sagemaker.hyperpod.common.utils import get_default_namespace
 from sagemaker.hyperpod.common.utils import (
     get_default_namespace,
     get_cluster_instance_types,
     setup_logging,
+    get_current_cluster,
+    get_current_region,
 )
 from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     InferenceEndpointConfigStatus,
     _HPEndpoint,
 )
 from sagemaker.hyperpod.inference.hp_endpoint_base import HPEndpointBase
-from sagemaker.hyperpod.hyperpod_manager import HyperPodManager
 from typing import Dict, List, Optional
 from sagemaker_core.main.resources import Endpoint
 from pydantic import Field, ValidationError
@@ -178,9 +178,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         if not self.endpointName:
             raise Exception("SageMaker endpoint name not found in this object!")
 
-        endpoint = Endpoint.get(
-            self.endpointName, region=HyperPodManager.get_current_region()
-        )
+        endpoint = Endpoint.get(self.endpointName, region=get_current_region())
 
         return endpoint.invoke(body=body, content_type=content_type)
 
@@ -193,8 +191,8 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         # verify supported instance types from HyperPod cluster
         try:
             cluster_instance_types = get_cluster_instance_types(
-                cluster=HyperPodManager.get_current_cluster(),
-                region=HyperPodManager.get_current_region(),
+                cluster=get_current_cluster(),
+                region=get_current_region(),
             )
         except Exception as e:
             logger.warning(f"Failed to get instance types from HyperPod cluster: {e}")

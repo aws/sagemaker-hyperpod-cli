@@ -1,21 +1,20 @@
 from typing import Dict, List, Optional
 from pydantic import Field, ValidationError
-import logging
 from sagemaker.hyperpod.inference.config.constants import *
 from sagemaker.hyperpod.inference.hp_endpoint_base import HPEndpointBase
 from sagemaker.hyperpod.common.config.metadata import Metadata
-
-from sagemaker.hyperpod.hyperpod_manager import HyperPodManager
-from sagemaker_core.main.resources import Endpoint
-from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
-    _HPJumpStartEndpoint,
-    JumpStartModelStatus,
-)
 from sagemaker.hyperpod.common.utils import (
+    get_current_cluster,
+    get_current_region,
     get_jumpstart_model_instance_types,
     get_cluster_instance_types,
     get_default_namespace,
     setup_logging,
+)
+from sagemaker_core.main.resources import Endpoint
+from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
+    _HPJumpStartEndpoint,
+    JumpStartModelStatus,
 )
 
 
@@ -191,7 +190,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
             raise Exception("SageMaker endpoint name not found in this object!")
 
         endpoint = Endpoint.get(
-            self.sageMakerEndpoint.name, region=HyperPodManager.get_current_region()
+            self.sageMakerEndpoint.name, region=get_current_region()
         )
 
         return endpoint.invoke(body=body, content_type=content_type)
@@ -206,7 +205,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         # verify supported instance types from model hub
         try:
             model_types = get_jumpstart_model_instance_types(
-                model_id, HyperPodManager.get_current_region()
+                model_id, get_current_region()
             )
         except Exception as e:
             logger.warning(
@@ -221,8 +220,8 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         # verify supported instance types from HyperPod cluster
         try:
             cluster_instance_types = get_cluster_instance_types(
-                cluster=HyperPodManager.get_current_cluster(),
-                region=HyperPodManager.get_current_region(),
+                cluster=get_current_cluster(),
+                region=get_current_region(),
             )
         except Exception as e:
             logger.warning(f"Failed to get instance types from HyperPod cluster: {e}")

@@ -1,17 +1,19 @@
 import unittest
-import logging
-import io
+import subprocess
+from unittest.mock import patch, MagicMock, mock_open
 from sagemaker.hyperpod.common.utils import (
     handle_exception,
     get_eks_name_from_arn,
     get_region_from_eks_arn,
-    validate_cluster_connection,
-    get_default_namespace,
-    setup_logging,
+    is_eks_orchestrator,
+    update_kube_config,
+    set_current_context,
+    list_clusters,
+    set_context,
+    get_context,
 )
 from kubernetes.client.exceptions import ApiException
 from pydantic import ValidationError
-from unittest.mock import patch, MagicMock
 
 
 class TestHandleException(unittest.TestCase):
@@ -111,70 +113,111 @@ class TestUtilityFunctions(unittest.TestCase):
             get_region_from_eks_arn("invalid:arn:format")
         self.assertIn("cannot get region from EKS ARN", str(context.exception))
 
-    def test_setup_logging_debug_mode(self):
-        """Test logger configuration in debug mode"""
-        logger = logging.getLogger('test_logger')
-        try:
-            configured_logger = setup_logging(logger, debug=True)
+    def test_is_eks_orchestrator_true(self):
+        mock_client = MagicMock()
+        mock_client.describe_cluster.return_value = {"Orchestrator": {"Eks": {}}}
+        
+        result = is_eks_orchestrator(mock_client, "my-cluster")
+        
+        self.assertTrue(result)
+        mock_client.describe_cluster.assert_called_once_with(ClusterName="my-cluster")
 
-            # Verify debug configuration
-            self.assertEqual(configured_logger.level, logging.DEBUG)
-            self.assertEqual(len(configured_logger.handlers), 1)
+    def test_is_eks_orchestrator_false(self):
+        mock_client = MagicMock()
+        mock_client.describe_cluster.return_value = {"Orchestrator": {"Slurm": {}}}
+        
+        result = is_eks_orchestrator(mock_client, "my-cluster")
+        
+        self.assertFalse(result)
 
-            # Verify debug formatter
-            handler = configured_logger.handlers[0]
-            formatter = handler.formatter
-            self.assertIn("asctime", formatter._fmt)
-            self.assertIn("levelname", formatter._fmt)
-            self.assertFalse(configured_logger.propagate)
-        finally:
-            # Cleanup
-            logger.handlers.clear()
+    @patch("subprocess.run")
+    def test_update_kube_config_success(self, mock_run):
+        update_kube_config("my-cluster")
+        
+        mock_run.assert_called_once_with(
+            ["aws", "eks", "update-kubeconfig", "--name", "my-cluster"], check=True
+        )
 
-    def test_setup_logging_info_mode(self):
-        """Test logger configuration in info mode"""
-        logger = logging.getLogger('test_logger')
-        # Add an initial handler to test removal
-        logger.addHandler(logging.StreamHandler())
+    @patch("subprocess.run")
+    def test_update_kube_config_with_region_and_config(self, mock_run):
+        update_kube_config("my-cluster", "us-west-2", "/path/to/config")
+        
+        mock_run.assert_called_once_with(
+            ["aws", "eks", "update-kubeconfig", "--name", "my-cluster", 
+             "--region", "us-west-2", "--kubeconfig", "/path/to/config"],
+            check=True
+        )
 
-        try:
-            configured_logger = setup_logging(logger, debug=False)
+    @patch("subprocess.run")
+    def test_update_kube_config_failure(self, mock_run):
+        mock_run.side_effect = subprocess.CalledProcessError(1, "aws eks update-kubeconfig")
+        
+        with self.assertRaises(RuntimeError):
+            update_kube_config("my-cluster")
 
-            # Verify info configuration
-            self.assertEqual(configured_logger.level, logging.INFO)
-            self.assertEqual(len(configured_logger.handlers), 1)
+    @patch("yaml.safe_dump")
+    @patch("yaml.safe_load")
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("kubernetes.config.load_kube_config")
+    def test_set_current_context(self, mock_load_config, mock_file, mock_safe_load, mock_safe_dump):
+        mock_kubeconfig = {
+            "contexts": [{"name": "test-context", "context": {}}],
+            "current-context": "old-context"
+        }
+        mock_safe_load.return_value = mock_kubeconfig
+        
+        set_current_context("test-context", "test-namespace")
+        
+        mock_safe_load.assert_called_once()
+        mock_safe_dump.assert_called_once()
+        mock_load_config.assert_called_once()
 
-            # Verify simple formatter
-            handler = configured_logger.handlers[0]
-            self.assertEqual(handler.formatter._fmt, "%(message)s")
-            self.assertFalse(configured_logger.propagate)
-        finally:
-            # Cleanup
-            logger.handlers.clear()
+    @patch("boto3.client")
+    @patch("sagemaker.hyperpod.common.utils.is_eks_orchestrator")
+    def test_list_clusters(self, mock_is_eks, mock_boto3_client):
+        mock_client = MagicMock()
+        mock_boto3_client.return_value = mock_client
+        mock_client.list_clusters.return_value = {
+            "ClusterSummaries": [
+                {"ClusterName": "eks-cluster"},
+            ]
+        }
+        mock_is_eks.return_value = True
+        
+        result = list_clusters()
 
-    def test_setup_logging_output(self):
-        """Test actual logging output"""
-        # Create StringIO object to capture output
-        stream = io.StringIO()
-        logger = logging.getLogger('test_logger')
+        self.assertEqual(result["Eks"], ["eks-cluster"])
 
-        try:
-            # Create handler with our StringIO object
-            handler = logging.StreamHandler(stream)
-            configured_logger = setup_logging(logger, debug=True)
-
-            # Replace the handler with our capturing handler
-            configured_logger.handlers = [handler]
-
-            test_message = "Test debug message"
-            configured_logger.debug(test_message)
-
-            # Get the output
-            output = stream.getvalue()
-
-            # Verify output format
-            self.assertIn(test_message, output)
-        finally:
-            # Cleanup
-            logger.handlers.clear()
-            stream.close()
+    @patch("boto3.client")
+    @patch("sagemaker.hyperpod.common.utils.get_eks_name_from_arn")
+    @patch("sagemaker.hyperpod.common.utils.update_kube_config")
+    @patch("sagemaker.hyperpod.common.utils.set_current_context")
+    def test_set_context(self, mock_set_context_func, mock_update_config, mock_get_name, mock_boto3_client):
+        mock_client = MagicMock()
+        mock_boto3_client.return_value = mock_client
+        mock_client.describe_cluster.return_value = {
+            "Orchestrator": {"Eks": {"ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/my-cluster"}}
+        }
+        mock_get_name.return_value = "my-cluster"
+        
+        set_context("my-cluster", "us-west-2", "test-namespace")
+        
+        mock_client.describe_cluster.assert_called_once_with(ClusterName="my-cluster")
+        mock_get_name.assert_called_once()
+        mock_update_config.assert_called_once()
+        mock_set_context_func.assert_called_once()
+    
+    @patch("kubernetes.config.list_kube_config_contexts")
+    def test_get_context_success(self, mock_list_contexts):
+        mock_list_contexts.return_value = [
+            None,
+            {
+                "context": {
+                    "cluster": "arn:aws:eks:us-west-2:123456789012:cluster/my-cluster"
+                }
+            },
+        ]
+        result = get_context()
+        
+        self.assertEqual(result, "arn:aws:eks:us-west-2:123456789012:cluster/my-cluster")
+        mock_list_contexts.assert_called_once()
