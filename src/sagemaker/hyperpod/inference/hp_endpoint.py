@@ -2,7 +2,6 @@ from sagemaker.hyperpod.common.config.metadata import Metadata
 from sagemaker.hyperpod.inference.config.constants import *
 from sagemaker.hyperpod.common.utils import get_default_namespace
 from sagemaker.hyperpod.common.utils import (
-    append_uuid,
     get_default_namespace,
     get_cluster_instance_types,
     setup_logging,

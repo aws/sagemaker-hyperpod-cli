@@ -38,7 +38,7 @@ class TestHypCLICommands(AbstractIntegrationTests):
         context_line = result.stdout.strip().splitlines()[-1]
         assert any(text in context_line for text in ["Updated context", "Added new context"])
 
-    def test_get_cluster_context(self, cluster_name):
+    def test_get_cluster_context(self):
         """Test getting current cluster context."""
         result = execute_command(["hyp", "get-cluster-context"])
         assert result.returncode == 0
@@ -52,7 +52,7 @@ class TestHypCLICommands(AbstractIntegrationTests):
     def test_create_job(self, test_job_name, image_uri):
         """Test creating a PyTorch job using the correct CLI parameters."""
         result = execute_command([
-            "hyp", "create", "hp-pytorch-job",
+            "hyp", "create", "hyp-pytorch-job",
             "--version", "1.0",
             "--job-name", test_job_name,
             "--image", image_uri,
@@ -68,7 +68,7 @@ class TestHypCLICommands(AbstractIntegrationTests):
 
     def test_list_jobs(self, test_job_name):
         """Test listing jobs and verifying the created job is present."""
-        list_result = execute_command(["hyp", "list", "hp-pytorch-job"])
+        list_result = execute_command(["hyp", "list", "hyp-pytorch-job"])
         assert list_result.returncode == 0
         
         # Check if either the job name is in the output or at least the header is present
@@ -81,7 +81,7 @@ class TestHypCLICommands(AbstractIntegrationTests):
         time.sleep(10)
         
         list_pods_result = execute_command([
-            "hyp", "list-pods", "hp-pytorch-job", 
+            "hyp", "list-pods", "hyp-pytorch-job",
             "--job-name", test_job_name
         ])
         assert list_pods_result.returncode == 0
@@ -102,7 +102,7 @@ class TestHypCLICommands(AbstractIntegrationTests):
         """Test getting logs for a specific pod in a job."""
         # First, get the pod name from list-pods command
         list_pods_result = execute_command([
-            "hyp", "list-pods", "hp-pytorch-job",
+            "hyp", "list-pods", "hyp-pytorch-job",
             "--job-name", test_job_name
         ])
         assert list_pods_result.returncode == 0
@@ -121,7 +121,7 @@ class TestHypCLICommands(AbstractIntegrationTests):
 
         # Now get logs for this pod
         get_logs_result = execute_command([
-            "hyp", "get-logs", "hp-pytorch-job",
+            "hyp", "get-logs", "hyp-pytorch-job",
             "--job-name", test_job_name,
             "--pod-name", pod_name
         ])
@@ -135,7 +135,7 @@ class TestHypCLICommands(AbstractIntegrationTests):
 
     def test_describe_job(self, test_job_name):
         """Test describing a specific job and verifying the output."""
-        describe_result = execute_command(["hyp", "describe", "hp-pytorch-job", "--job-name", test_job_name])
+        describe_result = execute_command(["hyp", "describe", "hyp-pytorch-job", "--job-name", test_job_name])
         assert describe_result.returncode == 0
         
         # Check if either the job name is in the output or metadata is present
@@ -145,7 +145,7 @@ class TestHypCLICommands(AbstractIntegrationTests):
     @pytest.mark.run(order=99)
     def test_delete_job(self, test_job_name):
         """Test deleting a job and verifying deletion."""
-        delete_result = execute_command(["hyp", "delete", "hp-pytorch-job", "--job-name", test_job_name])
+        delete_result = execute_command(["hyp", "delete", "hyp-pytorch-job", "--job-name", test_job_name])
         assert delete_result.returncode == 0
         logger.info(f"Successfully deleted job: {test_job_name}")
         
@@ -153,7 +153,7 @@ class TestHypCLICommands(AbstractIntegrationTests):
         time.sleep(5)
         
         # Verify the job is no longer listed
-        list_result = execute_command(["hyp", "list", "hp-pytorch-job"])
+        list_result = execute_command(["hyp", "list", "hyp-pytorch-job"])
         assert list_result.returncode == 0
         
         # The job name should no longer be in the output
