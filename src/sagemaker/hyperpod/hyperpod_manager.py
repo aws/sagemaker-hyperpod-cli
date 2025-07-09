@@ -11,6 +11,7 @@ from kubernetes.config import (
 from sagemaker.hyperpod.common.utils import (
     get_eks_name_from_arn,
     get_region_from_eks_arn,
+    setup_logging,
 )
 
 KUBE_CONFIG_PATH = os.path.expanduser(KUBE_CONFIG_DEFAULT_LOCATION)
@@ -129,6 +130,9 @@ class HyperPodManager:
         region: Optional[str] = None,
         namespace: Optional[str] = None,
     ):
+        logger = cls.get_logger()
+        logger = setup_logging(logger)
+
         client = boto3.client("sagemaker", region_name=region)
 
         response = client.describe_cluster(ClusterName=cluster_name)
@@ -139,11 +143,11 @@ class HyperPodManager:
         cls._set_current_context(eks_cluster_arn, namespace)
 
         if namespace:
-            cls.get_logger().info(
+            logger.info(
                 f"Successfully set current context as: {cluster_name}, namespace: {namespace}"
             )
         else:
-            cls.get_logger().info(
+            logger.info(
                 f"Successfully set current context as: {cluster_name}"
             )
 

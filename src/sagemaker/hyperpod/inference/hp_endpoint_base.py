@@ -13,6 +13,7 @@ from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
 from sagemaker.hyperpod.common.utils import (
     validate_cluster_connection,
     handle_exception,
+    setup_logging,
 )
 
 
@@ -35,6 +36,7 @@ class HPEndpointBase:
             )
 
         logger = cls.get_logger()
+        logger = setup_logging(logger)
 
         custom_api = client.CustomObjectsApi()
 
@@ -56,7 +58,7 @@ class HPEndpointBase:
                 body=body,
             )
         except Exception as e:
-            logger.debug(f"Failed to create endpoint in namespace {namespace}!")
+            logger.error(f"Failed to create endpoint in namespace {namespace}!")
             handle_exception(e, name, namespace)
 
     @classmethod

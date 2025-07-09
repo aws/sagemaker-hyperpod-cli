@@ -15,6 +15,7 @@ from sagemaker.hyperpod.common.utils import (
     get_jumpstart_model_instance_types,
     get_cluster_instance_types,
     get_default_namespace,
+    setup_logging,
 )
 
 
@@ -28,11 +29,8 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         namespace=None,
         debug=False,
     ) -> None:
-        logging.basicConfig()
-        if debug:
-            self.get_logger().setLevel(logging.DEBUG)
-        else:
-            self.get_logger().setLevel(logging.INFO)
+        logger = self.get_logger()
+        logger = setup_logging(logger, debug)
 
         spec = _HPJumpStartEndpoint(**self.model_dump(by_alias=True, exclude_none=True))
 
@@ -63,7 +61,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
             namespace=namespace,
         )
 
-        self.get_logger().info(
+        logger.info(
             f"Creating JumpStart model and sagemaker endpoint. Endpoint name: {endpoint_name}.\n The process may take a few minutes..."
         )
 
@@ -73,6 +71,9 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         name: str = None,
         namespace: str = None,
     ) -> None:
+        logger = self.get_logger()
+        logger = setup_logging(logger)
+
         spec = _HPJumpStartEndpoint.model_validate(input, by_name=True)
 
         endpoint_name = ""
@@ -102,7 +103,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
             namespace=namespace,
         )
 
-        self.get_logger().info(
+        logger.info(
             f"Creating JumpStart model and sagemaker endpoint. Endpoint name: {endpoint_name}.\n The process may take a few minutes..."
         )
 
@@ -173,12 +174,15 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         return endpoint
 
     def delete(self) -> None:
+        logger = self.get_logger()
+        logger = setup_logging(logger)
+
         self.call_delete_api(
             name=self.metadata.name,
             kind=JUMPSTART_MODEL_KIND,
             namespace=self.metadata.namespace,
         )
-        self.get_logger().info(
+        logger.info(
             f"Deleting JumpStart model and sagemaker endpoint: {self.metadata.name}. This may take a few minutes..."
         )
 
@@ -193,6 +197,9 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         return endpoint.invoke(body=body, content_type=content_type)
 
     def validate_instance_type(self, model_id: str, instance_type: str):
+        logger = self.get_logger()
+        logger = setup_logging(logger)
+
         model_types = None
         cluster_instance_types = None
 
@@ -202,7 +209,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
                 model_id, HyperPodManager.get_current_region()
             )
         except Exception as e:
-            self.get_logger().warning(
+            logger.warning(
                 f"Failed to fetch supported instance type from SageMakerPublicHub content: {e}"
             )
 
@@ -218,7 +225,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
                 region=HyperPodManager.get_current_region(),
             )
         except Exception as e:
-            self.get_logger().warning(
+            logger.warning(
                 f"Failed to get instance types from HyperPod cluster: {e}"
             )
 

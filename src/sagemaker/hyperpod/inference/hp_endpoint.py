@@ -5,6 +5,7 @@ from sagemaker.hyperpod.common.utils import (
     append_uuid,
     get_default_namespace,
     get_cluster_instance_types,
+    setup_logging,
 )
 from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     InferenceEndpointConfigStatus,
@@ -28,11 +29,8 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         namespace=None,
         debug=False,
     ) -> None:
-        logging.basicConfig()
-        if debug:
-            self.get_logger().setLevel(logging.DEBUG)
-        else:
-            self.get_logger().setLevel(logging.INFO)
+        logger = self.get_logger()
+        logger = setup_logging(logger, debug)
 
         spec = _HPEndpoint(**self.model_dump(by_alias=True, exclude_none=True))
 
@@ -59,7 +57,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
             namespace=namespace,
         )
 
-        self.get_logger().info(
+        logger.info(
             f"Creating sagemaker model and endpoint. Endpoint name: {spec.endpointName}.\n The process may take a few minutes..."
         )
 
@@ -69,6 +67,9 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         name: str = None,
         namespace: str = None,
     ) -> None:
+        logger = self.get_logger()
+        logger = setup_logging(logger)
+
         spec = _HPEndpoint.model_validate(input, by_name=True)
 
         if not namespace:
@@ -94,7 +95,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
             namespace=namespace,
         )
 
-        self.get_logger().info(
+        logger.info(
             f"Creating sagemaker model and endpoint. Endpoint name: {spec.endpointName}.\n The process may take a few minutes..."
         )
 
@@ -165,12 +166,15 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         return endpoint
 
     def delete(self) -> None:
+        logger = self.get_logger()
+        logger = setup_logging(logger)
+
         self.call_delete_api(
             name=self.metadata.name,
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace=self.metadata.namespace,
         )
-        self.get_logger().info(f"Deleting HPEndpoint: {self.metadata.name}...")
+        logger.info(f"Deleting HPEndpoint: {self.metadata.name}...")
 
     def invoke(self, body, content_type="application/json"):
         if not self.endpointName:
@@ -183,6 +187,9 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         return endpoint.invoke(body=body, content_type=content_type)
 
     def validate_instance_type(self, instance_type: str):
+        logger = self.get_logger()
+        logger = setup_logging(logger)
+
         cluster_instance_types = None
 
         # verify supported instance types from HyperPod cluster
@@ -192,7 +199,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
                 region=HyperPodManager.get_current_region(),
             )
         except Exception as e:
-            self.get_logger().warning(
+            logger.warning(
                 f"Failed to get instance types from HyperPod cluster: {e}"
             )
 
