@@ -66,6 +66,9 @@ setup(
         "pyyaml==6.0.2",
         "ratelimit==2.2.1",
         "tabulate==0.9.0",
+        "itables>=2.2.2",
+        "jinja2>=3.1.2",
+        "ipywidgets>=8.1.7",
         # NeMo framework required packages:
         # https://github.com/NVIDIA/NeMo-Framework-Launcher/blob/23.11/requirements.txt
         "hydra-core==1.3.2",
