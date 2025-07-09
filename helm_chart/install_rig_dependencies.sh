@@ -16,6 +16,9 @@ set_script_variables() {
     OUTPUT_DIR="HyperPodHelmChartForRIG"
 
     STANDARD_HELM_RELEASE_NAME=$(get_standard_hyperpod_helm_release_name)
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
     TRAINING_OPERATORS=$STANDARD_HELM_RELEASE_NAME-training-operators
     EFA=$STANDARD_HELM_RELEASE_NAME-aws-efa-k8s-device-plugin         
     PATCH_ONLY=(
@@ -560,10 +563,9 @@ assert_not_already_installed() {
 
 get_standard_hyperpod_helm_release_name() {
     release_name=$(kubectl get namespace aws-hyperpod -o yaml | yq '.metadata.annotations."meta.helm.sh/release-name"')
-
-    if [ -z "$release_name" ]; then
+    if [ -z "$release_name" ] || [ "$release_name" = "null" ] ; then
         echo "Error: Namespace 'aws-hyperpod' does not exist. Please be sure to install the HyperPod standard Helm chart (https://github.com/aws/sagemaker-hyperpod-cli/tree/main/helm_chart#step-three)" >&2
-        exit 1
+        return 1
     else
         echo "Found Namespace 'aws-hyperpod' installed with Helm release name: $release_name" >&2
         echo "$release_name"
