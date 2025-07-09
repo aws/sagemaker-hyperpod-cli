@@ -1,35 +1,42 @@
 #!/bin/bash
 
-RIG_HELM_RELEASE=rig-dependencies
-DATETIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-SUPPORTED_REGIONS=(
-    "us-east-1"
-    "eu-north-1"
-)
-
-
-SRC_DIR="HyperPodHelmChart"
-OUTPUT_DIR="HyperPodHelmChartForRIG"
-STANDARD_HELM_RELEASE_NAME=dependencies
-TRAINING_OPERATORS=$STANDARD_HELM_RELEASE_NAME-training-operators # dependencies- prefix from standard Helm installation
-EFA=$STANDARD_HELM_RELEASE_NAME-aws-efa-k8s-device-plugin         # dependencies- prefix from standard Helm installation
-PATCH_ONLY=(
+set_script_variables() {
+    # 
+    # Some of this logic will be migrated into the standard Helm chart (e.g. patches)
+    # For now, we will define what is needed here based on Helm Release Name lookup
     #
-    # These objects do not need entirely separate YAML; we just need to patch them to make them work with RIG
-    #
-    "$TRAINING_OPERATORS"
-    "$EFA"
-)
+    RIG_HELM_RELEASE=rig-dependencies
+    DATETIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    SUPPORTED_REGIONS=(
+        "us-east-1"
+        "eu-north-1"
+    )
 
-# Format: "<eks|hyperpod>,namespace,<k8s_name|chart_dir>"
-add_ons=(
-    "eks,kube-system,aws-node,daemonset"
-    "eks,kube-system,coredns,deployment"
-    #"hp,kube-system,mpi-operator,deployment"
-    #"hp,kube-system,neuron-device-plugin,daemonset"
-    "hp,kubeflow,$TRAINING_OPERATORS,deployment"
-    "hp,kube-system,$EFA,daemonset"
-)
+    SRC_DIR="HyperPodHelmChart"
+    OUTPUT_DIR="HyperPodHelmChartForRIG"
+
+    STANDARD_HELM_RELEASE_NAME=$(get_standard_hyperpod_helm_release_name)
+    TRAINING_OPERATORS=$STANDARD_HELM_RELEASE_NAME-training-operators
+    EFA=$STANDARD_HELM_RELEASE_NAME-aws-efa-k8s-device-plugin         
+    PATCH_ONLY=(
+        #
+        # These objects do not need entirely separate YAML; we just need to patch them to make them work with RIG
+        #
+        "$TRAINING_OPERATORS"
+        "$EFA"
+    )
+    add_ons=(
+        #
+        # Format: "<eks|hyperpod>,namespace,<k8s_name|chart_dir>,type"
+        # 
+        "eks,kube-system,aws-node,daemonset"
+        "eks,kube-system,coredns,deployment"
+        #"hp,kube-system,mpi-operator,deployment"
+        #"hp,kube-system,neuron-device-plugin,daemonset"
+        "hp,kubeflow,$TRAINING_OPERATORS,deployment"
+        "hp,kube-system,$EFA,daemonset"
+    )
+}
 
 generate_helm_chart_root() {
     local outdir=$1
@@ -402,7 +409,6 @@ assert_addons_enabled() {
         response=$(kubectl get $kind $name -n $namespace --no-headers 2>&1)
         if [[ "$response" == *"Error from server (NotFound)"* ]] || [ -z "$response" ]; then
             echo "Namespace $namespace does not exist or No $kind $name found in namespace $namespace. Please ensure CNI, CoreDNS add-ons enabled, and that standard HyperPod Helm chart is installed for this cluster before installing RIG dependencies."
-	    echo "⚠️ Note: RIG installation depends on the Helm release name. If the standard Helm installation command/release name changed (i.e. no longer 'helm install dependencies...' where 'dependencies' is the release name), then please update the RELEASE_NAME in install_rig_dependencies.sh before running"
             exit 1
         fi
     done
@@ -552,14 +558,29 @@ assert_not_already_installed() {
     fi
 }
 
+get_standard_hyperpod_helm_release_name() {
+    release_name=$(kubectl get namespace aws-hyperpod -o yaml | yq '.metadata.annotations."meta.helm.sh/release-name"')
+
+    if [ -z "$release_name" ]; then
+        echo "Error: Namespace 'aws-hyperpod' does not exist. Please be sure to install the HyperPod standard Helm chart (https://github.com/aws/sagemaker-hyperpod-cli/tree/main/helm_chart#step-three)" >&2
+        exit 1
+    else
+        echo "Found Namespace 'aws-hyperpod' installed with Helm release name: $release_name" >&2
+        echo "$release_name"
+        return 0
+    fi
+}
+
 main() {
     assert_not_already_installed
 
     ensure_yq_installed
+    
+    set_script_variables
 
     assert_supported_region
     assert_addons_enabled add_ons[@]
-    
+
     set -e
     fetch_yaml_and_enable_overrides add_ons[@]
 

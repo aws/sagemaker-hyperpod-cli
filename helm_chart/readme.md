@@ -99,8 +99,6 @@ Notes:
 
   If needed, please run `chmod +700 ./install_rig_dependencies.sh` to allow the script to execute.
 
-⚠️ Note: RIG installation depends on the Helm release name. If the above commands were modified for standard Helm installation (i.e. no longer 'helm install dependencies...' where 'dependencies' is the release name), then please update the STANDARD_HELM_RELEASE_NAME in install_rig_dependencies.sh before running
-
 ⚠️ Note: This will require the yq utility with version >= 4 (e.g. https://github.com/mikefarah/yq/releases/tag/v4)
 
 ⚠️ Note: aws-node (AWS VPC CNI) is a critical add-on for general pod use.
