@@ -1,6 +1,10 @@
 from sagemaker.hyperpod.common.config.metadata import Metadata
 from sagemaker.hyperpod.inference.config.constants import *
-from sagemaker.hyperpod.common.utils import append_uuid, get_default_namespace
+from sagemaker.hyperpod.common.utils import (
+    append_uuid,
+    get_default_namespace,
+    get_cluster_instance_types,
+)
 from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     InferenceEndpointConfigStatus,
     _HPEndpoint,
@@ -31,14 +35,16 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
 
         spec = _HPEndpoint(**self.model_dump(by_alias=True, exclude_none=True))
 
-        if not name:
-            name = append_uuid(spec.modelName)
-
         if not namespace:
             namespace = get_default_namespace()
 
         if spec.endpointName:
             spec.endpointName = append_uuid(spec.endpointName)
+
+        if not name:
+            name = spec.endpointName
+
+        self.validate_instance_type(spec.instanceType)
 
         self.call_create_api(
             name=name,  # use model name as metadata name
@@ -53,7 +59,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         )
 
         self.get_logger().info(
-            f"Creating sagemaker model and endpoint. Metadata name: {name}. Endpoint name: {spec.endpointName}.\n The process may take a few minutes..."
+            f"Creating sagemaker model and endpoint. Endpoint name: {spec.endpointName}.\n The process may take a few minutes..."
         )
 
     def create_from_dict(
@@ -64,14 +70,16 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
     ) -> None:
         spec = _HPEndpoint.model_validate(input, by_name=True)
 
-        if not name:
-            name = append_uuid(spec.modelName)
-
         if not namespace:
             namespace = get_default_namespace()
 
         if spec.endpointName:
             spec.endpointName = append_uuid(spec.endpointName)
+
+        if not name:
+            name = spec.endpointName
+
+        self.validate_instance_type(spec.instanceType)
 
         self.call_create_api(
             name=name,  # use model name as metadata name
@@ -86,7 +94,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         )
 
         self.get_logger().info(
-            f"Creating sagemaker model and endpoint. Metadata name: {name}. Endpoint name: {spec.endpointName}.\n The process may take a few minutes..."
+            f"Creating sagemaker model and endpoint. Endpoint name: {spec.endpointName}.\n The process may take a few minutes..."
         )
 
     def refresh(self):
@@ -172,3 +180,22 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         )
 
         return endpoint.invoke(body=body, content_type=content_type)
+
+    def validate_instance_type(self, instance_type: str):
+        cluster_instance_types = None
+
+        # verify supported instance types from HyperPod cluster
+        try:
+            cluster_instance_types = get_cluster_instance_types(
+                cluster=HyperPodManager.get_current_cluster(),
+                region=HyperPodManager.get_current_region(),
+            )
+        except Exception as e:
+            self.get_logger().warning(
+                f"Failed to get instance types from HyperPod cluster: {e}"
+            )
+
+        if cluster_instance_types and (instance_type not in cluster_instance_types):
+            raise Exception(
+                f"Current HyperPod cluster does not have instance type {instance_type}. Supported instance types are {cluster_instance_types}"
+            )

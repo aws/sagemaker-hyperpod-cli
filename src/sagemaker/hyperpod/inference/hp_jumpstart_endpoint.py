@@ -37,13 +37,16 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
 
         spec = _HPJumpStartEndpoint(**self.model_dump(by_alias=True, exclude_none=True))
 
-        if not name:
-            name = append_uuid(spec.model.modelId)
-
         endpoint_name = ""
         if spec.sageMakerEndpoint and spec.sageMakerEndpoint.name:
             spec.sageMakerEndpoint.name = append_uuid(spec.sageMakerEndpoint.name)
             endpoint_name = spec.sageMakerEndpoint.name
+
+        if not endpoint_name and not name:
+            raise Exception('Input "name" is required if endpoint name is not provided')
+
+        if not name:
+            name = endpoint_name
 
         if not namespace:
             namespace = get_default_namespace()
@@ -63,7 +66,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         )
 
         self.get_logger().info(
-            f"Creating JumpStart model and sagemaker endpoint. Metadata name: {name}. Endpoint name: {endpoint_name}.\n The process may take a few minutes..."
+            f"Creating JumpStart model and sagemaker endpoint. Endpoint name: {endpoint_name}.\n The process may take a few minutes..."
         )
 
     def create_from_dict(
@@ -74,16 +77,21 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
     ) -> None:
         spec = _HPJumpStartEndpoint.model_validate(input, by_name=True)
 
-        if not name:
-            name = append_uuid(spec.model.modelId)
-
         endpoint_name = ""
         if spec.sageMakerEndpoint and spec.sageMakerEndpoint.name:
             spec.sageMakerEndpoint.name = append_uuid(spec.sageMakerEndpoint.name)
             endpoint_name = spec.sageMakerEndpoint.name
 
+        if not endpoint_name and not name:
+            raise Exception('Input "name" is required if endpoint name is not provided')
+
+        if not name:
+            name = endpoint_name
+
         if not namespace:
             namespace = get_default_namespace()
+
+        self.validate_instance_type(spec.model.modelId, spec.server.instanceType)
 
         self.call_create_api(
             name=name,  # use model name as metadata name
@@ -98,7 +106,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         )
 
         self.get_logger().info(
-            f"Creating JumpStart model and sagemaker endpoint. Metadata name: {name}. Endpoint name: {endpoint_name}.\n The process may take a few minutes..."
+            f"Creating JumpStart model and sagemaker endpoint. Endpoint name: {endpoint_name}.\n The process may take a few minutes..."
         )
 
     def refresh(self):

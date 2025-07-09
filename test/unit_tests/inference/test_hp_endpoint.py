@@ -94,7 +94,7 @@ class TestHPEndpoint(unittest.TestCase):
 
         self.endpoint = HPEndpoint(
             endpoint_name="s3-test-endpoint-name",
-            instance_type="ml.g5.8xlarge",
+            instance_type="ml.g5.xlarge",
             model_name="deepseek15b-test-model-name",
             tls_config=tls_config,
             model_source_config=model_source_config,
@@ -103,9 +103,16 @@ class TestHPEndpoint(unittest.TestCase):
             metrics=metrics,
         )
 
+    @patch("sagemaker.hyperpod.hyperpod_manager.HyperPodManager.get_current_cluster")
+    @patch("sagemaker.hyperpod.hyperpod_manager.HyperPodManager.get_current_region")
+    @patch("sagemaker.hyperpod.common.utils.get_cluster_instance_types")
     @patch.object(HPEndpoint, "call_create_api")
-    def test_create(self, mock_create_api):
-        self.endpoint.modelName = "test-model"
+    def test_create(
+        self, mock_create_api, mock_get_cluster_types, mock_get_region, mock_get_cluster
+    ):
+        mock_get_cluster_types.return_value = ["ml.g5.xlarge"]
+        mock_get_region.return_value = "us-west-2"
+        mock_get_cluster.return_value = "test-cluster"
 
         self.endpoint.create(name="test-name", namespace="test-ns")
 
@@ -117,8 +124,17 @@ class TestHPEndpoint(unittest.TestCase):
         )
         self.assertEqual(self.endpoint.metadata.name, "test-name")
 
+    @patch("sagemaker.hyperpod.hyperpod_manager.HyperPodManager.get_current_cluster")
+    @patch("sagemaker.hyperpod.hyperpod_manager.HyperPodManager.get_current_region")
+    @patch("sagemaker.hyperpod.common.utils.get_cluster_instance_types")
     @patch.object(HPEndpoint, "call_create_api")
-    def test_create_from_dict(self, mock_create_api):
+    def test_create_from_dict(
+        self, mock_create_api, mock_get_cluster_types, mock_get_region, mock_get_cluster
+    ):
+        mock_get_cluster_types.return_value = ["ml.g5.xlarge"]
+        mock_get_region.return_value = "us-west-2"
+        mock_get_cluster.return_value = "test-cluster"
+
         input_dict = self.endpoint.model_dump(exclude_none=True)
 
         self.endpoint.create_from_dict(input_dict, namespace="test-ns")
