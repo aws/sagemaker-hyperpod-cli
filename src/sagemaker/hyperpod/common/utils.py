@@ -66,10 +66,6 @@ def handle_exception(e: Exception, name: str, namespace: str):
     raise e
 
 
-def append_uuid(name: str) -> str:
-    return f"{name}-{str(uuid.uuid4())[:4]}"
-
-
 def get_eks_name_from_arn(arn: str) -> str:
     match = re.match(EKS_ARN_PATTERN, arn)
 

@@ -3,7 +3,6 @@ import logging
 import io
 from sagemaker.hyperpod.common.utils import (
     handle_exception,
-    append_uuid,
     get_eks_name_from_arn,
     get_region_from_eks_arn,
     validate_cluster_connection,
@@ -87,12 +86,6 @@ class TestHandleException(unittest.TestCase):
 
 class TestUtilityFunctions(unittest.TestCase):
     """Test utility functions"""
-
-    def test_append_uuid(self):
-        """Test append_uuid function"""
-        result = append_uuid("test-job")
-        self.assertTrue(result.startswith("test-job-"))
-        self.assertEqual(len(result.split("-")[-1]), 4)
 
     def test_get_eks_name_from_arn_valid(self):
         """Test get_eks_name_from_arn with valid ARN"""

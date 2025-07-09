@@ -14,7 +14,6 @@ from sagemaker.hyperpod.common.utils import (
     get_default_namespace,
     setup_logging,
 )
-from sagemaker.hyperpod.common.utils import append_uuid
 import yaml
 import logging
 
@@ -50,9 +49,6 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
 
         spec = _HyperPodPytorchJob(**self.model_dump(by_alias=True, exclude_none=True))
 
-        # Unique job name
-        self.metadata.name = append_uuid(self.metadata.name)
-
         if not self.metadata.namespace:
             self.metadata.namespace = get_default_namespace()
 
@@ -77,7 +73,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
                 plural=PLURAL,
                 body=config,
             )
-            logger.info("Successful submitted HyperPodPytorchJob!")
+            logger.info("Successfully submitted HyperPodPytorchJob!")
         except Exception as e:
             logger.error(f"Failed to create HyperPodPytorchJob {self.metadata.name}!")
             handle_exception(e, self.metadata.name, self.metadata.namespace)

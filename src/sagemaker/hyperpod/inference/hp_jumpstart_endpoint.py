@@ -12,7 +12,6 @@ from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
     JumpStartModelStatus,
 )
 from sagemaker.hyperpod.common.utils import (
-    append_uuid,
     get_jumpstart_model_instance_types,
     get_cluster_instance_types,
     get_default_namespace,
@@ -39,7 +38,6 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
 
         endpoint_name = ""
         if spec.sageMakerEndpoint and spec.sageMakerEndpoint.name:
-            spec.sageMakerEndpoint.name = append_uuid(spec.sageMakerEndpoint.name)
             endpoint_name = spec.sageMakerEndpoint.name
 
         if not endpoint_name and not name:
@@ -79,7 +77,6 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
 
         endpoint_name = ""
         if spec.sageMakerEndpoint and spec.sageMakerEndpoint.name:
-            spec.sageMakerEndpoint.name = append_uuid(spec.sageMakerEndpoint.name)
             endpoint_name = spec.sageMakerEndpoint.name
 
         if not endpoint_name and not name:

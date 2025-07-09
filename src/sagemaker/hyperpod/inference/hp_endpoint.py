@@ -1,5 +1,6 @@
 from sagemaker.hyperpod.common.config.metadata import Metadata
 from sagemaker.hyperpod.inference.config.constants import *
+from sagemaker.hyperpod.common.utils import get_default_namespace
 from sagemaker.hyperpod.common.utils import (
     append_uuid,
     get_default_namespace,
@@ -35,11 +36,11 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
 
         spec = _HPEndpoint(**self.model_dump(by_alias=True, exclude_none=True))
 
+        if not spec.endpointName and not name:
+            raise Exception('Input "name" is required if endpoint name is not provided')
+
         if not namespace:
             namespace = get_default_namespace()
-
-        if spec.endpointName:
-            spec.endpointName = append_uuid(spec.endpointName)
 
         if not name:
             name = spec.endpointName
@@ -73,8 +74,8 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         if not namespace:
             namespace = get_default_namespace()
 
-        if spec.endpointName:
-            spec.endpointName = append_uuid(spec.endpointName)
+        if not spec.endpointName and not name:
+            raise Exception('Input "name" is required if endpoint name is not provided')
 
         if not name:
             name = spec.endpointName
