@@ -9,6 +9,7 @@ from jumpstart_inference_config_schemas.registry import SCHEMA_REGISTRY as JS_RE
 from custom_inference_config_schemas.registry import SCHEMA_REGISTRY as C_REG
 from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
 from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
+from sagemaker_core.resources import Endpoint
 
 
 # CREATE
@@ -81,6 +82,26 @@ def custom_invoke(
         raise click.ClickException("--body must be valid JSON")
 
     rt = boto3.client("sagemaker-runtime")
+
+    try:
+        endpoint = Endpoint.get(endpoint_name)
+    except Exception as e:
+        endpoint = None
+
+    if endpoint and endpoint.endpoint_status != "InService":
+        raise click.ClickException(
+            f"Endpoint {endpoint_name} creation has been initated but is currently not in service")
+    elif not endpoint:
+        try:
+            hp_endpoint = HPEndpoint.get(endpoint_name)
+        except Exception as e:
+            hp_endpoint = None
+
+        if not hp_endpoint:
+            raise click.ClickException(f"Endpoint {endpoint_name} not found. Please check the endpoint name input")
+        else:
+            raise click.ClickException(f"Job has been initiated but the Endpoint is not created yet. Please check logs or wait and try again later")
+
     resp = rt.invoke_endpoint(
         EndpointName=endpoint_name,
         Body=payload.encode("utf-8"),
