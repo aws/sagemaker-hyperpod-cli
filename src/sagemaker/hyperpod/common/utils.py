@@ -8,6 +8,7 @@ import re
 import boto3
 import json
 from typing import List
+import logging
 
 EKS_ARN_PATTERN = r"arn:aws:eks:([\w-]+):\d+:cluster/([\w-]+)"
 
@@ -110,3 +111,36 @@ def get_cluster_instance_types(cluster, region) -> set:
         instance_types.add(instance_group["InstanceType"])
 
     return instance_types
+
+
+def setup_logging(logger, debug=False):
+    """
+    Configure logging with specified format and level.
+
+    Args:
+        logger: Logger instance to configure
+        debug (bool): If True, sets logging level to DEBUG, otherwise INFO
+    """
+    logging.basicConfig()
+
+    # Remove any existing handlers to avoid duplicate logs
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+
+    # Create and configure stream handler
+    handler = logging.StreamHandler()
+
+    if debug:
+        logger.setLevel(logging.DEBUG)
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+    else:
+        logger.setLevel(logging.INFO)
+        formatter = logging.Formatter("%(message)s")
+
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.propagate = False
+
+    return logger

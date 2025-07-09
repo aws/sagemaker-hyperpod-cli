@@ -1,4 +1,6 @@
 import unittest
+import logging
+import io
 from sagemaker.hyperpod.common.utils import (
     handle_exception,
     append_uuid,
@@ -6,6 +8,7 @@ from sagemaker.hyperpod.common.utils import (
     get_region_from_eks_arn,
     validate_cluster_connection,
     get_default_namespace,
+    setup_logging,
 )
 from kubernetes.client.exceptions import ApiException
 from pydantic import ValidationError
@@ -114,3 +117,71 @@ class TestUtilityFunctions(unittest.TestCase):
         with self.assertRaises(RuntimeError) as context:
             get_region_from_eks_arn("invalid:arn:format")
         self.assertIn("cannot get region from EKS ARN", str(context.exception))
+
+    def test_setup_logging_debug_mode(self):
+        """Test logger configuration in debug mode"""
+        logger = logging.getLogger('test_logger')
+        try:
+            configured_logger = setup_logging(logger, debug=True)
+
+            # Verify debug configuration
+            self.assertEqual(configured_logger.level, logging.DEBUG)
+            self.assertEqual(len(configured_logger.handlers), 1)
+
+            # Verify debug formatter
+            handler = configured_logger.handlers[0]
+            formatter = handler.formatter
+            self.assertIn("asctime", formatter._fmt)
+            self.assertIn("levelname", formatter._fmt)
+            self.assertFalse(configured_logger.propagate)
+        finally:
+            # Cleanup
+            logger.handlers.clear()
+
+    def test_setup_logging_info_mode(self):
+        """Test logger configuration in info mode"""
+        logger = logging.getLogger('test_logger')
+        # Add an initial handler to test removal
+        logger.addHandler(logging.StreamHandler())
+
+        try:
+            configured_logger = setup_logging(logger, debug=False)
+
+            # Verify info configuration
+            self.assertEqual(configured_logger.level, logging.INFO)
+            self.assertEqual(len(configured_logger.handlers), 1)
+
+            # Verify simple formatter
+            handler = configured_logger.handlers[0]
+            self.assertEqual(handler.formatter._fmt, "%(message)s")
+            self.assertFalse(configured_logger.propagate)
+        finally:
+            # Cleanup
+            logger.handlers.clear()
+
+    def test_setup_logging_output(self):
+        """Test actual logging output"""
+        # Create StringIO object to capture output
+        stream = io.StringIO()
+        logger = logging.getLogger('test_logger')
+
+        try:
+            # Create handler with our StringIO object
+            handler = logging.StreamHandler(stream)
+            configured_logger = setup_logging(logger, debug=True)
+
+            # Replace the handler with our capturing handler
+            configured_logger.handlers = [handler]
+
+            test_message = "Test debug message"
+            configured_logger.debug(test_message)
+
+            # Get the output
+            output = stream.getvalue()
+
+            # Verify output format
+            self.assertIn(test_message, output)
+        finally:
+            # Cleanup
+            logger.handlers.clear()
+            stream.close()

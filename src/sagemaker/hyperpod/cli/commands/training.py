@@ -14,7 +14,7 @@ from importlib.metadata import entry_points
 from hyperpod_pytorchjob_config_schemas.registry import SCHEMA_REGISTRY
 
 
-@click.command("hp-pytorch-job")
+@click.command("hyp-pytorch-job")
 @click.option("--version", default="1.0", help="Schema version to use")
 @click.option("--debug", default=False, help="Enable debug mode")
 @generate_click_command(
@@ -56,8 +56,13 @@ def pytorch_create(version, debug, config):
         raise click.UsageError(f"Failed to create job: {str(e)}")
 
 
-@click.command("hp-pytorch-job")
-@click.option("--namespace", "-n", default="default", help="Namespace")
+@click.command("hyp-pytorch-job")
+@click.option(
+    "--namespace",
+    "-n",
+    default="default",
+    help="Optional. The namespace to list jobs from. Defaults to 'default' namespace.",
+)
 def list_jobs(namespace: str):
     """List all HyperPod PyTorch jobs"""
     try:
@@ -80,6 +85,7 @@ def list_jobs(namespace: str):
         for job in jobs:
             # Get status from conditions
             status = "Unknown"
+            age = "N/A"
             if job.status and job.status.conditions:
                 for condition in reversed(job.status.conditions):
                     if condition.status == "True":
@@ -87,7 +93,6 @@ def list_jobs(namespace: str):
                         break
 
                 # Calculate age
-                age = "N/A"
                 if job.status and job.status.conditions:
                     # Find the 'Created' condition to get the start time
                     created_condition = next(
@@ -111,16 +116,16 @@ def list_jobs(namespace: str):
                                 minutes = (delta.seconds % 3600) // 60
                                 age = f"{minutes}m"
 
-                # Format row
-                row = "".join(
-                    [
-                        f"{job.metadata.name:<{widths[0]}}",
-                        f"{job.metadata.namespace:<{widths[1]}}",
-                        f"{status:<{widths[2]}}",
-                        f"{age:<{widths[3]}}",
-                    ]
-                )
-                click.echo(row)
+            # Format row
+            row = "".join(
+                [
+                    f"{job.metadata.name:<{widths[0]}}",
+                    f"{job.metadata.namespace:<{widths[1]}}",
+                    f"{status:<{widths[2]}}",
+                    f"{age:<{widths[3]}}",
+                ]
+            )
+            click.echo(row)
 
             click.echo()  # Add empty line at the end
 
@@ -128,9 +133,16 @@ def list_jobs(namespace: str):
         raise click.UsageError(f"Failed to list jobs: {str(e)}")
 
 
-@click.command("hp-pytorch-job")
-@click.option("--job-name", required=True, help="Job name")
-@click.option("--namespace", "-n", default="default", help="Namespace")
+@click.command("hyp-pytorch-job")
+@click.option(
+    "--job-name", required=True, help="Required. The name of the job to describe"
+)
+@click.option(
+    "--namespace",
+    "-n",
+    default="default",
+    help="Optional. The namespace of the job. Defaults to 'default' namespace.",
+)
 def pytorch_describe(job_name: str, namespace: str):
     """Describe a HyperPod PyTorch job"""
     try:
@@ -148,35 +160,53 @@ def pytorch_describe(job_name: str, namespace: str):
         # Print Spec details
         click.echo("\nSpec:")
         click.echo("-" * 80)
-        click.echo(f"Processes per Node: {job.nprocPerNode}")
+        click.echo(f"Processes per Node: {getattr(job, 'nprocPerNode', 'N/A')}")
 
         # Print Replica Specs
         for replica in job.replicaSpecs:
             click.echo(f"\nReplica Spec:")
-            click.echo(f"  Name:     {replica.name}")
-            click.echo(f"  Replicas: {replica.replicas}")
-            click.echo(f"  Spares:   {replica.spares}")
+            click.echo(f"  Name:     {getattr(replica, 'name', 'N/A')}")
+            click.echo(f"  Replicas: {getattr(replica, 'replicas', 'N/A')}")
+            click.echo(f"  Spares:   {getattr(replica, 'spares', 'N/A')}")
 
             # Container details
-            for container in replica.template.spec.containers:
-                click.echo("\n  Container:")
-                click.echo(f"    Name:            {container.name}")
-                click.echo(f"    Image:           {container.image}")
-                click.echo(f"    Image Pull Policy: {container.imagePullPolicy}")
-                if container.resources:
-                    click.echo("    Resources:")
-                    if container.resources.limits:
-                        click.echo(f"      Limits:   {container.resources.limits}")
-                    if container.resources.requests:
-                        click.echo(f"      Requests: {container.resources.requests}")
+            if (
+                hasattr(replica, "template")
+                and hasattr(replica.template, "spec")
+                and hasattr(replica.template.spec, "containers")
+            ):
+                for container in replica.template.spec.containers:
+                    click.echo("\n  Container:")
+                    click.echo(
+                        f"    Name:            {getattr(container, 'name', 'N/A')}"
+                    )
+                    click.echo(
+                        f"    Image:           {getattr(container, 'image', 'N/A')}"
+                    )
+                    click.echo(
+                        f"    Image Pull Policy: {getattr(container, 'imagePullPolicy', 'N/A')}"
+                    )
+                    if container.resources:
+                        click.echo("    Resources:")
+                        if container.resources.limits:
+                            click.echo(f"      Limits:   {container.resources.limits}")
+                        if container.resources.requests:
+                            click.echo(
+                                f"      Requests: {container.resources.requests}"
+                            )
 
         # Print Run Policy
         click.echo("\nRun Policy:")
         click.echo("-" * 80)
-        click.echo(f"Clean Pod Policy:          {job.runPolicy.cleanPodPolicy}")
-        click.echo(
-            f"TTL Seconds After Finished: {job.runPolicy.ttlSecondsAfterFinished}"
-        )
+        if hasattr(job, "runPolicy"):
+            click.echo(
+                f"Clean Pod Policy:          {getattr(job.runPolicy, 'cleanPodPolicy', 'N/A')}"
+            )
+            click.echo(
+                f"TTL Seconds After Finished: {getattr(job.runPolicy, 'ttlSecondsAfterFinished', 'N/A')}"
+            )
+        else:
+            click.echo("Run Policy: N/A")
 
         # Print Status
         click.echo("\nStatus:")
@@ -185,20 +215,35 @@ def pytorch_describe(job_name: str, namespace: str):
             if job.status.conditions:
                 click.echo("Conditions:")
                 for condition in job.status.conditions:
-                    click.echo(f"  Type:               {condition.type}")
-                    click.echo(f"  Status:             {condition.status}")
-                    click.echo(f"  Last Transition:    {condition.lastTransitionTime}")
+                    click.echo(
+                        f"  Type:               {getattr(condition, 'type', 'N/A')}"
+                    )
+                    click.echo(
+                        f"  Status:             {getattr(condition, 'status', 'N/A')}"
+                    )
+                    click.echo(
+                        f"  Last Transition:    {getattr(condition, 'lastTransitionTime', 'N/A')}"
+                    )
                     if condition.message:
                         click.echo(f"  Message:            {condition.message}")
                     click.echo()
+        else:
+            click.echo("No status information available")
 
     except Exception as e:
         raise click.UsageError(f"Failed to describe job: {str(e)}")
 
 
-@click.command("hp-pytorch-job")
-@click.option("--job-name", required=True, help="Job name")
-@click.option("--namespace", "-n", default="default", help="Namespace")
+@click.command("hyp-pytorch-job")
+@click.option(
+    "--job-name", required=True, help="Required. The name of the job to delete"
+)
+@click.option(
+    "--namespace",
+    "-n",
+    default="default",
+    help="Optional. The namespace of the job. Defaults to 'default' namespace.",
+)
 def pytorch_delete(job_name: str, namespace: str):
     """Delete a HyperPod PyTorch job"""
     try:
@@ -212,9 +257,18 @@ def pytorch_delete(job_name: str, namespace: str):
         raise click.UsageError(f"Failed to describe job: {str(e)}")
 
 
-@click.command("hp-pytorch-job")
-@click.option("--job-name", required=True, help="Job name")
-@click.option("--namespace", "-n", default="default", help="Namespace")
+@click.command("hyp-pytorch-job")
+@click.option(
+    "--job-name",
+    required=True,
+    help="Required. Specify the job name to list its associated pods.",
+)
+@click.option(
+    "--namespace",
+    "-n",
+    default="default",
+    help="Optional. The namespace of the job. Defaults to 'default' namespace.",
+)
 def pytorch_list_pods(job_name: str, namespace: str):
     """List all HyperPod PyTorch pods corresponding to the job"""
     try:
@@ -246,10 +300,21 @@ def pytorch_list_pods(job_name: str, namespace: str):
         raise click.UsageError(f"Failed to list jobs: {str(e)}")
 
 
-@click.command("hp-pytorch-job")
-@click.option("--job-name", required=True, help="Job name")
-@click.option("--pod-name", required=True, help="Job name")
-@click.option("--namespace", "-n", default="default", help="Namespace")
+@click.command("hyp-pytorch-job")
+@click.option(
+    "--job-name",
+    required=True,
+    help="Required. Specify the job name for pod log retrieval.",
+)
+@click.option(
+    "--pod-name", required=True, help="Required. The name of the pod to get logs from."
+)
+@click.option(
+    "--namespace",
+    "-n",
+    default="default",
+    help="Optional. The namespace of the job. Defaults to 'default' namespace.",
+)
 def pytorch_get_logs(job_name: str, pod_name: str, namespace: str):
     """Get specific logs from pod corresponding to the job"""
     try:

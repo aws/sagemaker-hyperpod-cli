@@ -27,19 +27,19 @@ class TestCLI(unittest.TestCase):
         """Test that the create help command works"""
         result = self.runner.invoke(cli, ["create", "--help"])
         self.assertEqual(result.exit_code, 0)
-        self.assertIn("hp-pytorch-job", result.output)
+        self.assertIn("hyp-pytorch-job", result.output)
 
     @patch("sagemaker.hyperpod.cli.commands.training.list_jobs")
     def test_cli_list_jobs_help(self, mock_list_jobs):
         """Test that the list jobs help command works"""
-        result = self.runner.invoke(cli, ["list", "hp-pytorch-job", "--help"])
+        result = self.runner.invoke(cli, ["list", "hyp-pytorch-job", "--help"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("List all HyperPod PyTorch jobs", result.output)
 
     @patch("sagemaker.hyperpod.cli.commands.training.pytorch_describe")
     def test_cli_describe_job_help(self, mock_pytorch_describe):
         """Test that the describe job help command works"""
-        result = self.runner.invoke(cli, ["describe", "hp-pytorch-job", "--help"])
+        result = self.runner.invoke(cli, ["describe", "hyp-pytorch-job", "--help"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Describe a HyperPod PyTorch job", result.output)
 
@@ -60,9 +60,9 @@ class TestCLI(unittest.TestCase):
         list_commands = list.commands
         describe_commands = describe.commands
 
-        self.assertIn("hp-pytorch-job", create_commands)
-        self.assertIn("hp-pytorch-job", list_commands)
-        self.assertIn("hp-pytorch-job", describe_commands)
+        self.assertIn("hyp-pytorch-job", create_commands)
+        self.assertIn("hyp-pytorch-job", list_commands)
+        self.assertIn("hyp-pytorch-job", describe_commands)
 
     def test_cli_command_help_format(self):
         """Test that the custom help format is used"""
@@ -80,5 +80,3 @@ class TestCLI(unittest.TestCase):
         result = self.runner.invoke(describe, ["--help"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Usage: describe [OPTIONS] COMMAND [ARGS]", result.output)
-
-
