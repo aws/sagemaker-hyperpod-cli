@@ -15,7 +15,6 @@ import hyperpod_jumpstart_inference_template.registry as jreg
 import hyperpod_custom_inference_template.registry as creg
 
 # --------- JumpStart Commands ---------
-
 @patch('sagemaker.hyperpod.cli.inference_utils.load_schema_for_version')
 @patch('sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint')
 def test_js_create_with_required_args(mock_endpoint_class, mock_load_schema):

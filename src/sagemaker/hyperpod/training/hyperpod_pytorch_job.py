@@ -7,7 +7,7 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_status import (
 )
 from sagemaker.hyperpod.common.config.metadata import Metadata
 from kubernetes import client, config
-from typing import List, Optional
+from typing import List, Optional, ClassVar
 from sagemaker.hyperpod.common.utils import (
     handle_exception,
     get_default_namespace,
@@ -23,6 +23,8 @@ KIND = "HyperPodPyTorchJob"
 
 
 class HyperPodPytorchJob(_HyperPodPytorchJob):
+    is_kubeconfig_loaded: ClassVar[bool] = False
+
     model_config = ConfigDict(extra="forbid")
 
     metadata: Metadata = Field(
@@ -31,10 +33,6 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
 
     status: Optional[HyperPodPytorchJobStatus] = Field(
         default=None, description="The status of the HyperPodPytorchJob"
-    )
-
-    is_kubeconfig_loaded: bool = Field(
-        default=False
     )
 
     @classmethod
