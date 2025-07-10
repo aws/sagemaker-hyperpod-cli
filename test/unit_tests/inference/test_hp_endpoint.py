@@ -176,8 +176,12 @@ class TestHPEndpoint(unittest.TestCase):
             name="test-name", kind=INFERENCE_ENDPOINT_CONFIG_KIND, namespace="test-ns"
         )
 
+    @patch("sagemaker.hyperpod.common.utils.get_cluster_context")
     @patch("sagemaker_core.main.resources.Endpoint.get")
-    def test_invoke(self, mock_endpoint_get):
+    def test_invoke(self, mock_endpoint_get, mock_get_cluster_context):
+
+        mock_get_cluster_context.return_value = "test-cluster-arn"
+
         self.endpoint.endpointName = "test-endpoint"
         mock_endpoint = MagicMock()
         mock_endpoint.invoke.return_value = "response"

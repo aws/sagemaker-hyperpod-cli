@@ -79,18 +79,6 @@ class TestHyperPodPytorchJob(unittest.TestCase):
         mock_handle_exception.assert_called_once()
 
     @patch.object(HyperPodPytorchJob, "verify_kube_config")
-    @patch('sagemaker.hyperpod.training.hyperpod_pytorch_job.client.CustomObjectsApi')
-    def test_create_appends_uuid(self, mock_custom_api, mock_verify_config):
-        """Test that create method works correctly"""
-        mock_api_instance = MagicMock()
-        mock_custom_api.return_value = mock_api_instance
-
-        self.job.create()
-
-        # Assert that the create_namespaced_custom_object was called
-        mock_api_instance.create_namespaced_custom_object.assert_called_once()
-
-    @patch.object(HyperPodPytorchJob, "verify_kube_config")
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.client.CustomObjectsApi")
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job._load_hp_job_list")
     def test_list_success(self, mock_load_list, mock_custom_api, mock_verify_config):

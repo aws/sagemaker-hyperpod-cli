@@ -122,8 +122,11 @@ class TestHPJumpStartEndpoint(unittest.TestCase):
             name="test-name", kind=JUMPSTART_MODEL_KIND, namespace="test-ns"
         )
 
+    @patch("sagemaker.hyperpod.common.utils.get_cluster_context")
     @patch("sagemaker_core.main.resources.Endpoint.get")
-    def test_invoke(self, mock_endpoint_get):
+    def test_invoke(self, mock_endpoint_get, mock_get_cluster_context):
+        mock_get_cluster_context.return_value = "test-cluster-arn"
+
         self.endpoint.sageMakerEndpoint = MagicMock()
         self.endpoint.sageMakerEndpoint.name = "test-endpoint"
         mock_endpoint = MagicMock()
