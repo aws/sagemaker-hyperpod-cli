@@ -85,7 +85,10 @@ setup(
         "ruff==0.6.2",
         "hera-workflows==5.16.3",
         "sagemaker-core<2.0.0",
-        "pydantic>=2.10.6,<3.0.0"
+        "pydantic>=2.10.6,<3.0.0",
+        "hyperpod-pytorch-job-template>=1.0.0, <2.0.0",
+        "hyperpod-custom-inference-template>=1.0.0, <2.0.0",
+        "hyperpod-jumpstart-inference-template>=1.0.0, <2.0.0"
     ],
     entry_points={
         "console_scripts": [
