@@ -12,11 +12,11 @@
 # language governing permissions and limitations under the License.
 from click.testing import CliRunner
 
-from hyperpod_cli.cli import cli
+from sagemaker.hyperpod.cli.hyp_cli import cli
 
 
 def test_hyperpod_cli_importable():
-    import hyperpod_cli  # noqa: F401
+    import sagemaker.hyperpod.cli  # noqa: F401
 
 
 def test_cli_init():
@@ -30,4 +30,4 @@ def test_cli_help():
     runner = CliRunner()
     result = runner.invoke(cli, ["--help"])
     assert result.exit_code == 0
-    assert "Basic Commands:" in result.output
+    assert "Usage:" in result.output

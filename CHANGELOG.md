@@ -11,3 +11,13 @@
 ### Features
 
 - feature: Add support for SageMaker HyperPod CLI
+
+
+## v1.0.0] ([2025]-[07]-[10])
+
+### Features
+
+ * Training Job - Create, List , Get 
+ * Inference Jumpstart - Create , List, Get, Invoke
+ * Inference Custom - Create , List, Get, Invoke
+ * Observability changes

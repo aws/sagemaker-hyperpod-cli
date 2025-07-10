@@ -1,0 +1,60 @@
+apiVersion: inference.sagemaker.aws.amazon.com/v1alpha1
+kind: InferenceEndpointConfig
+metadata:
+  name: testing-custom-deployment-inf
+  namespace: ns-team-a
+spec:
+  modelName: sm-model-name
+  endpointName: my-model-name
+  instanceType: ml.g5.48xlarge
+  modelSourceConfig:
+    modelSourceType: s3
+    s3Storage:
+      bucketName: temp-data
+      region: us-west-2
+    modelLocation: llama-70b
+    prefetchEnabled: true
+  worker:
+    resources:
+      limits:
+        nvidia.com/gpu: 8
+      requests:
+        nvidia.com/gpu: 8
+        cpu: 100000m
+        memory: 384Gi
+    image: 763104351884.dkr.ecr.us-east-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.4.0-tgi2.3.1-gpu-py311-cu124-ubuntu22.04-v2.0
+    modelInvocationPort:
+      containerPort: 8080
+      name: http
+    modelVolumeMount:
+      name: model-weights
+      mountPath: /opt/ml/model
+    environmentVariables:
+      - name: SAGEMAKER_PROGRAM
+        value: "inference.py"
+      - name: SAGEMAKER_SUBMIT_DIRECTORY
+        value: "/opt/ml/model/code"
+      - name: SAGEMAKER_CONTAINER_LOG_LEVEL
+        value: "20"
+      - name: SAGEMAKER_MODEL_SERVER_TIMEOUT
+        value: "3600"
+      - name: ENDPOINT_SERVER_TIMEOUT
+        value: "3600"
+      - name: MODEL_CACHE_ROOT
+        value: "/opt/ml/model"
+      - name: SAGEMAKER_ENV
+        value: "1"
+      - name: SAGEMAKER_MODEL_SERVER_WORKERS
+        value: "1"
+      - name: HF_MODEL_ID
+        value: "/opt/ml/model"
+      - name: ACCEPT_EULA
+        value: "True"
+      - name: SM_NUM_GPUS
+        value: "8"
+      - name: MAX_INPUT_LENGTH
+        value: "4095"
+      - name: MAX_TOTAL_TOKENS
+        value: "4096"
+      - name: MAX_CONCURRENT_REQUESTS
+        value: "512"

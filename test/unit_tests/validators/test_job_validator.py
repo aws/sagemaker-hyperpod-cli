@@ -11,14 +11,14 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import unittest
-from unittest.mock import patch, mock_open, MagicMock
+from unittest.mock import patch, mock_open
 from unittest import mock
 
-from hyperpod_cli.constants.command_constants import (
+from sagemaker.hyperpod.cli.constants.command_constants import (
     RestartPolicy,
     SchedulerType,
 )
-from hyperpod_cli.validators.job_validator import (
+from sagemaker.hyperpod.cli.validators.job_validator import (
     JobValidator,
     verify_and_load_yaml,
     validate_yaml_content,
@@ -62,7 +62,7 @@ class TestJobValidator(unittest.TestCase):
 
         self.assertTrue(result)
 
-    @patch("hyperpod_cli.validators.job_validator.logger")
+    @patch("sagemaker.hyperpod.cli.validators.job_validator.logger")
     def test_validate_start_job_args_job_kind_invalid(self, mock_logger):
         name = "test-job"
         node_count = 1
@@ -95,7 +95,7 @@ class TestJobValidator(unittest.TestCase):
             "The only supported 'job-kind' is 'kubeflow/PyTorchJob'."
         )
 
-    @patch("hyperpod_cli.validators.job_validator.logger")
+    @patch("sagemaker.hyperpod.cli.validators.job_validator.logger")
     def test_validate_start_job_args_command_invalid(self, mock_logger):
         config_file = None
         name = "test-job"
@@ -129,7 +129,7 @@ class TestJobValidator(unittest.TestCase):
             "The only supported 'command' is 'torchrun'."
         )
 
-    @patch("hyperpod_cli.validators.job_validator.logger")
+    @patch("sagemaker.hyperpod.cli.validators.job_validator.logger")
     def test_validate_start_job_args_both_config_file_and_job_name_provided(
         self, mock_logger
     ):
@@ -166,7 +166,7 @@ class TestJobValidator(unittest.TestCase):
             "Please provide only 'config-file' to submit job using custom script or 'job-name' to submit job via CLI arguments"
         )
 
-    @patch("hyperpod_cli.validators.job_validator.logger")
+    @patch("sagemaker.hyperpod.cli.validators.job_validator.logger")
     def test_validate_start_job_args_neither_config_file_nor_name_provided(
         self, mock_logger
     ):
@@ -203,7 +203,7 @@ class TestJobValidator(unittest.TestCase):
             "Please provide either 'recipe' for recipe-based jobs or 'config-file' to submit job using config file or 'job-name' to submit job via CLI arguments"
         )
 
-    @patch("hyperpod_cli.validators.job_validator.logger")
+    @patch("sagemaker.hyperpod.cli.validators.job_validator.logger")
     def test_validate_start_job_args_name_provided_but_node_count_missing(
         self, mock_logger
     ):
@@ -240,7 +240,7 @@ class TestJobValidator(unittest.TestCase):
             "Please provide 'node-count' to specify number of nodes used for training job"
         )
 
-    @patch("hyperpod_cli.validators.job_validator.logger")
+    @patch("sagemaker.hyperpod.cli.validators.job_validator.logger")
     def test_validate_start_job_args_name_provided_but_instance_type_missing(
         self, mock_logger
     ):
@@ -277,7 +277,7 @@ class TestJobValidator(unittest.TestCase):
             "Please provide 'instance-type' to specify instance type for training job"
         )
 
-    @patch("hyperpod_cli.validators.job_validator.logger")
+    @patch("sagemaker.hyperpod.cli.validators.job_validator.logger")
     def test_validate_start_job_args_name_provided_but_entry_script_missing(
         self, mock_logger
     ):
@@ -349,7 +349,7 @@ class TestJobValidator(unittest.TestCase):
 
         self.assertTrue(result)
 
-    @patch("hyperpod_cli.validators.job_validator.logger")
+    @patch("sagemaker.hyperpod.cli.validators.job_validator.logger")
     def test_validate_start_job_args_auto_resume_in_any_namespace(self, mock_logger):
         name = "test-job"
         node_count = 1
@@ -383,7 +383,7 @@ class TestJobValidator(unittest.TestCase):
 
         self.assertTrue(result)
 
-    @patch("hyperpod_cli.validators.job_validator.logger")
+    @patch("sagemaker.hyperpod.cli.validators.job_validator.logger")
     def test_validate_start_job_args_no_auto_resume_has_max_retry(self, mock_logger):
         name = "test-job"
         node_count = 1
@@ -419,7 +419,7 @@ class TestJobValidator(unittest.TestCase):
             "Please enable 'auto_resume' with 'max_retry' option."
         )
 
-    @patch("hyperpod_cli.validators.job_validator.logger")
+    @patch("sagemaker.hyperpod.cli.validators.job_validator.logger")
     def test_validate_start_job_args_auto_resume_wrong_restart_policy(
         self, mock_logger
     ):
@@ -458,7 +458,7 @@ class TestJobValidator(unittest.TestCase):
             "To enable 'auto_resume', please ensure the 'restart-policy' is 'OnFailure'. "
         )
 
-    @patch("hyperpod_cli.validators.job_validator.logger")
+    @patch("sagemaker.hyperpod.cli.validators.job_validator.logger")
     def test_validate_start_job_args_name_provided_but_invalid_instance_type(
         self, mock_logger
     ):
@@ -495,7 +495,7 @@ class TestJobValidator(unittest.TestCase):
             "Please provide SageMaker HyperPod supported 'instance-type'"
         )
 
-    @patch("hyperpod_cli.validators.job_validator.logger")
+    @patch("sagemaker.hyperpod.cli.validators.job_validator.logger")
     def test_validate_start_job_args_name_provided_but_image_missing(self, mock_logger):
         config_file = None
         name = "job-name"
@@ -833,7 +833,7 @@ class TestJobValidator(unittest.TestCase):
 
         self.assertFalse(result)
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.get_sagemaker_managed_namespace")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.get_sagemaker_managed_namespace")
     def test_validate_start_job_args_sagemaker_scheduler_success(
         self,
         mock_get_sagemaker_managed_namespace,
@@ -869,7 +869,7 @@ class TestJobValidator(unittest.TestCase):
 
         self.assertTrue(result)
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.get_sagemaker_managed_namespace")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.get_sagemaker_managed_namespace")
     def test_validate_start_job_args_sagemaker_scheduler_invalid_namespace(
         self,
         mock_get_sagemaker_managed_namespace,
@@ -905,8 +905,8 @@ class TestJobValidator(unittest.TestCase):
 
         self.assertFalse(result)
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.list_workload_priority_classes")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.get_sagemaker_managed_namespace")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.list_workload_priority_classes")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.get_sagemaker_managed_namespace")
     def test_validate_start_job_args_sagemaker_scheduler_success_with_priority(
         self,
         mock_get_sagemaker_managed_namespace,
@@ -950,8 +950,8 @@ class TestJobValidator(unittest.TestCase):
 
         self.assertTrue(result)
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.list_workload_priority_classes")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.get_sagemaker_managed_namespace")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.list_workload_priority_classes")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.get_sagemaker_managed_namespace")
     def test_validate_start_job_args_sagemaker_scheduler_fail_priority_not_exist(
         self,
         mock_get_sagemaker_managed_namespace,
@@ -994,8 +994,8 @@ class TestJobValidator(unittest.TestCase):
 
         self.assertFalse(result)
     
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.list_workload_priority_classes")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.get_sagemaker_managed_namespace")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.list_workload_priority_classes")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.get_sagemaker_managed_namespace")
     def test_validate_start_job_args_sagemaker_scheduler_no_namespace(
         self,
         mock_get_sagemaker_managed_namespace,
@@ -1236,7 +1236,7 @@ class TestJobValidator(unittest.TestCase):
         self.assertTrue(result)
 
     @patch(
-        "hyperpod_cli.validators.job_validator.validate_scheduler_related_fields",
+        "sagemaker.hyperpod.cli.validators.job_validator.validate_scheduler_related_fields",
         return_value=True,
     )
     def test_validate_yaml_content_valid_with_auto_resume(
@@ -1262,7 +1262,7 @@ class TestJobValidator(unittest.TestCase):
         self.assertTrue(result)
 
     @patch(
-        "hyperpod_cli.validators.job_validator.validate_scheduler_related_fields",
+        "sagemaker.hyperpod.cli.validators.job_validator.validate_scheduler_related_fields",
         return_value=True,
     )
     def test_validate_yaml_content_valid_with_auto_resume_in_aws_hyperpod_namespace(
@@ -1288,7 +1288,7 @@ class TestJobValidator(unittest.TestCase):
         self.assertTrue(result)
 
     @patch(
-        "hyperpod_cli.validators.job_validator.validate_scheduler_related_fields",
+        "sagemaker.hyperpod.cli.validators.job_validator.validate_scheduler_related_fields",
         return_value=True,
     )
     def test_validate_yaml_content_valid_with_auto_resume_default_namespace(    
@@ -1314,7 +1314,7 @@ class TestJobValidator(unittest.TestCase):
         self.assertTrue(result)
 
     @patch(
-        "hyperpod_cli.validators.job_validator.validate_scheduler_related_fields",
+        "sagemaker.hyperpod.cli.validators.job_validator.validate_scheduler_related_fields",
         return_value=True,
     )
     def test_validate_yaml_content_valid_with_auto_resume_any_hyperpod_namespace(
@@ -1340,7 +1340,7 @@ class TestJobValidator(unittest.TestCase):
         self.assertTrue(result)
 
     @patch(
-        "hyperpod_cli.validators.job_validator.validate_scheduler_related_fields",
+        "sagemaker.hyperpod.cli.validators.job_validator.validate_scheduler_related_fields",
         return_value=True,
     )
     def test_validate_yaml_content_error_only_auto_resume_no_max_retry(
@@ -1365,7 +1365,7 @@ class TestJobValidator(unittest.TestCase):
         self.assertFalse(result)
 
     @patch(
-        "hyperpod_cli.validators.job_validator.validate_scheduler_related_fields",
+        "sagemaker.hyperpod.cli.validators.job_validator.validate_scheduler_related_fields",
         return_value=True,
     )
     def test_validate_yaml_content_error_with_wrong_restart_policy(
@@ -1391,7 +1391,7 @@ class TestJobValidator(unittest.TestCase):
         self.assertFalse(result)
 
     @patch(
-        "hyperpod_cli.validators.job_validator.validate_scheduler_related_fields",
+        "sagemaker.hyperpod.cli.validators.job_validator.validate_scheduler_related_fields",
         return_value=True,
     )
     def test_validate_yaml_content_error_only_max_retry(

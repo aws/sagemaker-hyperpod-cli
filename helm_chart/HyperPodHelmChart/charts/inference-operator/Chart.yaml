@@ -1,0 +1,55 @@
+apiVersion: v2
+name: hyperpod-inference-operator
+description: A Helm chart for Kubernetes
+
+# A chart can be either an 'application' or a 'library' chart.
+#
+# Application charts are a collection of templates that can be packaged into versioned archives
+# to be deployed.
+#
+# Library charts provide useful utilities or functions for the chart developer. They're included as
+# a dependency of application charts to inject those utilities and functions into the rendering
+# pipeline. Library charts do not define any templates and therefore cannot be deployed.
+type: application
+
+# This is the chart version. This version number should be incremented each time you make changes
+# to the chart and its templates, including the app version.
+# Versions are expected to follow Semantic Versioning (https://semver.org/)
+version: 0.1.0
+
+# This is the version number of the application being deployed. This version number should be
+# incremented each time you make changes to the application. Versions are not expected to
+# follow Semantic Versioning. They should reflect the version the application is using.
+# It is recommended to use it with quotes.
+appVersion: "1.16.0"
+
+dependencies:
+- name: aws-mountpoint-s3-csi-driver
+  alias: s3
+  version: 1.14.1
+  repository: "https://awslabs.github.io/mountpoint-s3-csi-driver/"
+  condition: s3.enabled
+- name: metrics-server
+  alias: metrics
+  version: 3.12.2
+  repository: "https://kubernetes-sigs.github.io/metrics-server/"
+- name: aws-fsx-csi-driver
+  alias: fsx
+  version: 1.11.0
+  repository: "https://kubernetes-sigs.github.io/aws-fsx-csi-driver"
+  condition: fsx.enabled
+- name: aws-load-balancer-controller
+  alias: alb
+  version: 1.13.2
+  repository: "https://aws.github.io/eks-charts"
+  condition: alb.enabled
+- name: cert-manager
+  alias: cert-manager
+  version: v1.18.0
+  repository: "https://charts.jetstack.io"
+  condition: cert-manager.enabled
+- name: keda
+  alias: keda
+  version: 2.17.1
+  repository: "https://kedacore.github.io/charts"
+  condition: keda.enabled

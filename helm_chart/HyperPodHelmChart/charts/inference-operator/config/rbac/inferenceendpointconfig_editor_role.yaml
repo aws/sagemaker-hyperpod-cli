@@ -1,0 +1,28 @@
+# permissions for end users to edit inferenceendpointconfigs.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: {{ .Values.namePrefix }}
+    app.kubernetes.io/managed-by: kustomize
+  name: {{ .Values.namePrefix }}-inferenceendpointconfig-editor-role
+  namespace: {{ .Values.shortPrefix }}-system
+rules:
+- apiGroups:
+  - inference.sagemaker.aws.amazon.com
+  resources:
+  - inferenceendpointconfigs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - inference.sagemaker.aws.amazon.com
+  resources:
+  - inferenceendpointconfigs/status
+  verbs:
+  - get

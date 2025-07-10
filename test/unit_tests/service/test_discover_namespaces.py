@@ -14,9 +14,9 @@ import unittest
 from unittest import mock
 from unittest.mock import MagicMock
 from kubernetes.client.rest import ApiException
-from hyperpod_cli.service.discover_namespaces import DiscoverNamespaces
+from sagemaker.hyperpod.cli.service.discover_namespaces import DiscoverNamespaces
 from concurrent.futures import Future
-from hyperpod_cli.clients.kubernetes_client import (
+from sagemaker.hyperpod.cli.clients.kubernetes_client import (
     KubernetesClient,
 )
 
@@ -25,7 +25,7 @@ class TestDiscoverNamespaces(unittest.TestCase):
     def setUp(self):
         self.mock_k8s_client = MagicMock(spec=KubernetesClient)
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.get_current_context_namespace")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.get_current_context_namespace")
     def test_discover_accessible_sm_managed_namespace_explicit(
         self, 
         mock_get_current_context_namespace, 
@@ -42,9 +42,9 @@ class TestDiscoverNamespaces(unittest.TestCase):
         # Assert that the explicitly set namespace is returned
         self.assertEqual(result, "explicit-namespace")
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.service.get_namespaces.GetNamespaces.get_sagemaker_managed_namespaces")
-    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.get_namespaces_by_checking_access_permission")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_namespaces.GetNamespaces.get_sagemaker_managed_namespaces")
+    @mock.patch("sagemaker.hyperpod.cli.service.discover_namespaces.DiscoverNamespaces.get_namespaces_by_checking_access_permission")
     def test_discover_accessible_sm_managed_namespace_success(
         self, 
         mock_get_namespaces_by_checking_access_permission, 
@@ -68,9 +68,9 @@ class TestDiscoverNamespaces(unittest.TestCase):
         # Assert that the discovered namespace is returned
         self.assertEqual(result, "namespace1")
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.service.get_namespaces.GetNamespaces.get_sagemaker_managed_namespaces")
-    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.get_namespaces_by_checking_access_permission")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_namespaces.GetNamespaces.get_sagemaker_managed_namespaces")
+    @mock.patch("sagemaker.hyperpod.cli.service.discover_namespaces.DiscoverNamespaces.get_namespaces_by_checking_access_permission")
     @mock.patch("sys.exit")
     def test_discover_accessible_sm_managed_namespace_no_accessible(
         self, 
@@ -99,9 +99,9 @@ class TestDiscoverNamespaces(unittest.TestCase):
         # Assert sys.exit is called with status code 1
         mock_exit.assert_called_once_with(1)
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.service.get_namespaces.GetNamespaces.get_sagemaker_managed_namespaces")
-    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.get_namespaces_by_checking_access_permission")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_namespaces.GetNamespaces.get_sagemaker_managed_namespaces")
+    @mock.patch("sagemaker.hyperpod.cli.service.discover_namespaces.DiscoverNamespaces.get_namespaces_by_checking_access_permission")
     @mock.patch("sys.exit")
     def test_discover_accessible_sm_managed_namespace_multiple_accessible(
         self, 
@@ -130,8 +130,8 @@ class TestDiscoverNamespaces(unittest.TestCase):
         # Assert sys.exit is called with status code 1 for multiple namespaces
         mock_exit.assert_called_once_with(1)
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.service.get_namespaces.GetNamespaces.get_sagemaker_managed_namespaces")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.service.get_namespaces.GetNamespaces.get_sagemaker_managed_namespaces")
     @mock.patch("sys.exit")
     def test_discover_accessible_sm_managed_namespace_api_exception(
         self, 
@@ -158,7 +158,7 @@ class TestDiscoverNamespaces(unittest.TestCase):
         # Assert sys.exit is called with status code 1
         mock_exit.assert_called_once_with(1)
 
-    @mock.patch("hyperpod_cli.service.self_subject_access_review.SelfSubjectAccessReview.self_subject_access_review")
+    @mock.patch("sagemaker.hyperpod.cli.service.self_subject_access_review.SelfSubjectAccessReview.self_subject_access_review")
     def test_get_namespaces_by_checking_access_permission(
         self, 
         mock_self_subject_access_review,

@@ -18,6 +18,12 @@ __pycache__/
 /doc/_apidoc/
 /build
 
+/sagemaker-hyperpod/build
+/sagemaker-hyperpod/.coverage
+/sagemaker-hyperpod/.coverage.*
+
 # Ignore all contents of result and results directories
 /result/
 /results/
+
+.idea/

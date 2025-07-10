@@ -1,0 +1,101 @@
+namePrefix: "hyperpod-inference-operator"
+shortPrefix: "hyperpod-inference"
+region: ""
+eksClusterName: ""
+
+image:
+  repositoryDomainMap:
+    us-east-2: 061051259071.dkr.ecr.us-east-2.amazonaws.com
+    eu-north-1: 850995554027.dkr.ecr.eu-north-1.amazonaws.com
+    eu-central-1: 491085393763.dkr.ecr.eu-central-1.amazonaws.com
+    us-west-2: 861276088053.dkr.ecr.us-west-2.amazonaws.com
+    us-east-1: 557690614651.dkr.ecr.us-east-1.amazonaws.com
+    eu-west-2: 337909760000.dkr.ecr.eu-west-2.amazonaws.com
+    ap-northeast-1: 724772091842.dkr.ecr.ap-northeast-1.amazonaws.com
+    ap-southeast-2: 147997151819.dkr.ecr.ap-southeast-2.amazonaws.com
+    ap-south-1: 522814713546.dkr.ecr.ap-south-1.amazonaws.com
+    eu-west-1: 537124951544.dkr.ecr.eu-west-1.amazonaws.com
+    sa-east-1: 495599735358.dkr.ecr.sa-east-1.amazonaws.com
+    us-west-1: 183295454132.dkr.ecr.us-west-1.amazonaws.com
+    ap-southeast-1: 474668384327.dkr.ecr.ap-southeast-1.amazonaws.com
+    ap-southeast-4: 311141544681.dkr.ecr.ap-southeast-4.amazonaws.com
+    ap-southeast-3: 158128612970.dkr.ecr.ap-southeast-3.amazonaws.com
+    eu-south-2: 025050981094.dkr.ecr.eu-south-2.amazonaws.com
+  tag: v1.0.0
+  pullPolicy: Always
+  repository:
+hyperpodClusterArn:
+executionRoleArn:
+jumpstartGatedModelDownloadRoleArn: ""
+stage: "prod"
+tlsCertificateS3Bucket:
+
+s3:
+  enabled: true
+  # IAM role ARN used for S3 CSI driver k8s service account
+  serviceAccountRoleArn: ""
+  # S3 persistent volume configuration
+  persistentVolume:
+    enabled: true
+    name: s3-pv
+    capacity: 1200Gi
+    accessModes:
+      - ReadWriteMany
+    prefix: "/"
+    csi:
+      driver: s3.csi.aws.com
+      volumeHandle: s3-csi-driver-volume
+      volumeAttributes: {}
+  # S3 persistent volume claim configuration
+  persistentVolumeClaim:
+    enabled: true
+    name: s3-claim
+    storageClassName: ""  # required for static provisioning
+    accessModes:
+      - ReadWriteMany
+    requests:
+      storage: 1200Gi
+    volumeName: s3-pv
+
+fsx:
+  enabled: true
+
+alb:
+  enabled: true
+  clusterName: ""
+  region: ""
+  vpcId: ""
+  serviceAccount:
+    create: false
+    name: aws-load-balancer-controller
+    roleArn: ""
+
+cert-manager:
+  enabled: true
+  namespace: cert-manager
+  crds:
+    enabled: true
+
+keda:
+  enabled: true
+  namespace: keda
+  podIdentity:
+    aws:
+      irsa:
+        enabled: true
+        roleArn: ""
+
+
+components:
+  crd:
+    enabled: true
+    path: "config/crd"
+  rbac:
+    enabled: true
+    path: "config/rbac"
+  manager:
+    enabled: true
+    path: "config/manager"
+  metricsService:
+    enabled: true
+    path: "config/metrics"

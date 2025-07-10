@@ -1,0 +1,23 @@
+# permissions for end users to view jumpstartmodels.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: {{ .Values.namePrefix }}
+  name: {{ .Values.namePrefix }}-jumpstartmodels-viewer-role
+  namespace: {{ .Values.shortPrefix }}-system
+rules:
+- apiGroups:
+  - inference.sagemaker.aws.amazon.com
+  resources:
+  - jumpstartmodels
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - inference.sagemaker.aws.amazon.com
+  resources:
+  - jumpstartmodels/status
+  verbs:
+  - get
