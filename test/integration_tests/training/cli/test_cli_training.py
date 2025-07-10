@@ -93,7 +93,7 @@ class TestHypCLICommands(AbstractIntegrationTests):
 
     def test_wait_for_job_running(self, test_job_name):
         """Test that the job transitions to Running state before proceeding with pod tests."""
-        max_attempts = 12  # Maximum number of attempts (2 minutes total with 10-second intervals)
+        max_attempts = 10  # Maximum number of attempts (5 minutes total with 30-second intervals)
         for attempt in range(1, max_attempts + 1):
             logger.info(f"Checking job status (attempt {attempt}/{max_attempts})...")
 
@@ -191,7 +191,6 @@ class TestHypCLICommands(AbstractIntegrationTests):
 
         logger.info(f"Successfully listed pods for job: {test_job_name}")
 
-    # @pytest.mark.skip(reason="Skipping since there is ")
     def test_get_logs(self, test_job_name):
         """Test getting logs for a specific pod in a job."""
         # First, get the pod name from list-pods command
