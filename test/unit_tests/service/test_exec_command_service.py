@@ -14,13 +14,13 @@ import unittest
 from unittest import mock
 from unittest.mock import MagicMock
 
-from hyperpod_cli.clients.kubernetes_client import (
+from sagemaker.hyperpod.cli.clients.kubernetes_client import (
     KubernetesClient,
 )
-from hyperpod_cli.service.exec_command import (
+from sagemaker.hyperpod.cli.service.exec_command import (
     ExecCommand,
 )
-from hyperpod_cli.service.list_pods import (
+from sagemaker.hyperpod.cli.service.list_pods import (
     ListPods,
 )
 
@@ -33,9 +33,9 @@ class ExecCommandServiceTest(unittest.TestCase):
         self.mock_list_pods_service = MagicMock(spec=ListPods)
         self.mock_k8s_client = MagicMock(spec=KubernetesClient)
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods.list_pods_for_training_job")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods.list_pods_for_training_job")
     def test_exec_with_pod_without_namespace(
         self,
         mock_list_training_job_pods_service_with_list_pods: mock.Mock,
@@ -62,9 +62,9 @@ class ExecCommandServiceTest(unittest.TestCase):
         )
         self.assertIn("Fri Aug  9 06:16:05 UTC 2024", result)
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods.list_pods_for_training_job")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods.list_pods_for_training_job")
     def test_exec_with_pod_with_namespace(
         self,
         mock_list_training_job_pods_service_with_list_pods: mock.Mock,
@@ -90,8 +90,8 @@ class ExecCommandServiceTest(unittest.TestCase):
         )
         self.assertIn("Fri Aug  9 06:16:05 UTC 2024", result)
 
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods.list_pods_for_training_job")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods.list_pods_for_training_job")
     def test_exec_with_pod_with_namespace_unknown_pod(
         self,
         mock_list_training_job_pods_service_with_list_pods: mock.Mock,
@@ -112,9 +112,9 @@ class ExecCommandServiceTest(unittest.TestCase):
                 ),
             )
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods.list_pods_for_training_job")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods.list_pods_for_training_job")
     def test_exec_with_pod_with_namespace_all_pod(
         self,
         mock_list_training_job_pods_service_with_list_pods: mock.Mock,
@@ -140,9 +140,9 @@ class ExecCommandServiceTest(unittest.TestCase):
         )
         self.assertIn("Fri Aug  9 06:16:05 UTC 2024", result)
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods.list_pods_for_training_job")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods.list_pods_for_training_job")
     def test_exec_with_pod_with_namespace_all_pod_api_exception(
         self,
         mock_list_training_job_pods_service_with_list_pods: mock.Mock,

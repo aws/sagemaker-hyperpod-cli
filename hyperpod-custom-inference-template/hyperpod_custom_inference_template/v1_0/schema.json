@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FlatHPEndpoint",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "instance_type",
+    "model_name",
+    "model_source_type",
+    "image_uri",
+    "container_port",
+    "model_volume_mount_name"
+  ],
+  "properties": {
+    "endpoint_name": {
+      "type": ["string", "null"],
+      "description": "Name used for SageMaker endpoint; empty string means no creation",
+      "default": "",
+      "maxLength": 63,
+      "pattern": "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$"
+    },
+    "env": {
+      "type": ["object", "null"],
+      "description": "Map of environment variable names to their values",
+      "additionalProperties": { "type": "string" }
+    },
+    "instance_type": {
+      "type": "string",
+      "description": "EC2 instance type for the inference server",
+      "pattern": "^ml\\..*"
+    },
+    "metrics_enabled": {
+      "type": "boolean",
+      "description": "Enable metrics collection",
+      "default": false
+    },
+    "model_name": {
+      "type": "string",
+      "description": "Name of model to create on SageMaker",
+      "minLength": 1,
+      "maxLength": 63,
+      "pattern": "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$"
+    },
+    "model_version": {
+      "type": ["string", "null"],
+      "description": "Version of the model for the endpoint",
+      "minLength": 5,
+      "maxLength": 14,
+      "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,4}$"
+    },
+    "model_source_type": {
+      "type": "string",
+      "description": "Source type: fsx or s3",
+      "enum": ["fsx", "s3"]
+    },
+    "model_location": {
+      "type": ["string", "null"],
+      "description": "Specific model data location"
+    },
+    "prefetch_enabled": {
+      "type": "boolean",
+      "description": "Whether to pre-fetch model data",
+      "default": false
+    },
+    "tls_certificate_output_s3_uri": {
+      "type": ["string", "null"],
+      "description": "S3 URI for TLS certificate output",
+      "pattern": "^s3://([^/]+)/?(.*)$"
+    },
+    "fsx_dns_name": {
+      "type": ["string", "null"],
+      "description": "FSX File System DNS Name"
+    },
+    "fsx_file_system_id": {
+      "type": ["string", "null"],
+      "description": "FSX File System ID"
+    },
+    "fsx_mount_name": {
+      "type": ["string", "null"],
+      "description": "FSX File System Mount Name"
+    },
+    "s3_bucket_name": {
+      "type": ["string", "null"],
+      "description": "S3 bucket location"
+    },
+    "s3_region": {
+      "type": ["string", "null"],
+      "description": "S3 bucket region"
+    },
+    "image_uri": {
+      "type": "string",
+      "description": "Inference server image name"
+    },
+    "container_port": {
+      "type": "integer",
+      "format": "int32",
+      "description": "Port on which the model server listens",
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "model_volume_mount_path": {
+      "type": "string",
+      "description": "Path inside container for model volume",
+      "default": "/opt/ml/model"
+    },
+    "model_volume_mount_name": {
+      "type": "string",
+      "description": "Name of the model volume mount"
+    },
+    "resources_limits": {
+      "type": ["object", "null"],
+      "description": "Resource limits for the worker",
+      "additionalProperties": {
+        "type": ["integer", "string"]
+      }
+    },
+    "resources_requests": {
+      "type": ["object", "null"],
+      "description": "Resource requests for the worker",
+      "additionalProperties": {
+        "type": ["integer", "string"]
+      }
+    },
+    "dimensions": {
+      "type": ["object", "null"],
+      "description": "CloudWatch Metric dimensions as key–value pairs",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "metric_collection_period": {
+      "type": "integer",
+      "description": "Defines the Period for CloudWatch query",
+      "default": 300
+    },
+    "metric_collection_start_time": {
+      "type": "integer",
+      "description": "Defines the StartTime for CloudWatch query",
+      "default": 300
+    },
+    "metric_name": {
+      "type": ["string", "null"],
+      "description": "Metric name to query for CloudWatch trigger"
+    },
+    "metric_stat": {
+      "type": "string",
+      "description": "Statistics metric to be used by Trigger. Defines the Stat for the CloudWatch query. Default is Average.",
+      "default": "Average"
+    },
+    "metric_type": {
+      "type": "string",
+      "description": "The type of metric to be used by HPA. `Average` – Uses average value per pod; `Value` – Uses absolute metric value.",
+      "enum": ["Value", "Average"],
+      "default": "Average"
+    },
+    "min_value": {
+      "type": "number",
+      "description": "Minimum metric value used in case of empty response from CloudWatch. Default is 0.",
+      "default": 0
+    },
+    "cloud_watch_trigger_name": {
+      "type": ["string", "null"],
+      "description": "Name for the CloudWatch trigger"
+    },
+    "cloud_watch_trigger_namespace": {
+      "type": ["string", "null"],
+      "description": "AWS CloudWatch namespace for the metric"
+    },
+    "target_value": {
+      "type": ["number", "null"],
+      "description": "Target value for the CloudWatch metric"
+    },
+    "use_cached_metrics": {
+      "type": "boolean",
+      "description": "Enable caching of metric values during polling interval. Default is true.",
+      "default": true
+    },
+    "invocation_endpoint": {
+      "type": "string",
+      "description": "The invocation endpoint of the model server. http://<host>:<port>/ would be pre-populated based on the other fields. Please fill in the path after http://<host>:<port>/ specific to your model server.",
+      "default": "invocations"
+    }
+  }
+}

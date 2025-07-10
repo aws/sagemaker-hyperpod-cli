@@ -18,9 +18,7 @@ from botocore.exceptions import (
     NoCredentialsError,
 )
 
-from hyperpod_cli.validators.validator import (
-    Validator,
-)
+from sagemaker.hyperpod.cli.validators.validator import Validator
 
 
 class TestValidator(unittest.TestCase):

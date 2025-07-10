@@ -116,6 +116,9 @@ mlflow:
 trainingOperators:
   enabled: true
 
+inferenceOperators:
+  enabled: false
+
 storage:
   enabled: false
 

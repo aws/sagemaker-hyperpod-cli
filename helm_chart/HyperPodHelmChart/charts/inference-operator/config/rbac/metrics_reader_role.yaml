@@ -1,0 +1,12 @@
+{{- if false }} # Role is still in development
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.namePrefix }}-metrics-reader
+  namespace: {{ .Values.shortPrefix }}-system
+rules:
+- nonResourceURLs:
+  - "/metrics"
+  verbs:
+  - get
+{{- end}}

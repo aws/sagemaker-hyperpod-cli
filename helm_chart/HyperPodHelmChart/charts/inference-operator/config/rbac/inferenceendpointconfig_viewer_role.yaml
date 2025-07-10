@@ -1,0 +1,23 @@
+# permissions for end users to view inferenceendpointconfigs.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: {{ .Values.namePrefix }}
+  name: {{ .Values.namePrefix }}-inferenceendpointconfig-viewer-role
+  namespace: {{ .Values.shortPrefix }}-system
+rules:
+- apiGroups:
+  - inference.sagemaker.aws.amazon.com
+  resources:
+  - inferenceendpointconfigs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - inference.sagemaker.aws.amazon.com
+  resources:
+  - inferenceendpointconfigs/status
+  verbs:
+  - get

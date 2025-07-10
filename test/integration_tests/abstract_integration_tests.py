@@ -12,15 +12,12 @@
 # language governing permissions and limitations under the License.
 import os
 import subprocess
-import time
 import uuid
 import re
 
 import boto3
-import yaml
-from botocore.exceptions import ClientError
 
-from hyperpod_cli.utils import setup_logger
+from sagemaker.hyperpod.cli.utils import setup_logger
 from kubernetes.client.rest import ApiException
 from kubernetes import client, config
 

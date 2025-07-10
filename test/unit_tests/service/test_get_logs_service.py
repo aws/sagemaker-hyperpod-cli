@@ -14,11 +14,11 @@ import unittest
 from unittest import mock
 from unittest.mock import MagicMock
 
-from hyperpod_cli.clients.kubernetes_client import (
+from sagemaker.hyperpod.cli.clients.kubernetes_client import (
     KubernetesClient,
 )
-from hyperpod_cli.service.get_logs import GetLogs
-from hyperpod_cli.service.list_pods import (
+from sagemaker.hyperpod.cli.service.get_logs import GetLogs
+from sagemaker.hyperpod.cli.service.list_pods import (
     ListPods,
 )
 
@@ -31,9 +31,9 @@ class TestGetLogs(unittest.TestCase):
         self.mock_list_pods_service = MagicMock(spec=ListPods)
         self.mock_k8s_client = MagicMock(spec=KubernetesClient)
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods.list_pods_for_training_job")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods.list_pods_for_training_job")
     def test_get_logs_with_namespace(
         self,
         mock_list_training_job_pods_service_with_list_pods: mock.Mock,
@@ -49,9 +49,9 @@ class TestGetLogs(unittest.TestCase):
         )
         self.assertIn("test logs", result)
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods.list_pods_for_training_job")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods.list_pods_for_training_job")
     def test_get_logs_without_namespace(
         self,
         mock_list_training_job_pods_service_with_list_pods: mock.Mock,
@@ -68,9 +68,9 @@ class TestGetLogs(unittest.TestCase):
         )
         self.assertIn("test logs", result)
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods.list_pods_for_training_job")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods.list_pods_for_training_job")
     def test_get_logs_pod_not_found_for_job(
         self,
         mock_list_training_job_pods_service_with_list_pods: mock.Mock,
@@ -85,9 +85,9 @@ class TestGetLogs(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.mock_get_logs.get_training_job_logs("sample-job", "test-pod1", None)
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods.list_pods_for_training_job")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods.list_pods_for_training_job")
     def test_get_logs_without_namespace_api_exception(
         self,
         mock_list_training_job_pods_service_with_list_pods: mock.Mock,
@@ -104,10 +104,10 @@ class TestGetLogs(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.mock_get_logs.get_training_job_logs("sample-job", "test-pod", None)
 
-    @mock.patch("hyperpod_cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods")
-    @mock.patch("hyperpod_cli.service.list_pods.ListPods.list_pods_for_training_job")
+    @mock.patch("sagemaker.hyperpod.cli.service.discover_namespaces.DiscoverNamespaces.discover_accessible_namespace")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods")
+    @mock.patch("sagemaker.hyperpod.cli.service.list_pods.ListPods.list_pods_for_training_job")
     def test_get_logs_auto_discover_namespace(
         self,
         mock_list_training_job_pods_service_with_list_pods: mock.Mock,

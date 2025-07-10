@@ -23,19 +23,17 @@ from kubernetes.client import (
     V1Namespace, 
     V1ObjectMeta,
 )
-from hyperpod_cli.clients.kubernetes_client import (
+from sagemaker.hyperpod.cli.clients.kubernetes_client import (
     KubernetesClient,
 )
-from hyperpod_cli.commands.cluster import (
+from sagemaker.hyperpod.cli.commands.cluster import (
     DEEP_HEALTH_CHECK_STATUS_LABEL,
     HP_HEALTH_STATUS_LABEL,
     INSTANCE_TYPE_LABEL,
-    connect_cluster,
-    get_clusters,
+    set_cluster_context,
+    list_cluster,
 )
-from hyperpod_cli.validators.validator import (
-    Validator,
-)
+from sagemaker.hyperpod.cli.validators.validator import Validator
 
 
 class ClusterTest(unittest.TestCase):
@@ -46,11 +44,11 @@ class ClusterTest(unittest.TestCase):
         self.mock_k8s_client = MagicMock(spec=KubernetesClient)
         self.mock_validator = MagicMock(spec=Validator)
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("boto3.Session")
     @mock.patch("subprocess.run")
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_aws_credential"
     )
     @mock.patch("builtins.open", new_callable=mock_open)
     def test_connect_to_new_cluster_success(
@@ -77,17 +75,17 @@ class ClusterTest(unittest.TestCase):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         mock_subprocess_run.return_value = MagicMock(returncode=0)
         result = self.runner.invoke(
-            connect_cluster,
+            set_cluster_context,
             ["--cluster-name", "my-cluster"],
         )
         self.assertEqual(result.exit_code, 0)
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("boto3.Session")
     @mock.patch("subprocess.run")
     @mock.patch("logging.Logger.debug")
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_aws_credential"
     )
     @mock.patch("builtins.open", new_callable=mock_open)
     def test_connect_to_new_cluster_success_debug_mode(
@@ -115,7 +113,7 @@ class ClusterTest(unittest.TestCase):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         mock_subprocess_run.return_value = MagicMock(returncode=0)
         result = self.runner.invoke(
-            connect_cluster,
+            set_cluster_context,
             [
                 "--cluster-name",
                 "my-cluster",
@@ -125,11 +123,11 @@ class ClusterTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         mock_debug.assert_called()
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("boto3.Session")
     @mock.patch("subprocess.run")
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_aws_credential"
     )
     @mock.patch("builtins.open", new_callable=mock_open)
     def test_connect_with_region_success(
@@ -156,7 +154,7 @@ class ClusterTest(unittest.TestCase):
         mock_kubernetes_client.return_value = self.mock_k8s_client
         mock_subprocess_run.return_value = MagicMock(returncode=0)
         result = self.runner.invoke(
-            connect_cluster,
+            set_cluster_context,
             [
                 "--cluster-name",
                 "my-cluster",
@@ -168,7 +166,7 @@ class ClusterTest(unittest.TestCase):
 
     @mock.patch("boto3.Session")
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_aws_credential"
     )
     @mock.patch("builtins.open", new_callable=mock_open)
     def test_connect_describe_cluster_failure(
@@ -185,14 +183,14 @@ class ClusterTest(unittest.TestCase):
         )
 
         result = self.runner.invoke(
-            connect_cluster,
+            set_cluster_context,
             ["--cluster-name", "my-cluster"],
         )
         self.assertEqual(result.exit_code, 1)
 
     @mock.patch("boto3.Session")
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_aws_credential"
     )
     @mock.patch("builtins.open", new_callable=mock_open)
     def test_connect_sm_client_no_region_failure(
@@ -205,12 +203,12 @@ class ClusterTest(unittest.TestCase):
         self.mock_session.client.side_effect = botocore.exceptions.NoRegionError()
         mock_session.return_value = self.mock_session
         result = self.runner.invoke(
-            connect_cluster,
+            set_cluster_context,
             ["--cluster-name", "my-cluster"],
         )
         self.assertEqual(result.exit_code, 1)
 
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("boto3.Session")
     @mock.patch("subprocess.run")
     @mock.patch("builtins.open", new_callable=mock_open)
@@ -243,19 +241,19 @@ class ClusterTest(unittest.TestCase):
             ],
         )
         result = self.runner.invoke(
-            connect_cluster,
+            set_cluster_context,
             ["--cluster-name", "my-cluster"],
         )
         self.assertEqual(result.exit_code, 1)
 
-    @mock.patch("hyperpod_cli.commands.cluster.ClusterValidator")
+    @mock.patch("sagemaker.hyperpod.cli.commands.cluster.ClusterValidator")
     @mock.patch("builtins.open", new_callable=mock_open)
     def test_connect_validator_failure(self, mock_open_test, mock_validator_cls):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = False
 
         result = self.runner.invoke(
-            connect_cluster,
+            set_cluster_context,
             ["--cluster-name", "my-cluster"],
         )
         self.assertEqual(result.exit_code, 1)
@@ -263,12 +261,12 @@ class ClusterTest(unittest.TestCase):
     @mock.patch("kubernetes.config.load_kube_config")
     @mock.patch("boto3.Session")
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_aws_credential"
     )
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("subprocess.run")
     def test_get_clusters(
         self,
@@ -305,7 +303,7 @@ class ClusterTest(unittest.TestCase):
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(get_clusters)
+        result = self.runner.invoke(list_cluster)
         self.assertEqual(result.exit_code, 0)
         self.assertIn("cluster-1", result.output)
         self.assertIn("cluster-2", result.output)
@@ -315,12 +313,12 @@ class ClusterTest(unittest.TestCase):
     @mock.patch("kubernetes.config.load_kube_config")
     @mock.patch("boto3.Session")
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_aws_credential"
     )
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("subprocess.run")
     @mock.patch("logging.Logger.debug")
     def test_get_clusters_debug_mode(
@@ -359,7 +357,7 @@ class ClusterTest(unittest.TestCase):
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(get_clusters, ["--debug"])
+        result = self.runner.invoke(list_cluster, ["--debug"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("cluster-1", result.output)
         self.assertIn("cluster-2", result.output)
@@ -370,12 +368,12 @@ class ClusterTest(unittest.TestCase):
     @mock.patch("kubernetes.config.load_kube_config")
     @mock.patch("boto3.Session")
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_aws_credential"
     )
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("subprocess.run")
     def test_get_clusters_maximum_number(
         self,
@@ -418,7 +416,7 @@ class ClusterTest(unittest.TestCase):
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(get_clusters)
+        result = self.runner.invoke(list_cluster)
         self.assertEqual(result.exit_code, 0)
         self.assertIn("cluster-1", result.output)
         self.assertIn("cluster-2", result.output)
@@ -430,12 +428,12 @@ class ClusterTest(unittest.TestCase):
     @mock.patch("kubernetes.config.load_kube_config")
     @mock.patch("boto3.Session")
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_aws_credential"
     )
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("subprocess.run")
     def test_get_clusters_no_cluster_summary(
         self,
@@ -470,7 +468,7 @@ class ClusterTest(unittest.TestCase):
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(get_clusters)
+        result = self.runner.invoke(list_cluster)
         self.assertEqual(result.exit_code, 0)
         self.assertNotIn("cluster-1", result.output)
         self.assertNotIn("cluster-2", result.output)
@@ -480,12 +478,12 @@ class ClusterTest(unittest.TestCase):
     @mock.patch("kubernetes.config.load_kube_config")
     @mock.patch("boto3.Session")
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_aws_credential"
     )
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("subprocess.run")
     def test_get_clusters_table_output(
         self,
@@ -522,7 +520,7 @@ class ClusterTest(unittest.TestCase):
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(get_clusters, ["--output", "table"])
+        result = self.runner.invoke(list_cluster, ["--output", "table"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("cluster-1", result.output)
         self.assertIn("cluster-2", result.output)
@@ -533,15 +531,15 @@ class ClusterTest(unittest.TestCase):
     @mock.patch("kubernetes.config.load_kube_config")
     @mock.patch("boto3.Session")
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_aws_credential"
     )
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("subprocess.run")
     @mock.patch(
-        "hyperpod_cli.service.list_pods.ListPods.list_pods_and_get_requested_resources_group_by_node_name"
+        "sagemaker.hyperpod.cli.service.list_pods.ListPods.list_pods_and_get_requested_resources_group_by_node_name"
     )
     def test_get_clusters_with_deep_health_check_enabled_and_gpu_devices(
         self,
@@ -583,7 +581,7 @@ class ClusterTest(unittest.TestCase):
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(get_clusters)
+        result = self.runner.invoke(list_cluster)
         self.assertEqual(result.exit_code, 0)
         self.assertIn("cluster-1", result.output)
         self.assertIn("cluster-2", result.output)
@@ -591,15 +589,15 @@ class ClusterTest(unittest.TestCase):
     @mock.patch("kubernetes.config.load_kube_config")
     @mock.patch("boto3.Session")
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_aws_credential"
     )
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("subprocess.run")
     @mock.patch(
-        "hyperpod_cli.service.list_pods.ListPods.list_pods_and_get_requested_resources_group_by_node_name"
+        "sagemaker.hyperpod.cli.service.list_pods.ListPods.list_pods_and_get_requested_resources_group_by_node_name"
     )
     def test_get_clusters_with_unexpected_health_status(
         self,
@@ -641,7 +639,7 @@ class ClusterTest(unittest.TestCase):
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(get_clusters)
+        result = self.runner.invoke(list_cluster)
         self.assertEqual(result.exit_code, 0)
         self.assertNotIn("cluster-1", result.output)
         self.assertNotIn("cluster-2", result.output)
@@ -649,15 +647,15 @@ class ClusterTest(unittest.TestCase):
     @mock.patch("kubernetes.config.load_kube_config")
     @mock.patch("boto3.Session")
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_aws_credential"
     )
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("subprocess.run")
     @mock.patch(
-        "hyperpod_cli.service.list_pods.ListPods.list_pods_and_get_requested_resources_group_by_node_name"
+        "sagemaker.hyperpod.cli.service.list_pods.ListPods.list_pods_and_get_requested_resources_group_by_node_name"
     )
     def test_get_clusters_with_no_status(
         self,
@@ -699,19 +697,19 @@ class ClusterTest(unittest.TestCase):
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(get_clusters)
+        result = self.runner.invoke(list_cluster)
         self.assertEqual(result.exit_code, 0)
         self.assertIn("cluster-1", result.output)
 
-    @mock.patch("hyperpod_cli.commands.cluster.ClusterValidator")
+    @mock.patch("sagemaker.hyperpod.cli.commands.cluster.ClusterValidator")
     def test_get_clusters_credentials_failure(self, mock_validator_cls):
         mock_validator = mock_validator_cls.return_value
         mock_validator.validate_aws_credential.return_value = False
 
-        result = self.runner.invoke(get_clusters)
+        result = self.runner.invoke(list_cluster)
         self.assertEqual(result.exit_code, 1)
 
-    @mock.patch("hyperpod_cli.commands.cluster.ClusterValidator")
+    @mock.patch("sagemaker.hyperpod.cli.commands.cluster.ClusterValidator")
     @mock.patch("boto3.Session")
     def test_get_clusters_sm_client_no_region_error(
         self,
@@ -722,10 +720,10 @@ class ClusterTest(unittest.TestCase):
         mock_validator.validate_aws_credential.return_value = True
         self.mock_session.client.side_effect = botocore.exceptions.NoRegionError()
         mock_session.return_value = self.mock_session
-        result = self.runner.invoke(get_clusters)
+        result = self.runner.invoke(list_cluster)
         self.assertEqual(result.exit_code, 1)
 
-    @mock.patch("hyperpod_cli.commands.cluster.ClusterValidator")
+    @mock.patch("sagemaker.hyperpod.cli.commands.cluster.ClusterValidator")
     @mock.patch("boto3.Session")
     def test_get_clusters_sm_client_unexpected_error(
         self,
@@ -736,18 +734,18 @@ class ClusterTest(unittest.TestCase):
         mock_validator.validate_aws_credential.return_value = True
         self.mock_session.client.side_effect = Exception("Unexpected error")
         mock_session.return_value = self.mock_session
-        result = self.runner.invoke(get_clusters)
+        result = self.runner.invoke(list_cluster)
         self.assertEqual(result.exit_code, 1)
 
     @mock.patch("kubernetes.config.load_kube_config")
     @mock.patch("boto3.Session")
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_aws_credential"
     )
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("subprocess.run")
     def test_list_clusters_with_clusters_list(
         self,
@@ -785,7 +783,7 @@ class ClusterTest(unittest.TestCase):
         mock_session.return_value = self.mock_session
 
         result = self.runner.invoke(
-            get_clusters,
+            list_cluster,
             ["--clusters", "cluster-3"],
         )
         self.assertEqual(result.exit_code, 0)
@@ -796,12 +794,12 @@ class ClusterTest(unittest.TestCase):
     @mock.patch("kubernetes.config.load_kube_config")
     @mock.patch("boto3.Session")
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_aws_credential"
     )
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("subprocess.run")
     def test_list_clusters_failed_list_cluster_error(
         self,
@@ -836,7 +834,7 @@ class ClusterTest(unittest.TestCase):
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(get_clusters)
+        result = self.runner.invoke(list_cluster)
         self.assertEqual(result.exit_code, 1)
         # clusters got skipped because exception encounter during processing clusters
         self.assertNotIn("cluster-1", result.output)
@@ -845,12 +843,12 @@ class ClusterTest(unittest.TestCase):
     @mock.patch("kubernetes.config.load_kube_config")
     @mock.patch("boto3.Session")
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_aws_credential"
     )
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("subprocess.run")
     def test_list_clusters_failed_unexpected_error(
         self,
@@ -887,7 +885,7 @@ class ClusterTest(unittest.TestCase):
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(get_clusters)
+        result = self.runner.invoke(list_cluster)
         self.assertEqual(result.exit_code, 0)
         # clusters got skipped because exception encounter during processing clusters
         self.assertNotIn("cluster-1", result.output)
@@ -896,12 +894,12 @@ class ClusterTest(unittest.TestCase):
     @mock.patch("kubernetes.config.load_kube_config")
     @mock.patch("boto3.Session")
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_aws_credential"
     )
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("subprocess.run")
     def test_list_clusters_skipped_not_eks_clusters(
         self,
@@ -936,7 +934,7 @@ class ClusterTest(unittest.TestCase):
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
 
-        result = self.runner.invoke(get_clusters)
+        result = self.runner.invoke(list_cluster)
         self.assertEqual(result.exit_code, 0)
         # clusters got skipped because exception encounter during processing clusters
         self.assertNotIn("cluster-1", result.output)
@@ -945,12 +943,12 @@ class ClusterTest(unittest.TestCase):
     @mock.patch("kubernetes.config.load_kube_config")
     @mock.patch("boto3.Session")
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_aws_credential"
     )
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("subprocess.run")
     def test_get_clusters_with_sm_managed_namespace(
         self,
@@ -1002,7 +1000,7 @@ class ClusterTest(unittest.TestCase):
         mock_session.return_value = self.mock_session
 
         result = self.runner.invoke(
-            get_clusters,
+            list_cluster,
             [
                 "-n",
                 "test-namespace",
@@ -1024,12 +1022,12 @@ class ClusterTest(unittest.TestCase):
     @mock.patch("kubernetes.config.load_kube_config")
     @mock.patch("boto3.Session")
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_aws_credential"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_aws_credential"
     )
     @mock.patch(
-        "hyperpod_cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
+        "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("hyperpod_cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
     @mock.patch("subprocess.run")
     def test_get_clusters_with_not_sm_managed_namespace(
         self,
@@ -1072,7 +1070,7 @@ class ClusterTest(unittest.TestCase):
         mock_session.return_value = self.mock_session
 
         result = self.runner.invoke(
-            get_clusters,
+            list_cluster,
             [
                 "-n",
                 "test-namespace",
