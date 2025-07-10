@@ -11,8 +11,8 @@ from sagemaker.hyperpod.cli.commands.inference import (
     js_get_logs, custom_get_logs,
     js_get_operator_logs, custom_get_operator_logs
 )
-import jumpstart_inference_config_schemas.registry as jreg
-import custom_inference_config_schemas.registry as creg
+import hyperpod_jumpstart_inference_template.registry as jreg
+import hyperpod_custom_inference_template.registry as creg
 
 # --------- JumpStart Commands ---------
 

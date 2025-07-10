@@ -23,8 +23,7 @@ This documentation serves as a reference for the available HyperPod CLI commands
   - [SDK](#sdk-)
     - [Training](#training-)
     - [Inference](#inference)
-
-
+  
 
 ## Overview
 

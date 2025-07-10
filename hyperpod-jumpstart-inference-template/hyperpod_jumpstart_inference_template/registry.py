@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-from jumpstart_inference_config_schemas.v1_0 import model as v1
+from hyperpod_jumpstart_inference_template.v1_0 import model as v1
 
 SCHEMA_REGISTRY = {
     "1.0": v1.FlatHPJumpStartEndpoint,
