@@ -10,6 +10,7 @@ from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     ModelInvocationPort, Resources, EnvironmentVariables, AutoScalingSpec,
     CloudWatchTrigger, Dimensions, Metrics
 )
+import sagemaker_core.main.code_injection.codec as codec
 
 # --------- Test Configuration ---------
 NAMESPACE = "integration"
@@ -113,43 +114,60 @@ def test_get_endpoint():
 
 def test_wait_until_inservice():
     """Poll SDK until specific JumpStart endpoint reaches DeploymentComplete"""
-    print(f"Waiting for JumpStart endpoint '{ENDPOINT_NAME}' to be DeploymentComplete...")
+    print(f"[INFO] Waiting for JumpStart endpoint '{ENDPOINT_NAME}' to be DeploymentComplete...")
     deadline = time.time() + (TIMEOUT_MINUTES * 60)
+    poll_count = 0
 
     while time.time() < deadline:
+        poll_count += 1
+        print(f"[DEBUG] Poll #{poll_count}: Checking endpoint status...")
+
         try:
             ep = HPEndpoint.get(name=ENDPOINT_NAME, namespace=NAMESPACE)
-            state = ep.status.deploymentStatus.deploymentObjectOverallState
-            if state == "DeploymentComplete":
+            state = ep.status.endpoints.sagemaker.state
+            print(f"[DEBUG] Current state: {state}")
+            if state == "CreationCompleted":
+                print("[INFO] Endpoint is in CreationCompleted state.")
                 return
-            elif state == "DeploymentFailed":
+            
+            deployment_state = ep.status.deploymentStatus.deploymentObjectOverallState
+            if deployment_state == "DeploymentFailed":
                 pytest.fail("Endpoint deployment failed.")
+
         except Exception as e:
-            print(f"Error polling endpoint status: {e}")
+            print(f"[ERROR] Exception during polling: {e}")
 
         time.sleep(POLL_INTERVAL_SECONDS)
 
-    pytest.fail("Timed out waiting for endpoint to be DeploymentComplete")
+    pytest.fail("[ERROR] Timed out waiting for endpoint to be DeploymentComplete")
 
-def test_invoke_endpoint():
+def test_invoke_endpoint(monkeypatch):
+    original_transform = codec.transform  # Save original
+
+    def mock_transform(data, shape, object_instance=None):
+        if "Body" in data:
+            return {"body": data["Body"].read().decode("utf-8")}
+        return original_transform(data, shape, object_instance)  # Call original
+
+    monkeypatch.setattr("sagemaker_core.main.resources.transform", mock_transform)
+
     ep = HPEndpoint.get(name=ENDPOINT_NAME, namespace=NAMESPACE)
-    response = ep.invoke('{"inputs": "What is the capital of USA?"}')
-    assert "error" not in str(response).lower()
-    time.sleep(5)
+    data = '{"inputs":"What is the capital of USA?"}'
+    response = ep.invoke(body=data)
+    
+    assert "error" not in response.body.lower()
 
 
 def test_get_operator_logs():
     ep = HPEndpoint.get(name=ENDPOINT_NAME, namespace=NAMESPACE)
     logs = ep.get_operator_logs(since_hours=1)
     assert logs
-    time.sleep(5)
 
 
-def test_list_pods(runner):
+def test_list_pods():
     ep = HPEndpoint.get(name=ENDPOINT_NAME, namespace=NAMESPACE)
     pods = ep.list_pods(NAMESPACE)
     assert pods
-    time.sleep(5)
 
 
 def test_delete_endpoint():

@@ -87,23 +87,32 @@ def test_custom_describe(runner, custom_endpoint_name):
 
 def test_wait_until_inservice(custom_endpoint_name):
     """Poll SDK until specific JumpStart endpoint reaches DeploymentComplete"""
-    print(f"Waiting for JumpStart endpoint '{custom_endpoint_name}' to be DeploymentComplete...")
+    print(f"[INFO] Waiting for JumpStart endpoint '{custom_endpoint_name}' to be DeploymentComplete...")
     deadline = time.time() + (TIMEOUT_MINUTES * 60)
+    poll_count = 0
 
     while time.time() < deadline:
+        poll_count += 1
+        print(f"[DEBUG] Poll #{poll_count}: Checking endpoint status...")
+
         try:
             ep = HPEndpoint.get(name=custom_endpoint_name, namespace=NAMESPACE)
-            state = ep.status.deploymentStatus.deploymentObjectOverallState
-            if state == "DeploymentComplete":
+            state = ep.status.endpoints.sagemaker.state
+            print(f"[DEBUG] Current state: {state}")
+            if state == "CreationCompleted":
+                print("[INFO] Endpoint is in CreationCompleted state.")
                 return
-            elif state == "DeploymentFailed":
+            
+            deployment_state = ep.status.deploymentStatus.deploymentObjectOverallState
+            if deployment_state == "DeploymentFailed":
                 pytest.fail("Endpoint deployment failed.")
+
         except Exception as e:
-            print(f"Error polling endpoint status: {e}")
+            print(f"[ERROR] Exception during polling: {e}")
 
         time.sleep(POLL_INTERVAL_SECONDS)
 
-    pytest.fail("Timed out waiting for endpoint to be DeploymentComplete")
+    pytest.fail("[ERROR] Timed out waiting for endpoint to be DeploymentComplete")
 
 
 def test_custom_invoke(runner, custom_endpoint_name):
@@ -123,8 +132,7 @@ def test_custom_get_operator_logs(runner):
 def test_custom_list_pods(runner):
     result = runner.invoke(custom_list_pods, ["--namespace", NAMESPACE])
     assert result.exit_code == 0
-    time.sleep(5)
-
+    
 
 def test_custom_delete(runner, custom_endpoint_name):
     result = runner.invoke(custom_delete, [

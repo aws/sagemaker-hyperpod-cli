@@ -21,7 +21,7 @@ def runner():
 
 @pytest.fixture(scope="module")
 def js_endpoint_name():
-    return f"jumpstart-cli-integ"
+    return f"js-cli-integration"
 
 @pytest.fixture(scope="module")
 def sagemaker_client():
@@ -60,23 +60,32 @@ def test_js_describe(runner, js_endpoint_name):
 
 def test_wait_until_inservice(js_endpoint_name):
     """Poll SDK until specific JumpStart endpoint reaches DeploymentComplete"""
-    print(f"Waiting for JumpStart endpoint '{js_endpoint_name}' to be DeploymentComplete...")
+    print(f"[INFO] Waiting for JumpStart endpoint '{js_endpoint_name}' to be DeploymentComplete...")
     deadline = time.time() + (TIMEOUT_MINUTES * 60)
+    poll_count = 0
 
     while time.time() < deadline:
+        poll_count += 1
+        print(f"[DEBUG] Poll #{poll_count}: Checking endpoint status...")
+
         try:
             ep = HPJumpStartEndpoint.get(name=js_endpoint_name, namespace=NAMESPACE)
-            state = ep.status.deploymentStatus.deploymentObjectOverallState
-            if state == "DeploymentComplete":
+            state = ep.status.endpoints.sagemaker.state
+            print(f"[DEBUG] Current state: {state}")
+            if state == "CreationCompleted":
+                print("[INFO] Endpoint is in CreationCompleted state.")
                 return
-            elif state == "DeploymentFailed":
+
+            deployment_state = ep.status.deploymentStatus.deploymentObjectOverallState
+            if deployment_state == "DeploymentFailed":
                 pytest.fail("Endpoint deployment failed.")
+
         except Exception as e:
-            print(f"Error polling endpoint status: {e}")
+            print(f"[ERROR] Exception during polling: {e}")
 
         time.sleep(POLL_INTERVAL_SECONDS)
 
-    pytest.fail("Timed out waiting for endpoint to be DeploymentComplete")
+    pytest.fail("[ERROR] Timed out waiting for endpoint to be DeploymentComplete")
 
 
 def test_custom_invoke(runner, js_endpoint_name):
@@ -86,7 +95,6 @@ def test_custom_invoke(runner, js_endpoint_name):
     ])
     assert result.exit_code == 0
     assert "error" not in result.output.lower()
-    time.sleep(5)
 
 
 def test_js_get_operator_logs(runner):
@@ -97,7 +105,6 @@ def test_js_get_operator_logs(runner):
 def test_js_list_pods(runner):
     result = runner.invoke(js_list_pods, ["--namespace", NAMESPACE])
     assert result.exit_code == 0
-    time.sleep(5)
 
 
 def test_js_delete(runner, js_endpoint_name):
