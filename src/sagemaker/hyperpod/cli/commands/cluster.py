@@ -62,8 +62,8 @@ from sagemaker.hyperpod.cli.validators.cluster_validator import (
 from sagemaker.hyperpod.cli.utils import (
     get_eks_cluster_name,
 )
-from sagemaker.hyperpod.common.utils import get_context
-from sagemaker.hyperpod.utils import get_monitoring_config, is_observability_addon_enabled
+from sagemaker.hyperpod.common.utils import get_cluster_context
+from sagemaker.hyperpod.observability.utils import get_monitoring_config, is_observability_addon_enabled
 
 RATE_LIMIT = 4
 RATE_LIMIT_PERIOD = 1  # 1 second
@@ -545,7 +545,7 @@ def get_cluster_context(
         set_logging_level(logger, logging.DEBUG)
 
     try:
-        current_context = get_context()
+        current_context = get_cluster_context()
         print(f"Cluster context:{current_context}")
     except botocore.exceptions.NoRegionError:
         logger.error(

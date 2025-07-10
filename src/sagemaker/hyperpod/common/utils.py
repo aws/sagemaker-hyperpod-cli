@@ -33,7 +33,7 @@ def get_default_namespace():
             return "default"
     else:
         raise Exception(
-            "No active context. Please use set_context() method to set current context."
+            "No active context. Please use set_cluster_context() method to set current context."
         )
 
 def handle_exception(e: Exception, name: str, namespace: str):
@@ -184,7 +184,7 @@ def update_kube_config(
         raise RuntimeError(f"Invalid command execution: {e}")
 
 
-def set_current_context(
+def set_eks_context(
     context_name: str,
     namespace: Optional[str] = None,
 ) -> None:
@@ -222,6 +222,38 @@ def set_current_context(
     # Load the updated kubeconfig
     config.load_kube_config(config_file=KUBE_CONFIG_PATH)
 
+def set_cluster_context(
+    cluster_name: str,
+    region: Optional[str] = None,
+    namespace: Optional[str] = None,
+):
+    logger = logging.getLogger(__name__)
+    logger = setup_logging(logger)
+
+    client = boto3.client("sagemaker", region_name=region)
+
+    response = client.describe_cluster(ClusterName=cluster_name)
+    eks_cluster_arn = response["Orchestrator"]["Eks"]["ClusterArn"]
+    eks_name = get_eks_name_from_arn(eks_cluster_arn)
+
+    update_kube_config(eks_name, region)
+    set_eks_context(eks_cluster_arn, namespace)
+
+    if namespace:
+        logger.info(
+            f"Successfully set current context as: {cluster_name}, namespace: {namespace}"
+        )
+    else:
+        logger.info(f"Successfully set current context as: {cluster_name}")
+
+def get_cluster_context():
+    try:
+        current_context = config.list_kube_config_contexts()[1]["context"]["cluster"]
+        return current_context
+    except Exception as e:
+        raise Exception(
+            f"Failed to get current context: {e}. Check your config file at {KUBE_CONFIG_DEFAULT_LOCATION}"
+        )
 
 def list_clusters(
     region: Optional[str] = None,
@@ -242,44 +274,8 @@ def list_clusters(
 
     return {"Eks": eks_clusters, "Slurm": slurm_clusters}
 
-
-def set_context(
-    cluster_name: str,
-    region: Optional[str] = None,
-    namespace: Optional[str] = None,
-):
-    logger = logging.getLogger(__name__)
-    logger = setup_logging(logger)
-
-    client = boto3.client("sagemaker", region_name=region)
-
-    response = client.describe_cluster(ClusterName=cluster_name)
-    eks_cluster_arn = response["Orchestrator"]["Eks"]["ClusterArn"]
-    eks_name = get_eks_name_from_arn(eks_cluster_arn)
-
-    update_kube_config(eks_name, region)
-    set_current_context(eks_cluster_arn, namespace)
-
-    if namespace:
-        logger.info(
-            f"Successfully set current context as: {cluster_name}, namespace: {namespace}"
-        )
-    else:
-        logger.info(f"Successfully set current context as: {cluster_name}")
-
-
-def get_context():
-    try:
-        current_context = config.list_kube_config_contexts()[1]["context"]["cluster"]
-        return current_context
-    except Exception as e:
-        raise Exception(
-            f"Failed to get current context: {e}. Check your config file at {KUBE_CONFIG_DEFAULT_LOCATION}"
-        )
-
-
 def get_current_cluster():
-    current_context = get_context()
+    current_context = get_cluster_context()
     region = get_region_from_eks_arn(current_context)
 
     hyperpod_clusters = list_clusters(region)["Eks"]
@@ -296,7 +292,7 @@ def get_current_cluster():
 
 
 def get_current_region():
-    eks_arn = get_context()
+    eks_arn = get_cluster_context()
     try:
         return get_region_from_eks_arn(eks_arn)
     except:

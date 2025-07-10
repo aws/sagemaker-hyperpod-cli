@@ -7,10 +7,10 @@ from sagemaker.hyperpod.common.utils import (
     get_region_from_eks_arn,
     is_eks_orchestrator,
     update_kube_config,
-    set_current_context,
+    set_eks_context,
     list_clusters,
-    set_context,
-    get_context,
+    set_cluster_context,
+    get_cluster_context,
 )
 from kubernetes.client.exceptions import ApiException
 from pydantic import ValidationError
@@ -159,14 +159,14 @@ class TestUtilityFunctions(unittest.TestCase):
     @patch("yaml.safe_load")
     @patch("builtins.open", new_callable=mock_open)
     @patch("kubernetes.config.load_kube_config")
-    def test_set_current_context(self, mock_load_config, mock_file, mock_safe_load, mock_safe_dump):
+    def test_set_eks_context(self, mock_load_config, mock_file, mock_safe_load, mock_safe_dump):
         mock_kubeconfig = {
             "contexts": [{"name": "test-context", "context": {}}],
             "current-context": "old-context"
         }
         mock_safe_load.return_value = mock_kubeconfig
         
-        set_current_context("test-context", "test-namespace")
+        set_eks_context("test-context", "test-namespace")
         
         mock_safe_load.assert_called_once()
         mock_safe_dump.assert_called_once()
@@ -191,8 +191,8 @@ class TestUtilityFunctions(unittest.TestCase):
     @patch("boto3.client")
     @patch("sagemaker.hyperpod.common.utils.get_eks_name_from_arn")
     @patch("sagemaker.hyperpod.common.utils.update_kube_config")
-    @patch("sagemaker.hyperpod.common.utils.set_current_context")
-    def test_set_context(self, mock_set_context_func, mock_update_config, mock_get_name, mock_boto3_client):
+    @patch("sagemaker.hyperpod.common.utils.set_eks_context")
+    def test_set_cluster_context(self, mock_set_context_func, mock_update_config, mock_get_name, mock_boto3_client):
         mock_client = MagicMock()
         mock_boto3_client.return_value = mock_client
         mock_client.describe_cluster.return_value = {
@@ -200,7 +200,7 @@ class TestUtilityFunctions(unittest.TestCase):
         }
         mock_get_name.return_value = "my-cluster"
         
-        set_context("my-cluster", "us-west-2", "test-namespace")
+        set_cluster_context("my-cluster", "us-west-2", "test-namespace")
         
         mock_client.describe_cluster.assert_called_once_with(ClusterName="my-cluster")
         mock_get_name.assert_called_once()
@@ -208,7 +208,7 @@ class TestUtilityFunctions(unittest.TestCase):
         mock_set_context_func.assert_called_once()
     
     @patch("kubernetes.config.list_kube_config_contexts")
-    def test_get_context_success(self, mock_list_contexts):
+    def test_get_cluster_context_success(self, mock_list_contexts):
         mock_list_contexts.return_value = [
             None,
             {
@@ -217,7 +217,7 @@ class TestUtilityFunctions(unittest.TestCase):
                 }
             },
         ]
-        result = get_context()
+        result = get_cluster_context()
         
         self.assertEqual(result, "arn:aws:eks:us-west-2:123456789012:cluster/my-cluster")
         mock_list_contexts.assert_called_once()

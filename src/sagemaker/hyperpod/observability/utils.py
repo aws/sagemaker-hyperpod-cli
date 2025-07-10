@@ -4,7 +4,7 @@ from typing import Optional
 import boto3
 import yaml
 
-from sagemaker.hyperpod.constants import AMAZON_HYPERPOD_OBSERVABILITY, GRAFANA_DASHBOARD_UID
+from sagemaker.hyperpod.observability.constants import AMAZON_HYPERPOD_OBSERVABILITY, GRAFANA_DASHBOARD_UID
 from sagemaker.hyperpod.observability.MonitoringConfig import MonitoringConfig
 # ToDO : move below functions to SDK util method instead of importing from CLI
 from sagemaker.hyperpod.cli.utils import get_eks_cluster_name, get_hyperpod_cluster_region
