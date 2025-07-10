@@ -10,7 +10,7 @@ JUMPSTART_MODEL_PLURAL = "jumpstartmodels"
 INFERENCE_ENDPOINT_CONFIG_KIND = "InferenceEndpointConfig"
 INFERENCE_ENDPOINT_CONFIG_PLURAL = "inferenceendpointconfigs"
 DEFAULT_MOUNT_PATH = "/opt/ml/model"
-OPERATOR_NAMESPACE = "hyperpod-inference-operator-system"
+OPERATOR_NAMESPACE = "hyperpod-inference-system"
 
 KIND_PLURAL_MAP = {
     JUMPSTART_MODEL_KIND: JUMPSTART_MODEL_PLURAL,

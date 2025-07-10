@@ -135,7 +135,7 @@ class HPEndpointBase:
 
         v1 = client.CoreV1Api()
 
-        pods = v1.list_namespaced_pod(namespace="hyperpod-inference-operator-system")
+        pods = v1.list_namespaced_pod(namespace=OPERATOR_NAMESPACE)
 
         if not pods.items:
             raise Exception(
