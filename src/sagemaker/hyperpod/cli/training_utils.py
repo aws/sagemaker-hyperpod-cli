@@ -24,7 +24,7 @@ def load_schema_for_version(
 def generate_click_command(
     *,
     version_key: Optional[str] = None,
-    schema_pkg: str = "jumpstart_inference_config_schemas",
+    schema_pkg: str = "hyperpod_jumpstart_inference_template",
     registry: Mapping[str, Type] = None,
 ) -> Callable:
     """
@@ -34,7 +34,7 @@ def generate_click_command(
       3) Finally invokes your handler as `func(version, domain_config)`
     - `version_key`: if given, hard-codes the version (no --version flag injected)
     - `schema_pkg`: the importable package root to read schema.json from
-    - `registry`: a dict mapping version → flat‐model class, e.g. hyperpod_pytorchjob_config_schemas.registry.SCHEMA_REGISTRY
+    - `registry`: a dict mapping version → flat‐model class, e.g. hyperpod_pytorch_job_template.registry.SCHEMA_REGISTRY
     """
     if registry is None:
         raise ValueError("You must pass a registry mapping version→Model")
@@ -77,7 +77,7 @@ def generate_click_command(
 
         # 2) inject click options from JSON Schema
         excluded_props = set(["version"])
-        if schema_pkg == "jumpstart_inference_config_schemas":
+        if schema_pkg == "hyperpod_jumpstart_inference_template":
             wrapped_func = click.option(
                 "--env",
                 callback=_parse_json_flag,
@@ -107,7 +107,7 @@ def generate_click_command(
                 ["version", "env", "resources_limits", "resources_requests"]
             )
 
-        elif schema_pkg == "hyperpod_pytorchjob_config_schemas":
+        elif schema_pkg == "hyperpod_pytorch_job_template":
             wrapped_func = click.option(
                 "--environment",
                 callback=_parse_json_flag,

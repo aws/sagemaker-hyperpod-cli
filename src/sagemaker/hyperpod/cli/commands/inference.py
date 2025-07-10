@@ -5,8 +5,8 @@ from typing import Optional
 from tabulate import tabulate
 
 from sagemaker.hyperpod.cli.inference_utils import generate_click_command
-from jumpstart_inference_config_schemas.registry import SCHEMA_REGISTRY as JS_REG
-from custom_inference_config_schemas.registry import SCHEMA_REGISTRY as C_REG
+from hyperpod_jumpstart_inference_template.registry import SCHEMA_REGISTRY as JS_REG
+from hyperpod_custom_inference_template.registry import SCHEMA_REGISTRY as C_REG
 from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
 from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
 from sagemaker_core.resources import Endpoint
@@ -23,7 +23,7 @@ from sagemaker_core.resources import Endpoint
 )
 @click.option("--version", default="1.0", help="Schema version to use")
 @generate_click_command(
-    schema_pkg="jumpstart_inference_config_schemas",
+    schema_pkg="hyperpod_jumpstart_inference_template",
     registry=JS_REG,
 )
 def js_create(namespace, version, js_endpoint):
@@ -44,7 +44,7 @@ def js_create(namespace, version, js_endpoint):
 )
 @click.option("--version", default="1.0", help="Schema version to use")
 @generate_click_command(
-    schema_pkg="custom_inference_config_schemas",
+    schema_pkg="hyperpod_custom_inference_template",
     registry=C_REG,
 )
 def custom_create(namespace, version, custom_endpoint):

@@ -15,7 +15,7 @@ def load_schema_for_version(version: str, schema_pkg: str) -> dict:
 def generate_click_command(
     *,
     version_key: Optional[str] = None,
-    schema_pkg: str = "jumpstart_inference_config_schemas",
+    schema_pkg: str = "hyperpod_jumpstart_inference_template",
     registry: Mapping[str, Type] = None,
 ) -> Callable:
     if registry is None:

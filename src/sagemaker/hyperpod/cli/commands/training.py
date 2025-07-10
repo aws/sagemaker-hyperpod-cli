@@ -11,14 +11,14 @@ import tempfile
 from typing import List, Dict, Any, Optional, Callable, get_args, get_origin, Literal
 from sagemaker.hyperpod.cli.training_utils import generate_click_command
 from importlib.metadata import entry_points
-from hyperpod_pytorchjob_config_schemas.registry import SCHEMA_REGISTRY
+from hyperpod_pytorch_job_template.registry import SCHEMA_REGISTRY
 
 
 @click.command("hyp-pytorch-job")
 @click.option("--version", default="1.0", help="Schema version to use")
 @click.option("--debug", default=False, help="Enable debug mode")
 @generate_click_command(
-    schema_pkg="hyperpod_pytorchjob_config_schemas",
+    schema_pkg="hyperpod_pytorch_job_template",
     registry=SCHEMA_REGISTRY,
 )
 def pytorch_create(version, debug, config):

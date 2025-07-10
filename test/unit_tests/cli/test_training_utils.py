@@ -68,7 +68,7 @@ class TestGenerateClickCommand:
 
         @click.command()
         @generate_click_command(
-            schema_pkg="hyperpod_pytorchjob_config_schemas",
+            schema_pkg="hyperpod_pytorch_job_template",
             registry=registry
         )
         def cmd(version, debug, config):
@@ -115,7 +115,7 @@ class TestGenerateClickCommand:
 
         @click.command()
         @generate_click_command(
-            schema_pkg="hyperpod_pytorchjob_config_schemas",
+            schema_pkg="hyperpod_pytorch_job_template",
             registry=registry
         )
         def cmd(version, debug, config):
