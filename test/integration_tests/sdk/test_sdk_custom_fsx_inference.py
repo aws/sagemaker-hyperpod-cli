@@ -3,10 +3,10 @@ import uuid
 import json
 import pytest
 import boto3
-
+import os
 from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
 from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
-    ModelSourceConfig, S3Storage, TlsConfig, Worker, ModelVolumeMount,
+    ModelSourceConfig, FsxStorage, TlsConfig, Worker, ModelVolumeMount,
     ModelInvocationPort, Resources, EnvironmentVariables, AutoScalingSpec,
     CloudWatchTrigger, Dimensions, Metrics
 )
@@ -15,16 +15,23 @@ import sagemaker_core.main.code_injection.codec as codec
 # --------- Test Configuration ---------
 NAMESPACE = "integration"
 REGION = "us-east-2"
-ENDPOINT_NAME = f"custom-sdk-integration"
+ENDPOINT_NAME = f"custom-sdk-integration-fsx"
 
-MODEL_NAME = f"ds-model-integration"
-S3_BUCKET = "test-model-s3-zhaoqi"
-MODEL_LOCATION = "deepseek15b"
-IMAGE_URI = "763104351884.dkr.ecr.us-east-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.4.0-tgi2.3.1-gpu-py311-cu124-ubuntu22.04-v2.0"
-TLS_URI = "s3://tls-bucket-inf1-beta2"
+MODEL_NAME = f"test-model-integration-sdk-fsx"
+MODEL_LOCATION = "hf-eqa"
+IMAGE_URI = "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:2.3.0-transformers4.48.0-cpu-py311-ubuntu22.04"
 
 TIMEOUT_MINUTES = 15
 POLL_INTERVAL_SECONDS = 30
+
+BETA_FSX = "fs-0454e783bbb7356fc"
+PROD_FSX = "fs-03c59e2a7e824a22f"
+BETA_TLS = "s3://sagemaker-hyperpod-certificate-beta-us-east-2"
+PROD_TLS = "s3://sagemaker-hyperpod-certificate-prod-us-east-2"
+stage = os.getenv("STAGE", "BETA").upper()
+FSX_LOCATION = BETA_FSX if stage == "BETA" else PROD_FSX
+TLS_LOCATION = BETA_TLS if stage == "BETA" else PROD_TLS
+
 
 @pytest.fixture(scope="module")
 def sagemaker_client():
@@ -33,25 +40,27 @@ def sagemaker_client():
 @pytest.fixture(scope="module")
 def custom_endpoint():
     # TLS
-    tls = TlsConfig(tls_certificate_output_s3_uri=TLS_URI)
+    tls = TlsConfig(tls_certificate_output_s3_uri=TLS_LOCATION)
 
     # Model Source
     model_src = ModelSourceConfig(
-        model_source_type="s3",
+        model_source_type="fsx",
         model_location=MODEL_LOCATION,
-        s3_storage=S3Storage(
-            bucket_name=S3_BUCKET,
-            region=REGION
-        )
+        fsx_storage=FsxStorage(
+            file_system_id=FSX_LOCATION
+        ),
     )
 
     # Env vars
     env_vars = [
-        EnvironmentVariables(name="HF_MODEL_ID", value="/opt/ml/model"),
         EnvironmentVariables(name="SAGEMAKER_PROGRAM", value="inference.py"),
         EnvironmentVariables(name="SAGEMAKER_SUBMIT_DIRECTORY", value="/opt/ml/model/code"),
+        EnvironmentVariables(name="SAGEMAKER_CONTAINER_LOG_LEVEL", value="20"),
+        EnvironmentVariables(name="SAGEMAKER_MODEL_SERVER_TIMEOUT", value="3600"),
+        EnvironmentVariables(name="ENDPOINT_SERVER_TIMEOUT", value="3600"),
         EnvironmentVariables(name="MODEL_CACHE_ROOT", value="/opt/ml/model"),
         EnvironmentVariables(name="SAGEMAKER_ENV", value="1"),
+        EnvironmentVariables(name="SAGEMAKER_MODEL_SERVER_WORKERS", value="1"),
     ]
 
     # Worker
@@ -60,43 +69,19 @@ def custom_endpoint():
         model_volume_mount=ModelVolumeMount(name="model-weights"),
         model_invocation_port=ModelInvocationPort(container_port=8080),
         resources=Resources(
-            requests={"cpu": "30000m", "nvidia.com/gpu": 1, "memory": "100Gi"},
-            limits={"nvidia.com/gpu": 1}
+            requests={"cpu": "3200m", "nvidia.com/gpu": 0, "memory": "12Gi"},
+            limits={"nvidia.com/gpu": 0}
         ),
         environment_variables=env_vars
     )
 
-    # AutoScaling
-    dimensions = [
-        Dimensions(name="EndpointName", value=ENDPOINT_NAME),
-        Dimensions(name="VariantName", value="AllTraffic"),
-    ]
-    cw_trigger = CloudWatchTrigger(
-        dimensions=dimensions,
-        metric_collection_period=30,
-        metric_name="Invocations",
-        metric_stat="Sum",
-        metric_type="Average",
-        min_value=0.0,
-        name="SageMaker-Invocations",
-        namespace="AWS/SageMaker",
-        target_value=10,
-        use_cached_metrics=True
-    )
-    auto_scaling = AutoScalingSpec(cloud_watch_trigger=cw_trigger)
-
-    # Metrics
-    metrics = Metrics(enabled=True)
-
     return HPEndpoint(
         endpoint_name=ENDPOINT_NAME,
-        instance_type="ml.g5.8xlarge",
+        instance_type="ml.c5.2xlarge",
         model_name=MODEL_NAME,
         tls_config=tls,
         model_source_config=model_src,
         worker=worker,
-        auto_scaling_spec=auto_scaling,
-        metrics=metrics
     )
 
 def test_create_endpoint(custom_endpoint):
@@ -142,18 +127,18 @@ def test_wait_until_inservice():
     pytest.fail("[ERROR] Timed out waiting for endpoint to be DeploymentComplete")
 
 def test_invoke_endpoint(monkeypatch):
-    original_transform = codec.transform  # Save original
+    original_transform = codec.transform
 
     def mock_transform(data, shape, object_instance=None):
         if "Body" in data:
             return {"body": data["Body"].read().decode("utf-8")}
-        return original_transform(data, shape, object_instance)  # Call original
+        return original_transform(data, shape, object_instance)
 
     monkeypatch.setattr("sagemaker_core.main.resources.transform", mock_transform)
 
     ep = HPEndpoint.get(name=ENDPOINT_NAME, namespace=NAMESPACE)
-    data = '{"inputs":"What is the capital of USA?"}'
-    response = ep.invoke(body=data)
+    data = '{"question" :"what is the name of the planet?", "context":"mars"}'
+    response = ep.invoke(body=data, content_type="application/list-text")
     
     assert "error" not in response.body.lower()
 
