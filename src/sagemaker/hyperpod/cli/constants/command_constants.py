@@ -61,10 +61,6 @@ class RestartPolicy(Enum):
     EXIT_CODE = "ExitCode"
 
 
-class Orchestrator(Enum):
-    EKS = "eks"
-
-
 class OutputFormat(Enum):
     JSON = "json"
     TABLE = "table"

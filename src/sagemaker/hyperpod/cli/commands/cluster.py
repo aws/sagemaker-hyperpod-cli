@@ -39,7 +39,6 @@ from sagemaker.hyperpod.cli.constants.command_constants import (
     SAGEMAKER_MANAGED_CLUSTER_QUEUE_SUFFIX,
     SAGEMAKER_QUOTA_ALLOCATION_LABEL,
     TOTAL_ACCELERATOR_DEVICES_KEY,
-    Orchestrator,
     TEMP_KUBE_CONFIG_FILE,
     OutputFormat,
 )
@@ -79,13 +78,6 @@ logger = setup_logger(__name__)
     help="Optional. The region that the HyperPod and EKS clusters are located. If not specified, it will be set to the region from the current AWS account credentials.",
 )
 @click.option(
-    "--orchestrator",
-    type=click.Choice([c.value for c in Orchestrator]),
-    required=False,
-    default=Orchestrator.EKS.value,
-    help="Optional. The orchestrator type for the cluster. Currently, `'eks'` is the only available option.",
-)
-@click.option(
     "--output",
     type=click.Choice([c.value for c in OutputFormat]),
     required=False,
@@ -113,7 +105,6 @@ logger = setup_logger(__name__)
 )
 def list_cluster(
     region: Optional[str],
-    orchestrator: Optional[str],
     output: Optional[str],
     clusters: Optional[str],
     debug: bool,
