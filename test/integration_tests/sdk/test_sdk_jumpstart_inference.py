@@ -15,10 +15,8 @@ NAMESPACE = "integration"
 REGION = "us-east-2"
 ENDPOINT_NAME = "js-sdk-integration"
 
-INSTANCE_TYPE = "ml.g5.8xlarge"
+INSTANCE_TYPE = "ml.g5.4xlarge"
 MODEL_ID = "deepseek-llm-r1-distill-qwen-1-5b"
-MODEL_VERSION = "2.0.4"
-TLS_S3_URI = "s3://tls-bucket-inf1-beta2"
 
 TIMEOUT_MINUTES = 15
 POLL_INTERVAL_SECONDS = 30
@@ -29,12 +27,11 @@ def sagemaker_client():
 
 @pytest.fixture(scope="module")
 def endpoint_obj():
-    model = Model(model_id=MODEL_ID, model_version=MODEL_VERSION)
+    model = Model(model_id=MODEL_ID)
     server = Server(instance_type=INSTANCE_TYPE)
     sm_endpoint = SageMakerEndpoint(name=ENDPOINT_NAME)
-    tls = TlsConfig(tls_certificate_output_s3_uri=TLS_S3_URI)
 
-    return HPJumpStartEndpoint(model=model, server=server, sage_maker_endpoint=sm_endpoint, tls_config=tls)
+    return HPJumpStartEndpoint(model=model, server=server, sage_maker_endpoint=sm_endpoint)
 
 def test_create_endpoint(endpoint_obj):
     endpoint_obj.create(namespace=NAMESPACE)

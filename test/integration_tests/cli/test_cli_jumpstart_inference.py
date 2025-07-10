@@ -34,10 +34,8 @@ def test_js_create(runner, js_endpoint_name):
         "--namespace", NAMESPACE,
         "--version", VERSION,
         "--model-id", "deepseek-llm-r1-distill-qwen-1-5b",
-        "--model-version", "2.0.4",
-        "--instance-type", "ml.g5.8xlarge",
+        "--instance-type", "ml.g5.4xlarge",
         "--endpoint-name", js_endpoint_name,
-        "--tls-certificate-output-s3-uri", "s3://tls-bucket-inf1-beta2"
     ])
     assert result.exit_code == 0, result.output
 
