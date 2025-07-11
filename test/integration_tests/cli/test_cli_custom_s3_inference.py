@@ -2,6 +2,7 @@ import time
 import uuid
 import pytest
 import boto3
+import os
 from click.testing import CliRunner
 from sagemaker.hyperpod.cli.commands.inference import (
     custom_create, 
@@ -21,13 +22,21 @@ REGION = "us-east-2"
 TIMEOUT_MINUTES = 15
 POLL_INTERVAL_SECONDS = 30
 
+BETA_BUCKET = "sagemaker-hyperpod-beta-integ-test-model-bucket-n"
+PROD_BUCKET = "sagemaker-hyperpod-prod-integ-test-model-bucket"
+BETA_TLS = "s3://sagemaker-hyperpod-certificate-beta-us-east-2"
+PROD_TLS = "s3://sagemaker-hyperpod-certificate-prod-us-east-2"
+stage = os.getenv("STAGE", "BETA").upper()
+BUCKET_LOCATION = BETA_BUCKET if stage == "BETA" else PROD_BUCKET
+TLS_LOCATION = BETA_TLS if stage == "BETA" else PROD_TLS
+
 @pytest.fixture(scope="module")
 def runner():
     return CliRunner()
 
 @pytest.fixture(scope="module")
 def custom_endpoint_name():
-    return f"custom-cli-integration"
+    return f"custom-cli-integration-s3"
 
 @pytest.fixture(scope="module")
 def sagemaker_client():
@@ -39,32 +48,20 @@ def test_custom_create(runner, custom_endpoint_name):
     result = runner.invoke(custom_create, [
         "--namespace", NAMESPACE,
         "--version", VERSION,
-        "--instance-type", "ml.g5.8xlarge",
-        "--model-name", "test-model-integration",
+        "--instance-type", "ml.c5.2xlarge",
+        "--model-name", "test-model-integration-cli-s3",
         "--model-source-type", "s3",
-        "--model-location", "deepseek15b",
-        "--s3-bucket-name", "test-model-s3-zhaoqi",
+        "--model-location", "hf-eqa",
+        "--s3-bucket-name", BUCKET_LOCATION,
         "--s3-region", REGION,
-        "--image-uri", "763104351884.dkr.ecr.us-east-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.4.0-tgi2.3.1-gpu-py311-cu124-ubuntu22.04-v2.0",
+        "--image-uri", "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:2.3.0-transformers4.48.0-cpu-py311-ubuntu22.04",
         "--container-port", "8080",
         "--model-volume-mount-name", "model-weights",
         "--endpoint-name", custom_endpoint_name,
-        "--resources-requests", '{"cpu": "30000m", "nvidia.com/gpu": 1, "memory": "100Gi"}',
-        "--resources-limits", '{"nvidia.com/gpu": 1}',
-        "--tls-certificate-output-s3-uri", "s3://tls-bucket-inf1-beta2",
-        "--metrics-enabled", "true",
-        "--metric-collection-period", "30",
-        "--metric-name", "Invocations",
-        "--metric-stat", "Sum",
-        "--metric-type", "Average",
-        "--min-value", "0.0",
-        "--cloud-watch-trigger-name", "SageMaker-Invocations-new",
-        "--cloud-watch-trigger-namespace", "AWS/SageMaker",
-        "--target-value", "10",
-        "--use-cached-metrics", "true",
-        "--dimensions", '{"EndpointName": "' + custom_endpoint_name + '", "VariantName": "AllTraffic"}',
-        "--env", '{ "HF_MODEL_ID": "/opt/ml/model", "SAGEMAKER_PROGRAM": "inference.py", "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code", "MODEL_CACHE_ROOT": "/opt/ml/model", "SAGEMAKER_ENV": "1" }',
-
+        "--resources-requests", '{"cpu": "3200m", "nvidia.com/gpu": 0, "memory": "12Gi"}',
+        "--resources-limits", '{"nvidia.com/gpu": 0}',
+        "--tls-certificate-output-s3-uri", TLS_LOCATION,
+        "--env", '{ "SAGEMAKER_PROGRAM": "inference.py", "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code", "SAGEMAKER_CONTAINER_LOG_LEVEL": "20", "SAGEMAKER_MODEL_SERVER_TIMEOUT": "3600", "ENDPOINT_SERVER_TIMEOUT": "3600", "MODEL_CACHE_ROOT": "/opt/ml/model", "SAGEMAKER_ENV": "1", "SAGEMAKER_MODEL_SERVER_WORKERS": "1" }'
     ])
     assert result.exit_code == 0, result.output
 
@@ -118,7 +115,8 @@ def test_wait_until_inservice(custom_endpoint_name):
 def test_custom_invoke(runner, custom_endpoint_name):
     result = runner.invoke(custom_invoke, [
         "--endpoint-name", custom_endpoint_name,
-        "--body", '{"inputs": "What is the capital of USA?"}'
+        "--body", '{"question" :"what is the name of the planet?", "context":"mars"}',
+        "--content-type", "application/list-text"
     ])
     assert result.exit_code == 0
     assert "error" not in result.output.lower()
