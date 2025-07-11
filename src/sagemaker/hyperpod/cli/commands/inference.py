@@ -69,9 +69,17 @@ def custom_create(namespace, version, custom_endpoint):
     required=True,
     help="Required. The body of the request to invoke.",
 )
+@click.option(
+    "--content-type",
+    type=click.STRING,
+    required=False,
+    default="application/json",
+    help="Optional. The content type of the request to invoke. Default set to 'application/json'",
+)
 def custom_invoke(
     endpoint_name: str,
     body: str,
+    content_type: Optional[str]
 ):
     """
     Invoke a model endpoint.
@@ -105,7 +113,7 @@ def custom_invoke(
     resp = rt.invoke_endpoint(
         EndpointName=endpoint_name,
         Body=payload.encode("utf-8"),
-        ContentType="application/json",
+        ContentType=content_type,
     )
     result = resp["Body"].read().decode("utf-8")
     click.echo(result)

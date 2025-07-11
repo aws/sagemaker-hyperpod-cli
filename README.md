@@ -5,6 +5,8 @@ The Amazon SageMaker HyperPod command-line interface (HyperPod CLI) is a tool th
 
 This documentation serves as a reference for the available HyperPod CLI commands. For a comprehensive user guide, see [Orchestrating SageMaker HyperPod clusters with Amazon EKS](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks.html) in the *Amazon SageMaker Developer Guide*.
 
+Note: Old `hyperpod`CLI V2 has been moved to `release_v2` branch. Please refer [release_v2 branch](https://github.com/aws/sagemaker-hyperpod-cli/tree/release_v2) for usage.
+
 ## Table of Contents
 - [Overview](#overview)
 - [Prerequisites](#prerequisites)
@@ -21,8 +23,8 @@ This documentation serves as a reference for the available HyperPod CLI commands
     - [Training](#training-)
     - [Inference](#inference-)
   - [SDK](#sdk-)
-    - [Training](#training-)
-    - [Inference](#inference)
+    - [Training](#training-sdk)
+    - [Inference](#inference-sdk)
   
 
 ## Overview
@@ -72,26 +74,8 @@ SageMaker HyperPod CLI currently supports start training job with:
 1. Verify if the installation succeeded by running the following command.
 
     ```
-    hyperpod --help
+    hyp --help
     ```
-
-1. If you have a running HyperPod cluster, you can try to run a training job using the sample configuration file provided at ```/examples/basic-job-example-config.yaml```.
-    - Get your HyperPod clusters to show their capacities.
-      ```
-      hyperpod get-clusters
-      ```
-    - Get your HyperPod clusters to show their capacities and quota allocation info for a team.
-      ```
-      hyperpod get-clusters -n hyperpod-ns-<team-name>
-      ```
-    - Connect to one HyperPod cluster and specify a namespace you have access to.
-      ```
-      hyperpod connect-cluster --cluster-name <cluster-name>
-      ```
-    - Start a job in your cluster. Change the `instance_type` in the yaml file to be same as the one in your HyperPod cluster. Also change the `namespace` you want to submit a job to, the example uses kubeflow namespace. You need to have installed PyTorch in your cluster.
-      ```
-      hyperpod start-job --config-file ./examples/basic-job-example-config.yaml
-      ```
 
 ## Usage
 
@@ -106,8 +90,8 @@ The HyperPod CLI provides the following commands:
   - [Training](#training-)
   - [Inference](#inference-)
 - [SDK](#sdk-)
-  - [Training](#training-)
-  - [Inference](#inference)
+  - [Training](#training-sdk)
+  - [Inference](#inference-sdk)
 
 
 ### Getting Cluster information
@@ -267,7 +251,7 @@ hyp delete hyp-jumpstart-endpoint --name endpoint-jumpstart
 
 Along with the CLI, we also have SDKs available that can perform the training and inference functionalities that the CLI performs
 
-### Training 
+### Training SDK
 
 #### Creating a Training Job 
 
@@ -342,7 +326,7 @@ pytorch_job.create()
 
 
 
-### Inference
+### Inference SDK
 
 #### Creating a JumpstartModel Endpoint
 
