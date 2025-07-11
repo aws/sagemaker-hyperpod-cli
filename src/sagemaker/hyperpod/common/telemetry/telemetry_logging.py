@@ -23,11 +23,6 @@ PYTHON_VERSION = "{}.{}.{}".format(
 )
 
 FEATURE_TO_CODE = {
-    str(Feature.SDK_DEFAULTS): 1,
-    str(Feature.LOCAL_MODE): 2,
-    str(Feature.REMOTE_FUNCTION): 3,
-    str(Feature.MODEL_TRAINER): 4,
-    str(Feature.ESTIMATOR): 5,
     str(Feature.HYPERPOD): 6,  # Added to support telemetry in sagemaker-hyperpod-cli
 }
 
@@ -146,7 +141,7 @@ def _send_telemetry_request(
         _requests_helper(url, 2)
         logger.info("SageMaker Python SDK telemetry successfully emitted.")
     except Exception:  # pylint: disable=W0703
-        logger.debug("SageMaker Python SDK telemetry not emitted!")
+        logger.warning("SageMaker Python SDK telemetry not emitted!")
 
 
 def _hyperpod_telemetry_emitter(feature: str, func_name: str):

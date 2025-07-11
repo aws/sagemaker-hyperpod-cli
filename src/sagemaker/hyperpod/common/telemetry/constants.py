@@ -5,11 +5,6 @@ from enum import Enum
 class Feature(Enum):
     """Enumeration of feature names used in telemetry."""
 
-    SDK_DEFAULTS = 1
-    LOCAL_MODE = 2
-    REMOTE_FUNCTION = 3
-    MODEL_TRAINER = 4
-    ESTIMATOR = 5
     HYPERPOD = 6  # Added to support telemetry in sagemaker-hyperpod-cli
 
     def __str__(self):  # pylint: disable=E0307

@@ -164,7 +164,7 @@ class HPEndpointBase:
         return logs
 
     @classmethod
-    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "get_logs")
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "get_logs_endpoint")
     def get_logs(
         cls,
         pod: str,
