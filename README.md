@@ -60,7 +60,7 @@ SageMaker HyperPod CLI currently supports start training job with:
 1. Clone and install the sagemaker-hyperpod-cli package.
 
     ```
-    git clone https://github.com/aws/sagemaker-hyperpod-cli.git
+    git clone -b release_v2 https://github.com/aws/sagemaker-hyperpod-cli.git
     cd sagemaker-hyperpod-cli
     pip install .
     ```
