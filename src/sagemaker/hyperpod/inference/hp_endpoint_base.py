@@ -15,6 +15,10 @@ from sagemaker.hyperpod.common.utils import (
     setup_logging,
     get_default_namespace,
 )
+from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
+    _hyperpod_telemetry_emitter,
+)
+from sagemaker.telemetry.constants import Feature
 
 
 class HPEndpointBase:
@@ -130,6 +134,7 @@ class HPEndpointBase:
             handle_exception(e, name, namespace)
 
     @classmethod
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "get_operator_logs")
     def get_operator_logs(cls, since_hours: float):
         cls.verify_kube_config()
 
@@ -159,6 +164,7 @@ class HPEndpointBase:
         return logs
 
     @classmethod
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "get_logs")
     def get_logs(
         cls,
         pod: str,
@@ -194,6 +200,7 @@ class HPEndpointBase:
         return logs
 
     @classmethod
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_pods_endpoint")
     def list_pods(cls, namespace=None):
         cls.verify_kube_config()
 
@@ -210,6 +217,7 @@ class HPEndpointBase:
         return pods
 
     @classmethod
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_namespaces")
     def list_namespaces(cls):
         cls.verify_kube_config()
 
