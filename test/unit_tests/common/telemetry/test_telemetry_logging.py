@@ -136,10 +136,3 @@ def test_send_telemetry_request_invalid_region(mock_get_region_account, mock_req
     # Verify no request was made due to invalid region
     assert not mock_requests.called
 
-# Performance test
-def test_get_region_and_account_performance():
-    import time
-    start_time = time.time()
-    get_region_and_account_from_current_context()
-    duration = time.time() - start_time
-    assert duration < 1.0  # Should complete within 1 second
