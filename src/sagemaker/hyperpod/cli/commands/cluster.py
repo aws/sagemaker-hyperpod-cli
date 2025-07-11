@@ -42,7 +42,7 @@ from sagemaker.hyperpod.cli.constants.command_constants import (
     TEMP_KUBE_CONFIG_FILE,
     OutputFormat,
 )
-from sagemaker.hyperpod.cli.telemetry.user_agent import (
+from sagemaker.hyperpod.common.telemetry.user_agent import (
     get_user_agent_extra_suffix,
 )
 from sagemaker.hyperpod.cli.service.list_pods import (

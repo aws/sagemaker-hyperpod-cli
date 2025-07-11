@@ -18,7 +18,7 @@ from sagemaker.hyperpod.common.utils import (
 from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
     _hyperpod_telemetry_emitter,
 )
-from sagemaker.telemetry.constants import Feature
+from sagemaker.hyperpod.common.telemetry.constants import Feature
 
 
 class HPEndpointBase:

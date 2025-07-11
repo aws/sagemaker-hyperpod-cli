@@ -10,13 +10,7 @@ import subprocess
 import re
 
 import boto3
-from sagemaker.telemetry.constants import Feature, Status, Region
-from sagemaker.telemetry.telemetry_logging import (
-    FEATURE_TO_CODE,
-    STATUS_TO_CODE,
-    _requests_helper,
-    _construct_url,
-)
+from sagemaker.hyperpod.common.telemetry.constants import Feature, Status, Region
 import importlib.metadata
 
 SDK_VERSION = importlib.metadata.version("sagemaker-hyperpod")
@@ -27,6 +21,20 @@ OS_NAME_VERSION = "{}/{}".format(OS_NAME, OS_VERSION)
 PYTHON_VERSION = "{}.{}.{}".format(
     sys.version_info.major, sys.version_info.minor, sys.version_info.micro
 )
+
+FEATURE_TO_CODE = {
+    str(Feature.SDK_DEFAULTS): 1,
+    str(Feature.LOCAL_MODE): 2,
+    str(Feature.REMOTE_FUNCTION): 3,
+    str(Feature.MODEL_TRAINER): 4,
+    str(Feature.ESTIMATOR): 5,
+    str(Feature.HYPERPOD): 6,  # Added to support telemetry in sagemaker-hyperpod-cli
+}
+
+STATUS_TO_CODE = {
+    str(Status.SUCCESS): 1,
+    str(Status.FAILURE): 0,
+}
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +71,43 @@ def get_region_and_account_from_current_context() -> Tuple[str, str]:
         logger.debug(f"Failed to get context info from kubectl: {e}")
 
     return DEFAULT_AWS_REGION, "unknown"
+
+
+def _requests_helper(url, timeout):
+    """Make a GET request to the given URL"""
+
+    response = None
+    try:
+        response = requests.get(url, timeout)
+    except requests.exceptions.RequestException as e:
+        logger.exception("Request exception: %s", str(e))
+    return response
+
+
+def _construct_url(
+    accountId: str,
+    region: str,
+    status: str,
+    feature: str,
+    failure_reason: str,
+    failure_type: str,
+    extra_info: str,
+) -> str:
+    """Construct the URL for the telemetry request"""
+
+    base_url = (
+        f"https://sm-pysdk-t-{region}.s3.{region}.amazonaws.com/telemetry?"
+        f"x-accountId={accountId}"
+        f"&x-status={status}"
+        f"&x-feature={feature}"
+    )
+    logger.debug("Failure reason: %s", failure_reason)
+    if failure_reason:
+        base_url += f"&x-failureReason={failure_reason}"
+        base_url += f"&x-failureType={failure_type}"
+    if extra_info:
+        base_url += f"&x-extra={extra_info}"
+    return base_url
 
 
 def _send_telemetry_request(

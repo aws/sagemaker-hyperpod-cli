@@ -89,7 +89,6 @@ setup(
         "hyperpod-pytorch-job-template>=1.0.0, <2.0.0",
         "hyperpod-custom-inference-template>=1.0.0, <2.0.0",
         "hyperpod-jumpstart-inference-template>=1.0.0, <2.0.0",
-        "sagemaker",
     ],
     entry_points={
         "console_scripts": [

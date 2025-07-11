@@ -14,7 +14,7 @@ from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
 from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
     _hyperpod_telemetry_emitter,
 )
-from sagemaker.telemetry.constants import Feature
+from sagemaker.hyperpod.common.telemetry.constants import Feature
 from sagemaker.hyperpod.inference.hp_endpoint_base import HPEndpointBase
 from typing import Dict, List, Optional
 from sagemaker_core.main.resources import Endpoint
