@@ -23,8 +23,8 @@ Note: Old `hyperpod`CLI V2 has been moved to `release_v2` branch. Please refer [
     - [Training](#training-)
     - [Inference](#inference-)
   - [SDK](#sdk-)
-    - [Training](#training-)
-    - [Inference](#inference)
+    - [Training](#training-sdk)
+    - [Inference](#inference-sdk)
   
 
 ## Overview
@@ -90,8 +90,8 @@ The HyperPod CLI provides the following commands:
   - [Training](#training-)
   - [Inference](#inference-)
 - [SDK](#sdk-)
-  - [Training](#training-)
-  - [Inference](#inference)
+  - [Training](#training-sdk)
+  - [Inference](#inference-sdk)
 
 
 ### Getting Cluster information
@@ -251,7 +251,7 @@ hyp delete hyp-jumpstart-endpoint --name endpoint-jumpstart
 
 Along with the CLI, we also have SDKs available that can perform the training and inference functionalities that the CLI performs
 
-### Training 
+### Training SDK
 
 #### Creating a Training Job 
 
@@ -326,7 +326,7 @@ pytorch_job.create()
 
 
 
-### Inference
+### Inference SDK
 
 #### Creating a JumpstartModel Endpoint
 
