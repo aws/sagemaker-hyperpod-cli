@@ -21,7 +21,7 @@ def test_job_name():
 @pytest.fixture(scope="class")
 def image_uri():
     """Return a standard PyTorch image URI for testing."""
-    return "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:2.2.0-cpu-py310-ubuntu20.04-sagemaker"
+    return "448049793756.dkr.ecr.us-west-2.amazonaws.com/ptjob:mnist"
 
 @pytest.fixture(scope="class")
 def cluster_name():
