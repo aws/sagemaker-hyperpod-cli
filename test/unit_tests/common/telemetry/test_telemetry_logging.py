@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, Mock
 import subprocess
 from typing import Tuple
 
@@ -8,10 +8,14 @@ from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
     get_region_and_account_from_current_context,
     _send_telemetry_request,
     _hyperpod_telemetry_emitter,
+    _requests_helper,
+    _construct_url,
     DEFAULT_AWS_REGION,
     FEATURE_TO_CODE,
 )
 from sagemaker.hyperpod.common.telemetry.constants import Feature, Status
+import requests
+import logging
 
 # Test data
 MOCK_CONTEXTS = {
@@ -199,3 +203,117 @@ def test_multiple_telemetry_calls():
         # Check failure call
         failure_call = mock_telemetry.call_args_list[1]
         assert failure_call[0][0] == Status.FAILURE
+
+
+# Test _requests_helper
+def test_requests_helper_success():
+    """Test successful request"""
+    with patch("requests.get") as mock_get:
+        # Setup mock response
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_get.return_value = mock_response
+
+        # Make request
+        response = _requests_helper("https://test.com", 2)
+
+        # Verify
+        assert response == mock_response
+        mock_get.assert_called_once_with("https://test.com", 2)
+
+
+def test_requests_helper_with_invalid_url(caplog):
+    """Test requests helper with invalid URL"""
+    with patch("requests.get") as mock_get:
+        # Set up the mock to raise InvalidURL
+        mock_get.side_effect = requests.exceptions.InvalidURL("Invalid URL")
+
+        # Capture logs at DEBUG level
+        with caplog.at_level(logging.DEBUG):
+            response = _requests_helper("invalid://url", 2)
+
+        # Verify response is None
+        assert response is None
+
+        # Verify log message
+        assert "Request exception: Invalid URL" in caplog.text
+
+
+def test_construct_url_basic():
+    """Test basic URL construction"""
+    url = _construct_url(
+        accountId="123456789012",
+        region="us-west-2",
+        status="SUCCESS",
+        feature="TEST",
+        failure_reason=None,
+        failure_type=None,
+        extra_info=None,
+    )
+
+    expected = (
+        "https://sm-pysdk-t-us-west-2.s3.us-west-2.amazonaws.com/telemetry?"
+        "x-accountId=123456789012&x-status=SUCCESS&x-feature=TEST"
+    )
+    assert url == expected
+
+
+def test_construct_url_with_failure():
+    """Test URL construction with failure information"""
+    url = _construct_url(
+        accountId="123456789012",
+        region="us-west-2",
+        status="FAILURE",
+        feature="TEST",
+        failure_reason="Test failed",
+        failure_type="TestError",
+        extra_info=None,
+    )
+
+    expected = (
+        "https://sm-pysdk-t-us-west-2.s3.us-west-2.amazonaws.com/telemetry?"
+        "x-accountId=123456789012&x-status=FAILURE&x-feature=TEST"
+        "&x-failureReason=Test failed&x-failureType=TestError"
+    )
+    assert url == expected
+
+
+def test_construct_url_with_extra_info():
+    """Test URL construction with extra information"""
+    url = _construct_url(
+        accountId="123456789012",
+        region="us-west-2",
+        status="SUCCESS",
+        feature="TEST",
+        failure_reason=None,
+        failure_type=None,
+        extra_info="additional=info",
+    )
+
+    expected = (
+        "https://sm-pysdk-t-us-west-2.s3.us-west-2.amazonaws.com/telemetry?"
+        "x-accountId=123456789012&x-status=SUCCESS&x-feature=TEST"
+        "&x-extra=additional=info"
+    )
+    assert url == expected
+
+
+def test_construct_url_all_parameters():
+    """Test URL construction with all parameters"""
+    url = _construct_url(
+        accountId="123456789012",
+        region="us-west-2",
+        status="FAILURE",
+        feature="TEST",
+        failure_reason="Test failed",
+        failure_type="TestError",
+        extra_info="additional=info",
+    )
+
+    expected = (
+        "https://sm-pysdk-t-us-west-2.s3.us-west-2.amazonaws.com/telemetry?"
+        "x-accountId=123456789012&x-status=FAILURE&x-feature=TEST"
+        "&x-failureReason=Test failed&x-failureType=TestError"
+        "&x-extra=additional=info"
+    )
+    assert url == expected
