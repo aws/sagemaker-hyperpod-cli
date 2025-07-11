@@ -140,10 +140,22 @@ override_aws_node() {
     ################################################
     # 2 - RIG Daemonset updates
     ################################################
-    rig_nodes_only=$(yq e -P "
-        .spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[] |=
-		.matchExpressions += [{\"key\":\"sagemaker.amazonaws.com/instance-group-type\",\"operator\":\"In\",\"values\":[\"Restricted\"]}]
-    " $tmp)
+
+    local rig_affinity_already_exists=$(yq e -P '.spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[].matchExpressions[] | select(.key == "sagemaker.amazonaws.com/instance-group-type")' $tmp)
+    if [ -z "$rig_affinity_already_exists" ]; then
+        # If it doesn't exist, append it
+        rig_nodes_only=$(yq e -P '
+            .spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[].matchExpressions += 
+            {"key": "sagemaker.amazonaws.com/instance-group-type", "operator": "In", "values": ["Restricted"]}
+        ' $tmp)
+    else
+        # If it exists, update it
+        rig_nodes_only=$(yq e -P '
+            .spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[].matchExpressions[] |= 
+            select(.key == "sagemaker.amazonaws.com/instance-group-type").operator = "In"
+        ' $tmp)
+    fi
+
     set_and_append_envvars=$(echo "$rig_nodes_only" | \
 	    yq e -P "
 		.spec.template.spec.containers[] |= 
