@@ -22,7 +22,7 @@ REGION = "us-east-2"
 TIMEOUT_MINUTES = 15
 POLL_INTERVAL_SECONDS = 30
 
-BETA_BUCKET = "sagemaker-hyperpod-beta-integ-test-model-bucket"
+BETA_BUCKET = "sagemaker-hyperpod-beta-integ-test-model-bucket-n"
 PROD_BUCKET = "sagemaker-hyperpod-prod-integ-test-model-bucket"
 BETA_TLS = "s3://sagemaker-hyperpod-certificate-beta-us-east-2"
 PROD_TLS = "s3://sagemaker-hyperpod-certificate-prod-us-east-2"

@@ -24,7 +24,7 @@ IMAGE_URI = "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-in
 TIMEOUT_MINUTES = 15
 POLL_INTERVAL_SECONDS = 30
 
-BETA_BUCKET = "sagemaker-hyperpod-beta-integ-test-model-bucket"
+BETA_BUCKET = "sagemaker-hyperpod-beta-integ-test-model-bucket-n"
 PROD_BUCKET = "sagemaker-hyperpod-prod-integ-test-model-bucket"
 
 BETA_TLS = "s3://sagemaker-hyperpod-certificate-beta-us-east-2"
