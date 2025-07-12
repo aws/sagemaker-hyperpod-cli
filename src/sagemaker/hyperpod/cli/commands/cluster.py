@@ -42,7 +42,7 @@ from sagemaker.hyperpod.cli.constants.command_constants import (
     TEMP_KUBE_CONFIG_FILE,
     OutputFormat,
 )
-from sagemaker.hyperpod.cli.telemetry.user_agent import (
+from sagemaker.hyperpod.common.telemetry.user_agent import (
     get_user_agent_extra_suffix,
 )
 from sagemaker.hyperpod.cli.service.list_pods import (
@@ -61,8 +61,17 @@ from sagemaker.hyperpod.cli.validators.cluster_validator import (
 from sagemaker.hyperpod.cli.utils import (
     get_eks_cluster_name,
 )
-from sagemaker.hyperpod.common.utils import get_cluster_context as get_cluster_context_util
-from sagemaker.hyperpod.observability.utils import get_monitoring_config, is_observability_addon_enabled
+from sagemaker.hyperpod.common.utils import (
+    get_cluster_context as get_cluster_context_util,
+)
+from sagemaker.hyperpod.observability.utils import (
+    get_monitoring_config,
+    is_observability_addon_enabled,
+)
+from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
+    _hyperpod_telemetry_emitter,
+)
+from sagemaker.hyperpod.common.telemetry.constants import Feature
 
 RATE_LIMIT = 4
 RATE_LIMIT_PERIOD = 1  # 1 second
@@ -103,12 +112,13 @@ logger = setup_logger(__name__)
     multiple=True,
     help="Optional. The namespace that you want to check the capacity for. Only SageMaker managed namespaces are supported.",
 )
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_cluster")
 def list_cluster(
     region: Optional[str],
     output: Optional[str],
     clusters: Optional[str],
     debug: bool,
-    namespace: Optional[List]
+    namespace: Optional[List],
 ):
     """List SageMaker Hyperpod Clusters with cluster metadata.
 
@@ -261,8 +271,14 @@ def rate_limited_operation(
         for ns in namespace:
             sm_managed_namespace = k8s_client.get_sagemaker_managed_namespace(ns)
             if sm_managed_namespace:
-                quota_allocation_id = sm_managed_namespace.metadata.labels[SAGEMAKER_QUOTA_ALLOCATION_LABEL]
-                cluster_queue_name = HYPERPOD_NAMESPACE_PREFIX + quota_allocation_id + SAGEMAKER_MANAGED_CLUSTER_QUEUE_SUFFIX
+                quota_allocation_id = sm_managed_namespace.metadata.labels[
+                    SAGEMAKER_QUOTA_ALLOCATION_LABEL
+                ]
+                cluster_queue_name = (
+                    HYPERPOD_NAMESPACE_PREFIX
+                    + quota_allocation_id
+                    + SAGEMAKER_MANAGED_CLUSTER_QUEUE_SUFFIX
+                )
                 cluster_queue = k8s_client.get_cluster_queue(cluster_queue_name)
                 nominal_quota = _get_cluster_queue_nominal_quota(cluster_queue)
                 quota_usage = _get_cluster_queue_quota_usage(cluster_queue)
@@ -282,8 +298,19 @@ def rate_limited_operation(
                 nodes_summary["deep_health_check_passed"],
             ]
             for ns in namespace:
-                capacities.append(ns_nominal_quota.get(ns).get(instance_type, {}).get(NVIDIA_GPU_RESOURCE_LIMIT_KEY, "N/A"))
-                capacities.append(_get_available_quota(ns_nominal_quota.get(ns), ns_quota_usage.get(ns), instance_type, NVIDIA_GPU_RESOURCE_LIMIT_KEY))
+                capacities.append(
+                    ns_nominal_quota.get(ns)
+                    .get(instance_type, {})
+                    .get(NVIDIA_GPU_RESOURCE_LIMIT_KEY, "N/A")
+                )
+                capacities.append(
+                    _get_available_quota(
+                        ns_nominal_quota.get(ns),
+                        ns_quota_usage.get(ns),
+                        instance_type,
+                        NVIDIA_GPU_RESOURCE_LIMIT_KEY,
+                    )
+                )
             cluster_capacities.append(capacities)
     except Exception as e:
         logger.error(f"Error processing cluster {cluster_name}: {e}, continue...")
@@ -305,7 +332,7 @@ def _get_cluster_queue_nominal_quota(cluster_queue):
             if resource_name == NVIDIA_GPU_RESOURCE_LIMIT_KEY:
                 quota = int(quota)
             nominal_quota[flavor_name][resource_name] = quota
-    
+
     return nominal_quota
 
 
@@ -336,7 +363,7 @@ def _get_available_quota(nominal, usage, flavor, resource_name):
     # Some resources need to be further processed by parsing unit like memory, e.g 10Gi
     if nominal_quota is not None and usage_quota is not None:
         return int(nominal_quota) - int(usage_quota)
-    
+
     return "N/A"
 
 
@@ -358,7 +385,9 @@ def _restructure_output(summary_list, namespaces):
     for node_summary in summary_list:
         node_summary["Namespaces"] = {}
         for ns in namespaces:
-            available_accelerators = node_summary[ns + AVAILABLE_ACCELERATOR_DEVICES_KEY]
+            available_accelerators = node_summary[
+                ns + AVAILABLE_ACCELERATOR_DEVICES_KEY
+            ]
             total_accelerators = node_summary[ns + TOTAL_ACCELERATOR_DEVICES_KEY]
             quota_accelerator_info = {
                 AVAILABLE_ACCELERATOR_DEVICES_KEY: available_accelerators,
@@ -425,9 +454,9 @@ def _aggregate_nodes_info(
 
         # Accelerator Devices available = Allocatable devices - Allocated devices
         if node_name in nodes_resource_allocated_dict:
-            nodes_summary[instance_type]["accelerator_devices_available"] -= (
-                nodes_resource_allocated_dict[node_name]
-            )
+            nodes_summary[instance_type][
+                "accelerator_devices_available"
+            ] -= nodes_resource_allocated_dict[node_name]
 
     logger.debug(f"nodes_summary: {nodes_summary}")
     return nodes_summary
@@ -550,7 +579,6 @@ def get_cluster_context(
         sys.exit(1)
 
 
-
 @click.command()
 @click.option("--grafana", is_flag=True, help="Returns Grafana Dashboard URL")
 @click.option("--prometheus", is_flag=True, help="Returns Prometheus Workspace URL")
@@ -572,12 +600,19 @@ def get_monitoring(grafana: bool, prometheus: bool, list: bool) -> None:
             print(f"Grafana dashboard URL: {monitor_config.grafanaURL}")
         if list:
             metrics_data = monitor_config.availableMetrics
-            print(tabulate([[k, v.get('level', v.get('enabled'))] for k, v in metrics_data.items()],
-                           headers=['Metric', 'Level/Enabled'], tablefmt='presto'))
+            print(
+                tabulate(
+                    [
+                        [k, v.get("level", v.get("enabled"))]
+                        for k, v in metrics_data.items()
+                    ],
+                    headers=["Metric", "Level/Enabled"],
+                    tablefmt="presto",
+                )
+            )
     except Exception as e:
         logger.error(f"Failed to get metrics: {e}")
         sys.exit(1)
-
 
 
 def _update_kube_config(

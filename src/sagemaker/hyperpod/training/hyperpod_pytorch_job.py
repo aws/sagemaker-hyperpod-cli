@@ -13,6 +13,10 @@ from sagemaker.hyperpod.common.utils import (
     get_default_namespace,
     setup_logging,
 )
+from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
+    _hyperpod_telemetry_emitter,
+)
+from sagemaker.hyperpod.common.telemetry.constants import Feature
 import yaml
 import logging
 
@@ -45,6 +49,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
     def get_logger(cls):
         return logging.getLogger(__name__)
 
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_pytorchjob")
     def create(self, debug=False):
         self.verify_kube_config()
 
@@ -83,6 +88,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             handle_exception(e, self.metadata.name, self.metadata.namespace)
 
     @classmethod
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_pytorchjobs")
     def list(cls, namespace=None) -> List["HyperPodPytorchJob"]:
         cls.verify_kube_config()
 
@@ -106,6 +112,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             logger.error(f"Failed to list HyperpodPytorchJobs!")
             handle_exception(e, "", namespace)
 
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "delete_pytorchjob")
     def delete(self):
         self.verify_kube_config()
 
@@ -128,6 +135,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             handle_exception(e, self.metadata.name, self.metadata.namespace)
 
     @classmethod
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "get_pytorchjob")
     def get(cls, name, namespace=None) -> "HyperPodPytorchJob":
         cls.verify_kube_config()
 
@@ -175,6 +183,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             logger.error(f"Failed to refresh HyperPodPytorchJob {self.metadata.name}!")
             handle_exception(e, self.metadata.name, self.metadata.namespace)
 
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_pods_pytorchjob")
     def list_pods(self) -> List[str]:
         self.verify_kube_config()
 
@@ -196,6 +205,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             logger.error(f"Failed to list pod in namespace {self.metadata.namespace}!")
             handle_exception(e, self.metadata.name, self.metadata.namespace)
 
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "get_pytorchjob_logs_from_pod")
     def get_logs_from_pod(self, pod_name: str, container: Optional[str] = None) -> str:
         self.verify_kube_config()
 

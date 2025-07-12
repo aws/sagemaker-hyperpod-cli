@@ -11,6 +11,10 @@ from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     InferenceEndpointConfigStatus,
     _HPEndpoint,
 )
+from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
+    _hyperpod_telemetry_emitter,
+)
+from sagemaker.hyperpod.common.telemetry.constants import Feature
 from sagemaker.hyperpod.inference.hp_endpoint_base import HPEndpointBase
 from typing import Dict, List, Optional
 from sagemaker_core.main.resources import Endpoint
@@ -21,6 +25,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
     metadata: Optional[Metadata] = Field(default=None)
     status: Optional[InferenceEndpointConfigStatus] = Field(default=None)
 
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_endpoint")
     def create(
         self,
         name=None,
@@ -59,6 +64,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
             f"Creating sagemaker model and endpoint. Endpoint name: {spec.endpointName}.\n The process may take a few minutes..."
         )
 
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_endpoint_from_dict")
     def create_from_dict(
         self,
         input: Dict,
@@ -116,6 +122,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         return self
 
     @classmethod
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_endpoints")
     def list(
         cls,
         namespace: str = None,
@@ -138,6 +145,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         return endpoints
 
     @classmethod
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "get_endpoint")
     def get(cls, name: str, namespace: str = None) -> Endpoint:
         if not namespace:
             namespace = get_default_namespace()
@@ -163,6 +171,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
 
         return endpoint
 
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "delete_endpoint")
     def delete(self) -> None:
         logger = self.get_logger()
         logger = setup_logging(logger)
@@ -174,6 +183,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         )
         logger.info(f"Deleting HPEndpoint: {self.metadata.name}...")
 
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "invoke_endpoint")
     def invoke(self, body, content_type="application/json"):
         if not self.endpointName:
             raise Exception("SageMaker endpoint name not found in this object!")

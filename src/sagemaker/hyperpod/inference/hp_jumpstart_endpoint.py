@@ -16,12 +16,17 @@ from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
     _HPJumpStartEndpoint,
     JumpStartModelStatus,
 )
+from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
+    _hyperpod_telemetry_emitter,
+)
+from sagemaker.hyperpod.common.telemetry.constants import Feature
 
 
 class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
     metadata: Optional[Metadata] = Field(default=None)
     status: Optional[JumpStartModelStatus] = Field(default=None)
 
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_js_endpoint")
     def create(
         self,
         name=None,
@@ -64,6 +69,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
             f"Creating JumpStart model and sagemaker endpoint. Endpoint name: {endpoint_name}.\n The process may take a few minutes..."
         )
 
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_js_endpoint_from_dict")
     def create_from_dict(
         self,
         input: Dict,
@@ -125,6 +131,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         return self
 
     @classmethod
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_js_endpoints")
     def list(
         cls,
         namespace: str = None,
@@ -147,6 +154,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         return endpoints
 
     @classmethod
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "get_js_endpoint")
     def get(cls, name: str, namespace: str = None):
         if not namespace:
             namespace = get_default_namespace()
@@ -172,6 +180,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
 
         return endpoint
 
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "delete_js_endpoint")
     def delete(self) -> None:
         logger = self.get_logger()
         logger = setup_logging(logger)
@@ -185,6 +194,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
             f"Deleting JumpStart model and sagemaker endpoint: {self.metadata.name}. This may take a few minutes..."
         )
 
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "invoke_js_endpoint")
     def invoke(self, body, content_type="application/json"):
         if not self.sageMakerEndpoint or not self.sageMakerEndpoint.name:
             raise Exception("SageMaker endpoint name not found in this object!")
