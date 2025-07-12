@@ -90,6 +90,29 @@ Notes:
   helm install dependencies helm_chart/HyperPodHelmChart --namespace kube-system
   ```
 
+### Step Four:
+
+* Deploy a second Helm Chart to Your Kubernetes Cluster specific for RIG instances. This command deploys HyperPod dependencies to your cluster based on (1) the existing standard EKS Deployments in your cluster (e.g. coredns), and (2) the current version of Helm chart in this repo. The following command will fetch the information from your current EKS cluster (connected via `update-kubeconfig` in Step Zero) and your repo for the installation, and present the target installation for confirmation before deployment:
+  ```
+  ./install_rig_dependencies.sh
+  ```
+
+  If needed, please run `chmod +700 ./install_rig_dependencies.sh` to allow the script to execute.
+
+⚠️ Note: This will require the yq utility with version >= 4 (e.g. https://github.com/mikefarah/yq/releases/tag/v4)
+
+⚠️ Note: aws-node (AWS VPC CNI) is a critical add-on for general pod use.
+Other pods that depend on aws-node (e.g. CoreDNS, HyperPod HealthMonitoringAgent,...) may experience 'FailedCreatePodSandBox' if the aws-node pods are not available before start up.
+Therefore, please allow additional time for K8s to recreate the pods and/or manually recreate the pods (or let K8s recreate after cleaning up) before cluster use.
+
+⚠️ Note: HyperPod HealthMonitoringAgent (HMA) is a critical dependency for node resilience.
+HMA installation is normally handled by the standard (non-RIG) Helm Chart. See https://github.com/aws/sagemaker-hyperpod-cli/blob/main/helm_chart/HyperPodHelmChart/charts/health-monitoring-agent/values.yaml#L2
+The image URI for this component is region-specific. See https://github.com/aws/sagemaker-hyperpod-cli/tree/main/helm_chart#6-notes
+To ensure this feature works as intended, please be sure to use the correct image URI.
+
+For installations that have already deployed, the image URI can be updated (corrected) using a 'kubectl patch' command. For example:
+    kubectl patch daemonset health-monitoring-agent -n aws-hyperpod --patch '{"spec": {"template": {"spec": {"containers": [{"name": "health-monitoring-agent", "image": "767398015722.dkr.ecr.us-east-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.448.0_1.0.115.0"}]}}}}'
+
 ## 5. Create Team Role
 
 * To create role for hyperpod cluster users, please set the value for `computeQuotaTarget.targeId` when installing or upgrade the chart. This value is the same as the `targeId` of quota allocation.
