@@ -43,7 +43,7 @@ def sagemaker_client():
     return boto3.client("sagemaker", region_name=REGION)
 
 # --------- Custom Endpoint Tests ---------
-
+@pytest.mark.dependency(name="create")
 def test_custom_create(runner, custom_endpoint_name):
     result = runner.invoke(custom_create, [
         "--namespace", NAMESPACE,
@@ -72,6 +72,7 @@ def test_custom_list(runner, custom_endpoint_name):
     assert custom_endpoint_name in result.output
 
 
+@pytest.mark.dependency(name="describe")
 def test_custom_describe(runner, custom_endpoint_name):
     result = runner.invoke(custom_describe, [
         "--name", custom_endpoint_name,
@@ -82,6 +83,7 @@ def test_custom_describe(runner, custom_endpoint_name):
     assert custom_endpoint_name in result.output
 
 
+@pytest.mark.dependency(depends=["create", "describe"])
 def test_wait_until_inservice(custom_endpoint_name):
     """Poll SDK until specific JumpStart endpoint reaches DeploymentComplete"""
     print(f"[INFO] Waiting for JumpStart endpoint '{custom_endpoint_name}' to be DeploymentComplete...")
