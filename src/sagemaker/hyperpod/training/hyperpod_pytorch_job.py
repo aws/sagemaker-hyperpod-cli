@@ -1,9 +1,6 @@
 from pydantic import ConfigDict, Field
-from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_config import (
-    _HyperPodPytorchJob,
-)
-from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_status import (
-    HyperPodPytorchJobStatus,
+from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config import (
+    _HyperPodPytorchJob, HyperPodPytorchJobStatus
 )
 from sagemaker.hyperpod.common.config.metadata import Metadata
 from kubernetes import client, config

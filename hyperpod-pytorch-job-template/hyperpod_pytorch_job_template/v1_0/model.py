@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List, Dict, Union
-from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_config import (
-    Container,
+from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config import (
+    Containers,
     ReplicaSpec,
     Resources,
     RunPolicy,
@@ -103,7 +103,7 @@ class PyTorchJobConfig(BaseModel):
             ]
 
         # Create container object
-        container = Container(**container_kwargs)
+        container = Containers(**container_kwargs)
 
         # Create pod spec kwargs
         spec_kwargs = {"containers": list([container])}
