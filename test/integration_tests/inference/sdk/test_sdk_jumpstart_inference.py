@@ -33,6 +33,7 @@ def endpoint_obj():
 
     return HPJumpStartEndpoint(model=model, server=server, sage_maker_endpoint=sm_endpoint)
 
+@pytest.mark.dependency(name="create")
 def test_create_endpoint(endpoint_obj):
     endpoint_obj.create(namespace=NAMESPACE)
     assert endpoint_obj.metadata.name == ENDPOINT_NAME
@@ -42,11 +43,13 @@ def test_list_endpoint():
     names = [ep.metadata.name for ep in endpoints]
     assert ENDPOINT_NAME in names
 
+@pytest.mark.dependency(name="describe")
 def test_get_endpoint():
     ep = HPJumpStartEndpoint.get(name=ENDPOINT_NAME, namespace=NAMESPACE)
     assert ep.metadata.name == ENDPOINT_NAME
     assert ep.model.modelId == MODEL_ID
 
+@pytest.mark.dependency(depends=["create", "describe"])
 def test_wait_until_inservice():
     """Poll SDK until specific JumpStart endpoint reaches DeploymentComplete"""
     print(f"[INFO] Waiting for JumpStart endpoint '{ENDPOINT_NAME}' to be DeploymentComplete...")

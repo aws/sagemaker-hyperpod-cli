@@ -81,6 +81,7 @@ setup(
         "pytest==8.3.2",
         "pytest-cov==5.0.0",
         "pytest-order==1.3.0",
+        "pytest-dependency==0.6.0",
         "tox==4.18.0",
         "ruff==0.6.2",
         "hera-workflows==5.16.3",
