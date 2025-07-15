@@ -84,6 +84,7 @@ def custom_endpoint():
         worker=worker,
     )
 
+@pytest.mark.dependency(name="create")
 def test_create_endpoint(custom_endpoint):
     custom_endpoint.create(namespace=NAMESPACE)
     assert custom_endpoint.metadata.name == ENDPOINT_NAME
@@ -93,10 +94,12 @@ def test_list_endpoint():
     names = [ep.metadata.name for ep in endpoints]
     assert ENDPOINT_NAME in names
 
+@pytest.mark.dependency(name="describe")
 def test_get_endpoint():
     ep = HPEndpoint.get(name=ENDPOINT_NAME, namespace=NAMESPACE)
     assert ep.modelName == MODEL_NAME
 
+@pytest.mark.dependency(depends=["create", "describe"])
 def test_wait_until_inservice():
     """Poll SDK until specific JumpStart endpoint reaches DeploymentComplete"""
     print(f"[INFO] Waiting for JumpStart endpoint '{ENDPOINT_NAME}' to be DeploymentComplete...")
