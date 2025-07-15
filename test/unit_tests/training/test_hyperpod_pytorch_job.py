@@ -5,7 +5,7 @@ from kubernetes.client.exceptions import ApiException
 from sagemaker.hyperpod.training import (
     HyperPodPytorchJob,
     HyperPodPytorchJobStatus,
-    Container,
+    Containers,
     ReplicaSpec,
     Resources,
     RunPolicy,
@@ -27,7 +27,7 @@ class TestHyperPodPytorchJob(unittest.TestCase):
                 template=Template(
                     spec=Spec(
                         containers=[
-                            Container(
+                            Containers(
                                 name="test-container",
                                 image="test-image",
                                 resources=Resources(
@@ -137,7 +137,7 @@ class TestHyperPodPytorchJob(unittest.TestCase):
                 template=Template(
                     spec=Spec(
                         containers=[
-                            Container(
+                            Containers(
                                 name="test-container",
                                 image="test-image",
                                 resources=Resources(
