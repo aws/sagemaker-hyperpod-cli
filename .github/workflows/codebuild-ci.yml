@@ -54,7 +54,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v3
         with:
           role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
-          aws-region: us-west-2
+          aws-region: us-east-2
           role-duration-seconds: 14400
       - name: Run Unit Tests in Python ${{ matrix.python-version }}
         uses: aws-actions/aws-codebuild-run-build@v1
@@ -73,7 +73,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v3
         with:
           role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
-          aws-region: us-west-2
+          aws-region: us-east-2
           role-duration-seconds: 14400
       - name: Run Integration Tests in Python ${{ matrix.python-version }}
         uses: aws-actions/aws-codebuild-run-build@v1
