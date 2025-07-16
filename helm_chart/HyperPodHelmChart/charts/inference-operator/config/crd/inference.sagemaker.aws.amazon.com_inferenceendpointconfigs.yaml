@@ -52,6 +52,11 @@ spec:
                   cloudWatchTrigger:
                     description: CloudWatch metric trigger to use for autoscaling
                     properties:
+                      activationTargetValue:
+                        default: 0
+                        description: Activation Value for CloudWatch metric to scale
+                          from 0 to 1. Only applicable if minReplicaCount = 0
+                        type: number
                       dimensions:
                         description: Dimensions for Cloudwatch metrics
                         items:
@@ -152,6 +157,11 @@ spec:
                   prometheusTrigger:
                     description: Prometheus metric trigger to use for autoscaling
                     properties:
+                      activationTargetValue:
+                        default: 0
+                        description: Activation Value for Prometheus metric to scale
+                          from 0 to 1. Only applicable if minReplicaCount = 0
+                        type: number
                       customHeaders:
                         description: Custom headers to include while querying the
                           prometheus endpoint.
