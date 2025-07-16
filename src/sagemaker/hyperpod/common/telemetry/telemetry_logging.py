@@ -160,7 +160,7 @@ def _hyperpod_telemetry_emitter(feature: str, func_name: str):
                 duration = round(perf_counter() - start, 2)
                 extra += f"&x-latency={duration}"
                 _send_telemetry_request(
-                    Status.SUCCESS,
+                    STATUS_TO_CODE[str(Status.SUCCESS)],
                     [FEATURE_TO_CODE[str(feature)]],
                     None,
                     None,
@@ -172,7 +172,7 @@ def _hyperpod_telemetry_emitter(feature: str, func_name: str):
                 duration = round(perf_counter() - start, 2)
                 extra += f"&x-latency={duration}"
                 _send_telemetry_request(
-                    Status.FAILURE,
+                    STATUS_TO_CODE[str(Status.FAILURE)],
                     [FEATURE_TO_CODE[str(feature)]],
                     None,
                     str(e),
