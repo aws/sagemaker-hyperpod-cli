@@ -246,15 +246,27 @@ def js_describe(
         if not isinstance(data, dict):
             click.echo("Invalid data received: expected a dictionary.")
             return
-
+        
+        click.echo("\nDeployment (should be completed in 1-5 min):")
+    
         status = data.get("status") or {}
         metadata = data.get("metadata") or {}
         model = data.get("model") or {}
         server = data.get("server") or {}
         tls = data.get("tlsConfig") or {}
 
+        raw_state = status.get("deploymentStatus", {}) \
+                        .get("deploymentObjectOverallState", "") or ""
+        if raw_state == "DeploymentComplete":
+            fg = "green"
+        elif raw_state == "DeploymentInProgress":
+            fg = "yellow"
+        else:
+            fg = "red"
+        colored_state = click.style(raw_state, fg=fg, bold=True)
+
         summary = [
-            ("Deployment State:",       status.get("deploymentStatus", {}).get("deploymentObjectOverallState", "")),
+            ("Status:",                 colored_state),
             ("Metadata Name:",          metadata.get("name", "")),
             ("Namespace:",              metadata.get("namespace", "")),
             ("Label:",                  metadata.get("label", "")),
@@ -266,43 +278,7 @@ def js_describe(
         ]
         click.echo(tabulate(summary, tablefmt="plain"))
 
-        click.echo("\nSageMaker Endpoint:")
-        status     = data.get("status")     or {}
-        endpoints  = status.get("endpoints") or {}
-        sagemaker_info = endpoints.get("sagemaker")
-        if not sagemaker_info:
-            click.secho("  <no SageMaker endpoint information available>", fg="yellow")
-        else:
-            ep_rows = [
-                    ("State:",         data.get("status", {}).get("endpoints", {}).get("sagemaker", {}).get("state")),
-                    ("Name:",          data.get("sageMakerEndpoint", {}).get("name")),
-                    ("ARN:",           data.get("status", {}).get("endpoints", {}).get("sagemaker", {}).get("endpointArn")),
-            ]
-            click.echo(tabulate(ep_rows, tablefmt="plain"))
-
-        click.echo("\nConditions:")
-
-        status = data.get("status") if isinstance(data, dict) else {}
-        status = status or {}  
-        conds = status.get("conditions", [])
-
-        if isinstance(conds, list) and conds:
-            headers = ["TYPE", "STATUS", "LAST TRANSITION", "LAST UPDATE", "MESSAGE"]
-            rows = [
-                [
-                    c.get("type", ""),
-                    c.get("status", ""),
-                    c.get("lastTransitionTime", ""),
-                    c.get("lastUpdateTime", ""),
-                    c.get("message") or ""
-                ]
-                for c in conds if isinstance(c, dict)
-            ]
-            click.echo(tabulate(rows, headers=headers, tablefmt="github"))
-        else:
-            click.echo("  <none>")
-
-        click.echo("\nDeploymentStatus Conditions:")
+        click.echo("\nDeployment Status Conditions:")
 
         status = data.get("status") if isinstance(data, dict) else {}
         status = status or {}
@@ -322,6 +298,54 @@ def js_describe(
                     c.get("message") or ""
                 ]
                 for c in dep_conds if isinstance(c, dict)
+            ]
+            click.echo(tabulate(rows, headers=headers, tablefmt="github"))
+        else:
+            click.echo("  <none>")
+
+        click.echo() 
+        click.echo(click.style("─" * 60, fg="white"))
+        
+        click.echo("\nSageMaker Endpoint (takes ~10 min to create):")
+        status     = data.get("status")     or {}
+        endpoints  = status.get("endpoints") or {}
+        sagemaker_info = endpoints.get("sagemaker")
+
+        if not sagemaker_info:
+            click.secho("  <no SageMaker endpoint information available>", fg="yellow")
+        else:
+            raw_state = sagemaker_info.get("state", "") or ""
+            if raw_state == "CreationCompleted":
+                fg = "green"
+            elif raw_state == "CreationInProgress":
+                fg = "yellow"
+            else:
+                fg = "red"
+            colored_state = click.style(raw_state, fg=fg, bold=True)
+            ep_rows = [
+                    ("Status:",         colored_state),
+                    ("Name:",          data.get("sageMakerEndpoint", {}).get("name")),
+                    ("ARN:",           sagemaker_info.get("endpointArn")),
+            ]
+            click.echo(tabulate(ep_rows, tablefmt="plain"))
+
+        click.echo("\nSagemaker Endpoint Status Conditions:")
+
+        status = data.get("status") if isinstance(data, dict) else {}
+        status = status or {}  
+        conds = status.get("conditions", [])
+
+        if isinstance(conds, list) and conds:
+            headers = ["TYPE", "STATUS", "LAST TRANSITION", "LAST UPDATE", "MESSAGE"]
+            rows = [
+                [
+                    c.get("type", ""),
+                    c.get("status", ""),
+                    c.get("lastTransitionTime", ""),
+                    c.get("lastUpdateTime", ""),
+                    c.get("message") or ""
+                ]
+                for c in conds if isinstance(c, dict)
             ]
             click.echo(tabulate(rows, headers=headers, tablefmt="github"))
         else:
@@ -371,7 +395,8 @@ def custom_describe(
             click.echo("Invalid data received: expected a dictionary.")
             return
 
-        # Safe access blocks
+        click.echo("\nDeployment (should be completed in 1-5 min):")
+
         status = data.get("status") or {}
         metadata = data.get("metadata") or {}
         metrics = data.get("metrics") or {}
@@ -385,8 +410,18 @@ def custom_describe(
         model_port = worker.get("modelInvocationPort") or {}
         cloudwatch = data.get("autoScalingSpec", {}).get("cloudWatchTrigger") or {}
 
+        raw_state = status.get("deploymentStatus", {}) \
+                        .get("deploymentObjectOverallState", "") or ""
+        if raw_state == "DeploymentComplete":
+            fg = "green"
+        elif raw_state == "DeploymentInProgress":
+            fg = "yellow"
+        else:
+            fg = "red"
+        colored_state = click.style(raw_state, fg=fg, bold=True)
+
         summary = [
-            ("Deployment State:",           status.get("deploymentStatus", {}).get("deploymentObjectOverallState", "")),
+            ("Deployment State:",           colored_state),
             ("Metadata Name:",              metadata.get("name", "")),
             ("Namespace:",                  metadata.get("namespace", "")),
             ("Label:",                      metadata.get("label", "")),
@@ -425,41 +460,15 @@ def custom_describe(
 
         click.echo(tabulate(summary, tablefmt="plain"))
 
-        click.echo("\nSageMaker Endpoint:")
-        sm_endpoints = status.get("endpoints") or {}
-        sagemaker_info = sm_endpoints.get("sagemaker")
-        if not sagemaker_info:
-            click.secho("  <no SageMaker endpoint information available>", fg="yellow")
-        else:
-            ep_rows = [
-                ("State:", sm_endpoints.get("sagemaker", {}).get("state", "")),
-                ("Name:", data.get("sageMakerEndpoint", {}).get("name", "")),
-                ("ARN:", sm_endpoints.get("sagemaker", {}).get("endpointArn", "")),
-            ]
-            click.echo(tabulate(ep_rows, tablefmt="plain"))
+        click.echo("\nDeployment Status Conditions:")
 
-        click.echo("\nConditions:")
-        conds = status.get("conditions", [])
-        if isinstance(conds, list) and conds:
-            headers = ["TYPE", "STATUS", "LAST TRANSITION", "LAST UPDATE", "MESSAGE"]
-            rows = [
-                [
-                    c.get("type", ""),
-                    c.get("status", ""),
-                    c.get("lastTransitionTime", ""),
-                    c.get("lastUpdateTime", ""),
-                    c.get("message") or ""
-                ]
-                for c in conds if isinstance(c, dict)
-            ]
-            click.echo(tabulate(rows, headers=headers, tablefmt="github"))
-        else:
-            click.echo("  <none>")
+        status = data.get("status") if isinstance(data, dict) else {}
+        status = status or {}
 
-        click.echo("\nDeploymentStatus Conditions:")
         deployment_status = status.get("deploymentStatus") or {}
         dep_status_inner = deployment_status.get("status") or {}
         dep_conds = dep_status_inner.get("conditions") or []
+
         if isinstance(dep_conds, list) and dep_conds:
             headers = ["TYPE", "STATUS", "LAST TRANSITION", "LAST UPDATE", "MESSAGE"]
             rows = [
@@ -471,6 +480,54 @@ def custom_describe(
                     c.get("message") or ""
                 ]
                 for c in dep_conds if isinstance(c, dict)
+            ]
+            click.echo(tabulate(rows, headers=headers, tablefmt="github"))
+        else:
+            click.echo("  <none>")
+
+        click.echo() 
+        click.echo(click.style("─" * 60, fg="white"))
+        
+        click.echo("\nSageMaker Endpoint (takes ~10 min to create):")
+        status     = data.get("status")     or {}
+        endpoints  = status.get("endpoints") or {}
+        sagemaker_info = endpoints.get("sagemaker")
+
+        if not sagemaker_info:
+            click.secho("  <no SageMaker endpoint information available>", fg="yellow")
+        else:
+            raw_state = sagemaker_info.get("state", "") or ""
+            if raw_state == "CreationCompleted":
+                fg = "green"
+            elif raw_state == "CreationInProgress":
+                fg = "yellow"
+            else:
+                fg = "red"
+            colored_state = click.style(raw_state, fg=fg, bold=True)
+            ep_rows = [
+                    ("Status:",         colored_state),
+                    ("Name:",          data.get("sageMakerEndpoint", {}).get("name")),
+                    ("ARN:",           sagemaker_info.get("endpointArn")),
+            ]
+            click.echo(tabulate(ep_rows, tablefmt="plain"))
+
+        click.echo("\nSagemaker Endpoint Status Conditions:")
+
+        status = data.get("status") if isinstance(data, dict) else {}
+        status = status or {}  
+        conds = status.get("conditions", [])
+
+        if isinstance(conds, list) and conds:
+            headers = ["TYPE", "STATUS", "LAST TRANSITION", "LAST UPDATE", "MESSAGE"]
+            rows = [
+                [
+                    c.get("type", ""),
+                    c.get("status", ""),
+                    c.get("lastTransitionTime", ""),
+                    c.get("lastUpdateTime", ""),
+                    c.get("message") or ""
+                ]
+                for c in conds if isinstance(c, dict)
             ]
             click.echo(tabulate(rows, headers=headers, tablefmt="github"))
         else:
