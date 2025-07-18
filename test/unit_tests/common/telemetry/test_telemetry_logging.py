@@ -17,6 +17,8 @@ from sagemaker.hyperpod.common.telemetry.constants import Feature, Status
 import requests
 import logging
 
+from src.sagemaker.hyperpod.common.telemetry.telemetry_logging import STATUS_TO_CODE
+
 # Test data
 MOCK_CONTEXTS = {
     "eks_arn": "arn:aws:eks:us-west-2:123456789012:cluster/my-cluster",
@@ -163,7 +165,7 @@ def test_telemetry_decorator_details():
         args = mock_telemetry.call_args[0]
 
         # Check status
-        assert args[0] == Status.SUCCESS
+        assert args[0] == STATUS_TO_CODE[str(Status.SUCCESS)]
 
         # Check feature code
         assert args[1] == [FEATURE_TO_CODE[str(Feature.HYPERPOD)]]
@@ -198,11 +200,11 @@ def test_multiple_telemetry_calls():
 
         # Check success call
         success_call = mock_telemetry.call_args_list[0]
-        assert success_call[0][0] == Status.SUCCESS
+        assert success_call[0][0] == STATUS_TO_CODE[str(Status.SUCCESS)]
 
         # Check failure call
         failure_call = mock_telemetry.call_args_list[1]
-        assert failure_call[0][0] == Status.FAILURE
+        assert failure_call[0][0] == STATUS_TO_CODE[str(Status.FAILURE)]
 
 
 # Test _requests_helper
