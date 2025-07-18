@@ -5,12 +5,11 @@ from kubernetes import config
 import re
 import boto3
 import json
-from typing import List
+from typing import List, Tuple, Optional
 import logging
 import os
 import subprocess
 import yaml
-from typing import Optional
 from kubernetes.config import (
     KUBE_CONFIG_DEFAULT_LOCATION,
 )
@@ -297,3 +296,64 @@ def get_current_region():
         return get_region_from_eks_arn(eks_arn)
     except:
         return boto3.session.Session().region_name
+
+
+def parse_kubernetes_version(version_str: str) -> Tuple[int, int]:
+    """Parse major and minor version from Kubernetes version string.
+    
+    Args:
+        version_str (str): Version string (e.g., 'v1.24.0' or '1.25.1')
+        
+    Returns:
+        Tuple[int, int]: Major and minor version numbers
+    """
+    if not version_str:
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Empty Kubernetes version string provided, Using default version 0.0")
+        return 0, 0
+        
+    match = re.search(r'v?(\d+)\.(\d+)', version_str)
+    if match:
+        return int(match.group(1)), int(match.group(2))
+    
+    # If we get here, parsing failed
+    logger = logging.getLogger(__name__)
+    logger.warning(f"Failed to parse Kubernetes version from string: '{version_str}'. Using default version 0.0.")
+    
+    # Try to extract any numbers as a fallback
+    numbers = re.findall(r'\d+', version_str)
+    if len(numbers) >= 2:
+        return int(numbers[0]), int(numbers[1])
+    elif len(numbers) == 1:
+        return int(numbers[0]), 0
+    
+    return 0, 0  # Default to 0.0 to indicate parsing failure
+
+
+def is_kubernetes_version_compatible(client_version: Tuple[int, int], server_version: Tuple[int, int]) -> bool:
+    """Check if Kubernetes client and server versions are compatible.
+    
+    Kubernetes client should be within one minor version of the server.
+    
+    Args:
+        client_version (Tuple[int, int]): Client major and minor version
+        server_version (Tuple[int, int]): Server major and minor version
+        
+    Returns:
+        bool: True if versions are compatible, False otherwise
+    """
+    # Check for default versions (0.0) which indicate parsing failures
+    if client_version == (0, 0) or server_version == (0, 0):
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            f"Version compatibility check using default version(s): client={client_version}, server={server_version}. "
+            f"This may indicate a version parsing issue. Please check your Kubernetes configuration."
+        )
+    
+    if client_version[0] != server_version[0]:
+        return False
+    
+    if abs(client_version[1] - server_version[1]) > 1:
+        return False
+        
+    return True

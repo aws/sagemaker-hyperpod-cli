@@ -3,12 +3,14 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config impo
     _HyperPodPytorchJob, HyperPodPytorchJobStatus
 )
 from sagemaker.hyperpod.common.config.metadata import Metadata
-from kubernetes import client, config
-from typing import List, Optional, ClassVar
+from kubernetes import client, config, __version__ as kubernetes_client_version
+from typing import List, Optional, ClassVar, Tuple
 from sagemaker.hyperpod.common.utils import (
     handle_exception,
     get_default_namespace,
     setup_logging,
+    parse_kubernetes_version,
+    is_kubernetes_version_compatible,
 )
 from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
     _hyperpod_telemetry_emitter,
@@ -16,6 +18,7 @@ from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
 from sagemaker.hyperpod.common.telemetry.constants import Feature
 import yaml
 import logging
+
 
 TRAINING_GROUP = "sagemaker.amazonaws.com"
 API_VERSION = "v1"
@@ -41,6 +44,34 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
         if not cls.is_kubeconfig_loaded:
             config.load_kube_config()
             cls.is_kubeconfig_loaded = True
+            
+            cls.__verify_kubernetes_version_compatibility()            
+    
+    @classmethod
+    def __verify_kubernetes_version_compatibility(cls):
+        logger = cls.get_logger()
+        
+        try:
+            version_api = client.VersionApi()
+            server_version_info = version_api.get_code()
+            
+            server_version_str = f"{server_version_info.major}.{server_version_info.minor}"
+            
+            client_version = parse_kubernetes_version(kubernetes_client_version)
+            server_version_parsed = (int(server_version_info.major), int(server_version_info.minor))
+            
+            # Check compatibility
+            if not is_kubernetes_version_compatible(client_version, server_version_parsed):
+                logger.warning(
+                    f"Kubernetes version mismatch detected! Client version: {kubernetes_client_version}, "
+                    f"Server version: {server_version_str}. This might cause compatibility issues."
+                )
+                logger.warning(
+                    "To resolve this issue, please update your kubernetes Python client to match the server version: "
+                    f"pip install kubernetes~={server_version_info.major}.{server_version_info.minor}.0"
+                )
+        except Exception as e:
+            logger.warning(f"Failed to verify Kubernetes version compatibility: {e}")
 
     @classmethod
     def get_logger(cls):
