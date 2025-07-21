@@ -32,9 +32,11 @@ def generate_click_command(
       1) Injects click.options from the JSON Schema under `schema_pkg`
       2) At runtime, pops `version`, builds the flat model from `registry`, calls .to_domain()
       3) Finally invokes your handler as `func(version, domain_config)`
+
     - `version_key`: if given, hard-codes the version (no --version flag injected)
     - `schema_pkg`: the importable package root to read schema.json from
     - `registry`: a dict mapping version → flat‐model class, e.g. hyperpod_pytorch_job_template.registry.SCHEMA_REGISTRY
+
     """
     if registry is None:
         raise ValueError("You must pass a registry mapping version→Model")
