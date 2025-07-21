@@ -38,12 +38,13 @@ def test_create_endpoint(endpoint_obj):
     endpoint_obj.create(namespace=NAMESPACE)
     assert endpoint_obj.metadata.name == ENDPOINT_NAME
 
+@pytest.mark.dependency(depends=["create"])
 def test_list_endpoint():
     endpoints = HPJumpStartEndpoint.list(namespace=NAMESPACE)
     names = [ep.metadata.name for ep in endpoints]
     assert ENDPOINT_NAME in names
 
-@pytest.mark.dependency(name="describe")
+@pytest.mark.dependency(name="describe", depends=["create"])
 def test_get_endpoint():
     ep = HPJumpStartEndpoint.get(name=ENDPOINT_NAME, namespace=NAMESPACE)
     assert ep.metadata.name == ENDPOINT_NAME
@@ -80,6 +81,7 @@ def test_wait_until_inservice():
     pytest.fail("[ERROR] Timed out waiting for endpoint to be DeploymentComplete")
 
 
+@pytest.mark.dependency(depends=["create"])
 def test_invoke_endpoint(monkeypatch):
     original_transform = codec.transform  # Save original
 
@@ -107,6 +109,7 @@ def test_list_pods():
     pods = ep.list_pods(NAMESPACE)
     assert pods
 
+@pytest.mark.dependency(depends=["create"])
 def test_delete_endpoint():
     ep = HPJumpStartEndpoint.get(name=ENDPOINT_NAME, namespace=NAMESPACE)
     ep.delete()
