@@ -2,13 +2,14 @@
 
 # SageMaker HyperPod CLI and SDK Documentation
 
-**Version**: {{ version }}
-
 ```{toctree}
 :hidden:
 :maxdepth: 1
 
+Installation <installation>
 Getting Started <getting_started>
+Training <training>
+Inference <inference>
 API reference <_apidoc/modules>
 ```
 
@@ -19,7 +20,7 @@ SageMaker HyperPod CLI and SDK provide a seamless way to manage distributed trai
 :gutter: 3
 
 :::{grid-item-card} Installation
-:link: getting_started
+:link: installation
 :link-type: ref
 
 Get the CLI/ SDK setup
@@ -33,14 +34,14 @@ Beginner's guide to using CLI/ SDK
 :::
 
 :::{grid-item-card} Training
-:link: getting_started
+:link: training
 :link-type: ref
 
 Detailed guide on creating Pytorch training jobs
 :::
 
 :::{grid-item-card} Inference
-:link: getting_started
+:link: inference
 :link-type: ref
 
 Detailed guide on creating, invoking and monitoring endpoints

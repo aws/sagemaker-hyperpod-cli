@@ -81,10 +81,10 @@ extensions = [
     "sphinx.ext.todo",
     "sphinx.ext.viewcode",
     "nbsphinx",
-    # Use either myst_parser or myst_nb, not both
-    # "myst_parser",
     "myst_nb",
     "sphinx_design",
+    "sphinx_tabs.tabs",
+    "sphinx_copybutton"
 ]
 
 # Mock modules that might not be available during documentation build
@@ -106,6 +106,10 @@ default_role = "py:obj"
 
 html_theme = "sphinx_book_theme"
 html_theme_options = {
+    "logo": {
+        "image_light": "_static/image.png",
+        "image_dark": "_static/image.png",
+    },
     "repository_url": "https://github.com/aws/sagemaker-hyperpod-cli",
     "use_repository_button": True,
     "use_issues_button": True,
