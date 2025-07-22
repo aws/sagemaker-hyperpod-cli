@@ -47,13 +47,6 @@ Detailed guide on creating Pytorch training jobs
 Detailed guide on creating, invoking and monitoring endpoints
 :::
 
-:::{grid-item-card} Contributor's Guide
-:link: getting_started
-:link-type: ref
-
-Improve SageMaker Hyperpod CLI and SDK
-:::
-
 ::::
 ::::
 
