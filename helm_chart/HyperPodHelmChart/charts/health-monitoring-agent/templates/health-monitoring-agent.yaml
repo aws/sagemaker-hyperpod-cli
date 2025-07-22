@@ -116,7 +116,7 @@ spec:
           args:
             - --enable-k8s-exporter=false
             - --config.system-log-monitor=/config/system-message-monitor.json
-          image: {{ .Values.hmaimage }}
+          image: {{ include "health-monitoring-agent.imageUri" . }}
           resources:
             limits:
               cpu: 500m
