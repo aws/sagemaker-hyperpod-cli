@@ -66,13 +66,14 @@ def test_custom_create(runner, custom_endpoint_name):
     assert result.exit_code == 0, result.output
 
 
+@pytest.mark.dependency(depends=["create"])
 def test_custom_list(runner, custom_endpoint_name):
     result = runner.invoke(custom_list, ["--namespace", NAMESPACE])
     assert result.exit_code == 0
     assert custom_endpoint_name in result.output
 
 
-@pytest.mark.dependency(name="describe")
+@pytest.mark.dependency(name="describe", depends=["create"])
 def test_custom_describe(runner, custom_endpoint_name):
     result = runner.invoke(custom_describe, [
         "--name", custom_endpoint_name,
@@ -114,6 +115,7 @@ def test_wait_until_inservice(custom_endpoint_name):
     pytest.fail("[ERROR] Timed out waiting for endpoint to be DeploymentComplete")
 
 
+@pytest.mark.dependency(depends=["create"])
 def test_custom_invoke(runner, custom_endpoint_name):
     result = runner.invoke(custom_invoke, [
         "--endpoint-name", custom_endpoint_name,
@@ -133,7 +135,8 @@ def test_custom_list_pods(runner):
     result = runner.invoke(custom_list_pods, ["--namespace", NAMESPACE])
     assert result.exit_code == 0
     
-
+    
+@pytest.mark.dependency(depends=["create"])
 def test_custom_delete(runner, custom_endpoint_name):
     result = runner.invoke(custom_delete, [
         "--name", custom_endpoint_name,

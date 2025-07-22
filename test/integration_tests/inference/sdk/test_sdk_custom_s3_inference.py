@@ -90,12 +90,15 @@ def test_create_endpoint(custom_endpoint):
     custom_endpoint.create(namespace=NAMESPACE)
     assert custom_endpoint.metadata.name == ENDPOINT_NAME
 
+
+@pytest.mark.dependency(depends=["create"])
 def test_list_endpoint():
     endpoints = HPEndpoint.list(namespace=NAMESPACE)
     names = [ep.metadata.name for ep in endpoints]
     assert ENDPOINT_NAME in names
 
-@pytest.mark.dependency(name="describe")
+
+@pytest.mark.dependency(name="describe", depends=["create"])
 def test_get_endpoint():
     ep = HPEndpoint.get(name=ENDPOINT_NAME, namespace=NAMESPACE)
     assert ep.modelName == MODEL_NAME
@@ -130,6 +133,8 @@ def test_wait_until_inservice():
 
     pytest.fail("[ERROR] Timed out waiting for endpoint to be DeploymentComplete")
 
+
+@pytest.mark.dependency(depends=["create"])
 def test_invoke_endpoint(monkeypatch):
     original_transform = codec.transform
 
@@ -159,6 +164,7 @@ def test_list_pods():
     assert pods
 
 
+@pytest.mark.dependency(depends=["create"])
 def test_delete_endpoint():
     ep = HPEndpoint.get(name=ENDPOINT_NAME, namespace=NAMESPACE)
     ep.delete()

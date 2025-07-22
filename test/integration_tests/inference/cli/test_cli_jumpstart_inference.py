@@ -40,13 +40,14 @@ def test_js_create(runner, js_endpoint_name):
     assert result.exit_code == 0, result.output
 
 
+@pytest.mark.dependency(depends=["create"])
 def test_js_list(runner, js_endpoint_name):
     result = runner.invoke(js_list, ["--namespace", NAMESPACE])
     assert result.exit_code == 0
     assert js_endpoint_name in result.output
 
 
-@pytest.mark.dependency(name="describe")
+@pytest.mark.dependency(name="describe", depends=["create"])
 def test_js_describe(runner, js_endpoint_name):
     result = runner.invoke(js_describe, [
         "--name", js_endpoint_name,
@@ -88,6 +89,7 @@ def test_wait_until_inservice(js_endpoint_name):
     pytest.fail("[ERROR] Timed out waiting for endpoint to be DeploymentComplete")
 
 
+@pytest.mark.dependency(depends=["create"])
 def test_custom_invoke(runner, js_endpoint_name):
     result = runner.invoke(custom_invoke, [
         "--endpoint-name", js_endpoint_name,
@@ -107,6 +109,7 @@ def test_js_list_pods(runner):
     assert result.exit_code == 0
 
 
+@pytest.mark.dependency(depends=["create"])
 def test_js_delete(runner, js_endpoint_name):
     result = runner.invoke(js_delete, [
         "--name", js_endpoint_name,

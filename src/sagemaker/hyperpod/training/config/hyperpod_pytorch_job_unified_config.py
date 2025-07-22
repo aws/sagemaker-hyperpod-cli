@@ -2,6 +2,212 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List, Dict, Union
 
 
+class Conditions(BaseModel):
+    """JobCondition describes current state of a job."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    lastProbeTime: Optional[str] = Field(
+        default=None,
+        alias="last_probe_time",
+        description="Last time the condition was checked.",
+    )
+    lastTransitionTime: Optional[str] = Field(
+        default=None,
+        alias="last_transition_time",
+        description="Last time the condition transit from one status to another.",
+    )
+    message: Optional[str] = Field(
+        default=None,
+        description="Human readable message indicating details about last transition.",
+    )
+    reason: Optional[str] = Field(
+        default=None, description="(brief) reason for the condition's last transition."
+    )
+    status: str = Field(
+        description="Status of the condition, one of True, False, Unknown."
+    )
+    type: str = Field(description="Type of job condition, Complete or Failed.")
+
+
+class JobPods(BaseModel):
+    """ObjectReference contains enough information to let you inspect or modify the referred object."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    apiVersion: Optional[str] = Field(
+        default=None, alias="api_version", description="API version of the referent."
+    )
+    fieldPath: Optional[str] = Field(
+        default=None,
+        alias="field_path",
+        description='If referring to a piece of an object instead of an entire object, this string should contain a valid JSON/Go field access statement, such as desiredState.manifest.containers[2]. For example, if the object reference is to a container within a pod, this would take on a value like: "spec.containers{name}" (where "name" refers to the name of the container that triggered the event) or if no container name is specified "spec.containers[2]" (container with index 2 in this pod). This syntax is chosen only to have some well-defined way of referencing a part of an object.',
+    )
+    kind: Optional[str] = Field(
+        default=None,
+        description="Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+    )
+    name: Optional[str] = Field(
+        default=None,
+        description="Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+    )
+    namespace: Optional[str] = Field(
+        default=None,
+        description="Namespace of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/",
+    )
+    resourceVersion: Optional[str] = Field(
+        default=None,
+        alias="resource_version",
+        description="Specific resourceVersion to which this reference is made, if any. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency",
+    )
+    uid: Optional[str] = Field(
+        default=None,
+        description="UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids",
+    )
+
+
+class ManagerPods(BaseModel):
+    """Pod Manager pods"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    apiVersion: Optional[str] = Field(
+        default=None, alias="api_version", description="API version of the referent."
+    )
+    fieldPath: Optional[str] = Field(
+        default=None,
+        alias="field_path",
+        description='If referring to a piece of an object instead of an entire object, this string should contain a valid JSON/Go field access statement, such as desiredState.manifest.containers[2]. For example, if the object reference is to a container within a pod, this would take on a value like: "spec.containers{name}" (where "name" refers to the name of the container that triggered the event) or if no container name is specified "spec.containers[2]" (container with index 2 in this pod). This syntax is chosen only to have some well-defined way of referencing a part of an object.',
+    )
+    kind: Optional[str] = Field(
+        default=None,
+        description="Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+    )
+    name: Optional[str] = Field(
+        default=None,
+        description="Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+    )
+    namespace: Optional[str] = Field(
+        default=None,
+        description="Namespace of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/",
+    )
+    resourceVersion: Optional[str] = Field(
+        default=None,
+        alias="resource_version",
+        description="Specific resourceVersion to which this reference is made, if any. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency",
+    )
+    uid: Optional[str] = Field(
+        default=None,
+        description="UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids",
+    )
+
+
+class PodManagerStatuses(BaseModel):
+    """ObjectReference contains enough information to let you inspect or modify the referred object."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    apiVersion: Optional[str] = Field(
+        default=None, alias="api_version", description="API version of the referent."
+    )
+    fieldPath: Optional[str] = Field(
+        default=None,
+        alias="field_path",
+        description='If referring to a piece of an object instead of an entire object, this string should contain a valid JSON/Go field access statement, such as desiredState.manifest.containers[2]. For example, if the object reference is to a container within a pod, this would take on a value like: "spec.containers{name}" (where "name" refers to the name of the container that triggered the event) or if no container name is specified "spec.containers[2]" (container with index 2 in this pod). This syntax is chosen only to have some well-defined way of referencing a part of an object.',
+    )
+    kind: Optional[str] = Field(
+        default=None,
+        description="Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+    )
+    name: Optional[str] = Field(
+        default=None,
+        description="Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+    )
+    namespace: Optional[str] = Field(
+        default=None,
+        description="Namespace of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/",
+    )
+    resourceVersion: Optional[str] = Field(
+        default=None,
+        alias="resource_version",
+        description="Specific resourceVersion to which this reference is made, if any. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency",
+    )
+    uid: Optional[str] = Field(
+        default=None,
+        description="UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids",
+    )
+
+
+class Tolerations(BaseModel):
+    """The pod this Toleration is attached to tolerates any taint that matches the triple <key,value,effect> using the matching operator <operator>."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    effect: Optional[str] = Field(
+        default=None,
+        description="Effect indicates the taint effect to match. Empty means match all taint effects. When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.",
+    )
+    key: Optional[str] = Field(
+        default=None,
+        description="Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys.",
+    )
+    operator: Optional[str] = Field(
+        default=None,
+        description="Operator represents a key's relationship to the value. Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category.",
+    )
+    tolerationSeconds: Optional[int] = Field(
+        default=None,
+        alias="toleration_seconds",
+        description="TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values will be treated as 0 (evict immediately) by the system.",
+    )
+    value: Optional[str] = Field(
+        default=None,
+        description="Value is the taint value the toleration matches to. If the operator is Exists, the value should be empty, otherwise just a regular string.",
+    )
+
+
+class PodSetInfo(BaseModel):
+    """DEPRECATED podSetInfo to include pod set information provided by Kueue in podSetInfos PodSetInformation assigned to the HyperPodPytorchJob's PodSet by Kueue podSetInfo is retained here to support operator upgrade"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    annotations: Optional[Dict[str, str]] = Field(
+        default=None, description="Annotations to be added to the PodSpecTemplate"
+    )
+    labels: Optional[Dict[str, str]] = Field(
+        default=None, description="Labels to be added to the PodSepcTemplate"
+    )
+    nodeSelector: Optional[Dict[str, str]] = Field(
+        default=None,
+        alias="node_selector",
+        description="NodeSelectors to be added to the PodSpecTemplate",
+    )
+    tolerations: Optional[List[Tolerations]] = Field(
+        default=None, description="Tolerations to be added to the PodSpecTemplate"
+    )
+
+
+class PodSetInfos(BaseModel):
+    """PodSetInformation contains the data that Kueue wants to inject into an admitted PodSpecTemplate"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    annotations: Optional[Dict[str, str]] = Field(
+        default=None, description="Annotations to be added to the PodSpecTemplate"
+    )
+    labels: Optional[Dict[str, str]] = Field(
+        default=None, description="Labels to be added to the PodSepcTemplate"
+    )
+    nodeSelector: Optional[Dict[str, str]] = Field(
+        default=None,
+        alias="node_selector",
+        description="NodeSelectors to be added to the PodSpecTemplate",
+    )
+    tolerations: Optional[List[Tolerations]] = Field(
+        default=None, description="Tolerations to be added to the PodSpecTemplate"
+    )
+
+
 class Metadata(BaseModel):
     """Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata"""
 
@@ -14,7 +220,7 @@ class Metadata(BaseModel):
     namespace: Optional[str] = None
 
 
-class MatchExpression(BaseModel):
+class MatchExpressions(BaseModel):
     """A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values."""
 
     model_config = ConfigDict(extra="forbid")
@@ -29,7 +235,7 @@ class MatchExpression(BaseModel):
     )
 
 
-class MatchField(BaseModel):
+class MatchFields(BaseModel):
     """A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values."""
 
     model_config = ConfigDict(extra="forbid")
@@ -49,19 +255,19 @@ class Preference(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    matchExpressions: Optional[List[MatchExpression]] = Field(
+    matchExpressions: Optional[List[MatchExpressions]] = Field(
         default=None,
         alias="match_expressions",
         description="A list of node selector requirements by node's labels.",
     )
-    matchFields: Optional[List[MatchField]] = Field(
+    matchFields: Optional[List[MatchFields]] = Field(
         default=None,
         alias="match_fields",
         description="A list of node selector requirements by node's fields.",
     )
 
 
-class PreferredDuringSchedulingIgnoredDuringExecutio(BaseModel):
+class PreferredDuringSchedulingIgnoredDuringExecution(BaseModel):
     """An empty preferred scheduling term matches all objects with implicit weight 0 (i.e. it's a no-op). A null preferred scheduling term matches no objects (i.e. is also a no-op)."""
 
     model_config = ConfigDict(extra="forbid")
@@ -74,17 +280,17 @@ class PreferredDuringSchedulingIgnoredDuringExecutio(BaseModel):
     )
 
 
-class NodeSelectorTerm(BaseModel):
+class NodeSelectorTerms(BaseModel):
     """A null or empty node selector term matches no objects. The requirements of them are ANDed. The TopologySelectorTerm type implements a subset of the NodeSelectorTerm."""
 
     model_config = ConfigDict(extra="forbid")
 
-    matchExpressions: Optional[List[MatchExpression]] = Field(
+    matchExpressions: Optional[List[MatchExpressions]] = Field(
         default=None,
         alias="match_expressions",
         description="A list of node selector requirements by node's labels.",
     )
-    matchFields: Optional[List[MatchField]] = Field(
+    matchFields: Optional[List[MatchFields]] = Field(
         default=None,
         alias="match_fields",
         description="A list of node selector requirements by node's fields.",
@@ -96,7 +302,7 @@ class RequiredDuringSchedulingIgnoredDuringExecution(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    nodeSelectorTerms: List[NodeSelectorTerm] = Field(
+    nodeSelectorTerms: List[NodeSelectorTerms] = Field(
         alias="node_selector_terms",
         description="Required. A list of node selector terms. The terms are ORed.",
     )
@@ -108,7 +314,7 @@ class NodeAffinity(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     preferredDuringSchedulingIgnoredDuringExecution: Optional[
-        List[PreferredDuringSchedulingIgnoredDuringExecutio]
+        List[PreferredDuringSchedulingIgnoredDuringExecution]
     ] = Field(
         default=None,
         alias="preferred_during_scheduling_ignored_during_execution",
@@ -123,89 +329,20 @@ class NodeAffinity(BaseModel):
     )
 
 
-class LabelSelector(BaseModel):
-    """A label query over a set of resources, in this case pods. If it's null, this PodAffinityTerm matches with no Pods."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    matchExpressions: Optional[List[MatchExpression]] = Field(
-        default=None,
-        alias="match_expressions",
-        description="matchExpressions is a list of label selector requirements. The requirements are ANDed.",
-    )
-    matchLabels: Optional[Dict[str, str]] = Field(
-        default=None,
-        alias="match_labels",
-        description='matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.',
-    )
-
-
-class NamespaceSelector(BaseModel):
-    """A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means "this pod's namespace". An empty selector ({}) matches all namespaces."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    matchExpressions: Optional[List[MatchExpression]] = Field(
-        default=None,
-        alias="match_expressions",
-        description="matchExpressions is a list of label selector requirements. The requirements are ANDed.",
-    )
-    matchLabels: Optional[Dict[str, str]] = Field(
-        default=None,
-        alias="match_labels",
-        description='matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.',
-    )
-
-
-class RequiredDuringSchedulingIgnoredDuringExecutio(BaseModel):
-    """Defines a set of pods (namely those matching the labelSelector relative to the given namespace(s)) that this pod should be co-located (affinity) or not co-located (anti-affinity) with, where co-located is defined as running on a node whose value of the label with key <topologyKey> matches that of any node on which a pod of the set of pods is running"""
-
-    model_config = ConfigDict(extra="forbid")
-
-    labelSelector: Optional[LabelSelector] = Field(
-        default=None,
-        alias="label_selector",
-        description="A label query over a set of resources, in this case pods. If it's null, this PodAffinityTerm matches with no Pods.",
-    )
-    matchLabelKeys: Optional[List[str]] = Field(
-        default=None,
-        alias="match_label_keys",
-        description="MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `labelSelector` as `key in (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both matchLabelKeys and labelSelector. Also, matchLabelKeys cannot be set when labelSelector isn't set. This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).",
-    )
-    mismatchLabelKeys: Optional[List[str]] = Field(
-        default=None,
-        alias="mismatch_label_keys",
-        description="MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with `labelSelector` as `key notin (value)` to select the group of existing pods which pods will be taken into consideration for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both mismatchLabelKeys and labelSelector. Also, mismatchLabelKeys cannot be set when labelSelector isn't set. This is a beta field and requires enabling MatchLabelKeysInPodAffinity feature gate (enabled by default).",
-    )
-    namespaceSelector: Optional[NamespaceSelector] = Field(
-        default=None,
-        alias="namespace_selector",
-        description='A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means "this pod\'s namespace". An empty selector ({}) matches all namespaces.',
-    )
-    namespaces: Optional[List[str]] = Field(
-        default=None,
-        description='namespaces specifies a static list of namespace names that the term applies to. The term is applied to the union of the namespaces listed in this field and the ones selected by namespaceSelector. null or empty namespaces list and null namespaceSelector means "this pod\'s namespace".',
-    )
-    topologyKey: str = Field(
-        alias="topology_key",
-        description="This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching the labelSelector in the specified namespaces, where co-located is defined as running on a node whose value of the label with key topologyKey matches that of any node on which any of the selected pods is running. Empty topologyKey is not allowed.",
-    )
-
-
 class PodAffinity(BaseModel):
     """Describes pod affinity scheduling rules (e.g. co-locate this pod in the same node, zone, etc. as some other pod(s))."""
 
     model_config = ConfigDict(extra="forbid")
 
     preferredDuringSchedulingIgnoredDuringExecution: Optional[
-        List[PreferredDuringSchedulingIgnoredDuringExecutio]
+        List[PreferredDuringSchedulingIgnoredDuringExecution]
     ] = Field(
         default=None,
         alias="preferred_during_scheduling_ignored_during_execution",
         description='The scheduler will prefer to schedule pods to nodes that satisfy the affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding "weight" to the sum if the node has pods which matches the corresponding podAffinityTerm; the node(s) with the highest sum are the most preferred.',
     )
     requiredDuringSchedulingIgnoredDuringExecution: Optional[
-        List[RequiredDuringSchedulingIgnoredDuringExecutio]
+        List[RequiredDuringSchedulingIgnoredDuringExecution]
     ] = Field(
         default=None,
         alias="required_during_scheduling_ignored_during_execution",
@@ -219,14 +356,14 @@ class PodAntiAffinity(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     preferredDuringSchedulingIgnoredDuringExecution: Optional[
-        List[PreferredDuringSchedulingIgnoredDuringExecutio]
+        List[PreferredDuringSchedulingIgnoredDuringExecution]
     ] = Field(
         default=None,
         alias="preferred_during_scheduling_ignored_during_execution",
         description='The scheduler will prefer to schedule pods to nodes that satisfy the anti-affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling anti-affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding "weight" to the sum if the node has pods which matches the corresponding podAffinityTerm; the node(s) with the highest sum are the most preferred.',
     )
     requiredDuringSchedulingIgnoredDuringExecution: Optional[
-        List[RequiredDuringSchedulingIgnoredDuringExecutio]
+        List[RequiredDuringSchedulingIgnoredDuringExecution]
     ] = Field(
         default=None,
         alias="required_during_scheduling_ignored_during_execution",
@@ -298,7 +435,7 @@ class ResourceFieldRef(BaseModel):
         alias="container_name",
         description="Container name: required for volumes, optional for env vars",
     )
-    divisor: Optional[Union[str, int]] = Field(
+    divisor: Optional[Union[int, str]] = Field(
         default=None,
         description='Specifies the output format of the exposed resources, defaults to "1"',
     )
@@ -350,7 +487,7 @@ class ValueFrom(BaseModel):
     )
 
 
-class En(BaseModel):
+class Env(BaseModel):
     """EnvVar represents an environment variable present in a Container."""
 
     model_config = ConfigDict(extra="forbid")
@@ -397,7 +534,7 @@ class SecretRef(BaseModel):
     )
 
 
-class EnvFro(BaseModel):
+class EnvFrom(BaseModel):
     """EnvFromSource represents the source of a set of ConfigMaps"""
 
     model_config = ConfigDict(extra="forbid")
@@ -425,7 +562,7 @@ class Exec(BaseModel):
     )
 
 
-class HttpHeader(BaseModel):
+class HttpHeaders(BaseModel):
     """HTTPHeader describes a custom header to be used in HTTP probes"""
 
     model_config = ConfigDict(extra="forbid")
@@ -445,7 +582,7 @@ class HttpGet(BaseModel):
         default=None,
         description='Host name to connect to, defaults to the pod IP. You probably want to set "Host" in httpHeaders instead.',
     )
-    httpHeaders: Optional[List[HttpHeader]] = Field(
+    httpHeaders: Optional[List[HttpHeaders]] = Field(
         default=None,
         alias="http_headers",
         description="Custom headers to set in the request. HTTP allows repeated headers.",
@@ -453,7 +590,7 @@ class HttpGet(BaseModel):
     path: Optional[str] = Field(
         default=None, description="Path to access on the HTTP server."
     )
-    port: Union[str, int] = Field(
+    port: Union[int, str] = Field(
         description="Name or number of the port to access on the container. Number must be in the range 1 to 65535. Name must be an IANA_SVC_NAME."
     )
     scheme: Optional[str] = Field(
@@ -479,7 +616,7 @@ class TcpSocket(BaseModel):
         default=None,
         description="Optional: Host name to connect to, defaults to the pod IP.",
     )
-    port: Union[str, int] = Field(
+    port: Union[int, str] = Field(
         description="Number or name of the port to access on the container. Number must be in the range 1 to 65535. Name must be an IANA_SVC_NAME."
     )
 
@@ -616,7 +753,7 @@ class LivenessProbe(BaseModel):
     )
 
 
-class Port(BaseModel):
+class Ports(BaseModel):
     """ContainerPort represents a network port in a single container."""
 
     model_config = ConfigDict(extra="forbid")
@@ -698,7 +835,7 @@ class ReadinessProbe(BaseModel):
     )
 
 
-class ResizePolic(BaseModel):
+class ResizePolicy(BaseModel):
     """ContainerResizePolicy represents resource resize policy for the container."""
 
     model_config = ConfigDict(extra="forbid")
@@ -713,7 +850,7 @@ class ResizePolic(BaseModel):
     )
 
 
-class Claim(BaseModel):
+class Claims(BaseModel):
     """ResourceClaim references one entry in PodSpec.ResourceClaims."""
 
     model_config = ConfigDict(extra="forbid")
@@ -732,15 +869,15 @@ class Resources(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    claims: Optional[List[Claim]] = Field(
+    claims: Optional[List[Claims]] = Field(
         default=None,
         description="Claims lists the names of resources, defined in spec.resourceClaims, that are used by this container.  This is an alpha field and requires enabling the DynamicResourceAllocation feature gate.  This field is immutable. It can only be set for containers.",
     )
-    limits: Optional[Dict[str, Union[str, int]]] = Field(
+    limits: Optional[Dict[str, Union[int, str]]] = Field(
         default=None,
         description="Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
     )
-    requests: Optional[Dict[str, Union[str, int]]] = Field(
+    requests: Optional[Dict[str, Union[int, str]]] = Field(
         default=None,
         description="Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. Requests cannot exceed Limits. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
     )
@@ -953,7 +1090,7 @@ class StartupProbe(BaseModel):
     )
 
 
-class VolumeDevice(BaseModel):
+class VolumeDevices(BaseModel):
     """volumeDevice describes a mapping of a raw block device within a container."""
 
     model_config = ConfigDict(extra="forbid")
@@ -967,7 +1104,7 @@ class VolumeDevice(BaseModel):
     )
 
 
-class VolumeMount(BaseModel):
+class VolumeMounts(BaseModel):
     """VolumeMount describes a mounting of a Volume within a container."""
 
     model_config = ConfigDict(extra="forbid")
@@ -1004,7 +1141,7 @@ class VolumeMount(BaseModel):
     )
 
 
-class Container(BaseModel):
+class Containers(BaseModel):
     """A single application container that you want to run within a pod."""
 
     model_config = ConfigDict(extra="forbid")
@@ -1017,11 +1154,11 @@ class Container(BaseModel):
         default=None,
         description='Entrypoint array. Not executed within a shell. The container image\'s ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container\'s environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will produce the string literal "$(VAR_NAME)". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell',
     )
-    env: Optional[List[En]] = Field(
+    env: Optional[List[Env]] = Field(
         default=None,
         description="List of environment variables to set in the container. Cannot be updated.",
     )
-    envFrom: Optional[List[EnvFro]] = Field(
+    envFrom: Optional[List[EnvFrom]] = Field(
         default=None,
         alias="env_from",
         description="List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence. Cannot be updated.",
@@ -1047,7 +1184,7 @@ class Container(BaseModel):
     name: str = Field(
         description="Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated."
     )
-    ports: Optional[List[Port]] = Field(
+    ports: Optional[List[Ports]] = Field(
         default=None,
         description='List of ports to expose from the container. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default "0.0.0.0" address inside a container will be accessible from the network. Modifying this array with strategic merge patch may corrupt the data. For more information See https://github.com/kubernetes/kubernetes/issues/108255. Cannot be updated.',
     )
@@ -1056,7 +1193,7 @@ class Container(BaseModel):
         alias="readiness_probe",
         description="Periodic probe of container service readiness. Container will be removed from service endpoints if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
     )
-    resizePolicy: Optional[List[ResizePolic]] = Field(
+    resizePolicy: Optional[List[ResizePolicy]] = Field(
         default=None,
         alias="resize_policy",
         description="Resources resize policy for the container.",
@@ -1103,12 +1240,12 @@ class Container(BaseModel):
         default=None,
         description="Whether this container should allocate a TTY for itself, also requires 'stdin' to be true. Default is false.",
     )
-    volumeDevices: Optional[List[VolumeDevice]] = Field(
+    volumeDevices: Optional[List[VolumeDevices]] = Field(
         default=None,
         alias="volume_devices",
         description="volumeDevices is the list of block devices to be used by the container.",
     )
-    volumeMounts: Optional[List[VolumeMount]] = Field(
+    volumeMounts: Optional[List[VolumeMounts]] = Field(
         default=None,
         alias="volume_mounts",
         description="Pod volumes to mount into the container's filesystem. Cannot be updated.",
@@ -1120,7 +1257,7 @@ class Container(BaseModel):
     )
 
 
-class Option(BaseModel):
+class Options(BaseModel):
     """PodDNSConfigOption defines DNS resolver options of a pod."""
 
     model_config = ConfigDict(extra="forbid")
@@ -1138,7 +1275,7 @@ class DnsConfig(BaseModel):
         default=None,
         description="A list of DNS name server IP addresses. This will be appended to the base nameservers generated from DNSPolicy. Duplicated nameservers will be removed.",
     )
-    options: Optional[List[Option]] = Field(
+    options: Optional[List[Options]] = Field(
         default=None,
         description="A list of DNS resolver options. This will be merged with the base options generated from DNSPolicy. Duplicated entries will be removed. Resolution options given in Options will override those that appear in the base DNSPolicy.",
     )
@@ -1148,7 +1285,7 @@ class DnsConfig(BaseModel):
     )
 
 
-class EphemeralContainer(BaseModel):
+class EphemeralContainers(BaseModel):
     """An EphemeralContainer is a temporary container that you may add to an existing Pod for user-initiated activities such as debugging. Ephemeral containers have no resource or scheduling guarantees, and they will not be restarted when they exit or when a Pod is removed or restarted. The kubelet may evict a Pod if an ephemeral container causes the Pod to exceed its resource allocation.  To add an ephemeral container, use the ephemeralcontainers subresource of an existing Pod. Ephemeral containers may not be removed or restarted."""
 
     model_config = ConfigDict(extra="forbid")
@@ -1161,11 +1298,11 @@ class EphemeralContainer(BaseModel):
         default=None,
         description='Entrypoint array. Not executed within a shell. The image\'s ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container\'s environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will produce the string literal "$(VAR_NAME)". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell',
     )
-    env: Optional[List[En]] = Field(
+    env: Optional[List[Env]] = Field(
         default=None,
         description="List of environment variables to set in the container. Cannot be updated.",
     )
-    envFrom: Optional[List[EnvFro]] = Field(
+    envFrom: Optional[List[EnvFrom]] = Field(
         default=None,
         alias="env_from",
         description="List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence. Cannot be updated.",
@@ -1190,7 +1327,7 @@ class EphemeralContainer(BaseModel):
     name: str = Field(
         description="Name of the ephemeral container specified as a DNS_LABEL. This name must be unique among all containers, init containers and ephemeral containers."
     )
-    ports: Optional[List[Port]] = Field(
+    ports: Optional[List[Ports]] = Field(
         default=None, description="Ports are not allowed for ephemeral containers."
     )
     readinessProbe: Optional[ReadinessProbe] = Field(
@@ -1198,7 +1335,7 @@ class EphemeralContainer(BaseModel):
         alias="readiness_probe",
         description="Probes are not allowed for ephemeral containers.",
     )
-    resizePolicy: Optional[List[ResizePolic]] = Field(
+    resizePolicy: Optional[List[ResizePolicy]] = Field(
         default=None,
         alias="resize_policy",
         description="Resources resize policy for the container.",
@@ -1250,12 +1387,12 @@ class EphemeralContainer(BaseModel):
         default=None,
         description="Whether this container should allocate a TTY for itself, also requires 'stdin' to be true. Default is false.",
     )
-    volumeDevices: Optional[List[VolumeDevice]] = Field(
+    volumeDevices: Optional[List[VolumeDevices]] = Field(
         default=None,
         alias="volume_devices",
         description="volumeDevices is the list of block devices to be used by the container.",
     )
-    volumeMounts: Optional[List[VolumeMount]] = Field(
+    volumeMounts: Optional[List[VolumeMounts]] = Field(
         default=None,
         alias="volume_mounts",
         description="Pod volumes to mount into the container's filesystem. Subpath mounts are not allowed for ephemeral containers. Cannot be updated.",
@@ -1267,7 +1404,7 @@ class EphemeralContainer(BaseModel):
     )
 
 
-class HostAliase(BaseModel):
+class HostAliases(BaseModel):
     """HostAlias holds the mapping between IP and hostnames that will be injected as an entry in the pod's hosts file."""
 
     model_config = ConfigDict(extra="forbid")
@@ -1278,7 +1415,7 @@ class HostAliase(BaseModel):
     ip: str = Field(description="IP address of the host file entry.")
 
 
-class ImagePullSecret(BaseModel):
+class ImagePullSecrets(BaseModel):
     """LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace."""
 
     model_config = ConfigDict(extra="forbid")
@@ -1289,7 +1426,7 @@ class ImagePullSecret(BaseModel):
     )
 
 
-class InitContainer(BaseModel):
+class InitContainers(BaseModel):
     """A single application container that you want to run within a pod."""
 
     model_config = ConfigDict(extra="forbid")
@@ -1302,11 +1439,11 @@ class InitContainer(BaseModel):
         default=None,
         description='Entrypoint array. Not executed within a shell. The container image\'s ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container\'s environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will produce the string literal "$(VAR_NAME)". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell',
     )
-    env: Optional[List[En]] = Field(
+    env: Optional[List[Env]] = Field(
         default=None,
         description="List of environment variables to set in the container. Cannot be updated.",
     )
-    envFrom: Optional[List[EnvFro]] = Field(
+    envFrom: Optional[List[EnvFrom]] = Field(
         default=None,
         alias="env_from",
         description="List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence. Cannot be updated.",
@@ -1332,7 +1469,7 @@ class InitContainer(BaseModel):
     name: str = Field(
         description="Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated."
     )
-    ports: Optional[List[Port]] = Field(
+    ports: Optional[List[Ports]] = Field(
         default=None,
         description='List of ports to expose from the container. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default "0.0.0.0" address inside a container will be accessible from the network. Modifying this array with strategic merge patch may corrupt the data. For more information See https://github.com/kubernetes/kubernetes/issues/108255. Cannot be updated.',
     )
@@ -1341,7 +1478,7 @@ class InitContainer(BaseModel):
         alias="readiness_probe",
         description="Periodic probe of container service readiness. Container will be removed from service endpoints if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
     )
-    resizePolicy: Optional[List[ResizePolic]] = Field(
+    resizePolicy: Optional[List[ResizePolicy]] = Field(
         default=None,
         alias="resize_policy",
         description="Resources resize policy for the container.",
@@ -1388,12 +1525,12 @@ class InitContainer(BaseModel):
         default=None,
         description="Whether this container should allocate a TTY for itself, also requires 'stdin' to be true. Default is false.",
     )
-    volumeDevices: Optional[List[VolumeDevice]] = Field(
+    volumeDevices: Optional[List[VolumeDevices]] = Field(
         default=None,
         alias="volume_devices",
         description="volumeDevices is the list of block devices to be used by the container.",
     )
-    volumeMounts: Optional[List[VolumeMount]] = Field(
+    volumeMounts: Optional[List[VolumeMounts]] = Field(
         default=None,
         alias="volume_mounts",
         description="Pod volumes to mount into the container's filesystem. Cannot be updated.",
@@ -1415,7 +1552,7 @@ class Os(BaseModel):
     )
 
 
-class ReadinessGate(BaseModel):
+class ReadinessGates(BaseModel):
     """PodReadinessGate contains the reference to a pod condition"""
 
     model_config = ConfigDict(extra="forbid")
@@ -1426,7 +1563,7 @@ class ReadinessGate(BaseModel):
     )
 
 
-class ResourceClaim(BaseModel):
+class ResourceClaims(BaseModel):
     """PodResourceClaim references exactly one ResourceClaim, either directly or by naming a ResourceClaimTemplate which is then turned into a ResourceClaim for the pod.  It adds a name to it that uniquely identifies the ResourceClaim inside the Pod. Containers that need access to the ResourceClaim reference it with this name."""
 
     model_config = ConfigDict(extra="forbid")
@@ -1446,7 +1583,7 @@ class ResourceClaim(BaseModel):
     )
 
 
-class SchedulingGate(BaseModel):
+class SchedulingGates(BaseModel):
     """PodSchedulingGate is associated to a Pod to guard its scheduling."""
 
     model_config = ConfigDict(extra="forbid")
@@ -1456,35 +1593,41 @@ class SchedulingGate(BaseModel):
     )
 
 
-class Toleration(BaseModel):
-    """The pod this Toleration is attached to tolerates any taint that matches the triple <key,value,effect> using the matching operator <operator>."""
+class LabelSelector(BaseModel):
+    """LabelSelector is used to find matching pods. Pods that match this label selector are counted to determine the number of pods in their corresponding topology domain."""
 
     model_config = ConfigDict(extra="forbid")
 
-    effect: Optional[str] = Field(
+    matchExpressions: Optional[List[MatchExpressions]] = Field(
         default=None,
-        description="Effect indicates the taint effect to match. Empty means match all taint effects. When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.",
+        alias="match_expressions",
+        description="matchExpressions is a list of label selector requirements. The requirements are ANDed.",
     )
-    key: Optional[str] = Field(
+    matchLabels: Optional[Dict[str, str]] = Field(
         default=None,
-        description="Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys.",
-    )
-    operator: Optional[str] = Field(
-        default=None,
-        description="Operator represents a key's relationship to the value. Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category.",
-    )
-    tolerationSeconds: Optional[int] = Field(
-        default=None,
-        alias="toleration_seconds",
-        description="TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values will be treated as 0 (evict immediately) by the system.",
-    )
-    value: Optional[str] = Field(
-        default=None,
-        description="Value is the taint value the toleration matches to. If the operator is Exists, the value should be empty, otherwise just a regular string.",
+        alias="match_labels",
+        description='matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.',
     )
 
 
-class TopologySpreadConstraint(BaseModel):
+class NamespaceSelector(BaseModel):
+    """A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means "this pod's namespace". An empty selector ({}) matches all namespaces."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    matchExpressions: Optional[List[MatchExpressions]] = Field(
+        default=None,
+        alias="match_expressions",
+        description="matchExpressions is a list of label selector requirements. The requirements are ANDed.",
+    )
+    matchLabels: Optional[Dict[str, str]] = Field(
+        default=None,
+        alias="match_labels",
+        description='matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.',
+    )
+
+
+class TopologySpreadConstraints(BaseModel):
     """TopologySpreadConstraint specifies how to spread matching pods among the given topology."""
 
     model_config = ConfigDict(extra="forbid")
@@ -1665,7 +1808,7 @@ class Cinder(BaseModel):
     )
 
 
-class Item(BaseModel):
+class Items(BaseModel):
     """Maps a string key to a path within a volume."""
 
     model_config = ConfigDict(extra="forbid")
@@ -1690,7 +1833,7 @@ class ConfigMap(BaseModel):
         alias="default_mode",
         description="defaultMode is optional: mode bits used to set permissions on created files by default. Must be an octal value between 0000 and 0777 or a decimal value between 0 and 511. YAML accepts both octal and decimal values, JSON requires decimal values for mode bits. Defaults to 0644. Directories within the path are not affected by this setting. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set.",
     )
-    items: Optional[List[Item]] = Field(
+    items: Optional[List[Items]] = Field(
         default=None,
         description="items if unspecified, each key-value pair in the Data field of the referenced ConfigMap will be projected into the volume as a file whose name is the key and content is the value. If specified, the listed keys will be projected into the specified paths, and unlisted keys will not be present. If a key is specified which is not present in the ConfigMap, the volume setup will error unless it is marked optional. Paths must be relative and may not contain the '..' path or start with '..'.",
     )
@@ -1755,7 +1898,7 @@ class DownwardApi(BaseModel):
         alias="default_mode",
         description="Optional: mode bits to use on created files by default. Must be a Optional: mode bits used to set permissions on created files by default. Must be an octal value between 0000 and 0777 or a decimal value between 0 and 511. YAML accepts both octal and decimal values, JSON requires decimal values for mode bits. Defaults to 0644. Directories within the path are not affected by this setting. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set.",
     )
-    items: Optional[List[Item]] = Field(
+    items: Optional[List[Items]] = Field(
         default=None, description="Items is a list of downward API volume file"
     )
 
@@ -1769,7 +1912,7 @@ class EmptyDir(BaseModel):
         default=None,
         description='medium represents what type of storage medium should back this directory. The default is "" which means to use the node\'s default medium. Must be an empty string (default) or Memory. More info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir',
     )
-    sizeLimit: Optional[Union[str, int]] = Field(
+    sizeLimit: Optional[Union[int, str]] = Field(
         default=None,
         alias="size_limit",
         description="sizeLimit is the total amount of local storage required for this EmptyDir volume. The size limit is also applicable for memory medium. The maximum usage on memory medium EmptyDir would be the minimum value between the SizeLimit specified here and the sum of memory limits of all containers in a pod. The default is nil which means that the limit is undefined. More info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir",
@@ -1813,7 +1956,7 @@ class Selector(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    matchExpressions: Optional[List[MatchExpression]] = Field(
+    matchExpressions: Optional[List[MatchExpressions]] = Field(
         default=None,
         alias="match_expressions",
         description="matchExpressions is a list of label selector requirements. The requirements are ANDed.",
@@ -1885,7 +2028,7 @@ class VolumeClaimTemplate(BaseModel):
         description="May contain labels and annotations that will be copied into the PVC when creating it. No other fields are allowed and will be rejected during validation.",
     )
     volumeClaimTemplateSpec: VolumeClaimTemplateSpec = Field(
-        alias="spec",
+        alias="volume_claim_template_spec",
         description="The specification for the PersistentVolumeClaim. The entire content is copied unchanged into the PVC that gets created from this template. The same fields as in a PersistentVolumeClaim are also valid here.",
     )
 
@@ -2221,7 +2364,7 @@ class Secret(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    items: Optional[List[Item]] = Field(
+    items: Optional[List[Items]] = Field(
         default=None,
         description="items if unspecified, each key-value pair in the Data field of the referenced Secret will be projected into the volume as a file whose name is the key and content is the value. If specified, the listed keys will be projected into the specified paths, and unlisted keys will not be present. If a key is specified which is not present in the Secret, the volume setup will error unless it is marked optional. Paths must be relative and may not contain the '..' path or start with '..'.",
     )
@@ -2254,7 +2397,7 @@ class ServiceAccountToken(BaseModel):
     )
 
 
-class Source(BaseModel):
+class Sources(BaseModel):
     """Projection that may be projected along with other supported volume types. Exactly one of these fields must be set."""
 
     model_config = ConfigDict(extra="forbid")
@@ -2294,7 +2437,7 @@ class Projected(BaseModel):
         alias="default_mode",
         description="defaultMode are the mode bits used to set permissions on created files by default. Must be an octal value between 0000 and 0777 or a decimal value between 0 and 511. YAML accepts both octal and decimal values, JSON requires decimal values for mode bits. Directories within the path are not affected by this setting. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set.",
     )
-    sources: Optional[List[Source]] = Field(
+    sources: Optional[List[Sources]] = Field(
         default=None,
         description="sources is the list of volume projections. Each entry in this list handles one source.",
     )
@@ -2479,7 +2622,7 @@ class VsphereVolume(BaseModel):
     )
 
 
-class Volume(BaseModel):
+class Volumes(BaseModel):
     """Volume represents a named volume in a pod that may be accessed by any container in the pod."""
 
     model_config = ConfigDict(extra="forbid")
@@ -2642,7 +2785,7 @@ class Spec(BaseModel):
         alias="automount_service_account_token",
         description="AutomountServiceAccountToken indicates whether a service account token should be automatically mounted.",
     )
-    containers: List[Container] = Field(
+    containers: List[Containers] = Field(
         description="List of containers belonging to the pod. Containers cannot currently be added or removed. There must be at least one container in a Pod. Cannot be updated."
     )
     dnsConfig: Optional[DnsConfig] = Field(
@@ -2660,12 +2803,12 @@ class Spec(BaseModel):
         alias="enable_service_links",
         description="EnableServiceLinks indicates whether information about services should be injected into pod's environment variables, matching the syntax of Docker links. Optional: Defaults to true.",
     )
-    ephemeralContainers: Optional[List[EphemeralContainer]] = Field(
+    ephemeralContainers: Optional[List[EphemeralContainers]] = Field(
         default=None,
         alias="ephemeral_containers",
         description="List of ephemeral containers run in this pod. Ephemeral containers may be run in an existing pod to perform user-initiated actions such as debugging. This list cannot be specified when creating a pod, and it cannot be modified by updating the pod spec. In order to add an ephemeral container to an existing pod, use the pod's ephemeralcontainers subresource.",
     )
-    hostAliases: Optional[List[HostAliase]] = Field(
+    hostAliases: Optional[List[HostAliases]] = Field(
         default=None,
         alias="host_aliases",
         description="HostAliases is an optional list of hosts and IPs that will be injected into the pod's hosts file if specified.",
@@ -2694,12 +2837,12 @@ class Spec(BaseModel):
         default=None,
         description="Specifies the hostname of the Pod If not specified, the pod's hostname will be set to a system-defined value.",
     )
-    imagePullSecrets: Optional[List[ImagePullSecret]] = Field(
+    imagePullSecrets: Optional[List[ImagePullSecrets]] = Field(
         default=None,
         alias="image_pull_secrets",
         description="ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this PodSpec. If specified, these secrets will be passed to individual puller implementations for them to use. More info: https://kubernetes.io/docs/concepts/containers/images#specifying-imagepullsecrets-on-a-pod",
     )
-    initContainers: Optional[List[InitContainer]] = Field(
+    initContainers: Optional[List[InitContainers]] = Field(
         default=None,
         alias="init_containers",
         description="List of initialization containers belonging to the pod. Init containers are executed in order prior to containers being started. If any init container fails, the pod is considered to have failed and is handled according to its restartPolicy. The name for an init container or normal container must be unique among all containers. Init containers may not have Lifecycle actions, Readiness probes, Liveness probes, or Startup probes. The resourceRequirements of an init container are taken into account during scheduling by finding the highest request/limit for each resource type, and then using the max of of that value or the sum of the normal containers. Limits are applied to init containers in a similar fashion. Init containers cannot currently be added or removed. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/",
@@ -2718,7 +2861,7 @@ class Spec(BaseModel):
         default=None,
         description="Specifies the OS of the containers in the pod. Some pod and container fields are restricted if this is set.  If the OS field is set to linux, the following fields must be unset: -securityContext.windowsOptions  If the OS field is set to windows, following fields must be unset: - spec.hostPID - spec.hostIPC - spec.hostUsers - spec.securityContext.appArmorProfile - spec.securityContext.seLinuxOptions - spec.securityContext.seccompProfile - spec.securityContext.fsGroup - spec.securityContext.fsGroupChangePolicy - spec.securityContext.sysctls - spec.shareProcessNamespace - spec.securityContext.runAsUser - spec.securityContext.runAsGroup - spec.securityContext.supplementalGroups - spec.securityContext.supplementalGroupsPolicy - spec.containers[*].securityContext.appArmorProfile - spec.containers[*].securityContext.seLinuxOptions - spec.containers[*].securityContext.seccompProfile - spec.containers[*].securityContext.capabilities - spec.containers[*].securityContext.readOnlyRootFilesystem - spec.containers[*].securityContext.privileged - spec.containers[*].securityContext.allowPrivilegeEscalation - spec.containers[*].securityContext.procMount - spec.containers[*].securityContext.runAsUser - spec.containers[*].securityContext.runAsGroup",
     )
-    overhead: Optional[Dict[str, Union[str, int]]] = Field(
+    overhead: Optional[Dict[str, Union[int, str]]] = Field(
         default=None,
         description="Overhead represents the resource overhead associated with running a pod for a given RuntimeClass. This field will be autopopulated at admission time by the RuntimeClass admission controller. If the RuntimeClass admission controller is enabled, overhead must not be set in Pod create requests. The RuntimeClass admission controller will reject Pod create requests which have the overhead already set. If RuntimeClass is configured and selected in the PodSpec, Overhead will be set to the value defined in the corresponding RuntimeClass, otherwise it will remain unset and treated as zero. More info: https://git.k8s.io/enhancements/keps/sig-node/688-pod-overhead/README.md",
     )
@@ -2736,12 +2879,12 @@ class Spec(BaseModel):
         alias="priority_class_name",
         description='If specified, indicates the pod\'s priority. "system-node-critical" and "system-cluster-critical" are two special keywords which indicate the highest priorities with the former being the highest priority. Any other name must be defined by creating a PriorityClass object with that name. If not specified, the pod priority will be default or zero if there is no default.',
     )
-    readinessGates: Optional[List[ReadinessGate]] = Field(
+    readinessGates: Optional[List[ReadinessGates]] = Field(
         default=None,
         alias="readiness_gates",
         description='If specified, all readiness gates will be evaluated for pod readiness. A pod is ready when all its containers are ready AND all conditions specified in the readiness gates have status equal to "True" More info: https://git.k8s.io/enhancements/keps/sig-network/580-pod-readiness-gates',
     )
-    resourceClaims: Optional[List[ResourceClaim]] = Field(
+    resourceClaims: Optional[List[ResourceClaims]] = Field(
         default=None,
         alias="resource_claims",
         description="ResourceClaims defines which ResourceClaims must be allocated and reserved before the Pod is allowed to start. The resources will be made available to those containers which consume them by name.  This is an alpha field and requires enabling the DynamicResourceAllocation feature gate.  This field is immutable.",
@@ -2761,7 +2904,7 @@ class Spec(BaseModel):
         alias="scheduler_name",
         description="If specified, the pod will be dispatched by specified scheduler. If not specified, the pod will be dispatched by default scheduler.",
     )
-    schedulingGates: Optional[List[SchedulingGate]] = Field(
+    schedulingGates: Optional[List[SchedulingGates]] = Field(
         default=None,
         alias="scheduling_gates",
         description="SchedulingGates is an opaque list of values that if specified will block scheduling the pod. If schedulingGates is not empty, the pod will stay in the SchedulingGated state and the scheduler will not attempt to schedule the pod.  SchedulingGates can only be set at pod creation time, and be removed only afterwards.",
@@ -2800,22 +2943,22 @@ class Spec(BaseModel):
         alias="termination_grace_period_seconds",
         description="Optional duration in seconds the pod needs to terminate gracefully. May be decreased in delete request. Value must be non-negative integer. The value zero indicates stop immediately via the kill signal (no opportunity to shut down). If this value is nil, the default grace period will be used instead. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. Defaults to 30 seconds.",
     )
-    tolerations: Optional[List[Toleration]] = Field(
+    tolerations: Optional[List[Tolerations]] = Field(
         default=None, description="If specified, the pod's tolerations."
     )
-    topologySpreadConstraints: Optional[List[TopologySpreadConstraint]] = Field(
+    topologySpreadConstraints: Optional[List[TopologySpreadConstraints]] = Field(
         default=None,
         alias="topology_spread_constraints",
         description="TopologySpreadConstraints describes how a group of pods ought to spread across topology domains. Scheduler will schedule pods in a way which abides by the constraints. All topologySpreadConstraints are ANDed.",
     )
-    volumes: Optional[List[Volume]] = Field(
+    volumes: Optional[List[Volumes]] = Field(
         default=None,
         description="List of volumes that can be mounted by containers belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes",
     )
 
 
 class Template(BaseModel):
-    """Template is the object that describes the pod that will be created for this replica."""
+    """template is the Pod template.  The only allowed fields in template.metadata are labels and annotations.  If requests are omitted for a container or initContainer, they default to the limits if they are explicitly specified for the container or initContainer.  During admission, the rules in nodeSelector and nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution that match the keys in the nodeLabels from the ResourceFlavors considered for this Workload are used to filter the ResourceFlavors that can be assigned to this podSet."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -2849,7 +2992,7 @@ class ReplicaSpec(BaseModel):
     )
 
 
-class LogMonitoringConfiguratio(BaseModel):
+class LogMonitoringConfiguration(BaseModel):
     """LogMonitoringRule defines the criteria used to detect a SLOW or HANGING job"""
 
     model_config = ConfigDict(extra="forbid")
@@ -2932,7 +3075,7 @@ class RunPolicy(BaseModel):
         description="The limit on the fault time for the job (Status of Fault) before failing",
     )
     jobMaxRetryCount: Optional[int] = Field(default=None, alias="job_max_retry_count")
-    logMonitoringConfiguration: Optional[List[LogMonitoringConfiguratio]] = Field(
+    logMonitoringConfiguration: Optional[List[LogMonitoringConfiguration]] = Field(
         default=None,
         alias="log_monitoring_configuration",
         description="LogMonitoringConfiguration defines the log monitoring rules for SLOW and HANGING job detection",
@@ -2954,6 +3097,134 @@ class RunPolicy(BaseModel):
         default=0,
         alias="ttl_seconds_after_finished",
         description="TTLSecondsAfterFinished is the TTL to clean up jobs. Set to -1 for infinite",
+    )
+
+
+class PodSets(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    count: int = Field(
+        default=1, description="count is the number of pods for the spec."
+    )
+    minCount: Optional[int] = Field(
+        default=None,
+        alias="min_count",
+        description="minCount is the minimum number of pods for the spec acceptable if the workload supports partial admission.  If not provided, partial admission for the current PodSet is not enabled.  Only one podSet within the workload can use this.  This is an alpha field and requires enabling PartialAdmission feature gate.",
+    )
+    name: Optional[str] = Field(default="main", description="name is the PodSet name.")
+    template: Template = Field(
+        description="template is the Pod template.  The only allowed fields in template.metadata are labels and annotations.  If requests are omitted for a container or initContainer, they default to the limits if they are explicitly specified for the container or initContainer.  During admission, the rules in nodeSelector and nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution that match the keys in the nodeLabels from the ResourceFlavors considered for this Workload are used to filter the ResourceFlavors that can be assigned to this podSet."
+    )
+
+
+class Pods(BaseModel):
+    """DEPRECATED pods to include job pods status in jobPods associated with replicaSpecs pods is retained here to support operator upgrade"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    apiVersion: Optional[str] = Field(
+        default=None, alias="api_version", description="API version of the referent."
+    )
+    fieldPath: Optional[str] = Field(
+        default=None,
+        alias="field_path",
+        description='If referring to a piece of an object instead of an entire object, this string should contain a valid JSON/Go field access statement, such as desiredState.manifest.containers[2]. For example, if the object reference is to a container within a pod, this would take on a value like: "spec.containers{name}" (where "name" refers to the name of the container that triggered the event) or if no container name is specified "spec.containers[2]" (container with index 2 in this pod). This syntax is chosen only to have some well-defined way of referencing a part of an object.',
+    )
+    kind: Optional[str] = Field(
+        default=None,
+        description="Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+    )
+    name: Optional[str] = Field(
+        default=None,
+        description="Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+    )
+    namespace: Optional[str] = Field(
+        default=None,
+        description="Namespace of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/",
+    )
+    resourceVersion: Optional[str] = Field(
+        default=None,
+        alias="resource_version",
+        description="Specific resourceVersion to which this reference is made, if any. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency",
+    )
+    uid: Optional[str] = Field(
+        default=None,
+        description="UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids",
+    )
+
+
+class RestartStatus(BaseModel):
+    """Additional restart limiting status"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    currentEvalPeriod: int = Field(
+        alias="current_eval_period", description="The current window"
+    )
+    fullJobRestartCount: int = Field(
+        alias="full_job_restart_count",
+        description="The number of full job restarts that have ocurred in the window",
+    )
+    restartCount: int = Field(
+        alias="restart_count",
+        description="The number of standard restarts that have occurred in the window since the last full job restart",
+    )
+
+
+class HyperPodPytorchJobStatus(BaseModel):
+    """HyperPodPytorchJobStatus defines the observed state of HyperPodPytorchJob"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    completionTime: Optional[str] = Field(
+        default=None,
+        alias="completion_time",
+        description="Represents time when the job was completed. It is not guaranteed to be set in happens-before order across separate operations. It is represented in RFC3339 form and is in UTC.",
+    )
+    conditions: Optional[List[Conditions]] = None
+    jobPods: Optional[List[JobPods]] = Field(
+        default=None,
+        alias="job_pods",
+        description="The StatefulSet containing the training pods",
+    )
+    managerPods: Optional[ManagerPods] = Field(
+        default=None, alias="manager_pods", description="Pod Manager pods"
+    )
+    masterAddr: Optional[str] = Field(
+        default=None,
+        alias="master_addr",
+        description="The address of the master (RANK 0) pod",
+    )
+    masterPort: Optional[str] = Field(
+        default=None,
+        alias="master_port",
+        description="The port of the master (RANK 0) pod",
+    )
+    podManagerStatuses: Optional[List[PodManagerStatuses]] = Field(
+        default=None,
+        alias="pod_manager_statuses",
+        description="The status of each pod manager as a PodManagerStatus",
+    )
+    podSetInfos: Optional[List[PodSetInfos]] = Field(
+        default=None,
+        alias="pod_set_infos",
+        description="PodSetInformation assigned to the HyperPodPytorchJob's PodSet by Kueue",
+    )
+    podSets: Optional[List[PodSets]] = Field(
+        default=None,
+        alias="pod_sets",
+        description="PodSets used by Kueue to manage workload objects",
+    )
+    restartCount: Optional[int] = Field(default=0, alias="restart_count")
+    restartStatus: Optional[RestartStatus] = Field(
+        default=None,
+        alias="restart_status",
+        description="Additional restart limiting status",
+    )
+    startTime: Optional[str] = Field(
+        default=None,
+        alias="start_time",
+        description="The time when job is first acknowledged by the controller. When using kueue, the job is also admitted It is represented in RFC3339 form and is in UTC.",
     )
 
 

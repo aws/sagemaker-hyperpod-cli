@@ -4,7 +4,7 @@ import json
 from test.integration_tests.utils import execute_command
 from sagemaker.hyperpod.training import (
     HyperPodPytorchJob,
-    Container,
+    Containers,
     ReplicaSpec,
     Resources,
     RunPolicy,
@@ -49,7 +49,7 @@ def pytorch_job(test_job_name, image_uri):
             template=Template(
                 spec=Spec(
                     containers=[
-                        Container(
+                        Containers(
                             name="container-name",
                             image=image_uri,
                             image_pull_policy="Always",
