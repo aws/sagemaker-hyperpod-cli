@@ -76,6 +76,14 @@
         "service-account-name": {
             "type": "string",
             "description": "Service account name"
+        },
+        "preferred-topology-label": {
+            "type": "string",
+            "description": "Preferred topology label for scheduling"
+        },
+        "required-topology-label": {
+            "type": "string",
+            "description": "Required topology label for scheduling"
         }
     },
     "required": ["job-name", "image"],
