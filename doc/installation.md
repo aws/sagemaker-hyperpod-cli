@@ -1,7 +1,5 @@
 (installation)=
-
 # Installation
-
 This guide provides installation instructions for the SageMaker HyperPod CLI and SDK.
 
 ## System Requirements
@@ -18,9 +16,7 @@ This guide provides installation instructions for the SageMaker HyperPod CLI and
 - PyTorch (version ≥ 1.10)
 
 ### Supported Python Versions
-- 3.9
-- 3.10
-- 3.11
+- 3.9 and above
 
 ## Prerequisites
 
@@ -38,7 +34,7 @@ To enable this, install the **SageMaker Inference Operator**.
 
 ## Installation Options
 
-### Option 1: Install from PyPI
+### Install from PyPI
 
 You can install the SageMaker HyperPod CLI and SDK directly using `pip`:
 
@@ -52,19 +48,4 @@ To verify that the installation was successful, run:
 ```bash
 # Verify CLI installation
 hyp --help
-```
-
-### Option 2: Install from Source
-
-Clone the GitHub repository and install the CLI from source:
-
-```bash
-# Clone the repository
-git clone https://github.com/aws/sagemaker-hyperpod-cli.git
-
-# Change to the repository directory
-cd sagemaker-hyperpod-cli
-
-# Install using pip
-pip install .
 ```
