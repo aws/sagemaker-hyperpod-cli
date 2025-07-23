@@ -22,22 +22,21 @@
 /* Header styling */
 header {
     background-color: white;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); /* shadow-sm */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     position: sticky;
     top: 0;
     z-index: 50;
 }
 
-/* Preserving your existing typography */
 h1 {
-    font-size: 1.875rem;      /* text-3xl */
-    font-weight: 700;         /* font-bold */
-    color: #111827;           /* text-gray-900 */
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: #111827;
 }
 
 h2 {
-    font-size: 1.5rem;        /* text-2xl */
-    font-weight: 700;         /* font-bold */
+    font-size: 1.5rem;
+    font-weight: 700;
     color: #111827;
 }
 
@@ -48,6 +47,6 @@ h3 {
 }
 
 p {
-    font-size: 0.875rem;     /* Tailwind's text-sm */
-    color: #4b5563;          /* Tailwind's gray-600 */
+    font-size: 0.875rem;
+    color: #4b5563;
 }
