@@ -20,7 +20,8 @@ SageMaker HyperPod training jobs allow you to:
 
 You can create training jobs using either the CLI or SDK approach:
 
-**CLI**
+`````{tab-set}
+````{tab-item} CLI
 ```bash
 hyp create hyp-pytorch-job \
     --version 1.0 \
@@ -42,8 +43,8 @@ hyp create hyp-pytorch-job \
     --persistent-volume-claims '["shared-data-pvc", "model-registry-pvc"]' \
     --output-s3-uri s3://my-bucket/model-artifacts
 ```
-
-**SDK**
+````
+````{tab-item} SDK
 ```python
 from sagemaker.hyperpod import HyperPodPytorchJob
 from sagemaker.hyperpod.job import ReplicaSpec, Template, Spec, Container, Resources, RunPolicy, Metadata
@@ -94,6 +95,8 @@ pytorch_job = HyperPodPytorchJob(
 # Submit the job
 pytorch_job.create()
 ```
+````
+`````
 
 ## Key Parameters
 
@@ -111,12 +114,13 @@ When creating a training job, you'll need to specify:
 
 ### List Training Jobs
 
-**CLI**
+`````{tab-set}
+````{tab-item} CLI
 ```bash
 hyp list hyp-pytorch-job
 ```
-
-**SDK**
+````
+````{tab-item} SDK
 ```python
 from sagemaker.hyperpod import HyperPodManager
 
@@ -124,15 +128,18 @@ from sagemaker.hyperpod import HyperPodManager
 jobs = HyperPodManager.list_jobs(job_type="hyp-pytorch-job")
 print(jobs)
 ```
+````
+`````
 
 ### Describe a Training Job
 
-**CLI**
+`````{tab-set}
+````{tab-item} CLI
 ```bash
 hyp describe hyp-pytorch-job --job-name <job-name>
 ```
-
-**SDK**
+````
+````{tab-item} SDK
 ```python
 from sagemaker.hyperpod import HyperPodPytorchJob
 
@@ -143,15 +150,18 @@ job = HyperPodPytorchJob.load(job_name="my-pytorch-job")
 job_details = job.describe()
 print(job_details)
 ```
+````
+`````
 
 ### Delete a Training Job
 
-**CLI**
+`````{tab-set}
+````{tab-item} CLI
 ```bash
 hyp delete hyp-pytorch-job --job-name <job-name>
 ```
-
-**SDK**
+````
+````{tab-item} SDK
 ```python
 from sagemaker.hyperpod import HyperPodPytorchJob
 
@@ -161,6 +171,8 @@ job = HyperPodPytorchJob.load(job_name="my-pytorch-job")
 # Delete the job
 job.delete()
 ```
+````
+`````
 
 ## Training Example Notebooks
 

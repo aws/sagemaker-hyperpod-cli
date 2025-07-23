@@ -21,7 +21,8 @@ You can create inference endpoints using either JumpStart models or custom model
 
 ### JumpStart Model Endpoints
 
-**CLI**
+`````{tab-set}
+````{tab-item} CLI
 ```bash
 hyp create hyp-jumpstart-endpoint \
     --version 1.0 \
@@ -30,8 +31,9 @@ hyp create hyp-jumpstart-endpoint \
     --endpoint-name endpoint-jumpstart \
     --tls-output-s3-uri s3://sample-bucket
 ```
+````
 
-**SDK**
+````{tab-item} SDK
 ```python
 from sagemaker.hyperpod.inference import HyperPodJumpstartEndpoint
 
@@ -46,10 +48,13 @@ endpoint = HyperPodJumpstartEndpoint(
 # Deploy the endpoint
 endpoint.create()
 ```
+````
+`````
 
 ### Custom Model Endpoints
 
-**CLI**
+`````{tab-set}
+````{tab-item} CLI
 ```bash
 hyp create hyp-custom-endpoint \
     --version 1.0 \
@@ -59,8 +64,9 @@ hyp create hyp-custom-endpoint \
     --instance-type ml.g5.8xlarge \
     --tls-output-s3-uri s3://sample-bucket
 ```
+````
 
-**SDK**
+````{tab-item} SDK
 ```python
 from sagemaker.hyperpod.inference import HyperPodCustomEndpoint
 
@@ -76,6 +82,8 @@ endpoint = HyperPodCustomEndpoint(
 # Deploy the endpoint
 endpoint.create()
 ```
+````
+`````
 
 ## Key Parameters
 
@@ -92,7 +100,8 @@ When creating an inference endpoint, you'll need to specify:
 
 ### List Endpoints
 
-**CLI**
+`````{tab-set}
+````{tab-item} CLI
 ```bash
 # List JumpStart endpoints
 hyp list hyp-jumpstart-endpoint
@@ -100,8 +109,9 @@ hyp list hyp-jumpstart-endpoint
 # List custom endpoints
 hyp list hyp-custom-endpoint
 ```
+````
 
-**SDK**
+````{tab-item} SDK
 ```python
 from sagemaker.hyperpod.inference import HyperPodJumpstartEndpoint, HyperPodCustomEndpoint
 
@@ -113,10 +123,13 @@ print(jumpstart_endpoints)
 custom_endpoints = HyperPodCustomEndpoint.list()
 print(custom_endpoints)
 ```
+````
+`````
 
 ### Describe an Endpoint
 
-**CLI**
+`````{tab-set}
+````{tab-item} CLI
 ```bash
 # Describe JumpStart endpoint
 hyp describe hyp-jumpstart-endpoint --endpoint-name <endpoint-name>
@@ -124,8 +137,9 @@ hyp describe hyp-jumpstart-endpoint --endpoint-name <endpoint-name>
 # Describe custom endpoint
 hyp describe hyp-custom-endpoint --endpoint-name <endpoint-name>
 ```
+````
 
-**SDK**
+````{tab-item} SDK
 ```python
 from sagemaker.hyperpod.inference import HyperPodJumpstartEndpoint, HyperPodCustomEndpoint
 
@@ -139,10 +153,13 @@ custom_endpoint = HyperPodCustomEndpoint.load(endpoint_name="endpoint-custom")
 custom_details = custom_endpoint.describe()
 print(custom_details)
 ```
+````
+`````
 
 ### Invoke an Endpoint
 
-**CLI**
+`````{tab-set}
+````{tab-item} CLI
 ```bash
 # Invoke custom endpoint
 hyp invoke hyp-custom-endpoint \
@@ -150,8 +167,9 @@ hyp invoke hyp-custom-endpoint \
     --content-type "application/json" \
     --payload '{"inputs": "What is machine learning?"}'
 ```
+````
 
-**SDK**
+````{tab-item} SDK
 ```python
 from sagemaker.hyperpod.inference import HyperPodCustomEndpoint
 
@@ -165,10 +183,13 @@ response = endpoint.invoke(
 )
 print(response)
 ```
+````
+`````
 
 ### Delete an Endpoint
 
-**CLI**
+`````{tab-set}
+````{tab-item} CLI
 ```bash
 # Delete JumpStart endpoint
 hyp delete hyp-jumpstart-endpoint --endpoint-name <endpoint-name>
@@ -176,8 +197,9 @@ hyp delete hyp-jumpstart-endpoint --endpoint-name <endpoint-name>
 # Delete custom endpoint
 hyp delete hyp-custom-endpoint --endpoint-name <endpoint-name>
 ```
+````
 
-**SDK**
+````{tab-item} SDK
 ```python
 from sagemaker.hyperpod.inference import HyperPodJumpstartEndpoint, HyperPodCustomEndpoint
 
@@ -189,6 +211,8 @@ jumpstart_endpoint.delete()
 custom_endpoint = HyperPodCustomEndpoint.load(endpoint_name="endpoint-custom")
 custom_endpoint.delete()
 ```
+````
+`````
 
 ## Inference Example Notebooks
 

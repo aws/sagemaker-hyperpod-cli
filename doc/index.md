@@ -16,6 +16,8 @@ API reference <_apidoc/modules>
 
 SageMaker HyperPod CLI and SDK provide a seamless way to manage distributed training and inference workloads on EKS-hosted SageMaker HyperPod clusters—without needing Kubernetes expertise. Use the powerful CLI to launch and monitor training jobs and endpoints, or leverage the Python SDK to do the same programmatically with minimal code, including support for JumpStart models, custom endpoints, and built-in monitoring.
 
+## Start Here
+
 ::::{container}
 ::::{grid} 1 2 4 4
 :gutter: 3
