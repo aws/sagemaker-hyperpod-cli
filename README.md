@@ -158,8 +158,8 @@ hyp create hyp-pytorch-job \
     --version 1.0 \
     --job-name test-pytorch-job \
     --image pytorch/pytorch:latest \
-    --command '["python", "train.py"]' \
-    --args '["--epochs", "10", "--batch-size", "32"]' \
+    --command '[python, train.py]' \
+    --args '[--epochs=10, --batch-size=32]' \
     --environment '{"PYTORCH_CUDA_ALLOC_CONF": "max_split_size_mb:32"}' \
     --pull-policy "IfNotPresent" \
     --instance-type ml.p4d.24xlarge \
@@ -170,8 +170,8 @@ hyp create hyp-pytorch-job \
     --queue-name "training-queue" \
     --priority "high" \
     --max-retry 3 \
-    --volumes '["data-vol", "model-vol", "checkpoint-vol"]' \
-    --persistent-volume-claims '["shared-data-pvc", "model-registry-pvc"]' \
+    --volumes '[data-vol, model-vol, checkpoint-vol]' \
+    --persistent-volume-claims '[shared-data-pvc, model-registry-pvc]' \
     --output-s3-uri s3://my-bucket/model-artifacts
 ```
 
@@ -257,9 +257,10 @@ Along with the CLI, we also have SDKs available that can perform the training an
 
 ```
 
-from sagemaker.hyperpod import HyperPodPytorchJob
-from sagemaker.hyperpod.job 
-import ReplicaSpec, Template, Spec, Container, Resources, RunPolicy, Metadata
+from sagemaker.hyperpod.training import HyperPodPytorchJob
+from sagemaker.hyperpod.training
+import ReplicaSpec, Template, Spec, Containers, Resources, RunPolicy
+from sagemaker.hyperpod.common.config import Metadata
 
 # Define job specifications
 nproc_per_node = "1"  # Number of processes per node
@@ -274,7 +275,7 @@ replica_specs =
             (
                 containers =
                 [
-                    Container
+                    Containers
                     (
                         # Container name
                         name="container-name",  
