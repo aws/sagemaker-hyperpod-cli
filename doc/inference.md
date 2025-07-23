@@ -35,18 +35,30 @@ hyp create hyp-jumpstart-endpoint \
 
 ````{tab-item} SDK
 ```python
-from sagemaker.hyperpod.inference import HyperPodJumpstartEndpoint
+from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import Model, Server, SageMakerEndpoint, TlsConfig
+from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
 
-# Create a JumpStart endpoint
-endpoint = HyperPodJumpstartEndpoint(
-    endpoint_name="endpoint-jumpstart",
-    model_id="jumpstart-model-id",
-    instance_type="ml.g5.8xlarge",
-    tls_output_s3_uri="s3://sample-bucket"
+model = Model(
+    model_id="deepseek-llm-r1-distill-qwen-1-5b",
+    model_version="2.0.4"
 )
 
-# Deploy the endpoint
-endpoint.create()
+server = Server(
+    instance_type="ml.g5.8xlarge"
+)
+
+endpoint_name = SageMakerEndpoint(name="endpoint-jumpstart")
+
+tls_config = TlsConfig(tls_certificate_output_s3_uri="s3://sample-bucket")
+
+js_endpoint = HPJumpStartEndpoint(
+    model=model,
+    server=server,
+    sage_maker_endpoint=endpoint_name,
+    tls_config=tls_config
+)
+
+js_endpoint.create()
 ```
 ````
 `````
@@ -68,19 +80,51 @@ hyp create hyp-custom-endpoint \
 
 ````{tab-item} SDK
 ```python
-from sagemaker.hyperpod.inference import HyperPodCustomEndpoint
+from sagemaker.hyperpod.inference.config.hp_custom_endpoint_config import Model, Server, SageMakerEndpoint, TlsConfig, EnvironmentVariables
+from sagemaker.hyperpod.inference.hp_custom_endpoint import HPCustomEndpoint
 
-# Create a custom endpoint
-endpoint = HyperPodCustomEndpoint(
-    endpoint_name="endpoint-custom",
-    model_uri="s3://my-bucket/model-artifacts",
-    image="123456789012.dkr.ecr.us-west-2.amazonaws.com/my-inference-image:latest",
-    instance_type="ml.g5.8xlarge",
-    tls_output_s3_uri="s3://sample-bucket"
+model = Model(
+    model_source_type="s3",
+    model_location="test-pytorch-job/model.tar.gz",
+    s3_bucket_name="my-bucket",
+    s3_region="us-east-2",
+    prefetch_enabled=True
 )
 
-# Deploy the endpoint
-endpoint.create()
+server = Server(
+    instance_type="ml.g5.8xlarge",
+    image_uri="763104351884.dkr.ecr.us-east-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.4.0-tgi2.3.1-gpu-py311-cu124-ubuntu22.04-v2.0",
+    container_port=8080,
+    model_volume_mount_name="model-weights"
+)
+
+resources = {
+    "requests": {"cpu": "30000m", "nvidia.com/gpu": 1, "memory": "100Gi"},
+    "limits": {"nvidia.com/gpu": 1}
+}
+
+env = EnvironmentVariables(
+    HF_MODEL_ID="/opt/ml/model",
+    SAGEMAKER_PROGRAM="inference.py",
+    SAGEMAKER_SUBMIT_DIRECTORY="/opt/ml/model/code",
+    MODEL_CACHE_ROOT="/opt/ml/model",
+    SAGEMAKER_ENV="1"
+)
+
+endpoint_name = SageMakerEndpoint(name="endpoint-custom-pytorch")
+
+tls_config = TlsConfig(tls_certificate_output_s3_uri="s3://sample-bucket")
+
+custom_endpoint = HPCustomEndpoint(
+    model=model,
+    server=server,
+    resources=resources,
+    environment=env,
+    sage_maker_endpoint=endpoint_name,
+    tls_config=tls_config,
+)
+
+custom_endpoint.create()
 ```
 ````
 `````
@@ -113,14 +157,15 @@ hyp list hyp-custom-endpoint
 
 ````{tab-item} SDK
 ```python
-from sagemaker.hyperpod.inference import HyperPodJumpstartEndpoint, HyperPodCustomEndpoint
+from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
+from sagemaker.hyperpod.inference.hp_custom_endpoint import HPCustomEndpoint
 
 # List JumpStart endpoints
-jumpstart_endpoints = HyperPodJumpstartEndpoint.list()
+jumpstart_endpoints = HPJumpStartEndpoint.list()
 print(jumpstart_endpoints)
 
 # List custom endpoints
-custom_endpoints = HyperPodCustomEndpoint.list()
+custom_endpoints = HPCustomEndpoint.list()
 print(custom_endpoints)
 ```
 ````
@@ -171,16 +216,8 @@ hyp invoke hyp-custom-endpoint \
 
 ````{tab-item} SDK
 ```python
-from sagemaker.hyperpod.inference import HyperPodCustomEndpoint
-
-# Load the endpoint
-endpoint = HyperPodCustomEndpoint.load(endpoint_name="endpoint-custom")
-
-# Invoke the endpoint
-response = endpoint.invoke(
-    payload={"inputs": "What is machine learning?"},
-    content_type="application/json"
-)
+data = '{"inputs":"What is the capital of USA?"}'
+response = endpoint.invoke(body=data).body.read()
 print(response)
 ```
 ````
