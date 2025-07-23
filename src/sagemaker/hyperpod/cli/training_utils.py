@@ -3,7 +3,6 @@ import pkgutil
 import click
 from typing import Callable, Optional, Mapping, Type
 
-
 def load_schema_for_version(
     version: str,
     base_package: str,

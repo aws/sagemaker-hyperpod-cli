@@ -1,6 +1,6 @@
 (hpcli_docs_mainpage)=
 
-# SageMaker HyperPod CLI and SDK Documentation
+# Overview
 
 ```{toctree}
 :hidden:
@@ -10,13 +10,14 @@ Installation <installation>
 Getting Started <getting_started>
 Training <training>
 Inference <inference>
+Example Notebooks <examples>
 API reference <_apidoc/modules>
 ```
 
 SageMaker HyperPod CLI and SDK provide a seamless way to manage distributed training and inference workloads on EKS-hosted SageMaker HyperPod clusters—without needing Kubernetes expertise. Use the powerful CLI to launch and monitor training jobs and endpoints, or leverage the Python SDK to do the same programmatically with minimal code, including support for JumpStart models, custom endpoints, and built-in monitoring.
 
 ::::{container}
-::::{grid}
+::::{grid} 1 2 4 4
 :gutter: 3
 
 :::{grid-item-card} Installation
@@ -45,6 +46,13 @@ Detailed guide on creating Pytorch training jobs
 :link-type: ref
 
 Detailed guide on creating, invoking and monitoring endpoints
+:::
+
+:::{grid-item-card} Example Notebooks
+:link: examples
+:link-type: ref
+
+Notebooks that demonstrate end-to-end workflows
 :::
 
 ::::

@@ -107,6 +107,7 @@ default_role = "py:obj"
 html_theme = "sphinx_book_theme"
 html_theme_options = {
     "logo": {
+        "text": "SageMaker HyperPod<br>CLI and SDK",
         "image_light": "_static/image.png",
         "image_dark": "_static/image.png",
     },
@@ -116,9 +117,13 @@ html_theme_options = {
     "use_edit_page_button": True,
     "path_to_docs": "doc",
     "show_navbar_depth": 2,
+    "use_fullscreen_button": False,
+    "use_download_button": False,
+    "home_page_in_toc": True
 }
 htmlhelp_basename = "{}doc".format(project)
-
+html_static_path = ["_static"]
+html_css_files = ["custom.css"]
 napoleon_use_rtype = False
 
 # nbsphinx configuration
