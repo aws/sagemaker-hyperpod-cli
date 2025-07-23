@@ -37,7 +37,7 @@ def runner():
 
 @pytest.fixture(scope="module")
 def custom_endpoint_name():
-    return "custom-cli-integration-fsx" + get_time_str()
+    return "custom-cli-integration-fsx-" + get_time_str()
 
 @pytest.fixture(scope="module")
 def sagemaker_client():

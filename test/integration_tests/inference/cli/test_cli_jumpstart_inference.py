@@ -21,7 +21,7 @@ def runner():
 
 @pytest.fixture(scope="module")
 def js_endpoint_name():
-    return "js-cli-integration" + get_time_str()
+    return "js-cli-integration-" + get_time_str()
 
 @pytest.fixture(scope="module")
 def sagemaker_client():

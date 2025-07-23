@@ -13,7 +13,7 @@ from test.integration_tests.utils import get_time_str
 # --------- Test Configuration ---------
 NAMESPACE = "integration"
 REGION = "us-east-2"
-ENDPOINT_NAME = "custom-sdk-integration-s3" + get_time_str()
+ENDPOINT_NAME = "custom-sdk-integration-s3-" + get_time_str()
 
 MODEL_NAME = f"test-model-integration-sdk-s3"
 MODEL_LOCATION = "hf-eqa"
