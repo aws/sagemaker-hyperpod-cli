@@ -1,21 +1,19 @@
 import time
-import uuid
-import json
 import pytest
 import boto3
 import os
 from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
 from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     ModelSourceConfig, FsxStorage, TlsConfig, Worker, ModelVolumeMount,
-    ModelInvocationPort, Resources, EnvironmentVariables, AutoScalingSpec,
-    CloudWatchTrigger, Dimensions, Metrics
+    ModelInvocationPort, Resources, EnvironmentVariables,
 )
 import sagemaker_core.main.code_injection.codec as codec
+from test.integration_tests.utils import get_time_str
 
 # --------- Test Configuration ---------
 NAMESPACE = "integration"
 REGION = "us-east-2"
-ENDPOINT_NAME = f"custom-sdk-integration-fsx"
+ENDPOINT_NAME = "custom-sdk-integration-fsx-" + get_time_str()
 
 MODEL_NAME = f"test-model-integration-sdk-fsx"
 MODEL_LOCATION = "hf-eqa"
