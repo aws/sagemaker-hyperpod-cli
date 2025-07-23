@@ -1,4 +1,4 @@
-from kubernetes import client
+from kubernetes import client, __version__ as kubernetes_client_version
 from pydantic import ValidationError
 from kubernetes.client.exceptions import ApiException
 from kubernetes import config
@@ -301,20 +301,56 @@ def get_current_region():
 def parse_kubernetes_version(version_str: str) -> Tuple[int, int]:
     """Parse major and minor version from Kubernetes version string.
     
+    Handles both old versioning scheme (v12 and before) and new homogenized scheme.
+    Old scheme: v12.0.0 corresponds to Kubernetes v1.16
+    New scheme: v17.0.0 corresponds to Kubernetes v1.17
+    
     Args:
-        version_str (str): Version string (e.g., 'v1.24.0' or '1.25.1')
+        version_str (str): Version string (e.g., '1.24.0', '12.0.0', '17.0.0', 'v1.26.3')
         
     Returns:
-        Tuple[int, int]: Major and minor version numbers
+        Tuple[int, int]: Major and minor version numbers as (1, minor)
     """
     if not version_str:
         logger = logging.getLogger(__name__)
-        logger.warning(f"Empty Kubernetes version string provided, Using default version 0.0")
+        logger.debug(f"Empty Kubernetes version string provided, Using default version 0.0")
         return 0, 0
-        
+    
+    # First check for versions with 'v' prefix like 'v1.26.3'
     match = re.search(r'v?(\d+)\.(\d+)', version_str)
     if match:
         return int(match.group(1)), int(match.group(2))
+        
+    # If no match found, try the split approach
+    parts = version_str.split('.')
+    if len(parts) >= 2:
+        try:
+            major = int(parts[0])
+            minor = int(parts[1])
+            
+            # Handle Kubernetes native versioning (1.x.y)
+            if major == 1:
+                return major, minor
+                
+            # Handle old client versioning scheme (v12 and before)
+            # v12.0.0 corresponds to Kubernetes v1.16
+            if major <= 12:
+                k8s_minor = major + 4
+                logger = logging.getLogger(__name__)
+                logger.debug(f"Mapped old client version {version_str} to Kubernetes v1.{k8s_minor}")
+                return 1, k8s_minor
+                
+            # Handle new homogenized versioning scheme
+            # v17.0.0 corresponds to Kubernetes v1.17
+            else:
+                logger = logging.getLogger(__name__)
+                logger.debug(f"Mapped homogenized client version {version_str} to Kubernetes v1.{major}")
+                return 1, major
+                
+        except ValueError:
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to parse version components from '{version_str}'. Using default version 0.0.")
+            return 0, 0
     
     # If we get here, parsing failed
     logger = logging.getLogger(__name__)
@@ -331,9 +367,8 @@ def parse_kubernetes_version(version_str: str) -> Tuple[int, int]:
 
 
 def is_kubernetes_version_compatible(client_version: Tuple[int, int], server_version: Tuple[int, int]) -> bool:
-    """Check if Kubernetes client and server versions are compatible.
-    
-    Kubernetes client should be within one minor version of the server.
+    """
+    Check if Kubernetes client and server versions are compatible.
     
     Args:
         client_version (Tuple[int, int]): Client major and minor version
@@ -347,13 +382,99 @@ def is_kubernetes_version_compatible(client_version: Tuple[int, int], server_ver
         logger = logging.getLogger(__name__)
         logger.warning(
             f"Version compatibility check using default version(s): client={client_version}, server={server_version}. "
-            f"This may indicate a version parsing issue. Please check your Kubernetes configuration."
+            f"\nThis may indicate a version parsing issue. Please check your Kubernetes configuration."
         )
+        return True
     
     if client_version[0] != server_version[0]:
         return False
     
-    if abs(client_version[1] - server_version[1]) > 1:
+    """
+        Client version should not be more than 3 minor versions behind the server and not more than 
+        1 minor version ahead of the server
+    """
+    client_minor = client_version[1]
+    server_minor = server_version[1]
+    
+    if server_minor - client_minor > 3:
+        return False
+        
+    if client_minor - server_minor > 1:
         return False
         
     return True
+
+
+def verify_kubernetes_version_compatibility(logger) -> bool:
+    """
+    Verify compatibility between Kubernetes client and server versions.
+    
+    This function checks if the current Kubernetes client version is compatible with
+    the server version. It handles both minimum compatibility versions specified by
+    the server and the standard Kubernetes support policy (within 3 minor versions behind
+    and not more than 1 minor version ahead).
+    
+    Args:
+        logger: Logger instance for outputting messages.
+        
+    Returns:
+        bool: True if versions are compatible, False otherwise
+    """
+    
+    try:
+        version_api = client.VersionApi()
+        server_version_info = version_api.get_code()
+        
+        server_version_str = f"{server_version_info.major}.{server_version_info.minor}"
+        client_version = parse_kubernetes_version(kubernetes_client_version)
+        client_version_str = f"{client_version[0]}.{client_version[1]}"
+
+        # Debug output of server version info
+        logger.debug(f"Server version info: {server_version_info}")
+        logger.debug(f"Client version: {kubernetes_client_version}, parsed as {client_version_str}")
+        
+        # Check if server provides minimum compatibility versions (these are optional strings)
+        has_min_compatibility = False
+        is_compatible = True
+        
+        try:
+            if hasattr(server_version_info, 'min_compatibility_major') and server_version_info.min_compatibility_major is not None and \
+               hasattr(server_version_info, 'min_compatibility_minor') and server_version_info.min_compatibility_minor is not None:
+                min_major = int(server_version_info.min_compatibility_major)
+                min_minor = int(server_version_info.min_compatibility_minor)
+                has_min_compatibility = True
+                
+                # Check if client version is below minimum compatibility
+                if client_version[0] < min_major or (client_version[0] == min_major and client_version[1] < min_minor):
+                    logger.warning(
+                        f"Kubernetes version incompatibility detected! Your client version {client_version_str} "
+                        f"(package: {kubernetes_client_version}) is below the minimum compatible version {min_major}.{min_minor} "
+                        f"required by server {server_version_str}. The server explicitly requires a minimum client version."
+                    )
+                    logger.warning(
+                        f"To resolve this issue, please update your kubernetes Python client to meet the minimum requirement."
+                    )
+                    is_compatible = False
+        except (ValueError, TypeError, AttributeError) as e:
+            logger.debug(f"Could not parse minimum compatibility version: {e}")
+            has_min_compatibility = False
+            
+        if not has_min_compatibility:
+            # Fall back to standard compatibility check if min versions not provided
+            server_version_parsed = (int(server_version_info.major), int(server_version_info.minor))
+            if not is_kubernetes_version_compatible(client_version, server_version_parsed):
+                logger.warning(
+                    f"Kubernetes version incompatibility detected! Your client version {client_version_str} "
+                    f"(package: {kubernetes_client_version}) is not compatible with server version {server_version_str}. "
+                    f"According to Kubernetes support policy, client should be within 3 minor versions behind "
+                    f"and not more than 1 minor version ahead of the server."
+                )
+                logger.warning(
+                    f"To resolve this issue, please update your kubernetes Python client to a compatible version."
+                )
+                is_compatible = False
+                
+        return is_compatible
+    except Exception as e:
+        logger.warning(f"Failed to verify Kubernetes version compatibility: {e}")
+        return True  # Be lenient if we can't check compatibility

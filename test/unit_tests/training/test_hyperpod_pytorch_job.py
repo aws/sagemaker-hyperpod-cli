@@ -47,6 +47,28 @@ class TestHyperPodPytorchJob(unittest.TestCase):
             replica_specs=replica_specs,
             run_policy=run_policy,
         )
+        
+    @patch("kubernetes.config.load_kube_config")
+    def test_verify_kube_config(self, mock_load_config):
+        """Test verify_kube_config method"""        
+        HyperPodPytorchJob.is_kubeconfig_loaded = False
+        
+        # Mock the verify_kubernetes_version_compatibility function directly in the module
+        with patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.verify_kubernetes_version_compatibility") as mock_verify:
+            HyperPodPytorchJob.verify_kube_config()
+            
+            mock_load_config.assert_called_once()
+            mock_verify.assert_called_once()
+            self.assertTrue(HyperPodPytorchJob.is_kubeconfig_loaded)
+            
+            mock_load_config.reset_mock()
+            mock_verify.reset_mock()
+            
+            # Second call should do nothing since config is already loaded
+            HyperPodPytorchJob.verify_kube_config()
+            
+            mock_load_config.assert_not_called()
+            mock_verify.assert_not_called()
 
     @patch.object(HyperPodPytorchJob, "verify_kube_config")
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.client.CustomObjectsApi")
@@ -239,7 +261,7 @@ class TestHyperPodPytorchJob(unittest.TestCase):
             container="test-container",
         )
         self.assertEqual(result, "test logs")
-
+        
     @patch.object(HyperPodPytorchJob, "verify_kube_config")
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.config.load_kube_config")
     @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.client.CoreV1Api")
