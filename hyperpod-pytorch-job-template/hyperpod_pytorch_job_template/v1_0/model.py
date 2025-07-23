@@ -71,6 +71,16 @@ class PyTorchJobConfig(BaseModel):
     service_account_name: Optional[str] = Field(
         default=None, alias="service_account_name", description="Service account name"
     )
+    preferred_topology_label: Optional[str] = Field(
+        default=None,
+        alias="preferred_topology_label",
+        description="Preferred topology label for scheduling"
+    )
+    required_topology_label: Optional[str] = Field(
+        default=None,
+        alias="required_topology_label",
+        description="Required topology label for scheduling"
+    )
 
     def to_domain(self) -> Dict:
         """
@@ -129,6 +139,24 @@ class PyTorchJobConfig(BaseModel):
         if self.scheduler_type is not None:
             map = {"scheduler_name": self.scheduler_type}
             spec_kwargs.update(map)
+
+        topology_spread_constraints = {}
+        topology_spread_constraints["max_skew"] = 1
+        topology_spread_constraints["when_unsatisfiable"] = "ScheduleAnyway"
+        # prioritizes required topology if both are given
+        if self.required_topology_label is not None:
+            map = {"topology_key": self.required_topology_label}
+            topology_spread_constraints.update(map)
+
+        if self.preferred_topology_label is not None and self.required_topology_label is None:
+            map = {"topology_key": self.preferred_topology_label}
+            topology_spread_constraints.update(map)
+
+        if self.label_selector is not None:
+            map = {"label_selector": self.label_selector}
+            topology_spread_constraints.update(map)
+
+        spec_kwargs.update({"topology_spread_constraints": [topology_spread_constraints]})
 
         # Build metadata labels only if relevant fields are present
         metadata_kwargs = {"name": self.job_name}
