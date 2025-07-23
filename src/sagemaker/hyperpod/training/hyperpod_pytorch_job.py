@@ -9,8 +9,7 @@ from sagemaker.hyperpod.common.utils import (
     handle_exception,
     get_default_namespace,
     setup_logging,
-    parse_kubernetes_version,
-    is_kubernetes_version_compatible,
+    verify_kubernetes_version_compatibility
 )
 from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
     _hyperpod_telemetry_emitter,
@@ -45,33 +44,8 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             config.load_kube_config()
             cls.is_kubeconfig_loaded = True
             
-            cls.__verify_kubernetes_version_compatibility()            
-    
-    @classmethod
-    def __verify_kubernetes_version_compatibility(cls):
-        logger = cls.get_logger()
-        
-        try:
-            version_api = client.VersionApi()
-            server_version_info = version_api.get_code()
-            
-            server_version_str = f"{server_version_info.major}.{server_version_info.minor}"
-            
-            client_version = parse_kubernetes_version(kubernetes_client_version)
-            server_version_parsed = (int(server_version_info.major), int(server_version_info.minor))
-            
-            # Check compatibility
-            if not is_kubernetes_version_compatible(client_version, server_version_parsed):
-                logger.warning(
-                    f"Kubernetes version mismatch detected! Client version: {kubernetes_client_version}, "
-                    f"Server version: {server_version_str}. This might cause compatibility issues."
-                )
-                logger.warning(
-                    "To resolve this issue, please update your kubernetes Python client to match the server version: "
-                    f"pip install kubernetes~={server_version_info.major}.{server_version_info.minor}.0"
-                )
-        except Exception as e:
-            logger.warning(f"Failed to verify Kubernetes version compatibility: {e}")
+            # Verify Kubernetes version compatibility
+            verify_kubernetes_version_compatibility(cls.get_logger())
 
     @classmethod
     def get_logger(cls):
