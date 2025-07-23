@@ -14,6 +14,7 @@ from sagemaker.hyperpod.cli.commands.inference import (
     custom_list_pods
 )
 from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
+from test.integration_tests.utils import get_time_str
 
 # --------- Test Configuration ---------
 NAMESPACE = "integration"
@@ -36,7 +37,7 @@ def runner():
 
 @pytest.fixture(scope="module")
 def custom_endpoint_name():
-    return f"custom-cli-integration-fsx"
+    return "custom-cli-integration-fsx-" + get_time_str()
 
 @pytest.fixture(scope="module")
 def sagemaker_client():
