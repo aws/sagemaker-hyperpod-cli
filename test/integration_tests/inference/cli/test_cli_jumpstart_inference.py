@@ -1,5 +1,4 @@
 import time
-import uuid
 import pytest
 import boto3
 from click.testing import CliRunner
@@ -7,6 +6,7 @@ from sagemaker.hyperpod.cli.commands.inference import (
     js_create, custom_invoke, js_list, js_describe, js_delete, js_get_operator_logs, js_list_pods
 )
 from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
+from test.integration_tests.utils import get_time_str
 
 # --------- Test Configuration ---------
 NAMESPACE = "integration"
@@ -21,7 +21,7 @@ def runner():
 
 @pytest.fixture(scope="module")
 def js_endpoint_name():
-    return f"js-cli-integration"
+    return "js-cli-integration-" + get_time_str()
 
 @pytest.fixture(scope="module")
 def sagemaker_client():

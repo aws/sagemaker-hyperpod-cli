@@ -73,7 +73,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@12e3392609eaaceb7ae6191b3f54bbcb85b5002b
         with:
           role-to-assume: ${{ secrets.MONITORING_ROLE_ARN }}
-          aws-region: us-west-2
+          aws-region: us-east-2
       - name: Put Dependabot Alert Metric Data
         run: |
           if [ "${{ needs.check-dependabot-alerts.outputs.dependabot_alert_status }}" == "1" ]; then
