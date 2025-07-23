@@ -310,7 +310,7 @@ def parse_client_kubernetes_version(version_str: str) -> Tuple[int, int]:
         version_str (str): Client library version string (e.g., '12.0.0', '17.0.0', 'v12.0.0')
         
     Returns:
-        Tuple[int, int]: Major and minor version numbers
+        Tuple[int, int]: Major and minor version numbers as (1, minor)
     """
     if not version_str:
         logger = logging.getLogger(__name__)
