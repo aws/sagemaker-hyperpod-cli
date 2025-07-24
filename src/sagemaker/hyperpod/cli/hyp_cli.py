@@ -36,6 +36,14 @@ from sagemaker.hyperpod.cli.commands.inference import (
     custom_get_operator_logs,
 )
 
+from sagemaker.hyperpod.cli.commands.init import (
+    init,
+    reset,
+    configure,
+    validate,
+    submit
+)
+
 
 def get_package_version(package_name):
     try:
@@ -115,6 +123,12 @@ def get_operator_logs():
     """Get operator logs for endpoints."""
     pass
 
+
+cli.add_command(init)
+cli.add_command(reset)
+cli.add_command(configure)
+cli.add_command(validate)
+cli.add_command(submit)
 
 create.add_command(pytorch_create)
 create.add_command(js_create)

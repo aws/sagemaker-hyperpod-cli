@@ -73,7 +73,7 @@ class FlatHPJumpStartEndpoint(BaseModel):
     tls_certificate_output_s3_uri: Optional[str] = Field(
         None,
         alias="tls_certificate_output_s3_uri",
-        description="S3 URI to write the TLS certificate (optional)",
+        description="S3 URI to write the TLS certificate",
         pattern=r"^s3://([^/]+)/?(.*)$",
     )
 

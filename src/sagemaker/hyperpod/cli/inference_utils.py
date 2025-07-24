@@ -44,14 +44,14 @@ def generate_click_command(
         # 2) inject JSON flags only if they exist in the schema
         schema = load_schema_for_version(version, schema_pkg)
         props = schema.get("properties", {})
-        
+
         json_flags = {
             "env": ("JSON object of environment variables, e.g. " '\'{"VAR1":"foo","VAR2":"bar"}\''),
             "dimensions": ("JSON object of dimensions, e.g. " '\'{"VAR1":"foo","VAR2":"bar"}\''),
             "resources_limits": ('JSON object of resource limits, e.g. \'{"cpu":"2","memory":"4Gi"}\''),
             "resources_requests": ('JSON object of resource requests, e.g. \'{"cpu":"1","memory":"2Gi"}\''),
         }
-        
+
         for flag_name, help_text in json_flags.items():
             if flag_name in props:
                 wrapped_func = click.option(
