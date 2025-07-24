@@ -298,72 +298,53 @@ def get_current_region():
         return boto3.session.Session().region_name
 
 
-def parse_kubernetes_version(version_str: str) -> Tuple[int, int]:
-    """Parse major and minor version from Kubernetes version string.
+def parse_client_kubernetes_version(version_str: str) -> Tuple[int, int]:
+    """Parse major and minor version from client library version string.
     
     Handles both old versioning scheme (v12 and before) and new homogenized scheme.
     Old scheme: v12.0.0 corresponds to Kubernetes v1.16
     New scheme: v17.0.0 corresponds to Kubernetes v1.17
     
     Args:
-        version_str (str): Version string (e.g., '1.24.0', '12.0.0', '17.0.0', 'v1.26.3')
+        version_str (str): Client library version string (e.g., '12.0.0', '17.0.0', 'v12.0.0')
         
     Returns:
-        Tuple[int, int]: Major and minor version numbers as (1, minor)
+        Tuple[int, int]: Major and minor version numbers
     """
     if not version_str:
         logger = logging.getLogger(__name__)
-        logger.debug(f"Empty Kubernetes version string provided, Using default version 0.0")
+        logger.debug(f"Empty version string provided, Using default version 0.0")
         return 0, 0
     
-    # First check for versions with 'v' prefix like 'v1.26.3'
-    match = re.search(r'v?(\d+)\.(\d+)', version_str)
-    if match:
-        return int(match.group(1)), int(match.group(2))
+    # Remove suffix (like '+snapshot') if present
+    version_str = version_str.split('+')[0]
+    
+    # Remove 'v' prefix if present
+    if version_str.startswith('v'):
+        version_str = version_str[1:]
+    
+    # Client library version format (x.y.z)
+    if re.match(r'^\d+\.\d+\.\d+$', version_str):
+        major = int(version_str.split('.')[0])
         
-    # If no match found, try the split approach
-    parts = version_str.split('.')
-    if len(parts) >= 2:
-        try:
-            major = int(parts[0])
-            minor = int(parts[1])
-            
-            # Handle Kubernetes native versioning (1.x.y)
-            if major == 1:
-                return major, minor
-                
-            # Handle old client versioning scheme (v12 and before)
-            # v12.0.0 corresponds to Kubernetes v1.16
-            if major <= 12:
-                k8s_minor = major + 4
-                logger = logging.getLogger(__name__)
-                logger.debug(f"Mapped old client version {version_str} to Kubernetes v1.{k8s_minor}")
-                return 1, k8s_minor
-                
-            # Handle new homogenized versioning scheme
-            # v17.0.0 corresponds to Kubernetes v1.17
-            else:
-                logger = logging.getLogger(__name__)
-                logger.debug(f"Mapped homogenized client version {version_str} to Kubernetes v1.{major}")
-                return 1, major
-                
-        except ValueError:
-            logger = logging.getLogger(__name__)
-            logger.warning(f"Failed to parse version components from '{version_str}'. Using default version 0.0.")
-            return 0, 0
+        # Old client versioning scheme (v12 and before)
+        if major <= 12:
+            # Currently maps to Kubernetes v1.x
+            # This mapping assumes Kubernetes major version is 1
+            # If Kubernetes moves to v2.x in the future, this mapping would need to be updated
+            return 1, major + 4
+        
+        # New homogenized scheme (v17 and above)
+        # Currently maps to Kubernetes v1.x
+        # This mapping assumes Kubernetes major version is 1
+        # If Kubernetes moves to v2.x in the future, this mapping would need to be updated
+        return 1, major
     
     # If we get here, parsing failed
     logger = logging.getLogger(__name__)
-    logger.warning(f"Failed to parse Kubernetes version from string: '{version_str}'. Using default version 0.0.")
-    
-    # Try to extract any numbers as a fallback
-    numbers = re.findall(r'\d+', version_str)
-    if len(numbers) >= 2:
-        return int(numbers[0]), int(numbers[1])
-    elif len(numbers) == 1:
-        return int(numbers[0]), 0
-    
-    return 0, 0  # Default to 0.0 to indicate parsing failure
+    logger.warning(f"Failed to parse client version from string: '{version_str}'. Using default version 0.0.")
+    return 0, 0
+
 
 
 def is_kubernetes_version_compatible(client_version: Tuple[int, int], server_version: Tuple[int, int]) -> bool:
@@ -426,7 +407,7 @@ def verify_kubernetes_version_compatibility(logger) -> bool:
         server_version_info = version_api.get_code()
         
         server_version_str = f"{server_version_info.major}.{server_version_info.minor}"
-        client_version = parse_kubernetes_version(kubernetes_client_version)
+        client_version = parse_client_kubernetes_version(kubernetes_client_version)
         client_version_str = f"{client_version[0]}.{client_version[1]}"
 
         # Debug output of server version info

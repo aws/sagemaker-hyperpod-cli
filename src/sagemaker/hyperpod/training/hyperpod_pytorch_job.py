@@ -39,6 +39,10 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
     )
 
     @classmethod
+    def get_logger(cls):
+        return logging.getLogger(__name__)
+    
+    @classmethod
     def verify_kube_config(cls):
         if not cls.is_kubeconfig_loaded:
             config.load_kube_config()
@@ -46,10 +50,6 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             
             # Verify Kubernetes version compatibility
             verify_kubernetes_version_compatibility(cls.get_logger())
-
-    @classmethod
-    def get_logger(cls):
-        return logging.getLogger(__name__)
 
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_pytorchjob")
     def create(self, debug=False):
