@@ -64,6 +64,7 @@ get_cluster_context()
 ````
 `````
 
+
 ## Next Steps
 
 After setting up your environment and connecting to a cluster, you can:
