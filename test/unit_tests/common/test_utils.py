@@ -12,7 +12,7 @@ from sagemaker.hyperpod.common.utils import (
     list_clusters,
     set_cluster_context,
     get_cluster_context,
-    parse_kubernetes_version,
+    parse_client_kubernetes_version,
     is_kubernetes_version_compatible,
 )
 from kubernetes.client.exceptions import ApiException
@@ -116,44 +116,40 @@ class TestUtilityFunctions(unittest.TestCase):
             get_region_from_eks_arn("invalid:arn:format")
         self.assertIn("cannot get region from EKS ARN", str(context.exception))
         
-    def test_parse_kubernetes_version_standard_format(self):
-        """Test parsing standard Kubernetes version format (1.x.y)"""
-        # Test standard format
-        self.assertEqual(parse_kubernetes_version("1.24.0"), (1, 24))
-        self.assertEqual(parse_kubernetes_version("v1.26.3"), (1, 26))
+    def test_parse_client_kubernetes_version_with_v_prefix(self):
+        """Test parsing client version with 'v' prefix"""        
+        self.assertEqual(parse_client_kubernetes_version("v12.0.0"), (1, 16))
+        self.assertEqual(parse_client_kubernetes_version("v17.0.0"), (1, 17))
         
-    def test_parse_kubernetes_version_old_client_format(self):
+    def test_parse_client_kubernetes_version_old_client_format(self):
         """Test parsing old client version format (v12 and before)"""
         # Test old client format (v12 and before)
         # v12.0.0 corresponds to Kubernetes v1.16
-        self.assertEqual(parse_kubernetes_version("12.0.0"), (1, 16))
-        self.assertEqual(parse_kubernetes_version("11.0.0"), (1, 15))
-        self.assertEqual(parse_kubernetes_version("10.0.0"), (1, 14))
+        self.assertEqual(parse_client_kubernetes_version("12.0.0"), (1, 16))
+        self.assertEqual(parse_client_kubernetes_version("11.0.0"), (1, 15))
+        self.assertEqual(parse_client_kubernetes_version("10.0.0"), (1, 14))
         
-    def test_parse_kubernetes_version_new_client_format(self):
+    def test_parse_client_kubernetes_version_new_client_format(self):
         """Test parsing new homogenized client version format (v17+)"""
         # Test new homogenized format (v17+)
         # v17.0.0 corresponds to Kubernetes v1.17
-        self.assertEqual(parse_kubernetes_version("17.0.0"), (1, 17))
-        self.assertEqual(parse_kubernetes_version("18.0.0"), (1, 18))
-        self.assertEqual(parse_kubernetes_version("24.0.0"), (1, 24))
+        self.assertEqual(parse_client_kubernetes_version("17.0.0"), (1, 17))
+        self.assertEqual(parse_client_kubernetes_version("18.0.0"), (1, 18))
+        self.assertEqual(parse_client_kubernetes_version("24.0.0"), (1, 24))
         
-    def test_parse_kubernetes_version_with_suffix(self):
-        """Test parsing version with suffix"""
-        # Test with suffix
-        self.assertEqual(parse_kubernetes_version("24.0.0+snapshot"), (1, 24))
-        self.assertEqual(parse_kubernetes_version("1.26.0+custom"), (1, 26))
+    def test_parse_client_kubernetes_version_with_suffix(self):
+        """Test parsing version with suffix"""        
+        self.assertEqual(parse_client_kubernetes_version("24.0.0+snapshot"), (1, 24))
+        self.assertEqual(parse_client_kubernetes_version("v17.0.0+custom"), (1, 17))
         
-    def test_parse_kubernetes_version_invalid_format(self):
-        """Test parsing invalid version format"""
-        # Test invalid format
-        self.assertEqual(parse_kubernetes_version(""), (0, 0))
-        self.assertEqual(parse_kubernetes_version("invalid"), (0, 0))
-        self.assertEqual(parse_kubernetes_version("a.b.c"), (0, 0))
+    def test_parse_client_kubernetes_version_invalid_format(self):
+        """Test parsing invalid version format"""        
+        self.assertEqual(parse_client_kubernetes_version(""), (0, 0))
+        self.assertEqual(parse_client_kubernetes_version("invalid"), (0, 0))
+        self.assertEqual(parse_client_kubernetes_version("a.b.c"), (0, 0))
         
     def test_is_kubernetes_version_compatible_same_version(self):
-        """Test compatibility check with same versions"""
-        # Same versions should be compatible
+        """Test compatibility check with same versions"""        
         self.assertTrue(is_kubernetes_version_compatible((1, 24), (1, 24)))
         
     def test_is_kubernetes_version_compatible_within_range(self):
