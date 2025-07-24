@@ -4,9 +4,7 @@
 
 This guide will help you get started with the SageMaker HyperPod CLI and SDK to perform basic operations.
 
-## Cluster Management
-
-### List Available Clusters
+## List Available Clusters
 
 List all available SageMaker HyperPod clusters in your account:
 
@@ -19,20 +17,14 @@ hyp list-cluster [--region <region>] [--namespace <namespace>] [--output <json|t
 
 ````{tab-item} SDK
 ```python
-from sagemaker.hyperpod.hyperpod_manager import HyperPodManager
+from sagemaker.hyperpod import list_clusters
 
-clusters = HyperPodManager.list_clusters(region='us-east-2')
-print(clusters)
+list_clusters(region='us-east-2')
 ```
 ````
 `````
 
-**Parameters:**
-- `region` (string) - Optional. The AWS region where the SageMaker HyperPod and EKS clusters are located. If not specified, uses the region from your current AWS account credentials.
-- `namespace` (string) - Optional. The namespace to check quota with. Only SageMaker managed namespaces are supported.
-- `output` (enum) - Optional. The output format: `table` or `json` (default).
-
-### Connect to a Cluster
+## Connect to a Cluster
 
 Configure your local kubectl environment to interact with a specific SageMaker HyperPod cluster and namespace:
 
@@ -45,18 +37,14 @@ hyp set-cluster-context --cluster-name <cluster-name> [--namespace <namespace>]
 
 ````{tab-item} SDK
 ```python
-from sagemaker.hyperpod.hyperpod_manager import HyperPodManager
+from sagemaker.hyperpod import set_cluster_context
 
-HyperPodManager.set_context('<hyperpod-cluster-name>', region='us-east-2')
+set_cluster_context('<my-cluster>', region='us-east-2')
 ```
 ````
 `````
 
-**Parameters:**
-- `cluster-name` (string) - Required. The SageMaker HyperPod cluster name to configure with.
-- `namespace` (string) - Optional. The namespace to connect to. If not specified, the CLI will automatically discover accessible namespaces.
-
-### Get Current Cluster Context
+## Get Current Cluster Context
 
 View information about the currently configured cluster context:
 
@@ -69,61 +57,13 @@ hyp get-cluster-context
 
 ````{tab-item} SDK
 ```python
-from sagemaker.hyperpod.hyperpod_manager import HyperPodManager
+from sagemaker.hyperpod import get_cluster_context
 
-# Get current context information
-context = HyperPodManager.get_context()
-print(context)
+get_cluster_context()
 ```
 ````
 `````
 
-## Job Management
-
-### List Pods for a Training Job
-
-View all pods associated with a specific training job:
-
-`````{tab-set}
-````{tab-item} CLI
-```bash
-hyp list-pods hyp-pytorch-job --job-name <job-name>
-```
-````
-
-````{tab-item} SDK
-```python
-# List all pods created for this job
-pytorch_job.list_pods()
-```
-````
-`````
-
-**Parameters:**
-- `job-name` (string) - Required. The name of the job to list pods for.
-
-### Access Pod Logs
-
-View logs for a specific pod within a training job:
-
-`````{tab-set}
-````{tab-item} CLI
-```bash
-hyp get-logs hyp-pytorch-job --pod-name <pod-name> --job-name <job-name>
-```
-````
-
-````{tab-item} SDK
-```python
-# Check the logs from pod0
-pytorch_job.get_logs_from_pod("demo-pod-0")
-```
-````
-`````
-
-**Parameters:**
-- `job-name` (string) - Required. The name of the job to get logs for.
-- `pod-name` (string) - Required. The name of the pod to get logs from.
 
 ## Next Steps
 

@@ -27,8 +27,8 @@ hyp create hyp-pytorch-job \
     --version 1.0 \
     --job-name test-pytorch-job \
     --image pytorch/pytorch:latest \
-    --command '["python", "train.py"]' \
-    --args '["--epochs", "10", "--batch-size", "32"]' \
+    --command '[python, train.py]' \
+    --args '[--epochs=10, --batch-size=32]' \
     --environment '{"PYTORCH_CUDA_ALLOC_CONF": "max_split_size_mb:32"}' \
     --pull-policy "IfNotPresent" \
     --instance-type ml.p4d.24xlarge \
@@ -39,76 +39,68 @@ hyp create hyp-pytorch-job \
     --queue-name "training-queue" \
     --priority "high" \
     --max-retry 3 \
-    --volumes '["data-vol", "model-vol", "checkpoint-vol"]' \
-    --persistent-volume-claims '["shared-data-pvc", "model-registry-pvc"]' \
+    --volumes '[data-vol, model-vol, checkpoint-vol]' \
+    --persistent-volume-claims '[shared-data-pvc, model-registry-pvc]' \
     --output-s3-uri s3://my-bucket/model-artifacts
 ```
 ````
 ````{tab-item} SDK
 ```python
-from sagemaker.hyperpod import HyperPodPytorchJob
-from sagemaker.hyperpod.job import ReplicaSpec, Template, Spec, Container, Resources, RunPolicy, Metadata
+from sagemaker.hyperpod.training import (
+    HyperPodPytorchJob,
+    Containers,
+    ReplicaSpec,
+    Resources,
+    RunPolicy,
+    Spec,
+    Template,
+)
+from sagemaker.hyperpod.common.config import Metadata
 
-# Define job specifications
-nproc_per_node = "1"  # Number of processes per node
-replica_specs = [
+
+nproc_per_node="1"
+replica_specs=[
     ReplicaSpec(
-        name = "pod",  # Replica name
-        template = Template(
-            spec = Spec(
-                containers = [
-                    Container(
-                        # Container name
-                        name="container-name",  
-                        
-                        # Training image
-                        image="123456789012.dkr.ecr.us-west-2.amazonaws.com/my-training-image:latest",  
-                        
-                        # Always pull image
-                        image_pull_policy="Always",  
+        name="pod",
+        template=Template(
+            spec=Spec(
+                containers=[
+                    Containers(
+                        name="container-name",
+                        image="448049793756.dkr.ecr.us-west-2.amazonaws.com/ptjob:mnist",
+                        image_pull_policy="Always",
                         resources=Resources(
-                            # No GPUs requested
-                            requests={"nvidia.com/gpu": "0"},  
-                            # No GPU limit
-                            limits={"nvidia.com/gpu": "0"},   
+                            requests={"nvidia.com/gpu": "0"},
+                            limits={"nvidia.com/gpu": "0"},
                         ),
-                        # Command to run
-                        command=["python", "train.py"],  
-                        # Script arguments
-                        args=["--epochs", "10", "--batch-size", "32"],  
+                        # command=[]
                     )
                 ]
             )
         ),
     )
 ]
+run_policy=RunPolicy(clean_pod_policy="None")
 
-# Create the PyTorch job
 pytorch_job = HyperPodPytorchJob(
-    job_name="my-pytorch-job",
+    metadata=Metadata(name="demo"),
+    nproc_per_node="1",
     replica_specs=replica_specs,
-    run_policy=RunPolicy(
-        clean_pod_policy="Running"  # Keep pods after completion
-    )
+    run_policy=run_policy,
 )
 
-# Submit the job
 pytorch_job.create()
 ```
 ````
 `````
 
-## Key Parameters
+### Key Parameters
 
 When creating a training job, you'll need to specify:
 
 - **job-name**: Unique identifier for your training job
 - **image**: Docker image containing your training environment
-- **command**: Command to run inside the container
-- **args**: Arguments to pass to the command
-- **instance-type**: The EC2 instance type to use
-- **tasks-per-node**: Number of processes to run per node
-- **output-s3-uri**: S3 location to store model artifacts
+
 
 ## Managing Training Jobs
 
@@ -122,11 +114,12 @@ hyp list hyp-pytorch-job
 ````
 ````{tab-item} SDK
 ```python
-from sagemaker.hyperpod import HyperPodManager
+from sagemaker.hyperpod.training import HyperPodPytorchJob
+import yaml
 
 # List all PyTorch jobs
-jobs = HyperPodManager.list_jobs(job_type="hyp-pytorch-job")
-print(jobs)
+jobs = HyperPodPytorchJob.list()
+print(yaml.dump(jobs))
 ```
 ````
 `````
@@ -141,14 +134,44 @@ hyp describe hyp-pytorch-job --job-name <job-name>
 ````
 ````{tab-item} SDK
 ```python
-from sagemaker.hyperpod import HyperPodPytorchJob
+from sagemaker.hyperpod.training import HyperPodPytorchJob
 
 # Get an existing job
-job = HyperPodPytorchJob.load(job_name="my-pytorch-job")
+job = HyperPodPytorchJob.get(name="my-pytorch-job", namespace="my-namespace")
 
-# Get job details
-job_details = job.describe()
-print(job_details)
+print(job)
+```
+````
+`````
+
+### List Pods for a Training Job
+
+`````{tab-set}
+````{tab-item} CLI
+```bash
+hyp list-pods hyp-pytorch-job --job-name <job-name>
+```
+````
+
+````{tab-item} SDK
+```python
+print(pytorch_job.list_pods())
+```
+````
+`````
+
+### Get Logs from a Pod
+
+`````{tab-set}
+````{tab-item} CLI
+```bash
+hyp get-logs hyp-pytorch-job --pod-name test-pytorch-job-cli-pod-0 --job-name test-pytorch-job-cli
+```
+````
+
+````{tab-item} SDK
+```python
+print(pytorch_job.get_logs_from_pod("pod-name"))
 ```
 ````
 `````
@@ -163,10 +186,10 @@ hyp delete hyp-pytorch-job --job-name <job-name>
 ````
 ````{tab-item} SDK
 ```python
-from sagemaker.hyperpod import HyperPodPytorchJob
+from sagemaker.hyperpod.training import HyperPodPytorchJob
 
 # Get an existing job
-job = HyperPodPytorchJob.load(job_name="my-pytorch-job")
+job = HyperPodPytorchJob.get(name="my-pytorch-job", namespace="my-namespace")
 
 # Delete the job
 job.delete()
