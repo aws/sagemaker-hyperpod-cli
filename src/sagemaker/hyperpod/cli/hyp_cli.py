@@ -46,49 +46,49 @@ class CLICommand(click.Group):
 
 @cli.group(cls=CLICommand)
 def create():
-    """Create a jumpstart model endpoint, a custom model endpoint, or a pytorch job."""
+    """Create endpoints or pytorch jobs."""
     pass
 
 
 @cli.group(cls=CLICommand)
 def list():
-    """List all jumpstart model endpoints, custom model endpoints, or pytorch jobs."""
+    """List endpoints or pytorch jobs."""
     pass
 
 
 @cli.group(cls=CLICommand)
 def describe():
-    """Describe a jumpstart model endpoint, a custom model endpoint, or a pytorch job."""
+    """Describe endpoints or pytorch jobs."""
     pass
 
 
 @cli.group(cls=CLICommand)
 def delete():
-    """Delete a jumpstart model endpoint, a custom model endpoint, or a pytorch job."""
+    """Delete endpoints or pytorch jobs."""
     pass
 
 
 @cli.group(cls=CLICommand)
 def list_pods():
-    """List all pods for jumpstart model endpoint, custom model endpoint or pytorch jobs."""
+    """List pods for endpoints or pytorch jobs."""
     pass
 
 
 @cli.group(cls=CLICommand)
 def get_logs():
-    """Get specific pod logs for a jumpstart model endpoint, custom model endpoint or pytorch job."""
+    """Get pod logs for endpoints or pytorch jobs."""
     pass
 
 
 @cli.group(cls=CLICommand)
 def invoke():
-    """Invoke a jumpstart model endpoint or a custom model endpoint."""
+    """Invoke model endpoints."""
     pass
 
 
 @cli.group(cls=CLICommand)
 def get_operator_logs():
-    """Get operator logs for jumpstart model endpoint, or custom model endpoint."""
+    """Get operator logs for endpoints."""
     pass
 
 

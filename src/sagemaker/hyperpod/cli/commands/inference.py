@@ -132,7 +132,7 @@ def js_list(
     namespace: Optional[str],
 ):
     """
-    List jumpstart model endpoints with provided namespace.
+    List all Hyperpod Jumpstart model endpoints.
     """
 
     endpoints = HPJumpStartEndpoint.model_construct().list(namespace)
@@ -174,7 +174,7 @@ def custom_list(
     namespace: Optional[str],
 ):
     """
-    List custom model endpoints with provided namespace.
+    List all Hyperpod custom model endpoints.
     """
 
     endpoints = HPEndpoint.model_construct().list(namespace)
@@ -232,7 +232,7 @@ def js_describe(
     full: bool
 ):
     """
-    Describe a jumpstart model endpoint with provided name and namespace.
+    Describe a Hyperpod Jumpstart model endpoint.
     """
 
     my_endpoint = HPJumpStartEndpoint.model_construct().get(name, namespace)
@@ -380,7 +380,7 @@ def custom_describe(
     full: bool
 ):
     """
-    Describe a custom model endpoint with provided name and namespace.
+    Describe a Hyperpod custom model endpoint.
     """
 
     my_endpoint = HPEndpoint.model_construct().get(name, namespace)
@@ -553,7 +553,7 @@ def js_delete(
     namespace: Optional[str],
 ):
     """
-    Delete a jumpstart model endpoint with provided name and namespace.
+    Delete a Hyperpod Jumpstart model endpoint.
     """
     my_endpoint = HPJumpStartEndpoint.model_construct().get(name, namespace)
     my_endpoint.delete()
@@ -578,7 +578,7 @@ def custom_delete(
     namespace: Optional[str],
 ):
     """
-    Delete a custom model endpoint with provided name and namespace.
+    Delete a Hyperpod custom model endpoint.
     """
     my_endpoint = HPEndpoint.model_construct().get(name, namespace)
     my_endpoint.delete()
@@ -596,7 +596,7 @@ def js_list_pods(
     namespace: Optional[str],
 ):
     """
-    Get specific pod log for jumpstart model endpoint.
+    List all pods related to jumpstart model endpoint.
     """
     my_endpoint = HPJumpStartEndpoint.model_construct()
     pods = my_endpoint.list_pods(namespace=namespace)
@@ -615,7 +615,7 @@ def custom_list_pods(
     namespace: Optional[str],
 ):
     """
-    Get specific pod log for custom model endpoint.
+    List all pods related to custom model endpoint.
     """
     my_endpoint = HPEndpoint.model_construct()
     pods = my_endpoint.list_pods(namespace=namespace)
@@ -699,7 +699,7 @@ def js_get_operator_logs(
     since_hours: float,
 ):
     """
-    Get operator logs for jumpstart model endpoint in the set time frame.
+    Get operator logs for jumpstart model endpoint.
     """
     my_endpoint = HPJumpStartEndpoint.model_construct()
     logs = my_endpoint.get_operator_logs(since_hours=since_hours)
@@ -717,7 +717,7 @@ def custom_get_operator_logs(
     since_hours: float,
 ):
     """
-    Get operator logs for custom model endpoint in the set time frame.
+    Get operator logs for custom model endpoint.
     """
     my_endpoint = HPEndpoint.model_construct()
     logs = my_endpoint.get_operator_logs(since_hours=since_hours)
