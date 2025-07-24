@@ -183,7 +183,7 @@ def test_custom_invoke_success(mock_boto3, mock_endpoint_get):
 
     runner = CliRunner()
     result = runner.invoke(custom_invoke, [
-        '--endpoint-name', 'ep',
+        '--name', 'ep',
         '--body', '{"x": 1}'
     ])
 
@@ -194,7 +194,7 @@ def test_custom_invoke_success(mock_boto3, mock_endpoint_get):
 @patch('sagemaker.hyperpod.cli.commands.inference.boto3')
 def test_custom_invoke_invalid_json(mock_boto3):
     runner = CliRunner()
-    result = runner.invoke(custom_invoke, ['--endpoint-name', 'ep', '--body', 'bad'])
+    result = runner.invoke(custom_invoke, ['--name', 'ep', '--body', 'bad'])
     assert result.exit_code != 0
     assert 'must be valid JSON' in result.output
 

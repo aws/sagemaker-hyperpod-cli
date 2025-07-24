@@ -203,7 +203,7 @@ hyp create hyp-jumpstart-endpoint \
 
 ```
 hyp invoke hyp-jumpstart-endpoint \
-    --endpoint-name endpoint-jumpstart \
+    --name endpoint-jumpstart \
     --body '{"inputs":"What is the capital of USA?"}'
 ```
 
@@ -235,7 +235,7 @@ hyp create hyp-custom-endpoint \
 
 ```
 hyp invoke hyp-custom-endpoint \
-    --endpoint-name endpoint-custom-pytorch \
+    --name endpoint-custom-pytorch \
     --body '{"inputs":"What is the capital of USA?"}'
     
 ```

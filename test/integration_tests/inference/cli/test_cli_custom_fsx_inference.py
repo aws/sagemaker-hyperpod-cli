@@ -119,7 +119,7 @@ def test_wait_until_inservice(custom_endpoint_name):
 @pytest.mark.dependency(depends=["create"])
 def test_custom_invoke(runner, custom_endpoint_name):
     result = runner.invoke(custom_invoke, [
-        "--endpoint-name", custom_endpoint_name,
+        "--name", custom_endpoint_name,
         "--body", '{"question" :"what is the name of the planet?", "context":"mars"}',
         "--content-type", "application/list-text"
     ])

@@ -92,7 +92,7 @@ def test_wait_until_inservice(js_endpoint_name):
 @pytest.mark.dependency(depends=["create"])
 def test_custom_invoke(runner, js_endpoint_name):
     result = runner.invoke(custom_invoke, [
-        "--endpoint-name", js_endpoint_name,
+        "--name", js_endpoint_name,
         "--body", '{"inputs": "What is the capital of USA?"}'
     ])
     assert result.exit_code == 0

@@ -58,7 +58,7 @@ def custom_create(namespace, version, custom_endpoint):
 # INVOKE
 @click.command("hyp-custom-endpoint")
 @click.option(
-    "--endpoint-name",
+    "--name",
     type=click.STRING,
     required=True,
     help="Required. The name of the model endpoint to invoke.",
@@ -77,7 +77,7 @@ def custom_create(namespace, version, custom_endpoint):
     help="Optional. The content type of the request to invoke. Default set to 'application/json'",
 )
 def custom_invoke(
-    endpoint_name: str,
+    name: str,
     body: str,
     content_type: Optional[str]
 ):
@@ -92,26 +92,26 @@ def custom_invoke(
     rt = boto3.client("sagemaker-runtime")
 
     try:
-        endpoint = Endpoint.get(endpoint_name)
+        endpoint = Endpoint.get(name)
     except Exception as e:
         endpoint = None
 
     if endpoint and endpoint.endpoint_status != "InService":
         raise click.ClickException(
-            f"Endpoint {endpoint_name} creation has been initated but is currently not in service")
+            f"Endpoint {name} creation has been initated but is currently not in service")
     elif not endpoint:
         try:
-            hp_endpoint = HPEndpoint.get(endpoint_name)
+            hp_endpoint = HPEndpoint.get(name)
         except Exception as e:
             hp_endpoint = None
 
         if not hp_endpoint:
-            raise click.ClickException(f"Endpoint {endpoint_name} not found. Please check the endpoint name input")
+            raise click.ClickException(f"Endpoint {name} not found. Please check the endpoint name input")
         else:
             raise click.ClickException(f"Job has been initiated but the Endpoint is not created yet. Please check logs or wait and try again later")
 
     resp = rt.invoke_endpoint(
-        EndpointName=endpoint_name,
+        EndpointName=name,
         Body=payload.encode("utf-8"),
         ContentType=content_type,
     )
