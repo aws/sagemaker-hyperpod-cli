@@ -20,6 +20,7 @@ hyp list-cluster [--region <region>] [--namespace <namespace>] [--output <json|t
 from sagemaker.hyperpod import list_clusters
 
 list_clusters(region='aws-region')
+
 ```
 ````
 `````
@@ -40,6 +41,7 @@ hyp set-cluster-context --cluster-name <cluster-name> [--namespace <namespace>]
 from sagemaker.hyperpod import set_cluster_context
 
 set_cluster_context('<my-cluster>', region='aws-region')
+
 ```
 ````
 `````
