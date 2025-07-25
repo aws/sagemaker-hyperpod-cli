@@ -14,7 +14,6 @@ SageMaker HyperPod training jobs allow you to:
 - Set up node selection with label selectors
 - Manage job scheduling and priorities
 - Mount volumes and persistent volume claims
-- Store model artifacts in S3
 
 ## Creating Training Jobs
 
@@ -41,7 +40,7 @@ hyp create hyp-pytorch-job \
     --max-retry 3 \
     --volumes '[data-vol, model-vol, checkpoint-vol]' \
     --persistent-volume-claims '[shared-data-pvc, model-registry-pvc]' \
-    --output-s3-uri s3://my-bucket/model-artifacts
+    
 ```
 ````
 ````{tab-item} SDK
