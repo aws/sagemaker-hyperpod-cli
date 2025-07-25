@@ -308,11 +308,17 @@ custom_endpoint.delete()
 
 ## Inference Example Notebooks
 
-For detailed examples of inference with HyperPod, see:
-- [CLI Inference FSX Model Example](https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/inference/CLI/inference-fsx-model-e2e-cli.ipynb)
-- [CLI Inference Jumpstart Model Example](https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/inference/CLI/inference-jumpstart-e2e-cli.ipynb)
-- [CLI Inference S3 Model Example](https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/inference/CLI/inference-s3-model-e2e-cli.ipynb)
-- [SDK Inference FSX Model Example](https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/inference/SDK/inference-fsx-model-e2e.ipynb)
-- [SDK Inference Jumpstart Model Example](https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/inference/SDK/inference-jumpstart-e2e.ipynb)
-- [SDK Inference S3 Model Example](https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/inference/SDK/inference-s3-model-e2e.ipynb)
+For detailed examples of inference with HyperPod, explore these interactive Jupyter notebooks:
 
+CLI Examples:
+- <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/inference/CLI/inference-fsx-model-e2e-cli.ipynb" target="_blank">CLI Inference FSX Model Example</a>
+- <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/inference/CLI/inference-jumpstart-e2e-cli.ipynb" target="_blank">CLI Inference JumpStart Model Example</a>
+- <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/inference/CLI/inference-s3-model-e2e-cli.ipynb" target="_blank">CLI Inference S3 Model Example</a>
+
+SDK Examples:
+- <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/inference/SDK/inference-fsx-model-e2e.ipynb" target="_blank">SDK Inference FSX Model Example</a>
+- <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/inference/SDK/inference-jumpstart-e2e.ipynb" target="_blank">SDK Inference JumpStart Model Example</a>
+- <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/inference/SDK/inference-s3-model-e2e.ipynb" target="_blank">SDK Inference S3 Model Example</a>
+
+These Jupyter notebooks demonstrate comprehensive workflows for deploying and managing inference endpoints using different model storage options and both CLI and SDK approaches. You can run these notebooks directly
+in your local environment or SageMaker Studio.
