@@ -7,6 +7,28 @@ from sagemaker.hyperpod.inference.config.constants import *
 class TestHPEndpointBase(unittest.TestCase):
     def setUp(self):
         self.base = HPEndpointBase()
+        
+    @patch("sagemaker.hyperpod.inference.hp_endpoint_base.verify_kubernetes_version_compatibility")
+    @patch("kubernetes.config.load_kube_config")
+    def test_verify_kube_config(self, mock_load_kube_config, mock_verify_k8s_version):
+        # Reset the class variable
+        HPEndpointBase.is_kubeconfig_loaded = False
+        
+        # Call the method
+        HPEndpointBase.verify_kube_config()
+        
+        # Verify both functions were called
+        mock_load_kube_config.assert_called_once()
+        mock_verify_k8s_version.assert_called_once_with(HPEndpointBase.get_logger())
+        
+        # Reset mocks
+        mock_load_kube_config.reset_mock()
+        mock_verify_k8s_version.reset_mock()
+        
+        # Call again - should not call the functions
+        HPEndpointBase.verify_kube_config()
+        mock_load_kube_config.assert_not_called()
+        mock_verify_k8s_version.assert_not_called()
 
     @patch("kubernetes.client.CustomObjectsApi")
     @patch.object(HPEndpointBase, "verify_kube_config")

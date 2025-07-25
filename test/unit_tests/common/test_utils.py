@@ -1,6 +1,7 @@
 import unittest
 import subprocess
-from unittest.mock import patch, MagicMock, mock_open
+import logging
+from unittest.mock import patch, MagicMock, mock_open, call
 from sagemaker.hyperpod.common.utils import (
     handle_exception,
     get_eks_name_from_arn,
@@ -11,6 +12,8 @@ from sagemaker.hyperpod.common.utils import (
     list_clusters,
     set_cluster_context,
     get_cluster_context,
+    parse_client_kubernetes_version,
+    is_kubernetes_version_compatible,
 )
 from kubernetes.client.exceptions import ApiException
 from pydantic import ValidationError
@@ -112,6 +115,72 @@ class TestUtilityFunctions(unittest.TestCase):
         with self.assertRaises(RuntimeError) as context:
             get_region_from_eks_arn("invalid:arn:format")
         self.assertIn("cannot get region from EKS ARN", str(context.exception))
+        
+    def test_parse_client_kubernetes_version_with_v_prefix(self):
+        """Test parsing client version with 'v' prefix"""        
+        self.assertEqual(parse_client_kubernetes_version("v12.0.0"), (1, 16))
+        self.assertEqual(parse_client_kubernetes_version("v17.0.0"), (1, 17))
+        
+    def test_parse_client_kubernetes_version_old_client_format(self):
+        """Test parsing old client version format (v12 and before)"""
+        # Test old client format (v12 and before)
+        # v12.0.0 corresponds to Kubernetes v1.16
+        self.assertEqual(parse_client_kubernetes_version("12.0.0"), (1, 16))
+        self.assertEqual(parse_client_kubernetes_version("11.0.0"), (1, 15))
+        self.assertEqual(parse_client_kubernetes_version("10.0.0"), (1, 14))
+        
+    def test_parse_client_kubernetes_version_new_client_format(self):
+        """Test parsing new homogenized client version format (v17+)"""
+        # Test new homogenized format (v17+)
+        # v17.0.0 corresponds to Kubernetes v1.17
+        self.assertEqual(parse_client_kubernetes_version("17.0.0"), (1, 17))
+        self.assertEqual(parse_client_kubernetes_version("18.0.0"), (1, 18))
+        self.assertEqual(parse_client_kubernetes_version("24.0.0"), (1, 24))
+        
+    def test_parse_client_kubernetes_version_with_suffix(self):
+        """Test parsing version with suffix"""        
+        self.assertEqual(parse_client_kubernetes_version("24.0.0+snapshot"), (1, 24))
+        self.assertEqual(parse_client_kubernetes_version("v17.0.0+custom"), (1, 17))
+        
+    def test_parse_client_kubernetes_version_invalid_format(self):
+        """Test parsing invalid version format"""        
+        self.assertEqual(parse_client_kubernetes_version(""), (0, 0))
+        self.assertEqual(parse_client_kubernetes_version("invalid"), (0, 0))
+        self.assertEqual(parse_client_kubernetes_version("a.b.c"), (0, 0))
+        
+    def test_is_kubernetes_version_compatible_same_version(self):
+        """Test compatibility check with same versions"""        
+        self.assertTrue(is_kubernetes_version_compatible((1, 24), (1, 24)))
+        
+    def test_is_kubernetes_version_compatible_within_range(self):
+        """Test compatibility check with versions within supported range"""
+        # Client within 3 minor versions behind server
+        self.assertTrue(is_kubernetes_version_compatible((1, 23), (1, 24)))
+        self.assertTrue(is_kubernetes_version_compatible((1, 22), (1, 24)))
+        self.assertTrue(is_kubernetes_version_compatible((1, 21), (1, 24)))
+        
+        # Client within 1 minor version ahead of server
+        self.assertTrue(is_kubernetes_version_compatible((1, 25), (1, 24)))
+        
+    def test_is_kubernetes_version_compatible_outside_range(self):
+        """Test compatibility check with versions outside supported range"""
+        # Client too old (more than 3 minor versions behind)
+        self.assertFalse(is_kubernetes_version_compatible((1, 20), (1, 24)))
+        
+        # Client too new (more than 1 minor version ahead)
+        self.assertFalse(is_kubernetes_version_compatible((1, 26), (1, 24)))
+        
+    def test_is_kubernetes_version_compatible_different_major(self):
+        """Test compatibility check with different major versions"""
+        # Different major versions should be incompatible
+        self.assertFalse(is_kubernetes_version_compatible((2, 0), (1, 0)))
+        
+    def test_is_kubernetes_version_compatible_default_versions(self):
+        """Test compatibility check with default versions (0, 0)"""
+        # Default versions should be treated as compatible
+        self.assertTrue(is_kubernetes_version_compatible((0, 0), (1, 24)))
+        self.assertTrue(is_kubernetes_version_compatible((1, 24), (0, 0)))
+        self.assertTrue(is_kubernetes_version_compatible((0, 0), (0, 0)))
 
     def test_is_eks_orchestrator_true(self):
         mock_client = MagicMock()

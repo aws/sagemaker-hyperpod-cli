@@ -14,12 +14,15 @@ import os
 import subprocess
 import uuid
 import re
+import logging
+from unittest.mock import patch, MagicMock
 
 import boto3
 
 from sagemaker.hyperpod.cli.utils import setup_logger
 from kubernetes.client.rest import ApiException
 from kubernetes import client, config
+from sagemaker.hyperpod.common.utils import verify_kubernetes_version_compatibility
 
 logger = setup_logger(__name__)
 
@@ -269,3 +272,36 @@ class AbstractIntegrationTests:
 
     def tearDown(self):
         logger.info("Tests completed")
+        
+    def test_kubernetes_version_incompatibility(self):
+        """Test that Kubernetes version incompatibility is detected and reported"""
+        test_logger = logging.getLogger(__name__)
+        
+        with patch("sagemaker.hyperpod.common.utils.client.VersionApi") as mock_version_api:
+            mock_api_instance = MagicMock()
+            mock_version_api.return_value = mock_api_instance
+            
+            # Create a server version that's 4 minor versions ahead of client
+            # This should trigger incompatibility warning
+            mock_server_version = MagicMock()
+            mock_server_version.major = "1"
+            mock_server_version.minor = "30"  # Assuming client is 1.26 or lower
+            mock_server_version.min_compatibility_major = None
+            mock_server_version.min_compatibility_minor = None
+            mock_api_instance.get_code.return_value = mock_server_version
+            
+            with patch("logging.Logger.warning") as mock_warning:                
+                is_compatible = verify_kubernetes_version_compatibility(test_logger)
+                
+                # Verify incompatibility was detected
+                assert not is_compatible, "Version incompatibility should have been detected"
+                assert mock_warning.call_count >= 1, "Warning should have been logged"
+                
+                # Verify warning message contains version incompatibility
+                warning_found = False
+                for call in mock_warning.call_args_list:
+                    if "version incompatibility" in str(call).lower():
+                        warning_found = True
+                        break
+                        
+                assert warning_found, "Version incompatibility warning should have been logged"
