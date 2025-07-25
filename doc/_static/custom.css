@@ -51,3 +51,11 @@ p {
     font-size: 1.0rem;
     color: #4b5563;
 }
+
+html[data-theme="dark"] .navbar-brand .title {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] p {
+    color: #d1d5db !important;
+}

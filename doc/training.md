@@ -2,7 +2,7 @@
 
 # Training with SageMaker HyperPod
 
-SageMaker HyperPod provides powerful capabilities for running distributed training workloads on EKS-hosted clusters. This guide covers how to create and manage training jobs using both the HyperPod CLI and SDK.
+SageMaker HyperPod provides powerful capabilities for running distributed training workloads on EKS-orchestrated clusters. This guide covers how to create and manage training jobs using both the HyperPod CLI and SDK.
 
 ## Overview
 
@@ -201,7 +201,7 @@ job.delete()
 
 For detailed examples of training with HyperPod, see:
 
-- [CLI Training Example](https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/training/CLI/training-e2e-cli.ipynb)
-- [SDK Training Example](https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/training/SDK/training_sdk_example.ipynb)
+- <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/training/CLI/training-e2e-cli.ipynb" target="_blank">CLI Training Example</a>
+- <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/training/SDK/training_sdk_example.ipynb" target="_blank">SDK Training Example</a>
 
 These examples demonstrate end-to-end workflows for creating and managing training jobs using both the CLI and SDK approaches.
