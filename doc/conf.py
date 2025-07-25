@@ -133,6 +133,7 @@ html_theme_options = {
     "use_download_button": False,
     "home_page_in_toc": True
 }
+
 htmlhelp_basename = "{}doc".format(project)
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]

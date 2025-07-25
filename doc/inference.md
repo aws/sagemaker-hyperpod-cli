@@ -197,8 +197,7 @@ print(jumpstart_endpoint)
 
 # Get custom endpoint details
 custom_endpoint = HPEndpoint.get(endpoint_name="endpoint-custom")
-custom_details = custom_endpoint.describe()
-print(custom_details)
+print(custom_endpoint)
 ```
 ````
 `````
