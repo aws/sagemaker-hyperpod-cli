@@ -586,12 +586,12 @@ get_standard_hyperpod_helm_release_name() {
 }
 
 main() {
-    assert_not_already_installed
-
     ensure_yq_installed
     
     set_script_variables
 
+    assert_not_already_installed
+    
     assert_supported_region
     assert_addons_enabled add_ons[@]
 
