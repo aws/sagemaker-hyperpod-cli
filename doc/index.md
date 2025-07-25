@@ -18,8 +18,6 @@ SageMaker HyperPod Command Line Interface (CLI) and Software Development Kit (SD
 
 ## Start Here
 
-## Start Here
-
 ::::{container}
 ::::{grid} 1 2 4 4
 :gutter: 3
