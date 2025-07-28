@@ -22,7 +22,7 @@ from hyperpod_pytorch_job_template.registry import SCHEMA_REGISTRY
     registry=SCHEMA_REGISTRY,
 )
 def pytorch_create(version, debug, config):
-    """Create a PyTorch job"""
+    """Create a PyTorch job."""
     try:
         click.echo(f"Using version: {version}")
         job_name = config.get("name")
@@ -64,7 +64,7 @@ def pytorch_create(version, debug, config):
     help="Optional. The namespace to list jobs from. Defaults to 'default' namespace.",
 )
 def list_jobs(namespace: str):
-    """List all HyperPod PyTorch jobs"""
+    """List all HyperPod PyTorch jobs."""
     try:
         jobs = HyperPodPytorchJob.list(namespace=namespace)
 
@@ -144,7 +144,7 @@ def list_jobs(namespace: str):
     help="Optional. The namespace of the job. Defaults to 'default' namespace.",
 )
 def pytorch_describe(job_name: str, namespace: str):
-    """Describe a HyperPod PyTorch job"""
+    """Describe a HyperPod PyTorch job."""
     try:
         job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
 
@@ -245,7 +245,7 @@ def pytorch_describe(job_name: str, namespace: str):
     help="Optional. The namespace of the job. Defaults to 'default' namespace.",
 )
 def pytorch_delete(job_name: str, namespace: str):
-    """Delete a HyperPod PyTorch job"""
+    """Delete a HyperPod PyTorch job."""
     try:
         job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
         job.delete()
@@ -270,7 +270,7 @@ def pytorch_delete(job_name: str, namespace: str):
     help="Optional. The namespace of the job. Defaults to 'default' namespace.",
 )
 def pytorch_list_pods(job_name: str, namespace: str):
-    """List all HyperPod PyTorch pods corresponding to the job"""
+    """List all HyperPod PyTorch pods related to the job."""
     try:
         job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
         pods = job.list_pods()
@@ -316,7 +316,7 @@ def pytorch_list_pods(job_name: str, namespace: str):
     help="Optional. The namespace of the job. Defaults to 'default' namespace.",
 )
 def pytorch_get_logs(job_name: str, pod_name: str, namespace: str):
-    """Get specific logs from pod corresponding to the job"""
+    """Get specific pod log for Hyperpod Pytorch job."""
     try:
         click.echo("Listing logs for pod: " + pod_name)
         job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)

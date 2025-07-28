@@ -158,8 +158,8 @@ hyp create hyp-pytorch-job \
     --version 1.0 \
     --job-name test-pytorch-job \
     --image pytorch/pytorch:latest \
-    --command '["python", "train.py"]' \
-    --args '["--epochs", "10", "--batch-size", "32"]' \
+    --command '[python, train.py]' \
+    --args '[--epochs=10, --batch-size=32]' \
     --environment '{"PYTORCH_CUDA_ALLOC_CONF": "max_split_size_mb:32"}' \
     --pull-policy "IfNotPresent" \
     --instance-type ml.p4d.24xlarge \
@@ -170,8 +170,8 @@ hyp create hyp-pytorch-job \
     --queue-name "training-queue" \
     --priority "high" \
     --max-retry 3 \
-    --volumes '["data-vol", "model-vol", "checkpoint-vol"]' \
-    --persistent-volume-claims '["shared-data-pvc", "model-registry-pvc"]' \
+    --volumes '[data-vol, model-vol, checkpoint-vol]' \
+    --persistent-volume-claims '[shared-data-pvc, model-registry-pvc]' \
     --output-s3-uri s3://my-bucket/model-artifacts
 ```
 
@@ -257,9 +257,10 @@ Along with the CLI, we also have SDKs available that can perform the training an
 
 ```
 
-from sagemaker.hyperpod import HyperPodPytorchJob
-from sagemaker.hyperpod.job 
-import ReplicaSpec, Template, Spec, Container, Resources, RunPolicy, Metadata
+from sagemaker.hyperpod.training import HyperPodPytorchJob
+from sagemaker.hyperpod.training
+import ReplicaSpec, Template, Spec, Containers, Resources, RunPolicy
+from sagemaker.hyperpod.common.config import Metadata
 
 # Define job specifications
 nproc_per_node = "1"  # Number of processes per node
@@ -274,7 +275,7 @@ replica_specs =
             (
                 containers =
                 [
-                    Container
+                    Containers
                     (
                         # Container name
                         name="container-name",  
@@ -336,24 +337,21 @@ Pre-trained Jumpstart models can be gotten from https://sagemaker.readthedocs.io
 from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import Model, Server, SageMakerEndpoint, TlsConfig
 from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
 
-model = Model(
-    model_id="deepseek-llm-r1-distill-qwen-1-5b",
-    model_version="2.0.4"
+model=Model(
+    model_id='deepseek-llm-r1-distill-qwen-1-5b',
+    model_version='2.0.4',
 )
-
-server = Server(
-    instance_type="ml.g5.8xlarge"
+server=Server(
+    instance_type='ml.g5.8xlarge',
 )
+endpoint_name=SageMakerEndpoint(name='<my-endpoint-name>')
+tls_config=TlsConfig(tls_certificate_output_s3_uri='s3://<my-tls-bucket>')
 
-endpoint_name = SageMakerEndpoint(name="endpoint-jumpstart")
-
-tls_config = TlsConfig(tls_certificate_output_s3_uri="s3://sample-bucket")
-
-js_endpoint = HPJumpStartEndpoint(
+js_endpoint=HPJumpStartEndpoint(
     model=model,
     server=server,
     sage_maker_endpoint=endpoint_name,
-    tls_config=tls_config
+    tls_config=tls_config,
 )
 
 js_endpoint.create()
@@ -369,51 +367,51 @@ print(response)
 ```
 
 
-#### Creating a Custom Inference Endpoint 
+#### Creating a Custom Inference Endpoint (with S3)
 
 ```
-from sagemaker.hyperpod.inference.config.hp_custom_endpoint_config import Model, Server, SageMakerEndpoint, TlsConfig, EnvironmentVariables
-from sagemaker.hyperpod.inference.hp_custom_endpoint import HPCustomEndpoint
+from sagemaker.hyperpod.inference.config.hp_endpoint_config import CloudWatchTrigger, Dimensions, AutoScalingSpec, Metrics, S3Storage, ModelSourceConfig, TlsConfig, EnvironmentVariables, ModelInvocationPort, ModelVolumeMount, Resources, Worker
+from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
 
-model = Model(
-    model_source_type="s3",
-    model_location="test-pytorch-job/model.tar.gz",
-    s3_bucket_name="my-bucket",
-    s3_region="us-east-2",
-    prefetch_enabled=True
+model_source_config = ModelSourceConfig(
+    model_source_type='s3',
+    model_location="<my-model-folder-in-s3>",
+    s3_storage=S3Storage(
+        bucket_name='<my-model-artifacts-bucket>',
+        region='us-east-2',
+    ),
 )
 
-server = Server(
-    instance_type="ml.g5.8xlarge",
-    image_uri="763104351884.dkr.ecr.us-east-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.4.0-tgi2.3.1-gpu-py311-cu124-ubuntu22.04-v2.0",
-    container_port=8080,
-    model_volume_mount_name="model-weights"
+environment_variables = [
+    EnvironmentVariables(name="HF_MODEL_ID", value="/opt/ml/model"),
+    EnvironmentVariables(name="SAGEMAKER_PROGRAM", value="inference.py"),
+    EnvironmentVariables(name="SAGEMAKER_SUBMIT_DIRECTORY", value="/opt/ml/model/code"),
+    EnvironmentVariables(name="MODEL_CACHE_ROOT", value="/opt/ml/model"),
+    EnvironmentVariables(name="SAGEMAKER_ENV", value="1"),
+]
+
+worker = Worker(
+    image='763104351884.dkr.ecr.us-east-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.4.0-tgi2.3.1-gpu-py311-cu124-ubuntu22.04-v2.0',
+    model_volume_mount=ModelVolumeMount(
+        name='model-weights',
+    ),
+    model_invocation_port=ModelInvocationPort(container_port=8080),
+    resources=Resources(
+            requests={"cpu": "30000m", "nvidia.com/gpu": 1, "memory": "100Gi"},
+            limits={"nvidia.com/gpu": 1}
+    ),
+    environment_variables=environment_variables,
 )
 
-resources = {
-    "requests": {"cpu": "30000m", "nvidia.com/gpu": 1, "memory": "100Gi"},
-    "limits": {"nvidia.com/gpu": 1}
-}
+tls_config=TlsConfig(tls_certificate_output_s3_uri='s3://<my-tls-bucket-name>')
 
-env = EnvironmentVariables(
-    HF_MODEL_ID="/opt/ml/model",
-    SAGEMAKER_PROGRAM="inference.py",
-    SAGEMAKER_SUBMIT_DIRECTORY="/opt/ml/model/code",
-    MODEL_CACHE_ROOT="/opt/ml/model",
-    SAGEMAKER_ENV="1"
-)
-
-endpoint_name = SageMakerEndpoint(name="endpoint-custom-pytorch")
-
-tls_config = TlsConfig(tls_certificate_output_s3_uri="s3://sample-bucket")
-
-custom_endpoint = HPCustomEndpoint(
-    model=model,
-    server=server,
-    resources=resources,
-    environment=env,
-    sage_maker_endpoint=endpoint_name,
+custom_endpoint = HPEndpoint(
+    endpoint_name='<my-endpoint-name>',
+    instance_type='ml.g5.8xlarge',
+    model_name='deepseek15b-test-model-name',  
     tls_config=tls_config,
+    model_source_config=model_source_config,
+    worker=worker,
 )
 
 custom_endpoint.create()
@@ -430,19 +428,17 @@ print(response)
 #### Managing an Endpoint 
 
 ```
-endpoint_iterator = HPJumpStartEndpoint.list()
-for endpoint in endpoint_iterator:
-    print(endpoint.name, endpoint.status)
+endpoint_list = HPEndpoint.list()
+print(endpoint_list[0])
 
-logs = js_endpoint.get_logs()
-print(logs)
+print(custom_endpoint.get_operator_logs(since_hours=0.5))
 
 ```
 
 #### Deleting an Endpoint 
 
 ```
-js_endpoint.delete()
+custom_endpoint.delete()
 
 ```
 

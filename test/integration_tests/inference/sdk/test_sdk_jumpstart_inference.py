@@ -1,19 +1,17 @@
 import time
-import uuid
-import json
 import pytest
 import boto3
-
 from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
 from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
-    Model, Server, SageMakerEndpoint, TlsConfig
+    Model, Server, SageMakerEndpoint
 )
 import sagemaker_core.main.code_injection.codec as codec
+from test.integration_tests.utils import get_time_str
 
 # --------- Config ---------
 NAMESPACE = "integration"
 REGION = "us-east-2"
-ENDPOINT_NAME = "js-sdk-integration"
+ENDPOINT_NAME = "js-sdk-integration-" + get_time_str()
 
 INSTANCE_TYPE = "ml.g5.4xlarge"
 MODEL_ID = "deepseek-llm-r1-distill-qwen-1-5b"

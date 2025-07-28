@@ -120,7 +120,7 @@ def list_cluster(
     debug: bool,
     namespace: Optional[List],
 ):
-    """List SageMaker Hyperpod Clusters with cluster metadata.
+    """List SageMaker Hyperpod Clusters with metadata.
 
     Example Usage:
     1. List clusters with JSON output: hyperpod get-clusters -n hyperpod-ns-test-team
@@ -553,7 +553,7 @@ def get_cluster_context(
     debug: bool,
 ) -> Tuple[Any, str]:
     """
-    Get all the context related to the current set Cluster
+    Get context related to the current set cluster.
 
     Args:
         debug (bool): Enable debug mode.
@@ -584,7 +584,7 @@ def get_cluster_context(
 @click.option("--prometheus", is_flag=True, help="Returns Prometheus Workspace URL")
 @click.option("--list", is_flag=True, help="Returns list of available metrics")
 def get_monitoring(grafana: bool, prometheus: bool, list: bool) -> None:
-    """Get monitoring configurations for Hyperpod cluster"""
+    """Get monitoring configurations for Hyperpod cluster."""
     try:
         if not any([grafana, prometheus, list]):
             print("Error: Please select at least one option")

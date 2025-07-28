@@ -1,2 +1,32 @@
 namespace: "aws-hyperpod"
-hmaimage: "905418368575.dkr.ecr.us-west-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.674.0_1.0.199.0"
+
+# AWS region for the health monitoring agent ECR image
+# The chart automatically detects the region from Kubernetes cluster context.
+# Only specify this if you want to override the automatic detection.
+# 
+# Automatic detection priority:
+# 1. This explicit region setting (highest priority)
+# 2. Global region setting (global.region)
+# 3. Kubernetes cluster context detection:
+#    - EKS API server URL patterns
+#    - Node topology labels (topology.kubernetes.io/region)
+#    - AWS provider IDs in node specifications
+#    - Legacy region labels (failure-domain.beta.kubernetes.io/region)
+# 4. Default fallback: us-west-2
+#
+# Supported regions: us-east-1, us-west-2, us-east-2, us-west-1, eu-central-1, 
+# eu-north-1, eu-west-1, eu-west-2, ap-northeast-1, ap-south-1, ap-southeast-1, 
+# ap-southeast-2, sa-east-1
+region: ""
+
+# Image tag for health monitoring agent
+# If not specified, uses global.imageTag or defaults to hardcoded version
+imageTag: ""
+
+# Override the health monitoring agent image URI
+# If specified, this will override the automatic region-based URI selection
+# Example: "905418368575.dkr.ecr.us-west-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.674.0_1.0.199.0"
+hmaimage: ""
+
+# Enable debug output for region selection process
+debug: true
