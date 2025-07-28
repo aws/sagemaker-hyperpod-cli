@@ -134,6 +134,9 @@ html_theme_options = {
     "home_page_in_toc": True
 }
 
+author = "Amazon Web Services"
+copyright = f"{datetime.datetime.now().year}, Amazon Web Services"
+
 htmlhelp_basename = "{}doc".format(project)
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]

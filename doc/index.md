@@ -1,3 +1,12 @@
+---
+keywords:
+  - distributed
+  - kubernetes
+  - pytorch
+  - monitoring
+  - jumpstart
+---
+
 (hpcli_docs_mainpage)=
 
 # Overview

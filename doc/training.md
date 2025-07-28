@@ -1,3 +1,12 @@
+---
+keywords:
+  - distributed
+  - kubernetes
+  - pytorch
+  - containerized
+  - orchestration
+---
+
 (training)=
 
 # Training with SageMaker HyperPod
