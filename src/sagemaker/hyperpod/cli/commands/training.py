@@ -25,7 +25,7 @@ from sagemaker.hyperpod.common.telemetry.constants import Feature
     schema_pkg="hyperpod_pytorch_job_template",
     registry=SCHEMA_REGISTRY,
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_pytorchjob_cli")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "create_pytorchjob_cli")
 def pytorch_create(version, debug, config):
     """Create a PyTorch job."""
     try:
@@ -68,7 +68,7 @@ def pytorch_create(version, debug, config):
     default="default",
     help="Optional. The namespace to list jobs from. Defaults to 'default' namespace.",
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_pytorchjobs_cli")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_pytorchjobs_cli")
 def list_jobs(namespace: str):
     """List all HyperPod PyTorch jobs."""
     try:
@@ -149,7 +149,7 @@ def list_jobs(namespace: str):
     default="default",
     help="Optional. The namespace of the job. Defaults to 'default' namespace.",
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD, "get_pytorchjob_cli")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_pytorchjob_cli")
 def pytorch_describe(job_name: str, namespace: str):
     """Describe a HyperPod PyTorch job."""
     try:
@@ -251,7 +251,7 @@ def pytorch_describe(job_name: str, namespace: str):
     default="default",
     help="Optional. The namespace of the job. Defaults to 'default' namespace.",
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD, "delete_pytorchjob_cli")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "delete_pytorchjob_cli")
 def pytorch_delete(job_name: str, namespace: str):
     """Delete a HyperPod PyTorch job."""
     try:
@@ -277,7 +277,7 @@ def pytorch_delete(job_name: str, namespace: str):
     default="default",
     help="Optional. The namespace of the job. Defaults to 'default' namespace.",
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_pods_pytorchjob_cli")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_pods_pytorchjob_cli")
 def pytorch_list_pods(job_name: str, namespace: str):
     """List all HyperPod PyTorch pods related to the job."""
     try:
@@ -324,7 +324,7 @@ def pytorch_list_pods(job_name: str, namespace: str):
     default="default",
     help="Optional. The namespace of the job. Defaults to 'default' namespace.",
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD, "get_pytorchjob_logs_from_pod_cli")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_pytorchjob_logs_from_pod_cli")
 def pytorch_get_logs(job_name: str, pod_name: str, namespace: str):
     """Get specific pod log for Hyperpod Pytorch job."""
     try:
