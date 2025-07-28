@@ -11,7 +11,7 @@ List all available SageMaker HyperPod clusters in your account:
 `````{tab-set}
 ````{tab-item} CLI
 ```bash
-hyp list-cluster [--region <region>] [--namespace <namespace>] [--output <json|table>]
+hyp list-cluster [--region <region>]
 ```
 ````
 
@@ -32,7 +32,7 @@ Configure your local kubectl environment to interact with a specific SageMaker H
 `````{tab-set}
 ````{tab-item} CLI
 ```bash
-hyp set-cluster-context --cluster-name <cluster-name> [--namespace <namespace>]
+hyp set-cluster-context --cluster-name <cluster-name>
 ```
 ````
 
@@ -40,7 +40,7 @@ hyp set-cluster-context --cluster-name <cluster-name> [--namespace <namespace>]
 ```python
 from sagemaker.hyperpod import set_cluster_context
 
-set_cluster_context('<my-cluster>', region='aws-region')
+set_cluster_context('<my-cluster>')
 
 ```
 ````

@@ -32,24 +32,8 @@ You can create training jobs using either the CLI or SDK approach:
 ````{tab-item} CLI
 ```bash
 hyp create hyp-pytorch-job \
-    --version 1.0 \
     --job-name test-pytorch-job \
     --image pytorch/pytorch:latest \
-    --command '[python, train.py]' \
-    --args '[--epochs=10, --batch-size=32]' \
-    --environment '{"PYTORCH_CUDA_ALLOC_CONF": "max_split_size_mb:32"}' \
-    --pull-policy "IfNotPresent" \
-    --instance-type ml.p4d.24xlarge \
-    --tasks-per-node 8 \
-    --label-selector '{"accelerator": "nvidia", "network": "efa"}' \
-    --deep-health-check-passed-nodes-only true \
-    --scheduler-type "kueue" \
-    --queue-name "training-queue" \
-    --priority "high" \
-    --max-retry 3 \
-    --volumes '[data-vol, model-vol, checkpoint-vol]' \
-    --persistent-volume-claims '[shared-data-pvc, model-registry-pvc]' \
-    
 ```
 ````
 ````{tab-item} SDK
