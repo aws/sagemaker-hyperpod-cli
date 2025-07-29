@@ -24,6 +24,7 @@ PYTHON_VERSION = "{}.{}.{}".format(
 
 FEATURE_TO_CODE = {
     str(Feature.HYPERPOD): 6,  # Added to support telemetry in sagemaker-hyperpod-cli
+    str(Feature.HYPERPOD_CLI): 7,
 }
 
 STATUS_TO_CODE = {
