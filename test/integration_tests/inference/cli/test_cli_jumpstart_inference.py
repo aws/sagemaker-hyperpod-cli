@@ -34,7 +34,7 @@ def test_js_create(runner, js_endpoint_name):
         "--namespace", NAMESPACE,
         "--version", VERSION,
         "--model-id", "deepseek-llm-r1-distill-qwen-1-5b",
-        "--instance-type", "ml.g5.4xlarge",
+        "--instance-type", "ml.g5.8xlarge",
         "--endpoint-name", js_endpoint_name,
     ])
     assert result.exit_code == 0, result.output

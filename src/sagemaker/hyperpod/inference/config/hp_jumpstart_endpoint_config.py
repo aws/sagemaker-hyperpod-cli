@@ -1,6 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional, List, Dict, Union, Literal
-from sagemaker.hyperpod.common.config import *
+from typing import Optional, List, Literal
 
 
 class Dimensions(BaseModel):
@@ -15,6 +14,11 @@ class CloudWatchTrigger(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    activationTargetValue: Optional[float] = Field(
+        default=0,
+        alias="activation_target_value",
+        description="Activation Value for CloudWatch metric to scale from 0 to 1. Only applicable if minReplicaCount = 0",
+    )
     dimensions: Optional[List[Dimensions]] = Field(
         default=None, description="Dimensions for Cloudwatch metrics"
     )
@@ -71,6 +75,11 @@ class PrometheusTrigger(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    activationTargetValue: Optional[float] = Field(
+        default=0,
+        alias="activation_target_value",
+        description="Activation Value for Prometheus metric to scale from 0 to 1. Only applicable if minReplicaCount = 0",
+    )
     customHeaders: Optional[str] = Field(
         default=None,
         alias="custom_headers",
@@ -184,7 +193,7 @@ class Metrics(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     enabled: Optional[bool] = Field(
-        default=False, description="Enable metrics collection for this model deployment"
+        default=True, description="Enable metrics collection for this model deployment"
     )
     metricsScrapeIntervalSeconds: Optional[int] = Field(
         default=15,
@@ -242,7 +251,7 @@ class SageMakerEndpoint(BaseModel):
 
     name: Optional[str] = Field(
         default="",
-        description="Name of sagemaker endpoint. Defaults to empty string which represents that Sagemaker endpoint will not be created.",
+        description="Name of a SageMaker endpoint to be created for this JumpStartModel. The default value of empty string, when used, will skip endpoint creation.",
     )
 
 

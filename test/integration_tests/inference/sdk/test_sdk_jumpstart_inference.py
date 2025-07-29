@@ -13,7 +13,7 @@ NAMESPACE = "integration"
 REGION = "us-east-2"
 ENDPOINT_NAME = "js-sdk-integration-" + get_time_str()
 
-INSTANCE_TYPE = "ml.g5.4xlarge"
+INSTANCE_TYPE = "ml.g5.8xlarge"
 MODEL_ID = "deepseek-llm-r1-distill-qwen-1-5b"
 
 TIMEOUT_MINUTES = 15
