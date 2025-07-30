@@ -15,39 +15,19 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config impo
 
 
 class VolumeConfig(BaseModel):
-    """Pydantic model for individual volume configuration with automatic validation."""
     name: str = Field(..., description="Volume name")
     type: Literal['hostPath', 'pvc'] = Field(..., description="Volume type")
-    mountPath: str = Field(..., description="Mount path in container")
+    mount_path: str = Field(..., description="Mount path in container")
     path: Optional[str] = Field(None, description="Host path (required for hostPath volumes)")
-    claimName: Optional[str] = Field(None, description="PVC claim name (required for pvc volumes)")
-    readOnly: Optional[Literal['true', 'false']] = Field(None, description="Read-only flag for PVC volumes")
+    claim_name: Optional[str] = Field(None, description="PVC claim name (required for pvc volumes)")
+    read_only: Optional[Literal['true', 'false']] = Field(None, description="Read-only flag for pvc volumes")
     
-    @field_validator('mountPath', 'path')
+    @field_validator('mount_path', 'path')
     @classmethod
     def paths_must_be_absolute(cls, v):
         """Validate that paths are absolute (start with /)."""
         if v and not v.startswith('/'):
             raise ValueError('Path must be absolute (start with /)')
-        return v
-    
-    @field_validator('name')
-    @classmethod
-    def validate_name_format(cls, v):
-        """Validate Kubernetes naming conventions."""
-        if not v.replace('-', '').replace('_', '').isalnum():
-            raise ValueError('Volume name must contain only alphanumeric characters, hyphens, and underscores')
-        return v
-    
-    @field_validator('claimName')
-    @classmethod
-    def validate_claim_name(cls, v):
-        """Validate PVC claim name format."""
-        if v:
-            if not v.replace('-', '').isalnum():
-                raise ValueError('PVC claimName must contain only lowercase alphanumeric characters and hyphens')
-            if len(v) > 253:
-                raise ValueError('PVC claimName must be 253 characters or less')
         return v
     
     @model_validator(mode='after')
@@ -58,8 +38,8 @@ class VolumeConfig(BaseModel):
             if not self.path:
                 raise ValueError('hostPath volumes require path field')
         elif self.type == 'pvc':
-            if not self.claimName:
-                raise ValueError('PVC volumes require claimName field')
+            if not self.claim_name:
+                raise ValueError('PVC volumes require claim_name field')
         
         return self
 
@@ -114,7 +94,12 @@ class PyTorchJobConfig(BaseModel):
         default=None, alias="max_retry", description="Maximum number of job retries"
     )
     volume: Optional[List[VolumeConfig]] = Field(
-        default=None, description="List of volume configurations"
+        default=None, description="List of volume configurations. \
+        Command structure: --volume name=<volume_name>,type=<volume_type>,mount_path=<mount_path>,<type-specific options> \
+        For hostPath: --volume name=model-data,type=hostPath,mount_path=/data,path=/data  \
+        For persistentVolumeClaim: --volume name=training-output,type=pvc,mount_path=/mnt/output,claim_name=training-output-pvc,read_only=false \
+        If multiple --volume flag if multiple volumes are needed \
+        "
     )
     service_account_name: Optional[str] = Field(
         default=None, alias="service_account_name", description="Service account name"
@@ -132,7 +117,7 @@ class PyTorchJobConfig(BaseModel):
             raise ValueError("Duplicate volume names found")
         
         # Check for duplicate mount paths
-        mount_paths = [vol.mountPath for vol in v]
+        mount_paths = [vol.mount_path for vol in v]
         if len(mount_paths) != len(set(mount_paths)):
             raise ValueError("Duplicate mount paths found")
         
@@ -168,7 +153,7 @@ class PyTorchJobConfig(BaseModel):
         if self.volume is not None:
             volume_mounts = []
             for i, vol in enumerate(self.volume):
-                volume_mount = {"name": vol.name, "mount_path": vol.mountPath}
+                volume_mount = {"name": vol.name, "mount_path": vol.mount_path}
                 volume_mounts.append(volume_mount)
             
             container_kwargs["volume_mounts"] = volume_mounts
@@ -192,8 +177,8 @@ class PyTorchJobConfig(BaseModel):
                     volume_obj = Volumes(name=vol.name, host_path=host_path)
                 elif vol.type == "pvc":
                     pvc_config = PersistentVolumeClaim(
-                         claim_name=vol.claimName,
-                         read_only=vol.readOnly == "true" if vol.readOnly else False
+                         claim_name=vol.claim_name,
+                         read_only=vol.read_only == "true" if vol.read_only else False
                     )
                     volume_obj = Volumes(name=vol.name, persistent_volume_claim=pvc_config)
                 volumes.append(volume_obj)

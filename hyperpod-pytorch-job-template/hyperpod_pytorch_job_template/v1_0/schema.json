@@ -1,90 +1,319 @@
 {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "title": "HyperPod PyTorch Job Parameters",
-    "type": "object",
-    "properties": {
-        "job-name": {"type": "string", "description": "Job name", "minLength": 1},
-        "namespace": {"type": "string", "description": "Kubernetes namespace"},
-        "image": {"type": "string", "description": "Docker image for training", "pattern": "^ml\\..*"},
-        "command": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Command to run in the container"
+  "$defs": {
+    "VolumeConfig": {
+      "properties": {
+        "name": {
+          "description": "Volume name",
+          "title": "Name",
+          "type": "string"
         },
-        "args": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Arguments for the entry script"
+        "type": {
+          "description": "Volume type",
+          "enum": [
+            "hostPath",
+            "pvc"
+          ],
+          "title": "Type",
+          "type": "string"
         },
-        "environment": {
-            "type": "object",
-            "additionalProperties": {"type": "string"},
-            "description": "Environment variables as key-value pairs"
+        "mount_path": {
+          "description": "Mount path in container",
+          "title": "Mount Path",
+          "type": "string"
         },
-        "pull-policy": {
-            "type": "string",
-            "enum": ["Always", "Never", "IfNotPresent"],
-            "description": "Image pull policy"
-        },
-        "instance-type": {
-            "type": "string",
-            "description": "Instance type for training"
-        },
-        "node-count": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "Number of nodes"
-        },
-        "tasks-per-node": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "Number of tasks per node"
-        },
-        "label-selector": {
-            "type": "object",
-            "additionalProperties": {"type": "string"},
-            "description": "Node label selector as key-value pairs"
-        },
-        "deep-health-check-passed-nodes-only": {
-            "type": "boolean",
-            "description": "Schedule pods only on nodes that passed deep health check"
-        },
-        "scheduler-type": {"type": "string", "description": "Scheduler type"},
-        "queue-name": {
-            "type": "string",
-            "description": "Queue name for job scheduling"
-        },
-        "priority": {
-            "type": "string",
-            "description": "Priority class for job scheduling"
-        },
-        "max-retry": {
-            "type": "integer",
-            "minimum": 0,
-            "description": "Maximum number of job retries"
-        },
-        "volume": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string", "description": "Volume name"},
-                    "type": {"type": "string", "enum": ["hostPath", "pvc"], "description": "Volume type"},
-                    "mountPath": {"type": "string", "description": "Mount path in container"},
-                    "path": {"type": "string", "description": "Host path (for hostPath volumes)"},
-                    "claimName": {"type": "string", "description": "PVC claim name (for pvc volumes)"},
-                    "readOnly": {"type": "string", "enum": ["true", "false"], "description": "Read-only flag (for pvc volumes)"}
-                },
-                "required": ["name", "type", "mountPath"],
-                "additionalProperties": false
+        "path": {
+          "anyOf": [
+            {
+              "type": "string"
             },
-            "description": "List of volume configurations"
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Host path (required for hostPath volumes)",
+          "title": "Path"
         },
-        "service-account-name": {
-            "type": "string",
-            "description": "Service account name"
+        "claim_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "PVC claim name (required for pvc volumes)",
+          "title": "Claim Name"
+        },
+        "read_only": {
+          "anyOf": [
+            {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Read-only flag for pvc volumes",
+          "title": "Read Only"
         }
+      },
+      "required": [
+        "name",
+        "type",
+        "mount_path"
+      ],
+      "title": "VolumeConfig",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "job_name": {
+      "description": "Job name",
+      "title": "Job Name",
+      "type": "string"
     },
-    "required": ["job-name", "image"],
-    "additionalProperties": false
+    "image": {
+      "description": "Docker image for training",
+      "title": "Image",
+      "type": "string"
+    },
+    "namespace": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Kubernetes namespace",
+      "title": "Namespace"
+    },
+    "command": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Command to run in the container",
+      "title": "Command"
+    },
+    "args": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Arguments for the entry script",
+      "title": "Args"
+    },
+    "environment": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Environment variables as key_value pairs",
+      "title": "Environment"
+    },
+    "pull_policy": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Image pull policy",
+      "title": "Pull Policy"
+    },
+    "instance_type": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Instance type for training",
+      "title": "Instance Type"
+    },
+    "node_count": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Number of nodes",
+      "title": "Node Count"
+    },
+    "tasks_per_node": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Number of tasks per node",
+      "title": "Tasks Per Node"
+    },
+    "label_selector": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Node label selector as key_value pairs",
+      "title": "Label Selector"
+    },
+    "deep_health_check_passed_nodes_only": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": false,
+      "description": "Schedule pods only on nodes that passed deep health check",
+      "title": "Deep Health Check Passed Nodes Only"
+    },
+    "scheduler_type": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Scheduler type",
+      "title": "Scheduler Type"
+    },
+    "queue_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Queue name for job scheduling",
+      "title": "Queue Name"
+    },
+    "priority": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Priority class for job scheduling",
+      "title": "Priority"
+    },
+    "max_retry": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Maximum number of job retries",
+      "title": "Max Retry"
+    },
+    "volume": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/VolumeConfig"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "List of volume configurations.         Command structure: --volume name=<volume_name>,type=<volume_type>,mount_path=<mount_path>,<type-specific options>         For hostPath: --volume name=model-data,type=hostPath,mount_path=/data,path=/data          For persistentVolumeClaim: --volume name=training-output,type=pvc,mount_path=/mnt/output,claim_name=training-output-pvc,read_only=false         If multiple --volume flag if multiple volumes are needed         ",
+      "title": "Volume"
+    },
+    "service_account_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Service account name",
+      "title": "Service Account Name"
+    }
+  },
+  "required": [
+    "job_name",
+    "image"
+  ],
+  "title": "PyTorchJobConfig",
+  "type": "object"
 }
