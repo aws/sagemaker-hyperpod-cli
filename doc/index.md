@@ -9,7 +9,7 @@ keywords:
 
 (hpcli_docs_mainpage)=
 
-# SageMaker HyperPod CLI & SDK
+# Overview
 
 ```{toctree}
 :hidden:
@@ -19,13 +19,47 @@ Installation <installation>
 Getting Started <getting_started>
 Training <training>
 Inference <inference>
+CLI Reference <cli_reference>
 Example Notebooks <examples>
 API reference <_apidoc/modules>
 ```
 
-**Manage distributed Machine Learning workloads on Kubernetes clusters without the complexity.**
+Amazon SageMaker HyperPod CLI and SDK are developer tools designed to simplify the management of distributed training workloads on dedicated, high-performance computing clusters. These tools enable ML practitioners to efficiently orchestrate large-scale training operations while abstracting the underlying cluster management complexities.
 
-The SageMaker HyperPod Command Line Interface and SDK simplify distributed training and inference on EKS-orchestrated clusters.
+### What is SageMaker HyperPod CLI and SDK?
+
+The **SageMaker HyperPod CLI** is a command-line interface that enables you to create and manage distributed training clusters and workloads through simple commands. It provides direct control over cluster resources while handling the infrastructure management automatically.
+
+The **SageMaker HyperPod SDK** is a Python library that allows programmatic access to HyperPod functionality for seamless incorporation into your ML workflows and training scripts.
+
+Both tools are built on top of [Amazon SageMaker HyperPod](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod.html), a managed service that provides dedicated, persistent clusters optimized for distributed ML training workloads.
+
+### Key Use Cases
+
+**Distributed Training**
+- Scale PyTorch training jobs across multiple nodes and GPUs
+- Manage complex distributed training configurations with simple commands
+- Handle fault tolerance and job recovery automatically
+
+**Model Inference**
+- Deploy pre-trained models from SageMaker JumpStart with minimal configuration
+- Host custom inference endpoints with auto-scaling capabilities
+- Manage model serving infrastructure with built-in monitoring
+
+**Cluster Operations**
+- Connect to and manage multiple HyperPod clusters
+- Monitor resource utilization and job status
+- Streamline DevOps workflows for ML teams
+
+### Why Choose HyperPod CLI & SDK?
+
+- **Simplified Management**: Focus on ML code while HyperPod handles infrastructure orchestration
+- **AWS Integration**: Native integration with SageMaker features and AWS services
+- **Production Ready**: Built-in fault tolerance, auto-scaling, and enterprise security features
+- **Development Flexibility**: Choose between CLI for direct control or SDK for programmatic access
+- **Cost Management**: Optimize spending with cluster sharing and resource monitoring
+
+For comprehensive information about the underlying infrastructure and advanced configuration options, see the [Amazon SageMaker HyperPod documentation](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod.html).
 
 ## Quick Start
 
