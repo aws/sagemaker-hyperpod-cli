@@ -5,7 +5,7 @@
     "properties": {
         "job-name": {"type": "string", "description": "Job name", "minLength": 1},
         "namespace": {"type": "string", "description": "Kubernetes namespace"},
-        "image": {"type": "string", "description": "Docker image for training"},
+        "image": {"type": "string", "description": "Docker image for training", "pattern": "^ml\\..*"},
         "command": {
             "type": "array",
             "items": {"type": "string"},
@@ -63,15 +63,22 @@
             "minimum": 0,
             "description": "Maximum number of job retries"
         },
-        "volumes": {
+        "volume": {
             "type": "array",
-            "items": {"type": "string"},
-            "description": "List of volumes to mount"
-        },
-        "persistent-volume-claims": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "List of persistent volume claims"
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Volume name"},
+                    "type": {"type": "string", "enum": ["hostPath", "pvc"], "description": "Volume type"},
+                    "mountPath": {"type": "string", "description": "Mount path in container"},
+                    "path": {"type": "string", "description": "Host path (for hostPath volumes)"},
+                    "claimName": {"type": "string", "description": "PVC claim name (for pvc volumes)"},
+                    "readOnly": {"type": "string", "enum": ["true", "false"], "description": "Read-only flag (for pvc volumes)"}
+                },
+                "required": ["name", "type", "mountPath"],
+                "additionalProperties": false
+            },
+            "description": "List of volume configurations"
         },
         "service-account-name": {
             "type": "string",
