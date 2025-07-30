@@ -5,44 +5,6 @@ from typing import Callable, Optional, Mapping, Type, Dict, Any
 from pydantic import ValidationError
 
 
-def validate_cli_args_against_schema(args_dict: Dict[str, Any], registry: Mapping[str, Type], version: str) -> None:
-    """
-    Validate CLI arguments against the Pydantic model (which represents the schema).
-    
-    Args:
-        args_dict: Dictionary of parsed CLI arguments
-        registry: Registry mapping version to Pydantic model class
-        version: Schema version to validate against
-        
-    Raises:
-        click.UsageError: If validation fails
-    """
-    model_class = registry.get(version)
-    if model_class is None:
-        raise click.UsageError(f"Unsupported schema version: {version}")
-    
-    # Prepare payload - remove fields that aren't part of the model
-    excluded_fields = {"version", "debug"}  # Fields that aren't in the schema
-    payload = {
-        k: v for k, v in args_dict.items() 
-        if k not in excluded_fields and v is not None  # Only include non-None values
-    }
-    
-    try:
-        # This will raise ValidationError if anything is invalid
-        model_class(**payload)
-    except ValidationError as e:
-        error_messages = []
-        for err in e.errors():
-            loc = ".".join(str(x) for x in err["loc"])
-            msg = err["msg"]
-            error_messages.append(f"  – {loc}: {msg}")
-        
-        raise click.UsageError(
-            f"❌ CLI argument validation errors:\n" + "\n".join(error_messages)
-        )
-
-
 def load_schema_for_version(
     version: str,
     base_package: str,
@@ -122,20 +84,15 @@ def generate_click_command(
             version = version_key or kwargs.pop("version", "1.0")
             debug = kwargs.pop("debug", False)
 
-            # Validate all CLI arguments against schema using Pydantic model
-            validate_cli_args_against_schema(kwargs, registry, version)
-
             # look up the model class
             Model = registry.get(version)
             if Model is None:
                 raise click.ClickException(f"Unsupported schema version: {version}")
 
-            # validate & to_domain (this should now pass since we pre-validated)
             try:
                 flat = Model(**kwargs)
                 domain_config = flat.to_domain()
             except ValidationError as e:
-                # This shouldn't happen if our pre-validation worked correctly
                 error_messages = []
                 for err in e.errors():
                     loc = ".".join(str(x) for x in err["loc"])
@@ -174,12 +131,11 @@ def generate_click_command(
             "--volume",
             multiple=True,
             callback=_parse_volume_param,
-            help="Detail of the volume to be mount in the following structure:  \
-                name=<volume_name>,type=<volume_type>,mount_path=<mount_path>,<type-specific options>. \
-                For host dir: --volume name=model-data,type=hostPath,mountPath=/models, path=/data/models \
-                For persistent volume claim: --volume name=training-output,type=pvc,mountPath=/mnt/output, claimName=training-output-pvc,readOnly=false \
-                Use multiple --volume flag if you'd like to mount more than 1 volume.",
-            metavar="JSON",
+            help="List of volume configurations. \
+                Command structure: --volume name=<volume_name>,type=<volume_type>,mount_path=<mount_path>,<type-specific options> \
+                For hostPath: --volume name=model-data,type=hostPath,mount_path=/data,path=/data  \
+                For persistentVolumeClaim: --volume name=training-output,type=pvc,mount_path=/mnt/output,claim_name=training-output-pvc,read_only=false \
+                If multiple --volume flag if multiple volumes are needed.",
         )(wrapped_func)
 
         # Add list options
