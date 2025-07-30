@@ -133,7 +133,6 @@ def generate_click_command(
             # validate & to_domain (this should now pass since we pre-validated)
             try:
                 flat = Model(**kwargs)
-                click.echo(kwargs)
                 domain_config = flat.to_domain()
             except ValidationError as e:
                 # This shouldn't happen if our pre-validation worked correctly
@@ -145,9 +144,6 @@ def generate_click_command(
                 
                 raise click.UsageError(
                     f"❌ Configuration validation errors:\n" + "\n".join(error_messages)
-                    + "\n\n"
-                    + f"Flat: {flat} \n"
-                    # + f"Domain: {domain_config}"
                 )
 
             # call your handler

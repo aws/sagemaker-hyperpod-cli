@@ -54,7 +54,6 @@ def pytorch_create(version, debug, config):
             job_kwargs["run_policy"] = spec.get("run_policy")
 
         # Create job
-        click.echo(job_kwargs)
         job = HyperPodPytorchJob(**job_kwargs)
         job.create(debug=debug)
 
