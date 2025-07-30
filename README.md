@@ -171,8 +171,7 @@ hyp create hyp-pytorch-job \
     --priority "high" \
     --max-retry 3 \
     --volumes '[data-vol, model-vol, checkpoint-vol]' \
-    --persistent-volume-claims '[shared-data-pvc, model-registry-pvc]' \
-    --output-s3-uri s3://my-bucket/model-artifacts
+    --persistent-volume-claims '[shared-data-pvc, model-registry-pvc]' 
 ```
 
 Key required parameters explained:
@@ -316,8 +315,6 @@ pytorch_job = HyperPodPytorchJob
     replica_specs = replica_specs,     
     # Run policy
     run_policy = run_policy,           
-    # S3 location for artifacts
-    output_s3_uri="s3://my-bucket/model-artifacts"  
 )
 # Launch the job
 pytorch_job.create()  
