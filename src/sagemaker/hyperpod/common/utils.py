@@ -15,6 +15,7 @@ from kubernetes.config import (
 )
 
 EKS_ARN_PATTERN = r"arn:aws:eks:([\w-]+):\d+:cluster/([\w-]+)"
+CLIENT_VERSION_PATTERN = r'^\d+\.\d+\.\d+$'
 
 KUBE_CONFIG_PATH = os.path.expanduser(KUBE_CONFIG_DEFAULT_LOCATION)
 
@@ -324,7 +325,7 @@ def parse_client_kubernetes_version(version_str: str) -> Tuple[int, int]:
         version_str = version_str[1:]
     
     # Client library version format (x.y.z)
-    if re.match(r'^\d+\.\d+\.\d+$', version_str):
+    if re.match(CLIENT_VERSION_PATTERN, version_str):
         major = int(version_str.split('.')[0])
         
         # Old client versioning scheme (v12 and before)
