@@ -1,22 +1,34 @@
 import importlib.resources
 import json
 import logging
+import uuid
 from typing import Optional
 
 import boto3
+import click
 import yaml
 from sagemaker.hyperpod.cluster_management.config.hp_cluster_stack_config import _ClusterStackBase
 
 CLUSTER_CREATION_TEMPLATE_FILE_NAME = "creation_template.yaml"
 CLUSTER_STACK_TEMPLATE_PACKAGE_NAME = "hyperpod_cluster_stack_template"
 
+CAPABILITIES_FOR_STACK_CREATION = [
+'CAPABILITY_IAM',
+'CAPABILITY_NAMED_IAM'
+]
 log = logging.getLogger()
 
 
 class HpClusterStack(_ClusterStackBase):
 
+    @staticmethod
+    def get_template() -> str:
+        files = importlib.resources.files(CLUSTER_STACK_TEMPLATE_PACKAGE_NAME)
+        template_file = files / CLUSTER_CREATION_TEMPLATE_FILE_NAME
+        return _yaml_to_json_string(template_file)
+
+
     def create(self,
-               stack_name: str,
                region: Optional[str] = None):
         # Get the region from the boto3 session or use the provided region
         region = region or boto3.session.Session().region_name
@@ -25,11 +37,8 @@ class HpClusterStack(_ClusterStackBase):
         # Convert the input object to CloudFormation parameters
         parameters = self._create_parameters()
 
-        print("Params",parameters)
-        files = importlib.resources.files(CLUSTER_STACK_TEMPLATE_PACKAGE_NAME)
-        template_file = files / CLUSTER_CREATION_TEMPLATE_FILE_NAME
-
-        template_body = _yaml_to_json_string(template_file)
+        template_body = HpClusterStack.get_template()
+        stack_name = f"HyperpodClusterStack-{str(uuid.uuid4())[:5]}"
         try:
             response = cf.create_stack(
                 StackName=stack_name,
@@ -38,11 +47,15 @@ class HpClusterStack(_ClusterStackBase):
                 Tags=self.tags or [{
                         'Key': 'Environment',
                         'Value': 'Development'
-                    }]
+                    }],
+                Capabilities=CAPABILITIES_FOR_STACK_CREATION
             )
-            log.error(f"Stack creation initiated. Stack ID: {response['StackId']}")
+            log.info(f"Stack creation initiated. Stack ID: {response['StackId']}")
+            click.secho(f"Stack creation initiated. Stack ID: {response['StackId']}")
+            return response['StackId']
         except Exception as e:
             log.error(f"Error creating stack: {e}")
+            raise
 
     def _create_parameters(self):
         parameters = []

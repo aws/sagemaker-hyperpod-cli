@@ -7,6 +7,7 @@ from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStac
 
 
 class TestHpClusterStack(unittest.TestCase):
+    @patch('uuid.uuid4')
     @patch('boto3.session.Session')
     @patch('boto3.client')
     @patch('importlib.resources.files')
@@ -14,8 +15,11 @@ class TestHpClusterStack(unittest.TestCase):
     @patch('yaml.safe_load')
     @patch('json.dumps')
     def test_create(self, mock_json_dumps, mock_yaml_load, mock_file_open, 
-                   mock_files, mock_boto3_client, mock_boto3_session):
+                   mock_files, mock_boto3_client, mock_boto3_session, mock_uuid):
         # Setup mocks
+        mock_uuid.return_value = MagicMock()
+        mock_uuid.return_value.__str__ = MagicMock(return_value="12345-67890-abcde")
+        
         mock_region = "us-west-2"
         mock_boto3_session.return_value.region_name = mock_region
         
@@ -40,7 +44,7 @@ class TestHpClusterStack(unittest.TestCase):
         )
         
         # Call the method under test
-        stack.create("test-stack")
+        stack.create()
         
         # Verify mocks were called correctly
         mock_boto3_session.assert_called_once()
@@ -60,8 +64,9 @@ class TestHpClusterStack(unittest.TestCase):
         
         # Verify create_stack was called with expected parameters
         mock_cf_client.create_stack.assert_called_once_with(
-            StackName="test-stack",
+            StackName="HyperpodClusterStack-12345",
             TemplateBody=mock_template_body,
             Parameters=expected_params,
-            Tags=[]
+            Tags=[{'Key': 'Environment', 'Value': 'Development'}],
+            Capabilities=['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM']
         )

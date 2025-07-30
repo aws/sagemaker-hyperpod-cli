@@ -1,3 +1,4 @@
+from sagemaker.hyperpod.cli.templates.cfn_cluster_creation import CLOUDFORMATION_CLUSTER_CREATION_TEMPLATE
 from sagemaker.hyperpod.cli.templates.k8s_js_endpoint_template import KUBERNETES_JS_ENDPOINT_TEMPLATE
 from sagemaker.hyperpod.cli.templates.k8s_custom_endpoint_template import KUBERNETES_CUSTOM_ENDPOINT_TEMPLATE
 
@@ -6,19 +7,30 @@ from hyperpod_custom_inference_template.registry import SCHEMA_REGISTRY as C_REG
 
 # Here is the list of existing templates supported
 # You can onboard new template by adding the mapping here
+
+CRD = "crd"
+CFN = "cfn"
 TEMPLATES = {
     "hyp-jumpstart-endpoint": {
         "registry": JS_REG,
         "schema_pkg": "hyperpod_jumpstart_inference_template",
+        "schema_type": CRD,
         'template': KUBERNETES_JS_ENDPOINT_TEMPLATE,
         'type': "jinja"
     },
     "hyp-custom-endpoint": {
         "registry": C_REG,
         "schema_pkg": "hyperpod_custom_inference_template",
+        "schema_type": CRD,
         'template': KUBERNETES_CUSTOM_ENDPOINT_TEMPLATE,
         'type': "jinja"
     },
+    "hyp-cluster": {
+        "schema_pkg": "hyperpod_cluster_stack_template",
+        "schema_type": CFN,
+        'template': CLOUDFORMATION_CLUSTER_CREATION_TEMPLATE,
+        'type': "jinja"
+    }
 }
 
 

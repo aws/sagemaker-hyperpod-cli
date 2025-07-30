@@ -8,15 +8,18 @@ from jinja2 import Template
 import shutil
 
 from sagemaker.hyperpod.cli.constants.init_constants import (
-    USAGE_GUIDE_TEXT
+    USAGE_GUIDE_TEXT,
+    CFN
 )
+from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack
+import json
 from sagemaker.hyperpod.cli.init_utils import (
     generate_click_command,
     save_config_yaml,
     TEMPLATES,
     load_config_and_validate,
     build_config_from_schema,
-    save_k8s_template
+    save_template
 )
 
 @click.command("init")
@@ -103,12 +106,12 @@ def init(
         )
 
     except Exception as e:
-        click.secho("💥  Could not write config.yaml: %s", e, fg="red")
+        click.secho(f"💥  Could not write config.yaml: {e}", fg="red")
         sys.exit(1)
 
-    # 4) Generate K8s template
-    if not save_k8s_template(template, dir_path):
-        click.secho("⚠️  K8s template generation failed", fg="yellow")
+    # 4) Generate  template
+    if not save_template(template, dir_path):
+        click.secho("⚠️ Template generation failed", fg="yellow")
 
     # 5) Write README.md
     if not skip_readme:
@@ -160,7 +163,7 @@ def reset():
         sys.exit(1)
 
     # 4) Regenerate the k8s Jinja template
-    if save_k8s_template(template, dir_path):
+    if save_template(template, dir_path):
         click.secho("✔️  k8s-template.jinja regenerated.", fg="green")
 
 
@@ -206,86 +209,178 @@ def configure(model_config):
 @click.command("validate")
 def validate():
     """
-    Validate this directory's config.yaml against the JSON schema.
+    Validate this directory's config.yaml against the appropriate schema.
     """
     dir_path = Path(".").resolve()
     data, template, version = load_config_and_validate(dir_path)
     
     info = TEMPLATES[template]
-    registry = info["registry"]
-    model = registry.get(version)
-    if model is None:
-        click.secho(f"❌  Unsupported schema version: {version}", fg="red")
-        sys.exit(1)
+    
+    if info["schema_type"] == CFN:
+        # CFN validation using HpClusterStack
+        payload = {}
+        for k, v in data.items():
+            if k not in ("template", "namespace") and v is not None:
+                # Convert lists to JSON strings for CFN parameters
+                if isinstance(v, list):
+                    payload[k] = json.dumps(v)
+                else:
+                    payload[k] = str(v)
+        
+        try:
+            HpClusterStack(**payload)
+            click.secho("✔️  config.yaml is valid!", fg="green")
+        except ValidationError as e:
+            click.secho("❌  Validation errors:", fg="red")
+            for err in e.errors():
+                loc = ".".join(str(x) for x in err["loc"])
+                msg = err["msg"]
+                click.echo(f"  – {loc}: {msg}")
+            sys.exit(1)
+    else:
+        # CRD validation using schema registry
+        registry = info["registry"]
+        model = registry.get(version)
+        if model is None:
+            click.secho(f"❌  Unsupported schema version: {version}", fg="red")
+            sys.exit(1)
 
-    # prepare only the fields the model knows about
-    payload = {
-        k: v
-        for k, v in data.items()
-        if k not in ("template", "namespace")
-    }
+        payload = {
+            k: v
+            for k, v in data.items()
+            if k not in ("template", "namespace")
+        }
 
-    try:
-        # this will raise ValidationError if anything is invalid
-        model(**payload)
-        click.secho("✔️  config.yaml is valid!", fg="green")
-    except ValidationError as e:
-        click.secho("❌  Validation errors:", fg="red")
-        for err in e.errors():
-            loc = ".".join(str(x) for x in err["loc"])
-            msg = err["msg"]
-            click.echo(f"  – {loc}: {msg}")
-        sys.exit(1)
+        try:
+            model(**payload)
+            click.secho("✔️  config.yaml is valid!", fg="green")
+        except ValidationError as e:
+            click.secho("❌  Validation errors:", fg="red")
+            for err in e.errors():
+                loc = ".".join(str(x) for x in err["loc"])
+                msg = err["msg"]
+                click.echo(f"  – {loc}: {msg}")
+            sys.exit(1)
 
 
 @click.command("submit")
-def submit():
+@click.option("--region", "-r", default="us-west-2", help="Region, Default is us-west-2")
+def submit(region):
     """
-    Validate config.yaml, render k8s.yaml from k8s.jinja,
-    and store both in a timestamped run/ subdirectory.
+    Validate configuration and render template files for deployment.
+    
+    This command performs the following operations:
+    
+    1. Loads and validates the config.yaml file in the current directory
+    2. Determines the template type (CFN for CloudFormation or CRD for Kubernetes)
+    3. Locates the appropriate Jinja template file:
+       - cfn_params.jinja for CloudFormation templates
+       - k8s.jinja for Kubernetes CRD templates
+    4. Validates the configuration using the appropriate schema:
+       - HpClusterStack validation for CFN templates
+       - Registry-based validation for CRD templates
+    5. Renders the Jinja template with configuration values
+    6. Creates a timestamped directory under run/ (e.g., run/20240116T143022/)
+    7. Copies the validated config.yaml to the run directory
+    8. Writes the rendered output:
+       - cfn_params.yaml for CloudFormation templates
+       - k8s.yaml for Kubernetes templates
+    
+    The generated files in the run directory can be used for actual deployment
+    to SageMaker HyperPod clusters or CloudFormation stacks.
+    
+    Prerequisites:
+    - Must be run in a directory initialized with 'hyp init'
+    - config.yaml and the appropriate template file must exist
     """
     dir_path = Path('.').resolve()
     config_file = dir_path / 'config.yaml'
-    jinja_file = dir_path / 'k8s.jinja'
-
-    # 1) Ensure files exist
-    if not config_file.is_file() or not jinja_file.is_file():
-        click.secho("❌  Missing config.yaml or k8s.jinja. Run `hyp init` first.", fg="red")
-        sys.exit(1)
-
-    # 2) Load and validate config
+    
+    # 1) Load config to determine template type
     data, template, version = load_config_and_validate(dir_path)
     
-    # 3) Validate config against schema
+    # 2) Determine correct jinja file based on template type
     info = TEMPLATES[template]
-    registry = info["registry"]
-    model = registry.get(version)
+    schema_type = info["schema_type"]
+    if schema_type == CFN:
+        jinja_file = dir_path / 'cfn_params.jinja'
+    else:
+        jinja_file = dir_path / 'k8s.jinja'
+
+    # 3) Ensure files exist
+    if not config_file.is_file() or not jinja_file.is_file():
+        click.secho(f"❌  Missing config.yaml or {jinja_file.name}. Run `hyp init` first.", fg="red")
+        sys.exit(1)
     
-    if model is None:
-        click.secho(f"❌  Unsupported schema version: {version}", fg="red")
-        sys.exit(1)
+    # 4) Validate config based on schema type
+    if schema_type == CFN:
+        # For CFN templates, use HpClusterStack validation
+        from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack
+        import json
+        payload = {}
+        for k, v in data.items():
+            if k not in ('template', 'namespace') and v is not None:
+                # Convert lists to JSON strings, everything else to string
+                if isinstance(v, list):
+                    payload[k] = json.dumps(v)
+                else:
+                    payload[k] = str(v)
+        try:
+            HpClusterStack(**payload)
+        except ValidationError as e:
+            click.secho("❌ HpClusterStack Validation errors:", fg="red")
+            for err in e.errors():
+                loc = '.'.join(str(x) for x in err['loc'])
+                msg = err['msg']
+                click.echo(f"  – {loc}: {msg}")
+            sys.exit(1)
+    else:
+        # For CRD templates, use registry validation
+        registry = info["registry"]
+        model = registry.get(version)
+        if model is None:
+            click.secho(f"❌  Unsupported schema version: {version}", fg="red")
+            sys.exit(1)
+        payload = {k: v for k, v in data.items() if k not in ('template', 'namespace')}
+        try:
+            model(**payload)
+        except ValidationError as e:
+            click.secho("❌  Validation errors:", fg="red")
+            for err in e.errors():
+                loc = '.'.join(str(x) for x in err['loc'])
+                msg = err['msg']
+                click.echo(f"  – {loc}: {msg}")
+            sys.exit(1)
 
-    payload = {k: v for k, v in data.items() if k not in ('template', 'namespace')}
-    try:
-        model(**payload)
-    except ValidationError as e:
-        click.secho("❌  Validation errors:", fg="red")
-        for err in e.errors():
-            loc = '.'.join(str(x) for x in err['loc'])
-            msg = err['msg']
-            click.echo(f"  – {loc}: {msg}")
-        sys.exit(1)
-
-    # 4) Render Jinja template
     try:
         template_source = jinja_file.read_text()
         tpl = Template(template_source)
-        rendered = tpl.render(**data)
+        
+        # For CFN templates, prepare arrays for Jinja template
+        if schema_type == CFN:
+            # Prepare instance_group_settings array
+            instance_group_settings = []
+            rig_settings = []
+            for i in range(1, 21):
+                ig_key = f'instance_group_settings{i}'
+                rig_key = f'rig_settings{i}'
+                if ig_key in data:
+                    instance_group_settings.append(data[ig_key])
+                if rig_key in data:
+                    rig_settings.append(data[rig_key])
+            
+            # Add arrays to template context
+            template_data = dict(data)
+            template_data['instance_group_settings'] = instance_group_settings
+            template_data['rig_settings'] = rig_settings
+            rendered = tpl.render(**template_data)
+        else:
+            rendered = tpl.render(**data)
     except Exception as e:
-        click.secho(f"❌  Failed to render k8s template: {e}", fg="red")
+        click.secho(f"❌  Failed to render template: {e}", fg="red")
         sys.exit(1)
 
-    # 5) Prepare run/<timestamp> directory and write files
+    # 6) Prepare run/<timestamp> directory and write files
     run_root = dir_path / 'run'
     run_root.mkdir(exist_ok=True)
     timestamp = datetime.now().strftime('%Y%m%dT%H%M%S')
@@ -294,9 +389,20 @@ def submit():
 
     try:
         shutil.copy(config_file, out_dir / 'config.yaml')
-        with open(out_dir / 'k8s.yaml', 'w', encoding='utf-8') as f:
+        output_file = 'cfn_params.yaml' if schema_type == CFN else 'k8s.yaml'
+        with open(out_dir / output_file, 'w', encoding='utf-8') as f:
             f.write(rendered)
         click.secho(f"✔️  Submitted! Files written to {out_dir}", fg="green")
     except Exception as e:
         click.secho(f"❌  Failed to write run files: {e}", fg="red")
+        sys.exit(1)
+
+    # 7) Make the downstream call
+    try :
+        if schema_type == CFN:
+            from sagemaker.hyperpod.cli.commands.cluster_stack import create_cluster_stack_helper
+            create_cluster_stack_helper(config_file=f"{out_dir}/config.yaml",
+                                        region=region)
+    except Exception as e:
+        click.secho(f"❌  Failed to sumbit the command: {e}", fg="red")
         sys.exit(1)

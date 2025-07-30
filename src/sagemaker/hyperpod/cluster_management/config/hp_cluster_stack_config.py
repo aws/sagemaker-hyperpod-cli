@@ -1,11 +1,12 @@
 
 from pydantic import BaseModel, Field
-from typing import Optional, Literal
+from typing import Optional, Literal, List, Any
 
 class _ClusterStackBase(BaseModel):
-    tags: Optional[list] = Field(
+    tags: Optional[List[Any]] = Field(
         None,
-        description="Custom tags for the CloudFormation stack"
+        description="Custom tags for the CloudFormation stack",
+        examples=[[]]
     )
     stage: Optional[str] = Field(
         None, 
@@ -320,11 +321,6 @@ class _ClusterStackBase(BaseModel):
     rig_settings20: Optional[str] = Field(
         None, 
         description="JSON array string containing restricted instance group configurations.",
-        examples=["[]"]
-    )
-    tags: Optional[list] = Field(
-        None, 
-        description="Custom tags for managing the SageMaker HyperPod cluster as an AWS resource.",
         examples=["[]"]
     )
     fsx_subnet_id: Optional[str] = Field(

@@ -468,7 +468,7 @@ Parameters:
     Description: JSON array string containing restricted instance group configurations.
   Tags:
     Type: String
-    Default: ''
+    Default: '[]'
     Description: Custom tags for managing the SageMaker HyperPod cluster as an AWS resource.
   FsxSubnetId:
     Type: String

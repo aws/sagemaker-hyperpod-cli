@@ -1,4 +1,6 @@
+import importlib
 import json
+import logging
 import pkgutil
 import click
 from typing import Callable, Tuple
@@ -14,22 +16,34 @@ import json
 
 
 from sagemaker.hyperpod.cli.constants.init_constants import (
-    TEMPLATES
+    TEMPLATES,
+    CRD,
+    CFN
 )
+from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack
 
-# If your template requires a differente template style, you can add that here
-def save_k8s_template(template: str, dir_path: Path) -> None:
+log = logging.getLogger()
+def save_template(template: str, directory_path: Path) -> bool:
     """
     Save the appropriate k8s template based on the template type.
     """
     try:
-        if TEMPLATES[template]["type"] == "jinja":
-            save_k8s_jinja(directory=str(dir_path), content=TEMPLATES[template]["template"])
+        if TEMPLATES[template]["schema_type"] == CRD:
+            save_k8s_jinja(directory=str(directory_path), content=TEMPLATES[template]["template"])
+        elif TEMPLATES[template]["schema_type"] == CFN:
+            save_cfn_jinja(directory=str(directory_path), content=TEMPLATES[template]["template"])
         return True
     except Exception as e:
-        click.secho(f"⚠️  K8s template generation failed: {e}", fg="yellow")
+        click.secho(f"⚠️ Template generation failed: {e}", fg="yellow")
         return False
 
+def save_cfn_jinja(directory: str, content: str):
+    Path(directory).mkdir(parents=True, exist_ok=True)
+    path = os.path.join(directory, "cfn_params.jinja")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+    click.secho(f"Cloudformation Parameters Jinja template saved to: {path}")
+    return path
 
 def save_k8s_jinja(directory: str, content: str):
     Path(directory).mkdir(parents=True, exist_ok=True)
@@ -65,12 +79,16 @@ def generate_click_command(
     # build the UNION of all schema props + required flags
     union_props = {}
     union_reqs = set()
-    for tmpl, info in TEMPLATES.items():
-        schema = load_schema_for_version("1.0", info["schema_pkg"])
-        for k, spec in schema.get("properties", {}).items():
-            union_props.setdefault(k, spec)
-        if require_schema_fields:
-            union_reqs |= set(schema.get("required", []))
+    for template, template_info in TEMPLATES.items():
+        if template_info["schema_type"] == CRD:
+            schema = load_schema_for_version("1.0", template_info["schema_pkg"])
+            for k, spec in schema.get("properties", {}).items():
+                union_props.setdefault(k, spec)
+            if require_schema_fields:
+                union_reqs |= set(schema.get("required", []))
+        elif template_info["schema_type"] == CFN:
+            cluster_template = json.loads(HpClusterStack.get_template())
+            cluster_parameters = cluster_template.get("Parameters")
 
     def decorator(func: Callable) -> Callable:
         # JSON flag parser
@@ -112,24 +130,26 @@ def generate_click_command(
                 version = kwargs.pop(version_key_arg, '1.0')
 
             # lookup registry & schema_pkg
-            info = TEMPLATES.get(template)
-            if not info:
+            template_info = TEMPLATES.get(template)
+            if not template_info:
                 raise click.ClickException(f"Unknown template: {template}")
-            registry = info['registry']
-            schema_pkg = info['schema_pkg']
+            if template_info.get("schema_type") == CRD:
+                registry = template_info['registry']
 
-            Model = registry.get(version)
-            if Model is None:
-                raise click.ClickException(f"Unsupported schema version: {version}")
+                Model = registry.get(version)
+                if Model is None:
+                    raise click.ClickException(f"Unsupported schema version: {version}")
 
-            # build Pydantic model (bypass validation on configure)
-            if require_schema_fields:
-                model_obj = Model(**kwargs)
-            else:
-                try:
+                # build Pydantic model (bypass validation on configure)
+                if require_schema_fields:
                     model_obj = Model(**kwargs)
-                except ValidationError:
-                    model_obj = Model.model_construct(**kwargs)
+                else:
+                    try:
+                        model_obj = Model(**kwargs)
+                    except ValidationError:
+                        model_obj = Model.model_construct(**kwargs)
+            elif template_info.get("schema_type") == CFN:
+                model_obj = HpClusterStack(**kwargs)
 
             # call underlying function
             if auto_load_config:
@@ -180,6 +200,32 @@ def generate_click_command(
                 help=spec.get('description',''),
             )(wrapped)
 
+        for cfn_param_name, cfn_param_details in cluster_parameters.items():
+            # Convert CloudFormation type to Click type
+            cfn_type = cfn_param_details.get('Type', 'String')
+            if cfn_type == 'Number':
+                click_type = float
+            elif cfn_type == 'Integer':
+                click_type = int
+            else:
+                click_type = str
+
+            # Special handling for tags parameter
+            if cfn_param_name == 'Tags':
+                wrapped = click.option(
+                    f"--{pascal_to_kebab(cfn_param_name)}",
+                    callback=_parse_json_flag,
+                    metavar="JSON",
+                    help=cfn_param_details.get('Description', ''),
+                )(wrapped)
+            else:
+                wrapped = click.option(
+                    f"--{pascal_to_kebab(cfn_param_name)}",
+                    default=cfn_param_details.get('Default'),
+                    show_default=('Default' in cfn_param_details),
+                    type=click_type,
+                    help=cfn_param_details.get('Description', ''),
+                )(wrapped)
         return wrapped
 
     return decorator
@@ -224,6 +270,29 @@ def load_config_and_validate(dir_path: Path = None) -> Tuple[dict, str, str]:
     if template not in TEMPLATES:
         click.secho(f"❌  Unknown template '{template}' in config.yaml", fg="red")
         sys.exit(1)
+    
+    # For CFN templates, validate using HpClusterStack
+    template_info = TEMPLATES[template]
+    if template_info["schema_type"] == CFN:
+        try:
+            # Filter out template and namespace fields for validation
+            filtered_config = {}
+            for k, v in data.items():
+                if k not in ('template', 'namespace') and v is not None:
+                    # Convert lists to JSON strings, everything else to string
+                    if isinstance(v, list):
+                        filtered_config[k] = json.dumps(v)
+                    else:
+                        filtered_config[k] = str(v)
+            click.secho(filtered_config)
+            HpClusterStack(**filtered_config)
+        except ValidationError as e:
+            click.secho("❌  Config validation errors:", fg="red")
+            for err in e.errors():
+                loc = '.'.join(str(x) for x in err['loc'])
+                msg = err['msg']
+                click.echo(f"  – {loc}: {msg}")
+            sys.exit(1)
         
     return data, template, version
 
@@ -244,9 +313,19 @@ def build_config_from_schema(template: str, namespace: str, version: str, model_
     """
     # Load schema and pull out properties + required list
     info = TEMPLATES[template]
-    schema = load_schema_for_version(version, info["schema_pkg"])
-    props = schema.get("properties", {})
-    reqs = schema.get("required", [])
+    
+    if info["schema_type"] == CFN:
+        # For CFN templates, use model fields instead of schema
+        if model_config:
+            props = {field: {"description": field_info.description or ""} 
+                    for field, field_info in model_config.model_fields.items()}
+        else:
+            props = {}
+        reqs = []
+    else:
+        schema = load_schema_for_version(version, info["schema_pkg"])
+        props = schema.get("properties", {})
+        reqs = schema.get("required", [])
     
     # Build config dict with defaults from schema
     full_cfg = {
@@ -297,3 +376,22 @@ def build_config_from_schema(template: str, namespace: str, version: str, model_
     
     return full_cfg, comment_map
 
+
+def pascal_to_kebab(pascal_str):
+    """Convert PascalCase to CLI kebab-case format"""
+    result = []
+    for i, char in enumerate(pascal_str):
+        if char.isupper() and i > 0:
+            result.append('-')
+        result.append(char.lower())
+    return ''.join(result)
+
+
+def pascal_to_kebab(pascal_str):
+    """Convert PascalCase string  to kebab-case"""
+    result = []
+    for i, char in enumerate(pascal_str):
+        if char.isupper() and i > 0:
+            result.append('-')
+        result.append(char.lower())
+    return ''.join(result)
