@@ -395,6 +395,8 @@ def verify_kubernetes_version_compatibility(logger) -> bool:
     the server version. It handles both minimum compatibility versions specified by
     the server and the standard Kubernetes support policy (within 3 minor versions behind
     and not more than 1 minor version ahead).
+
+    Ref link: https://github.com/kubernetes-client/python#compatibility
     
     Args:
         logger: Logger instance for outputting messages.
