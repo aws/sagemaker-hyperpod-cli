@@ -16,12 +16,11 @@ import time
 
 from sagemaker.hyperpod.cli.utils import setup_logger
 from test.integration_tests.utils import execute_command
-from test.integration_tests.abstract_integration_tests import AbstractIntegrationTests
 
 logger = setup_logger(__name__)
 
 
-class TestHypCLICommands(AbstractIntegrationTests):
+class TestHypCLICommands:
     """Integration tests for HyperPod CLI using hyp commands."""
 
     def test_list_clusters(self, cluster_name):

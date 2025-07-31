@@ -25,11 +25,8 @@ POLL_INTERVAL_SECONDS = 30
 BETA_BUCKET = "sagemaker-hyperpod-beta-integ-test-model-bucket-n"
 PROD_BUCKET = "sagemaker-hyperpod-prod-integ-test-model-bucket"
 
-BETA_TLS = "s3://sagemaker-hyperpod-certificate-beta-us-east-2"
-PROD_TLS = "s3://sagemaker-hyperpod-certificate-prod-us-east-2"
 stage = os.getenv("STAGE", "BETA").upper()
 BUCKET_LOCATION = BETA_BUCKET if stage == "BETA" else PROD_BUCKET
-TLS_LOCATION = BETA_TLS if stage == "BETA" else PROD_TLS
 
 @pytest.fixture(scope="module")
 def sagemaker_client():
@@ -37,8 +34,6 @@ def sagemaker_client():
 
 @pytest.fixture(scope="module")
 def custom_endpoint():
-    # TLS
-    tls = TlsConfig(tls_certificate_output_s3_uri=TLS_LOCATION)
 
     # Model Source
     model_src = ModelSourceConfig(
@@ -78,7 +73,6 @@ def custom_endpoint():
         endpoint_name=ENDPOINT_NAME,
         instance_type="ml.c5.2xlarge",
         model_name=MODEL_NAME,
-        tls_config=tls,
         model_source_config=model_src,
         worker=worker,
     )

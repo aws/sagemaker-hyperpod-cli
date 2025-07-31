@@ -24,11 +24,8 @@ POLL_INTERVAL_SECONDS = 30
 
 BETA_BUCKET = "sagemaker-hyperpod-beta-integ-test-model-bucket-n"
 PROD_BUCKET = "sagemaker-hyperpod-prod-integ-test-model-bucket"
-BETA_TLS = "s3://sagemaker-hyperpod-certificate-beta-us-east-2"
-PROD_TLS = "s3://sagemaker-hyperpod-certificate-prod-us-east-2"
 stage = os.getenv("STAGE", "BETA").upper()
 BUCKET_LOCATION = BETA_BUCKET if stage == "BETA" else PROD_BUCKET
-TLS_LOCATION = BETA_TLS if stage == "BETA" else PROD_TLS
 
 @pytest.fixture(scope="module")
 def runner():
@@ -60,7 +57,6 @@ def test_custom_create(runner, custom_endpoint_name):
         "--endpoint-name", custom_endpoint_name,
         "--resources-requests", '{"cpu": "3200m", "nvidia.com/gpu": 0, "memory": "12Gi"}',
         "--resources-limits", '{"nvidia.com/gpu": 0}',
-        "--tls-certificate-output-s3-uri", TLS_LOCATION,
         "--env", '{ "SAGEMAKER_PROGRAM": "inference.py", "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code", "SAGEMAKER_CONTAINER_LOG_LEVEL": "20", "SAGEMAKER_MODEL_SERVER_TIMEOUT": "3600", "ENDPOINT_SERVER_TIMEOUT": "3600", "MODEL_CACHE_ROOT": "/opt/ml/model", "SAGEMAKER_ENV": "1", "SAGEMAKER_MODEL_SERVER_WORKERS": "1" }'
     ])
     assert result.exit_code == 0, result.output

@@ -22,14 +22,12 @@ IMAGE_URI = "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-in
 TIMEOUT_MINUTES = 15
 POLL_INTERVAL_SECONDS = 30
 
-BETA_FSX = "fs-0454e783bbb7356fc"
-PROD_FSX = "fs-03c59e2a7e824a22f"
-BETA_TLS = "s3://sagemaker-hyperpod-certificate-beta-us-east-2"
-PROD_TLS = "s3://sagemaker-hyperpod-certificate-prod-us-east-2"
+BETA_FSX = "fs-0402c3308e6aba65c"    # fsx id for beta integration test cluster
+PROD_FSX = "fs-0839e3bb2a0b2dacf"    # fsx id for prod integration test cluster
 stage = os.getenv("STAGE", "BETA").upper()
-FSX_LOCATION = BETA_FSX if stage == "BETA" else PROD_FSX
-TLS_LOCATION = BETA_TLS if stage == "BETA" else PROD_TLS
+DEFAULT_FSX_ID = BETA_FSX if stage == "BETA" else PROD_FSX
 
+FSX_LOCATION = os.getenv("FSX_ID", DEFAULT_FSX_ID)
 
 @pytest.fixture(scope="module")
 def sagemaker_client():
@@ -37,9 +35,6 @@ def sagemaker_client():
 
 @pytest.fixture(scope="module")
 def custom_endpoint():
-    # TLS
-    tls = TlsConfig(tls_certificate_output_s3_uri=TLS_LOCATION)
-
     # Model Source
     model_src = ModelSourceConfig(
         model_source_type="fsx",
@@ -77,7 +72,6 @@ def custom_endpoint():
         endpoint_name=ENDPOINT_NAME,
         instance_type="ml.c5.2xlarge",
         model_name=MODEL_NAME,
-        tls_config=tls,
         model_source_config=model_src,
         worker=worker,
     )
