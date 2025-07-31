@@ -20,12 +20,14 @@ set_script_variables() {
         exit 1
     fi
     TRAINING_OPERATORS=$STANDARD_HELM_RELEASE_NAME-training-operators
+    MPI_OPERATOR=$STANDARD_HELM_RELEASE_NAME-mpi-operator
     EFA=$STANDARD_HELM_RELEASE_NAME-aws-efa-k8s-device-plugin         
     PATCH_ONLY=(
         #
         # These objects do not need entirely separate YAML; we just need to patch them to make them work with RIG
         #
         "$TRAINING_OPERATORS"
+	"$MPI_OPERATOR"
         "$EFA"
     )
     add_ons=(
@@ -34,7 +36,7 @@ set_script_variables() {
         # 
         "eks,kube-system,aws-node,daemonset"
         "eks,kube-system,coredns,deployment"
-        #"hp,kube-system,mpi-operator,deployment"
+        "hp,kube-system,$MPI_OPERATOR,deployment"
         #"hp,kube-system,neuron-device-plugin,daemonset"
         "hp,kubeflow,$TRAINING_OPERATORS,deployment"
         "hp,kube-system,$EFA,daemonset"
@@ -286,6 +288,65 @@ override_training_operators() {
     ]'
 }
 
+override_mpi_operator() {
+    #####################################################
+    # mpi-operator dependency needs to be present
+    # to schedule MPI jobs but by by default, only
+    # tolerates non-RIG nodes
+    #
+    # Therefore, needs to tolerate RIG node taint, 
+    # but still prefer scheduling onto non-RIG
+    # in case cluster consists of both non-RIG and RIG
+    #
+    # NOTE: this based on the original Helm installation
+    #       of mpi-operator Deployment.
+    #       There are no affinities, but there are tolerations
+    #       as of commit 
+    #       https://github.com/aws/sagemaker-hyperpod-cli/blob/d2130e919f3a53ad1cbacf4759edecbbbcdeda0b/helm_chart/HyperPodHelmChart/charts/mpi-operator/values.yaml#L20-L24
+    #####################################################
+   
+    # Using kubectl directly since relatively simple patch 
+    # that does not require new separeate file/deployments specific for RIG
+    kubectl patch deployment $MPI_OPERATOR -n kube-system --type=json -p='[
+      {
+        "op": "add",
+        "path": "/spec/template/spec/tolerations/-",
+        "value": {
+            "key": "sagemaker.amazonaws.com/RestrictedNode",
+            "value": "Worker",
+            "effect": "NoSchedule"
+        }
+      },
+      {
+        "op": "add",
+        "path": "/spec/template/spec/affinity",
+        "value": {
+          "nodeAffinity": {
+            "preferredDuringSchedulingIgnoredDuringExecution": [
+              {
+                "weight": 100,
+                "preference": {
+                  "matchExpressions": [
+                    {
+                      "key": "sagemaker.amazonaws.com/instance-group-type",
+                      "operator": "NotIn",
+                      "values": ["Restricted"]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "op": "add",
+        "path": "/metadata/annotations/rig.hyperpod.patch~1mpi-operator",
+        "value": "{\"timestamp\": \"'$DATETIME'\"}"
+      }
+    ]'
+}
+
 override_efa() {
     #####################################################
     # aws-efa-k8s-device-plugin dependency needs to be present
@@ -452,7 +513,7 @@ confirm_installation_with_user() {
       echo "🔧 Installing Helm chart..."
       helm upgrade --install $RIG_HELM_RELEASE ./HyperPodHelmChartForRIG --namespace kube-system -f ./HyperPodHelmChartForRIG/values.yaml
       if [ $? -ne 0 ]; then
-        echo "RIG Helm Installation Failed. Exiting (0/4 steps completed)..."
+        echo "RIG Helm Installation Failed. Exiting (0/5 steps completed)..."
         return 1
       fi
   
@@ -461,7 +522,7 @@ confirm_installation_with_user() {
       if [ "$patched" = "false" ]; then
           kubectl apply -f HyperPodHelmChartForRIG/charts/aws-node/templates/daemonset.nonrig.yaml -n kube-system
           if [ $? -ne 0 ]; then
-            echo "RIG Helm Installation Failed (aws-node). Exiting (only 1/4 steps completed)..."
+            echo "RIG Helm Installation Failed (aws-node). Exiting (only 1/5 steps completed)..."
             return 1
           fi
       else
@@ -473,11 +534,23 @@ confirm_installation_with_user() {
       if [ "$patched" = "false" ]; then
           override_training_operators
           if [ $? -ne 0 ]; then
-            echo "RIG Helm Installation Failed (training-operator). Exiting (only 2/4 steps completed)..."
+            echo "RIG Helm Installation Failed (training-operator). Exiting (only 2/5 steps completed)..."
             return 1
           fi
       else
           echo "Found annotation 'rig.hyperpod.patch/training-operators'. Skipping patching for RIG..."
+      fi
+
+      # mpi-operator needs specific patch
+      patched=$(kubectl get deployments $MPI_OPERATOR -n kube-system -o yaml | yq e '.metadata.annotations | has("rig.hyperpod.patch/mpi-operator")' -)
+      if [ "$patched" = "false" ]; then
+          override_mpi_operator
+          if [ $? -ne 0 ]; then
+            echo "RIG Helm Installation Failed (mpi-operator). Exiting (only 3/5 steps completed)..."
+            return 1
+          fi
+      else
+          echo "Found annotation 'rig.hyperpod.patch/mpi-operator'. Skipping patching for RIG..."
       fi
 
       # efa needs specific patch
@@ -485,7 +558,7 @@ confirm_installation_with_user() {
       if [ "$patched" = "false" ]; then
           override_efa
           if [ $? -ne 0 ]; then
-            echo "RIG Helm Installation Failed (aws-efa-k8s-device-plugin). Exiting (only 3/4 steps completed)..."
+            echo "RIG Helm Installation Failed (aws-efa-k8s-device-plugin). Exiting (only 4/5 steps completed)..."
             return 1
           fi
       else
@@ -493,7 +566,7 @@ confirm_installation_with_user() {
       fi
 
       echo ""
-      echo "✅ RIG Helm Installation Succeeded (4/4 steps completed)."
+      echo "✅ RIG Helm Installation Succeeded (5/5 steps completed)."
       echo ""
 
       # Warn user about CNI start up
@@ -589,6 +662,8 @@ main() {
     ensure_yq_installed
     
     set_script_variables
+    
+    assert_not_already_installed
 
     assert_not_already_installed
     
