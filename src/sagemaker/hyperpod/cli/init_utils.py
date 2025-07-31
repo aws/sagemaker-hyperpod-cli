@@ -40,10 +40,38 @@ def save_template(template: str, directory_path: Path) -> bool:
 def save_cfn_jinja(directory: str, content: str):
     Path(directory).mkdir(parents=True, exist_ok=True)
     path = os.path.join(directory, "cfn_params.jinja")
+    
+    # Process content to handle array conversion for instance_group_settings and rig_settings
+    processed_content = _process_cfn_template_content(content)
+    
     with open(path, "w", encoding="utf-8") as f:
-        f.write(content)
+        f.write(processed_content)
     click.secho(f"Cloudformation Parameters Jinja template saved to: {path}")
     return path
+
+def _process_cfn_template_content(content: str) -> str:
+    """
+    Process CFN template content to convert array attributes to numbered format.
+    Converts instance_group_settings and rig_settings arrays to numbered parameters.
+    """
+    # Add Jinja2 logic to handle array conversion
+    array_conversion_logic = """
+{%- if instance_group_settings %}
+{%- for i in range(instance_group_settings|length) %}
+{%- set param_name = "InstanceGroupSettings" + (i+1)|string %}
+{{ param_name }}={{ instance_group_settings[i] }}
+{%- endfor %}
+{%- endif %}
+{%- if rig_settings %}
+{%- for i in range(rig_settings|length) %}
+{%- set param_name = "RigSettings" + (i+1)|string %}
+{{ param_name }}={{ rig_settings[i] }}
+{%- endfor %}
+{%- endif %}
+"""
+    
+    # Insert the conversion logic at the beginning of the template
+    return array_conversion_logic + "\n" + content
 
 def save_k8s_jinja(directory: str, content: str):
     Path(directory).mkdir(parents=True, exist_ok=True)

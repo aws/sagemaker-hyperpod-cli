@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 def create_cluster_stack(config_file, region, debug):
     """Create a new HyperPod cluster stack using the provided configuration."""
-    logger = setup_logging(logging.getLogger(__name__), debug)
     create_cluster_stack_helper(config_file, region, debug)
 
 def create_cluster_stack_helper(config_file, region = None, debug = False):

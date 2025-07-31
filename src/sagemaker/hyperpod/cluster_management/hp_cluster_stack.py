@@ -62,14 +62,48 @@ class HpClusterStack(_ClusterStackBase):
         for field_name, field_info in _ClusterStackBase.model_fields.items():
             value = getattr(self, field_name, None)
             if value is not None:
-                # Convert boolean values to strings for CloudFormation
-                if isinstance(value, bool):
-                    value = str(value).lower()
+                # Handle array attributes that need to be converted to numbered parameters
+                if field_name == 'instance_group_settings':
+                    # Handle both list and JSON string formats
+                    if isinstance(value, list):
+                        settings_list = value
+                    else:
+                        # Parse JSON string to list
+                        try:
+                            settings_list = json.loads(str(value))
+                        except (json.JSONDecodeError, TypeError):
+                            settings_list = []
+                    
+                    for i, setting in enumerate(settings_list, 1):
+                        parameters.append({
+                            'ParameterKey': f'InstanceGroupSettings{i}',
+                            'ParameterValue': json.dumps(setting) if isinstance(setting, (dict, list)) else str(setting)
+                        })
+                elif field_name == 'rig_settings':
+                    # Handle both list and JSON string formats
+                    if isinstance(value, list):
+                        settings_list = value
+                    else:
+                        # Parse JSON string to list
+                        try:
+                            settings_list = json.loads(str(value))
+                        except (json.JSONDecodeError, TypeError):
+                            settings_list = []
+                    
+                    for i, setting in enumerate(settings_list, 1):
+                        parameters.append({
+                            'ParameterKey': f'RigSettings{i}',
+                            'ParameterValue': json.dumps(setting) if isinstance(setting, (dict, list)) else str(setting)
+                        })
+                else:
+                    # Convert boolean values to strings for CloudFormation
+                    if isinstance(value, bool):
+                        value = str(value).lower()
 
-                parameters.append({
-                    'ParameterKey': self._snake_to_pascal(field_name),
-                    'ParameterValue': str(value)
-                })
+                    parameters.append({
+                        'ParameterKey': self._snake_to_pascal(field_name),
+                        'ParameterValue': str(value)
+                    })
         return parameters
 
     @staticmethod
