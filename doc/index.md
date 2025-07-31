@@ -118,8 +118,7 @@ Inference, and Cluster Monitoring.
 :gutter: 3
 
 :::{grid-item-card} API reference
-:link: _apidoc/modules
-:link-type: ref
+:link: _apidoc/modules.html
 :class-card: sd-border-primary
 
 **Explore APIs** - Checkout API Documentation
