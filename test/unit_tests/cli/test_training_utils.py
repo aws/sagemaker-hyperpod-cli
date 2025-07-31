@@ -186,7 +186,7 @@ class TestGenerateClickCommand:
         registry = {'1.0': DummyModel}
 
         @click.command()
-        @generate_click_command(registry=registry)
+        @generate_click_command(registry=registry, schema_pkg="hyperpod-pytorch-job")
         def cmd(version, debug, config):
             click.echo(json.dumps({
                 'node_count': config.node_count,
@@ -211,3 +211,271 @@ class TestGenerateClickCommand:
         result = self.runner.invoke(cmd, ['--node-count', 'not-a-number'])
         assert result.exit_code == 2
         assert "Invalid value" in result.output
+
+
+    @patch('sagemaker.hyperpod.cli.training_utils.pkgutil.get_data')
+    def test_volume_flag_parsing(self, mock_get_data):
+        """Test volume flag parsing functionality"""
+        schema = {
+            'properties': {
+                'volume': {
+                    'type': 'array',
+                    'items': {
+                        'type': 'object',
+                        'properties': {
+                            'name': {'type': 'string'},
+                            'type': {'type': 'string'},
+                            'mount_path': {'type': 'string'},
+                            'path': {'type': 'string'},
+                            'claim_name': {'type': 'string'},
+                            'read_only': {'type': 'string'}
+                        }
+                    }
+                }
+            }
+        }
+        mock_get_data.return_value = json.dumps(schema).encode()
+
+        class DummyModel:
+            def __init__(self, **kwargs):
+                self.__dict__.update(kwargs)
+            def to_domain(self):
+                return self
+
+        registry = {'1.0': DummyModel}
+
+        @click.command()
+        @generate_click_command(
+            schema_pkg="hyperpod_pytorch_job_template",
+            registry=registry
+        )
+        def cmd(version, debug, config):
+            click.echo(json.dumps({
+                'volume': config.volume if hasattr(config, 'volume') else None
+            }))
+
+        # Test single hostPath volume
+        result = self.runner.invoke(cmd, [
+            '--volume', 'name=model-data,type=hostPath,mount_path=/data,path=/host/data'
+        ])
+        assert result.exit_code == 0
+        output = json.loads(result.output)
+        expected_volume = [{
+            'name': 'model-data',
+            'type': 'hostPath',
+            'mount_path': '/data',
+            'path': '/host/data'
+        }]
+        assert output['volume'] == expected_volume
+
+        # Test single PVC volume
+        result = self.runner.invoke(cmd, [
+            '--volume', 'name=training-output,type=pvc,mount_path=/output,claim_name=my-pvc,read_only=false'
+        ])
+        assert result.exit_code == 0
+        output = json.loads(result.output)
+        expected_volume = [{
+            'name': 'training-output',
+            'type': 'pvc',
+            'mount_path': '/output',
+            'claim_name': 'my-pvc',
+            'read_only': 'false'
+        }]
+        assert output['volume'] == expected_volume
+
+        # Test multiple volumes
+        result = self.runner.invoke(cmd, [
+            '--volume', 'name=model-data,type=hostPath,mount_path=/data,path=/host/data',
+            '--volume', 'name=training-output,type=pvc,mount_path=/output,claim_name=my-pvc,read_only=true'
+        ])
+        assert result.exit_code == 0
+        output = json.loads(result.output)
+        expected_volumes = [
+            {
+                'name': 'model-data',
+                'type': 'hostPath',
+                'mount_path': '/data',
+                'path': '/host/data'
+            },
+            {
+                'name': 'training-output',
+                'type': 'pvc',
+                'mount_path': '/output',
+                'claim_name': 'my-pvc',
+                'read_only': 'true'
+            }
+        ]
+        assert output['volume'] == expected_volumes
+
+
+    @patch('sagemaker.hyperpod.cli.training_utils.pkgutil.get_data')
+    def test_volume_domain_conversion(self, mock_get_data):
+        """Test volume domain conversion functionality"""
+        schema = {
+            'properties': {
+                'job_name': {'type': 'string'},
+                'image': {'type': 'string'},
+                'volume': {
+                    'type': 'array',
+                    'items': {'type': 'object'}
+                }
+            },
+            'required': ['job_name', 'image']
+        }
+        mock_get_data.return_value = json.dumps(schema).encode()
+
+        class MockVolumeModel:
+            def __init__(self, **kwargs):
+                self.job_name = kwargs.get('job_name')
+                self.image = kwargs.get('image')
+                self.volume = kwargs.get('volume')
+
+            def to_domain(self):
+                domain_volumes = []
+                if self.volume:
+                    for vol in self.volume:
+                        if vol.get('type') == 'hostPath':
+                            domain_volumes.append({
+                                'name': vol.get('name'),
+                                'type': 'hostPath',
+                                'mount_path': vol.get('mount_path'),
+                                'host_path': {'path': vol.get('path')}
+                            })
+                        elif vol.get('type') == 'pvc':
+                            domain_volumes.append({
+                                'name': vol.get('name'),
+                                'type': 'pvc',
+                                'mount_path': vol.get('mount_path'),
+                                'persistent_volume_claim': {
+                                    'claim_name': vol.get('claim_name'),
+                                    'read_only': vol.get('read_only') == 'true'
+                                }
+                            })
+                
+                return {
+                    'name': self.job_name,
+                    'image': self.image,
+                    'volumes': domain_volumes
+                }
+
+        registry = {'1.0': MockVolumeModel}
+
+        @click.command()
+        @generate_click_command(
+            schema_pkg="hyperpod_pytorch_job_template",
+            registry=registry
+        )
+        def cmd(version, debug, config):
+            click.echo(json.dumps(config))
+
+        # Test hostPath volume domain conversion
+        result = self.runner.invoke(cmd, [
+            '--job-name', 'test-job',
+            '--image', 'test-image',
+            '--volume', 'name=model-data,type=hostPath,mount_path=/data,path=/host/data'
+        ])
+        assert result.exit_code == 0
+        output = json.loads(result.output)
+        assert output['volumes'][0]['type'] == 'hostPath'
+        assert output['volumes'][0]['host_path']['path'] == '/host/data'
+
+        # Test PVC volume domain conversion
+        result = self.runner.invoke(cmd, [
+            '--job-name', 'test-job',
+            '--image', 'test-image',
+            '--volume', 'name=training-output,type=pvc,mount_path=/output,claim_name=my-pvc,read_only=true'
+        ])
+        assert result.exit_code == 0
+        output = json.loads(result.output)
+        assert output['volumes'][0]['type'] == 'pvc'
+        assert output['volumes'][0]['persistent_volume_claim']['claim_name'] == 'my-pvc'
+        assert output['volumes'][0]['persistent_volume_claim']['read_only'] is True
+
+
+    @patch('sagemaker.hyperpod.cli.training_utils.pkgutil.get_data')
+    def test_volume_flag_parsing_errors(self, mock_get_data):
+        """Test volume flag parsing error handling"""
+        schema = {
+            'properties': {
+                'volume': {
+                    'type': 'array',
+                    'items': {'type': 'object'}
+                }
+            }
+        }
+        mock_get_data.return_value = json.dumps(schema).encode()
+
+        class DummyModel:
+            def __init__(self, **kwargs):
+                self.__dict__.update(kwargs)
+            def to_domain(self):
+                return self
+
+        registry = {'1.0': DummyModel}
+
+        @click.command()
+        @generate_click_command(
+            schema_pkg="hyperpod_pytorch_job_template",
+            registry=registry
+        )
+        def cmd(version, debug, config):
+            click.echo("success")
+
+        # Test invalid format (missing equals sign)
+        result = self.runner.invoke(cmd, [
+            '--volume', 'name=model-data,type=hostPath,mount_path,path=/host/data'
+        ])
+        assert result.exit_code == 2
+        assert "should be key=value" in result.output
+
+        # Test empty volume parameter
+        result = self.runner.invoke(cmd, [
+            '--volume', ''
+        ])
+        assert result.exit_code == 2
+        assert "Error parsing volume" in result.output
+
+    @patch('sagemaker.hyperpod.cli.training_utils.pkgutil.get_data')
+    def test_volume_flag_with_equals_in_value(self, mock_get_data):
+        """Test volume flag parsing with equals signs in values"""
+        schema = {
+            'properties': {
+                'volume': {
+                    'type': 'array',
+                    'items': {'type': 'object'}
+                }
+            }
+        }
+        mock_get_data.return_value = json.dumps(schema).encode()
+
+        class DummyModel:
+            def __init__(self, **kwargs):
+                self.__dict__.update(kwargs)
+            def to_domain(self):
+                return self
+
+        registry = {'1.0': DummyModel}
+
+        @click.command()
+        @generate_click_command(
+            schema_pkg="hyperpod_pytorch_job_template",
+            registry=registry
+        )
+        def cmd(version, debug, config):
+            click.echo(json.dumps({
+                'volume': config.volume if hasattr(config, 'volume') else None
+            }))
+
+        # Test volume with equals sign in path value
+        result = self.runner.invoke(cmd, [
+            '--volume', 'name=model-data,type=hostPath,mount_path=/data,path=/host/data=special'
+        ])
+        assert result.exit_code == 0
+        output = json.loads(result.output)
+        expected_volume = [{
+            'name': 'model-data',
+            'type': 'hostPath',
+            'mount_path': '/data',
+            'path': '/host/data=special'
+        }]
+        assert output['volume'] == expected_volume
