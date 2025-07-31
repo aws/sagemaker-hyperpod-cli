@@ -170,8 +170,8 @@ hyp create hyp-pytorch-job \
     --queue-name "training-queue" \
     --priority "high" \
     --max-retry 3 \
-    --volumes '[data-vol, model-vol, checkpoint-vol]' \
-    --persistent-volume-claims '[shared-data-pvc, model-registry-pvc]' 
+    --volume name=model-data,type=hostPath,mount_path=/data,path=/data \
+    --volume name=training-output,type=pvc,mount_path=/data,claim_name=my-pvc,read_only=false
 ```
 
 Key required parameters explained:
@@ -179,8 +179,6 @@ Key required parameters explained:
     --job-name: Unique identifier for your training job
 
     --image: Docker image containing your training environment
-
-This command starts a training job named test-pytorch-job. The --output-s3-uri specifies where the trained model artifacts will be stored, for example, s3://my-bucket/model-artifacts. Note this location, as you’ll need it for deploying the custom model.
 
 ### Inference 
 
