@@ -233,7 +233,7 @@ def list_cluster(
         print(tabulate(cluster_capacities, headers=headers, tablefmt="presto"))
     elif output == OutputFormat.JSON.value:
         json_list = [dict(zip(headers, value)) for value in cluster_capacities]
-        _restructure_output(json_list, namespace)
+        json_list = _restructure_output(json_list, namespace)
         print(json.dumps(json_list, indent=4))
 
 
@@ -379,23 +379,34 @@ def _get_hyperpod_clusters(sm_client: boto3.client) -> List[str]:
 
 
 def _restructure_output(summary_list, namespaces):
-    if not namespaces:
-        return
+    cluster_dict = dict()
 
     for node_summary in summary_list:
-        node_summary["Namespaces"] = {}
-        for ns in namespaces:
-            available_accelerators = node_summary[
-                ns + AVAILABLE_ACCELERATOR_DEVICES_KEY
-            ]
-            total_accelerators = node_summary[ns + TOTAL_ACCELERATOR_DEVICES_KEY]
-            quota_accelerator_info = {
-                AVAILABLE_ACCELERATOR_DEVICES_KEY: available_accelerators,
-                TOTAL_ACCELERATOR_DEVICES_KEY: total_accelerators,
+        cluster_name = node_summary["Cluster"]
+        if cluster_name not in cluster_dict:
+            cluster_dict[cluster_name] = {
+                "Cluster": cluster_name,
+                "Instances": []
             }
-            node_summary["Namespaces"][ns] = quota_accelerator_info
-            node_summary.pop(ns + AVAILABLE_ACCELERATOR_DEVICES_KEY, None)
-            node_summary.pop(ns + TOTAL_ACCELERATOR_DEVICES_KEY, None)
+        node_summary.pop("Cluster")
+        if namespaces:
+            node_summary["Namespaces"] = {}
+            for ns in namespaces:
+                available_accelerators = node_summary[
+                    ns + AVAILABLE_ACCELERATOR_DEVICES_KEY
+                ]
+                total_accelerators = node_summary[ns + TOTAL_ACCELERATOR_DEVICES_KEY]
+                quota_accelerator_info = {
+                    AVAILABLE_ACCELERATOR_DEVICES_KEY: available_accelerators,
+                    TOTAL_ACCELERATOR_DEVICES_KEY: total_accelerators,
+                }
+                node_summary["Namespaces"][ns] = quota_accelerator_info
+                node_summary.pop(ns + AVAILABLE_ACCELERATOR_DEVICES_KEY, None)
+                node_summary.pop(ns + TOTAL_ACCELERATOR_DEVICES_KEY, None)
+        cluster_dict[cluster_name]["Instances"].append(node_summary)
+
+    return list(cluster_dict.values())
+
 
 
 def _aggregate_nodes_info(
