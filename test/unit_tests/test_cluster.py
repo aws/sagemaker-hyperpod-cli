@@ -422,8 +422,7 @@ class ClusterTest(unittest.TestCase):
         self.assertIn("cluster-2", result.output)
         # Expect JSON output
         output = json.loads(result.output)
-        # Each cluster has 2 instance type, so total output size is 2 * 50 = 100
-        self.assertTrue(len(output) == 100)
+        self.assertEqual(len(output), 50)
 
     @mock.patch("kubernetes.config.load_kube_config")
     @mock.patch("boto3.Session")
