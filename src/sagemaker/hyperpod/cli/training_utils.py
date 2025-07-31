@@ -1,7 +1,8 @@
 import json
 import pkgutil
 import click
-from typing import Callable, Optional, Mapping, Type
+from typing import Callable, Optional, Mapping, Type, Dict, Any
+from pydantic import ValidationError
 
 
 def load_schema_for_version(
@@ -24,7 +25,7 @@ def load_schema_for_version(
 def generate_click_command(
     *,
     version_key: Optional[str] = None,
-    schema_pkg: str = "hyperpod_jumpstart_inference_template",
+    schema_pkg: str,
     registry: Mapping[str, Type] = None,
 ) -> Callable:
     """
@@ -57,6 +58,26 @@ def generate_click_command(
             value = value.strip("[]")
             return [item.strip() for item in value.split(",") if item.strip()]
 
+        def _parse_volume_param(ctx, param, value):
+            """Parse volume parameters from command line format to dictionary format."""
+            volumes = []
+            for i, v in enumerate(value):
+                try:
+                    # Split by comma and then by equals, with validation
+                    parts = {}
+                    for item in v.split(','):
+                        if '=' not in item:
+                            raise click.UsageError(f"Invalid volume format in volume {i+1}: '{item}' should be key=value")
+                        key, val = item.split('=', 1)  # Split only on first '=' to handle values with '='
+                        parts[key.strip()] = val.strip()
+                    
+                    volumes.append(parts)
+                except Exception as e:
+                    raise click.UsageError(f"Error parsing volume {i+1}: {str(e)}")
+            
+            # Note: Detailed validation will be handled by schema validation
+            return volumes
+    
         # 1) the wrapper click will call
         def wrapped_func(*args, **kwargs):
             # extract version
@@ -68,93 +89,81 @@ def generate_click_command(
             if Model is None:
                 raise click.ClickException(f"Unsupported schema version: {version}")
 
-            # validate & to_domain
-            flat = Model(**kwargs)
-            domain_config = flat.to_domain()
+            try:
+                flat = Model(**kwargs)
+                domain_config = flat.to_domain()
+            except ValidationError as e:
+                error_messages = []
+                for err in e.errors():
+                    loc = ".".join(str(x) for x in err["loc"])
+                    msg = err["msg"]
+                    error_messages.append(f"  – {loc}: {msg}")
+                
+                raise click.UsageError(
+                    f"❌ Configuration validation errors:\n" + "\n".join(error_messages)
+                )
 
             # call your handler
             return func(version, debug, domain_config)
 
         # 2) inject click options from JSON Schema
         excluded_props = set(["version"])
-        if schema_pkg == "hyperpod_jumpstart_inference_template":
+        
+        wrapped_func = click.option(
+            "--environment",
+            callback=_parse_json_flag,
+            type=str,
+            default=None,
+            help=(
+                "JSON object of environment variables, e.g. "
+                '\'{"VAR1":"foo","VAR2":"bar"}\''
+            ),
+            metavar="JSON",
+        )(wrapped_func)
+        wrapped_func = click.option(
+            "--label_selector",
+            callback=_parse_json_flag,
+            help='JSON object of resource limits, e.g. \'{"cpu":"2","memory":"4Gi"}\'',
+            metavar="JSON",
+        )(wrapped_func)
+
+        wrapped_func = click.option(
+            "--volume",
+            multiple=True,
+            callback=_parse_volume_param,
+            help="List of volume configurations. \
+                Command structure: --volume name=<volume_name>,type=<volume_type>,mount_path=<mount_path>,<type-specific options> \
+                For hostPath: --volume name=model-data,type=hostPath,mount_path=/data,path=/data  \
+                For persistentVolumeClaim: --volume name=training-output,type=pvc,mount_path=/mnt/output,claim_name=training-output-pvc,read_only=false \
+                If multiple --volume flag if multiple volumes are needed.",
+        )(wrapped_func)
+
+        # Add list options
+        list_params = {
+            "command": "List of command arguments",
+            "args": "List of script arguments, e.g. '[--batch-size, 32, --learning-rate, 0.001]'",
+        }
+
+        for param_name, help_text in list_params.items():
             wrapped_func = click.option(
-                "--env",
-                callback=_parse_json_flag,
+                f"--{param_name}",
+                callback=_parse_list_flag,
                 type=str,
                 default=None,
-                help=(
-                    "JSON object of environment variables, e.g. "
-                    '\'{"VAR1":"foo","VAR2":"bar"}\''
-                ),
-                metavar="JSON",
-            )(wrapped_func)
-            wrapped_func = click.option(
-                "--resources-limits",
-                callback=_parse_json_flag,
-                help='JSON object of resource limits, e.g. \'{"cpu":"2","memory":"4Gi"}\'',
-                metavar="JSON",
+                help=help_text,
+                metavar="LIST",
             )(wrapped_func)
 
-            wrapped_func = click.option(
-                "--resources-requests",
-                callback=_parse_json_flag,
-                help='JSON object of resource requests, e.g. \'{"cpu":"1","memory":"2Gi"}\'',
-                metavar="JSON",
-            )(wrapped_func)
-
-            excluded_props = set(
-                ["version", "env", "resources_limits", "resources_requests"]
-            )
-
-        elif schema_pkg == "hyperpod_pytorch_job_template":
-            wrapped_func = click.option(
-                "--environment",
-                callback=_parse_json_flag,
-                type=str,
-                default=None,
-                help=(
-                    "JSON object of environment variables, e.g. "
-                    '\'{"VAR1":"foo","VAR2":"bar"}\''
-                ),
-                metavar="JSON",
-            )(wrapped_func)
-            wrapped_func = click.option(
-                "--label_selector",
-                callback=_parse_json_flag,
-                help='JSON object of resource limits, e.g. \'{"cpu":"2","memory":"4Gi"}\'',
-                metavar="JSON",
-            )(wrapped_func)
-
-            # Add list options
-            list_params = {
-                "command": "List of command arguments",
-                "args": "List of script arguments, e.g. '[--batch-size, 32, --learning-rate, 0.001]'",
-                "volumes": "List of volumes, e.g. '[vol1, vol2, vol3]'",
-                "persistent_volume_claims": "List of persistent volume claims, e.g. '[pvc1, pvc2]'",
-            }
-
-            for param_name, help_text in list_params.items():
-                wrapped_func = click.option(
-                    f"--{param_name}",
-                    callback=_parse_list_flag,
-                    type=str,
-                    default=None,
-                    help=help_text,
-                    metavar="LIST",
-                )(wrapped_func)
-
-            excluded_props = set(
-                [
-                    "version",
-                    "environment",
-                    "label_selector",
-                    "command",
-                    "args",
-                    "volumes",
-                    "persistent_volume_claims",
-                ]
-            )
+        excluded_props = set(
+            [
+                "version",
+                "environment",
+                "label_selector",
+                "command",
+                "args",
+                "volume",
+            ]
+        )
 
         schema = load_schema_for_version(version_key or "1.0", schema_pkg)
         props = schema.get("properties", {})
