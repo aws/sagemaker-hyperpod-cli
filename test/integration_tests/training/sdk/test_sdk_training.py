@@ -19,12 +19,11 @@ from sagemaker.hyperpod.training import (
 )
 from sagemaker.hyperpod.common.config import Metadata
 from sagemaker.hyperpod.cli.utils import setup_logger
-from test.integration_tests.abstract_integration_tests import AbstractIntegrationTests
 
 logger = setup_logger(__name__)
 
 
-class TestHyperPodTrainingSDK(AbstractIntegrationTests):
+class TestHyperPodTrainingSDK:
     """Integration tests for HyperPod Training SDK."""
 
     def test_create_job(self, pytorch_job):
