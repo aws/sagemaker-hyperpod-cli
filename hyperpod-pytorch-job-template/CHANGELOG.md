@@ -1,3 +1,9 @@
+## v1.0.2 (2025-07-31)
+
+### Features
+
+ * Add support for --volume, remove --volumes and --persistent-volume-claims
+
 ## v1.0.1 (2025-07-16)
 
 ### Features
