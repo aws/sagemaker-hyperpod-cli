@@ -1,6 +1,6 @@
 # Changelog
 
-## v3.0.2 ([2025]-[07]-[31])
+## v3.0.2 (2025-07-31)
 
 ### Features
 
@@ -8,7 +8,7 @@
  * Add an option to disable the deployment of KubeFlow TrainingOperator
  * Enable telemetry for CLI
 
-## v3.0.0 ([2025]-[07]-[10])
+## v3.0.0 (2025-07-10)
 
 ### Features
 
