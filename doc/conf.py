@@ -131,7 +131,10 @@ html_theme_options = {
     "show_navbar_depth": 2,
     "use_fullscreen_button": False,
     "use_download_button": False,
-    "home_page_in_toc": True
+    "home_page_in_toc": True,
+    # Configuration to disable right-side table of contents
+    "secondary_sidebar_items": [],  # Remove all content from right sidebar
+    "show_toc_level": 0,           # Disable automatic TOC generation
 }
 
 author = "Amazon Web Services"

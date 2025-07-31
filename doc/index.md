@@ -23,47 +23,58 @@ CLI Reference <cli_reference>
 Example Notebooks <examples>
 API reference <_apidoc/modules>
 ```
+:::::{grid} 2
+:gutter: 3
+:margin: 0
 
-Amazon SageMaker HyperPod CLI and SDK are developer tools designed to simplify the management of distributed training workloads on dedicated, high-performance computing clusters. These tools enable ML practitioners to efficiently orchestrate large-scale training operations while abstracting the underlying cluster management complexities.
+::::{grid-item} 
+:columns: 8
+
+Amazon Hyperpod helps you provision and manage resilient clusters optimized for large-scale machine learning (ML) workloads, including large language models (LLMs), diffusion models, and foundation models (FMs).
+To get started with Hyperpod, visit the [AWS Documentation](https://docs.aws.amazon.com/sagemaker/latest/dg/hyperpod.html).
 
 ### What is SageMaker HyperPod CLI and SDK?
 
-The **SageMaker HyperPod CLI** is a command-line interface that enables you to create and manage distributed training clusters and workloads through simple commands. It provides direct control over cluster resources while handling the infrastructure management automatically.
+Amazon SageMaker HyperPod CLI and SDK are developer tools designed to simplify the management of distributed training workloads on dedicated, high-performance computing clusters.
+::::
+::::{grid-item} 
+:columns: 4
+```{note}
+Version Info - you’re viewing latest documentation for SageMaker Hyperpod CLI and SDK v3.0.0.
+```
+::::
+:::::
+:::::{grid} 2
+:gutter: 3
+:margin: 0
 
-The **SageMaker HyperPod SDK** is a Python library that allows programmatic access to HyperPod functionality for seamless incorporation into your ML workflows and training scripts.
-
-Both tools are built on top of [Amazon SageMaker HyperPod](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod.html), a managed service that provides dedicated, persistent clusters optimized for distributed ML training workloads.
-
-### Key Use Cases
-
-**Distributed Training**
-- Scale PyTorch training jobs across multiple nodes and GPUs
-- Manage complex distributed training configurations with simple commands
-- Handle fault tolerance and job recovery automatically
-
-**Model Inference**
-- Deploy pre-trained models from SageMaker JumpStart with minimal configuration
-- Host custom inference endpoints with auto-scaling capabilities
-- Manage model serving infrastructure with built-in monitoring
-
-**Cluster Operations**
-- Connect to and manage multiple HyperPod clusters
-- Monitor resource utilization and job status
-- Streamline DevOps workflows for ML teams
-
+::::{grid-item} 
+:columns: 8
 ### Why Choose HyperPod CLI & SDK?
 
-- **Simplified Management**: Focus on ML code while HyperPod handles infrastructure orchestration
-- **AWS Integration**: Native integration with SageMaker features and AWS services
-- **Production Ready**: Built-in fault tolerance, auto-scaling, and enterprise security features
-- **Development Flexibility**: Choose between CLI for direct control or SDK for programmatic access
-- **Cost Management**: Optimize spending with cluster sharing and resource monitoring
+Transform your AI/ML development process with Amazon SageMaker HyperPod CLI and SDK. These tools handle infrastructure management complexities, allowing you to focus on model development and innovation. Weather it's scaling your PyTorch training jobs across thousands of GPUs, deploying production-grade inference endpoints or managing multiple clusters efficiently; the intuitive command-line interface and programmatic control enable you to:
+- Accelerate development cycles and reduce operational overhead
+- Automate ML workflows while maintaining operational visibility
+- Optimize computing resources across your AI/ML projects
 
-For comprehensive information about the underlying infrastructure and advanced configuration options, see the [Amazon SageMaker HyperPod documentation](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod.html).
+::::
+::::{grid-item} 
+:columns: 4
+```{admonition} What's New
+:class: important
+
+**🚀 CLI and SDK!!**
+
+Streamlined interfaces for Training, 
+Inference, and Cluster Monitoring.
+
+```
+::::
+:::::
 
 ## Quick Start
 
-::::{container}
+
 ::::{grid} 1 2 2 2
 :gutter: 3
 
@@ -83,119 +94,43 @@ For comprehensive information about the underlying infrastructure and advanced c
 **Ready to explore?** Connect to your cluster before running ML workflows.
 :::
 
-::::
-::::
+:::{grid-item-card} Training
+:link: training
+:link-type: ref
+:class-card: sd-border-secondary
 
-## What You Can Do
-
-::::{container}
-::::{grid} 1 1 2 2
-:gutter: 3
-
-:::{grid-item-card} Training Workloads
-:class-card: sd-border-success
-
-**Distributed Training**
-- HyperPodPytorchJob distributed training
-- Multi-node, multi-GPU support
-- Built-in monitoring and logging
-
-```{dropdown} Learn More About Training
-:color: success
-:icon: chevron-down
-
-- [Training Guide](training.md) - Complete training workflows
-- [Example Notebooks](examples.md) - Hands-on training examples
-- Supported frameworks: PyTorch
-```
+**Scale Your ML Models!** Get started with training
 :::
 
-:::{grid-item-card} Inference Endpoints
-:class-card: sd-border-info
+:::{grid-item-card} Inference
+:link: inference
+:link-type: ref
+:class-card: sd-border-secondary
 
-**Model Serving**
-- Deploy models as scalable endpoints
-- JumpStart model integration
-- Real-time and batch inference
-
-```{dropdown} Learn More About Inference
-:color: info
-:icon: chevron-down
-
-- [Inference Guide](inference.md) - Complete inference workflows
-- [Example Notebooks](examples.md) - Hands-on inference examples
-- Supported models: JumpStart models, Custom models
-```
+**Deploy Your ML Model!** Get started with inference
 :::
 
-::::
-::::
-
-## Choose Your Interface
-
-::::{container}
-::::{grid} 1 1 2 2
-:gutter: 3
-
-:::{grid-item-card} Command Line Interface
-:class-card: sd-border-warning
-
-**For DevOps & Quick Tasks**
-```bash
-# Launch a training job
-hyp create hyp-pytorch-job \
-  --job-name my-training \
-  --image pytorch/pytorch:latest \
-```
-
-```{dropdown} CLI Features
-:color: warning
-:icon: terminal
-
-- Interactive job management
-- Built-in status monitoring
-```
-:::
-
-:::{grid-item-card} Python SDK
-:class-card: sd-border-danger
-
-**For Programmatic Control**
-```python
-from sagemaker.hyperpod.training import HyperPodPytorchJob
-from sagemaker.hyperpod.common.config import Metadata
-
-pytorch_job = HyperPodPytorchJob(
-    metadata=Metadata(name="demo"),
-    nproc_per_node="1",
-    replica_specs=replica_specs,
-    run_policy=run_policy,
-)
-
-pytorch_job.create()
-```
-
-```{dropdown} SDK Features
-:color: danger
-:icon: code
-
-- Pythonic API design
-- Jupyter notebook integration
-- Programmatic job orchestration
-```
-:::
-
-::::
 ::::
 
 ## Advanced Resources
 
-```{dropdown} Complete Documentation
-:color: primary
-:icon: book
+::::{grid} 1 2 2 2
+:gutter: 3
 
-- [API Reference](_apidoc/modules.rst) - Complete SDK documentation
-- [Training Guide](training.md) - In-depth training workflows
-- [Inference Guide](inference.md) - Comprehensive inference setup
-- [Example Notebooks](examples.md) - End-to-end examples
-```
+:::{grid-item-card} API reference
+:link: _apidoc/modules
+:link-type: ref
+:class-card: sd-border-primary
+
+**Explore APIs** - Checkout API Documentation
+:::
+
+:::{grid-item-card} Github
+:link: examples
+:link-type: ref
+:class-card: sd-border-secondary
+
+**Example Notebooks** - Ready-to-use implementation guides
+:::
+
+::::
