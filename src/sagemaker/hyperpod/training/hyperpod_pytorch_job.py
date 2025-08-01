@@ -3,12 +3,13 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config impo
     _HyperPodPytorchJob, HyperPodPytorchJobStatus
 )
 from sagemaker.hyperpod.common.config.metadata import Metadata
-from kubernetes import client, config
-from typing import List, Optional, ClassVar
+from kubernetes import client, config, __version__ as kubernetes_client_version
+from typing import List, Optional, ClassVar, Tuple
 from sagemaker.hyperpod.common.utils import (
     handle_exception,
     get_default_namespace,
     setup_logging,
+    verify_kubernetes_version_compatibility
 )
 from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
     _hyperpod_telemetry_emitter,
@@ -16,6 +17,7 @@ from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
 from sagemaker.hyperpod.common.telemetry.constants import Feature
 import yaml
 import logging
+
 
 TRAINING_GROUP = "sagemaker.amazonaws.com"
 API_VERSION = "v1"
@@ -37,14 +39,17 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
     )
 
     @classmethod
+    def get_logger(cls):
+        return logging.getLogger(__name__)
+    
+    @classmethod
     def verify_kube_config(cls):
         if not cls.is_kubeconfig_loaded:
             config.load_kube_config()
             cls.is_kubeconfig_loaded = True
-
-    @classmethod
-    def get_logger(cls):
-        return logging.getLogger(__name__)
+            
+            # Verify Kubernetes version compatibility
+            verify_kubernetes_version_compatibility(cls.get_logger())
 
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_pytorchjob")
     def create(self, debug=False):

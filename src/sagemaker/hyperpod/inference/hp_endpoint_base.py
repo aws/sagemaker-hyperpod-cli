@@ -14,6 +14,7 @@ from sagemaker.hyperpod.common.utils import (
     handle_exception,
     setup_logging,
     get_default_namespace,
+    verify_kubernetes_version_compatibility,
 )
 from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
     _hyperpod_telemetry_emitter,
@@ -25,14 +26,17 @@ class HPEndpointBase:
     is_kubeconfig_loaded = False
 
     @classmethod
+    def get_logger(cls):
+        return logging.getLogger(__name__)
+    
+    @classmethod
     def verify_kube_config(cls):
         if not cls.is_kubeconfig_loaded:
             config.load_kube_config()
             cls.is_kubeconfig_loaded = True
-
-    @classmethod
-    def get_logger(cls):
-        return logging.getLogger(__name__)
+            
+            # Verify Kubernetes version compatibility
+            verify_kubernetes_version_compatibility(cls.get_logger())
 
     @classmethod
     def call_create_api(
