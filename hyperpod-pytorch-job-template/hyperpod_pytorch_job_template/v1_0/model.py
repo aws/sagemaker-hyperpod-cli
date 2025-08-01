@@ -15,11 +15,27 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config impo
 
 
 class VolumeConfig(BaseModel):
-    name: str = Field(..., description="Volume name")
+    name: str = Field(
+        ..., 
+        description="Volume name",
+        min_length=1
+    )
     type: Literal['hostPath', 'pvc'] = Field(..., description="Volume type")
-    mount_path: str = Field(..., description="Mount path in container")
-    path: Optional[str] = Field(None, description="Host path (required for hostPath volumes)")
-    claim_name: Optional[str] = Field(None, description="PVC claim name (required for pvc volumes)")
+    mount_path: str = Field(
+        ..., 
+        description="Mount path in container",
+        min_length=1
+    )
+    path: Optional[str] = Field(
+        None, 
+        description="Host path (required for hostPath volumes)",
+        min_length=1
+    )
+    claim_name: Optional[str] = Field(
+        None, 
+        description="PVC claim name (required for pvc volumes)",
+        min_length=1
+    )
     read_only: Optional[Literal['true', 'false']] = Field(None, description="Read-only flag for pvc volumes")
     
     @field_validator('mount_path', 'path')
@@ -47,9 +63,22 @@ class VolumeConfig(BaseModel):
 class PyTorchJobConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    job_name: str = Field(alias="job_name", description="Job name")
-    image: str = Field(description="Docker image for training")
-    namespace: Optional[str] = Field(default=None, description="Kubernetes namespace")
+    job_name: str = Field(
+        alias="job_name", 
+        description="Job name",
+        min_length=1,
+        max_length=63,
+        pattern=r'^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+    )
+    image: str = Field(
+        description="Docker image for training",
+        min_length=1
+    )
+    namespace: Optional[str] = Field(
+        default=None, 
+        description="Kubernetes namespace",
+        min_length=1
+    )
     command: Optional[List[str]] = Field(
         default=None, description="Command to run in the container"
     )
@@ -60,16 +89,28 @@ class PyTorchJobConfig(BaseModel):
         default=None, description="Environment variables as key_value pairs"
     )
     pull_policy: Optional[str] = Field(
-        default=None, alias="pull_policy", description="Image pull policy"
+        default=None, 
+        alias="pull_policy", 
+        description="Image pull policy",
+        min_length=1
     )
     instance_type: Optional[str] = Field(
-        default=None, alias="instance_type", description="Instance type for training"
+        default=None, 
+        alias="instance_type", 
+        description="Instance type for training",
+        min_length=1
     )
     node_count: Optional[int] = Field(
-        default=None, alias="node_count", description="Number of nodes"
+        default=None, 
+        alias="node_count", 
+        description="Number of nodes",
+        ge=1
     )
     tasks_per_node: Optional[int] = Field(
-        default=None, alias="tasks_per_node", description="Number of tasks per node"
+        default=None, 
+        alias="tasks_per_node", 
+        description="Number of tasks per node",
+        ge=1
     )
     label_selector: Optional[Dict[str, str]] = Field(
         default=None,
@@ -82,16 +123,29 @@ class PyTorchJobConfig(BaseModel):
         description="Schedule pods only on nodes that passed deep health check",
     )
     scheduler_type: Optional[str] = Field(
-        default=None, alias="scheduler_type", description="Scheduler type"
+        default=None, 
+        alias="scheduler_type", 
+        description="Scheduler type",
+        min_length=1
     )
     queue_name: Optional[str] = Field(
-        default=None, alias="queue_name", description="Queue name for job scheduling"
+        default=None, 
+        alias="queue_name", 
+        description="Queue name for job scheduling",
+        min_length=1,
+        max_length=63,
+        pattern=r'^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
     )
     priority: Optional[str] = Field(
-        default=None, description="Priority class for job scheduling"
+        default=None, 
+        description="Priority class for job scheduling",
+        min_length=1
     )
     max_retry: Optional[int] = Field(
-        default=None, alias="max_retry", description="Maximum number of job retries"
+        default=None, 
+        alias="max_retry", 
+        description="Maximum number of job retries",
+        ge=0
     )
     volume: Optional[List[VolumeConfig]] = Field(
         default=None, description="List of volume configurations. \
@@ -102,7 +156,10 @@ class PyTorchJobConfig(BaseModel):
         "
     )
     service_account_name: Optional[str] = Field(
-        default=None, alias="service_account_name", description="Service account name"
+        default=None, 
+        alias="service_account_name", 
+        description="Service account name",
+        min_length=1
     )
 
     @field_validator('volume')
@@ -120,6 +177,52 @@ class PyTorchJobConfig(BaseModel):
         mount_paths = [vol.mount_path for vol in v]
         if len(mount_paths) != len(set(mount_paths)):
             raise ValueError("Duplicate mount paths found")
+        
+        return v
+
+    @field_validator('command', 'args')
+    def validate_string_lists(cls, v):
+        """Validate that command and args contain non-empty strings."""
+        if not v:
+            return v
+        
+        for i, item in enumerate(v):
+            if not isinstance(item, str) or not item.strip():
+                field_name = cls.model_fields.get('command', {}).get('alias', 'command') if 'command' in str(v) else 'args'
+                raise ValueError(f"{field_name}[{i}] must be a non-empty string")
+        
+        return v
+
+    @field_validator('environment')
+    def validate_environment_variable_names(cls, v):
+        """Validate environment variable names follow C_IDENTIFIER pattern."""
+        if not v:
+            return v
+        
+        import re
+        c_identifier_pattern = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+        
+        for key in v.keys():
+            if not c_identifier_pattern.match(key):
+                raise ValueError(f"Environment variable name '{key}' must be a valid C_IDENTIFIER")
+        
+        return v
+
+    @field_validator('label_selector')
+    def validate_label_selector_keys(cls, v):
+        """Validate label selector keys follow Kubernetes label naming conventions."""
+        if not v:
+            return v
+        
+        import re
+        # Kubernetes label key pattern - allows namespaced labels like kubernetes.io/arch
+        # Pattern: [prefix/]name where prefix and name follow DNS subdomain rules
+        # Also reject double dots
+        label_key_pattern = re.compile(r'^([a-zA-Z0-9]([a-zA-Z0-9\-_.]*[a-zA-Z0-9])?/)?[a-zA-Z0-9]([a-zA-Z0-9\-_.]*[a-zA-Z0-9])?$')
+        
+        for key in v.keys():
+            if not key or not label_key_pattern.match(key) or '..' in key:
+                raise ValueError(f"Label selector key '{key}' must follow Kubernetes label naming conventions")
         
         return v
 
