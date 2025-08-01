@@ -4,6 +4,7 @@
       "properties": {
         "name": {
           "description": "Volume name",
+          "minLength": 1,
           "title": "Name",
           "type": "string"
         },
@@ -18,12 +19,14 @@
         },
         "mount_path": {
           "description": "Mount path in container",
+          "minLength": 1,
           "title": "Mount Path",
           "type": "string"
         },
         "path": {
           "anyOf": [
             {
+              "minLength": 1,
               "type": "string"
             },
             {
@@ -37,6 +40,7 @@
         "claim_name": {
           "anyOf": [
             {
+              "minLength": 1,
               "type": "string"
             },
             {
@@ -78,17 +82,22 @@
   "properties": {
     "job_name": {
       "description": "Job name",
+      "maxLength": 63,
+      "minLength": 1,
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
       "title": "Job Name",
       "type": "string"
     },
     "image": {
       "description": "Docker image for training",
+      "minLength": 1,
       "title": "Image",
       "type": "string"
     },
     "namespace": {
       "anyOf": [
         {
+          "minLength": 1,
           "type": "string"
         },
         {
@@ -150,6 +159,7 @@
     "pull_policy": {
       "anyOf": [
         {
+          "minLength": 1,
           "type": "string"
         },
         {
@@ -163,6 +173,7 @@
     "instance_type": {
       "anyOf": [
         {
+          "minLength": 1,
           "type": "string"
         },
         {
@@ -176,6 +187,7 @@
     "node_count": {
       "anyOf": [
         {
+          "minimum": 1,
           "type": "integer"
         },
         {
@@ -189,6 +201,7 @@
     "tasks_per_node": {
       "anyOf": [
         {
+          "minimum": 1,
           "type": "integer"
         },
         {
@@ -231,6 +244,7 @@
     "scheduler_type": {
       "anyOf": [
         {
+          "minLength": 1,
           "type": "string"
         },
         {
@@ -244,6 +258,9 @@
     "queue_name": {
       "anyOf": [
         {
+          "maxLength": 63,
+          "minLength": 1,
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
           "type": "string"
         },
         {
@@ -257,6 +274,7 @@
     "priority": {
       "anyOf": [
         {
+          "minLength": 1,
           "type": "string"
         },
         {
@@ -270,6 +288,7 @@
     "max_retry": {
       "anyOf": [
         {
+          "minimum": 0,
           "type": "integer"
         },
         {
@@ -299,6 +318,7 @@
     "service_account_name": {
       "anyOf": [
         {
+          "minLength": 1,
           "type": "string"
         },
         {
