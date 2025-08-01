@@ -1,4 +1,4 @@
 [submodule "src/sagemaker/hyperpod/cli/sagemaker_hyperpod_recipes"]
 	path = src/sagemaker/hyperpod/cli/sagemaker_hyperpod_recipes
 	url = https://github.com/aws/sagemaker-hyperpod-recipes.git
-	branch = release-1.3.3
+	branch = release-1.4.0
