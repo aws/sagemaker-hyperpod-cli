@@ -17,7 +17,10 @@ import os
 import shutil
 import sys
 import re
+import json
 from pathlib import Path
+from typing import Dict, List, Any, Optional
+
 
 def run_apidoc(app):
     """Generate doc stubs using sphinx-apidoc."""
@@ -51,7 +54,7 @@ def run_apidoc(app):
 
 
 def setup(app):
-    """Register our sphinx-apidoc hook."""
+    """Register our sphinx hooks."""
     app.connect("builder-inited", run_apidoc)
 
 

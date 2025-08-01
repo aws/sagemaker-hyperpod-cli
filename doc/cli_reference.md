@@ -6,8 +6,8 @@
 :hidden:
 :maxdepth: 2
 
-cli_commands_reference
-cli_commands_examples
+cli_training
+cli_inference
 ```
 
 Complete reference for the SageMaker HyperPod Command Line Interface.
@@ -16,22 +16,20 @@ Complete reference for the SageMaker HyperPod Command Line Interface.
 ::::{grid} 1 1 3 3
 :gutter: 3
 
-:::{grid-item-card} CLI Commands Reference
-:link: cli_commands_reference
+:::{grid-item-card} Training CLI
+:link: cli_training
 :link-type: ref
 :class-card: sd-border-secondary
 
-**Complete Command Documentation**
-Comprehensive reference for all available CLI commands, options, and parameters.
+Training CLI commands, options and parameters.
 :::
 
-:::{grid-item-card} CLI Commands Examples
-:link: cli_commands_examples
+:::{grid-item-card} Inference CLI
+:link: cli_inference
 :link-type: ref
-:class-card: sd-border-success
+:class-card: sd-border-secondary
 
-**Practical Usage Examples**
-Real-world examples and common CLI workflows for training and inference tasks.
+Inference CLI commands, options and parameters.
 :::
 
 ::::
