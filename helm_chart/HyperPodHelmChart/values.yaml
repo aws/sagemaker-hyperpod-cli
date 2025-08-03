@@ -115,6 +115,11 @@ namespace:
   create: true
   name: aws-hyperpod
 
+cert-manager:
+  enabled: false
+  crds:
+    enabled: true
+
 mlflow:
   enabled: false
 

@@ -33,6 +33,7 @@ More information about orchestration features for cluster admins [here](https://
 | [Kubeflow Training Operator](https://www.kubeflow.org/docs/components/trainer/legacy-v1/overview/)            | Installs operators for managing various machine learning training jobs, such as TensorFlow, PyTorch, and MXNet, providing native Kubernetes support for distributed training workloads. |              | Yes               |
 | HyperPod patching            | Deploys the RBAC and controller resources needed for orchestrating rolling updates and patching workflows in SageMaker HyperPod clusters. Includes pod eviction and node monitoring.    | HyperPod Resiliency             | Yes               |
 | hyperpod-inference-operator  | Installs the HyperPod Inference Operator and its dependencies to the cluster, allowing cluster deployment and inferencing of JumpStart, s3-hosted, and FSx-hosted models                | No                | 
+| [cert-manager](https://github.com/cert-manager/cert-manager)                | Automatically provisions and manages TLS certificates in Kubernetes clusters. Provides certificate lifecycle management including issuance, renewal, and revocation for secure communications. | [Hyperpod training operator](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-eks-operator.html)           | No                |
 
 > **_Note_** The `mpijob` scheme is disabled in the Training Operator helm chart to avoid conflicting with the MPI Operator. 
 
@@ -46,6 +47,14 @@ If you would like to enable a helm chart that is disabled by default, such as th
 ```
 storage:
   enabled: true
+```
+
+To enable cert-manager for TLS certificate management, pass in `--set cert-manager.enabled=true` when installing or upgrading the main chart or set the following in the values.yaml file:
+```
+cert-manager:
+  enabled: true
+  crds:
+    enabled: true
 ```
 
 ---
