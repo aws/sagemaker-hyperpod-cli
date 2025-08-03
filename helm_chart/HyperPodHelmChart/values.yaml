@@ -116,7 +116,11 @@ namespace:
   name: aws-hyperpod
 
 cert-manager:
-  enabled: false
+  enabled: true
+  namespace: cert-manager
+  global:
+    leaderElection:
+      namespace: cert-manager
   crds:
     enabled: true
 
