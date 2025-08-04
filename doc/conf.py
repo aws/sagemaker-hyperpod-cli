@@ -35,7 +35,7 @@ def run_apidoc(app):
     cmd = [
         "--separate",
         "--module-first",
-        "--doc-project=API Reference",
+        "--doc-project=SDK API Reference",
         "-o",
         output_dir,
         module_dir,

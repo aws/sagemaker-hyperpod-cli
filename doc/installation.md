@@ -60,26 +60,3 @@ To verify that the installation was successful, run:
 # Verify CLI installation
 hyp --help
 ```
-
-### Install from GitHub
-
-For the latest development version or to contribute to the project, you can install directly from the GitHub repository:
-
-**Clone the SageMaker HyperPod CLI package from GitHub:**
-```bash
-git clone https://github.com/aws/sagemaker-hyperpod-cli.git
-```
-
-**Install the SageMaker HyperPod CLI:**
-```bash
-cd sagemaker-hyperpod-cli && pip install .
-```
-
-**Test if the SageMaker HyperPod CLI is successfully installed by running the following command:**
-```bash
-hyp --help
-```
-
-```{note}
-The GitHub installation provides access to the latest features and bug fixes that may not yet be available in the PyPI release. However, it may be less stable than the official PyPI release.
-```

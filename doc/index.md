@@ -21,7 +21,7 @@ Training <training>
 Inference <inference>
 CLI Reference <cli_reference>
 Example Notebooks <examples>
-API reference <_apidoc/modules>
+SDK reference <_apidoc/modules>
 ```
 
 
@@ -35,7 +35,7 @@ Version Info - you’re viewing latest documentation for SageMaker Hyperpod CLI 
 
 ### Why Choose HyperPod CLI & SDK?
 
-Transform your AI/ML development process with Amazon SageMaker HyperPod CLI and SDK. These tools handle infrastructure management complexities, allowing you to focus on model development and innovation. Weather it's scaling your PyTorch training jobs across thousands of GPUs, deploying production-grade inference endpoints or managing multiple clusters efficiently; the intuitive command-line interface and programmatic control enable you to:
+Transform your AI/ML development process with Amazon SageMaker HyperPod CLI and SDK. These tools handle infrastructure management complexities, allowing you to focus on model development and innovation. Whether it's scaling your PyTorch training jobs across thousands of GPUs, deploying production-grade inference endpoints or managing multiple clusters efficiently; the intuitive command-line interface and programmatic control enable you to:
 - Accelerate development cycles and reduce operational overhead
 - Automate ML workflows while maintaining operational visibility
 - Optimize computing resources across your AI/ML projects
