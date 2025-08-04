@@ -53,9 +53,15 @@ To enable cert-manager for TLS certificate management, pass in `--set cert-manag
 ```
 cert-manager:
   enabled: true
+  namespace: cert-manager
+  global:
+    leaderElection:
+      namespace: cert-manager
   crds:
-    enabled: true
+    enabled: true  
 ```
+namespace specifies which name space cert-manager should be installed
+
 
 ---
 
