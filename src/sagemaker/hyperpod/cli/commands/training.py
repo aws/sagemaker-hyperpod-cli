@@ -1,16 +1,7 @@
 import click
-import logging
-import os
-import yaml
-import shutil
-import subprocess
-from pathlib import Path
 from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob
 from sagemaker.hyperpod.common.config import Metadata
-import tempfile
-from typing import List, Dict, Any, Optional, Callable, get_args, get_origin, Literal
 from sagemaker.hyperpod.cli.training_utils import generate_click_command
-from importlib.metadata import entry_points
 from hyperpod_pytorch_job_template.registry import SCHEMA_REGISTRY
 from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
     _hyperpod_telemetry_emitter,
