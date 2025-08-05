@@ -72,7 +72,7 @@ class TestHyperPodTrainingSDK:
 
     def test_refresh_job(self, pytorch_job):
         pytorch_job.refresh()
-        time.sleep(60)
+        time.sleep(30)
         assert pytorch_job.status is not None, "Job status should not be None"
         logger.info(f"Refreshed job status:\n{yaml.dump(pytorch_job.status)}")
 

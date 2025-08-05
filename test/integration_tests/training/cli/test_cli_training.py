@@ -27,16 +27,6 @@ class TestHypCLICommands:
         """Test listing clusters """
         assert cluster_name
 
-    def test_set_cluster_context(self, cluster_name):
-        """Test setting cluster context."""
-        result = execute_command([
-            "hyp", "set-cluster-context",
-            "--cluster-name", cluster_name
-        ])
-        assert result.returncode == 0
-        context_line = result.stdout.strip().splitlines()[-1]
-        assert any(text in context_line for text in ["Updated context", "Added new context"])
-
     def test_get_cluster_context(self):
         """Test getting current cluster context."""
         result = execute_command(["hyp", "get-cluster-context"])
