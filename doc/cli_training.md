@@ -3,8 +3,15 @@
 
 # Training
 
-
 Complete reference for SageMaker HyperPod PyTorch training job parameters and configuration options.
+
+* [Create PyTorch Job](#hyp-create-hyp-pytorch-job)
+* [List Jobs](#hyp-list-hyp-pytorch-job)
+* [Describe Job](#hyp-describe-hyp-pytorch-job)
+* [Delete Job](#hyp-delete-hyp-pytorch-job)
+* [List Pods](#hyp-list-pods-hyp-pytorch-job)
+* [Get Logs](#hyp-get-logs-hyp-pytorch-job)
+
 
 ## hyp create hyp-pytorch-job
 

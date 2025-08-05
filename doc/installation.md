@@ -1,5 +1,5 @@
 (installation)=
-# Get Started
+# Installation
 This guide provides installation instructions for the SageMaker HyperPod CLI and SDK.
 
 ## System Requirements

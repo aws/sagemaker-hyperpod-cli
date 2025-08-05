@@ -2,8 +2,28 @@
 
 # Inference
 
+Complete reference for SageMaker HyperPod inference parameters and configuration options.
 
-Complete reference for SageMaker HyperPod PyTorch training job parameters and configuration options.
+* [Create JumpStart Endpoint](#hyp-create-hyp-jumpstart-endpoint)
+* [Create Custom Endpoint](#hyp-create-hyp-custom-endpoint)
+
+* [List JumpStart Endpoints](#hyp-list-hyp-jumpstart-endpoint)
+* [List Custom Endpoints](#hyp-list-hyp-custom-endpoint)
+* [Describe JumpStart Endpoint](#hyp-describe-hyp-jumpstart-endpoint)
+* [Describe Custom Endpoint](#hyp-describe-hyp-custom-endpoint)
+* [Invoke JumpStart Endpoint](#hyp-invoke-hyp-jumpstart-endpoint)
+* [Invoke Custom Endpoint](#hyp-invoke-hyp-custom-endpoint)
+* [Delete JumpStart Endpoint](#hyp-delete-hyp-jumpstart-endpoint)
+* [Delete Custom Endpoint](#hyp-delete-hyp-custom-endpoint)
+
+* [List JumpStart Pods](#hyp-list-pods-hyp-jumpstart-endpoint)
+* [List Custom Pods](#hyp-list-pods-hyp-custom-endpoint)
+* [Get JumpStart Logs](#hyp-get-logs-hyp-jumpstart-endpoint)
+* [Get Custom Logs](#hyp-get-logs-hyp-custom-endpoint)
+* [Get JumpStart Operator Logs](#hyp-get-operator-logs-hyp-jumpstart-endpoint)
+* [Get Custom Operator Logs](#hyp-get-operator-logs-hyp-custom-endpoint)
+
+
 
 ## hyp create hyp-jumpstart-endpoint
 
