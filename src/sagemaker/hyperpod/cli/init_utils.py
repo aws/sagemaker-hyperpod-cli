@@ -11,6 +11,8 @@ from pathlib import Path
 import functools
 from pydantic import ValidationError
 import inspect
+import click
+import json
 
 
 from sagemaker.hyperpod.cli.constants.init_constants import (
@@ -275,19 +277,10 @@ def save_config_yaml(prefill: dict, comment_map: dict, directory: str):
     print(f"Configuration saved to: {path}")
 
 
-def load_config(dir_path: Path = None) -> Tuple[dict, str, str]:
+def load_config_and_validate(dir_path: Path = None) -> Tuple[dict, str, str]:
     """
-    Base function to load and parse config.yaml file.
+    Load config.yaml, validate it exists, and extract template and version.
     Returns (config_data, template, version)
-    
-    Args:
-        dir_path: Directory path to look for config.yaml (defaults to current directory)
-        
-    Returns:
-        Tuple of (config_data, template, version)
-        
-    Raises:
-        SystemExit: If config.yaml not found or template is unknown
     """
     if dir_path is None:
         dir_path = Path(".").resolve()
@@ -305,147 +298,31 @@ def load_config(dir_path: Path = None) -> Tuple[dict, str, str]:
     if template not in TEMPLATES:
         click.secho(f"❌  Unknown template '{template}' in config.yaml", fg="red")
         sys.exit(1)
-        
-    return data, template, version
-
-
-def load_config_and_validate(dir_path: Path = None) -> Tuple[dict, str, str]:
-    """
-    Load config.yaml, validate it exists, and extract template and version.
-    Returns (config_data, template, version)
-    Exits on validation errors - use for commands that require valid config.
-    """
-    data, template, version = load_config(dir_path)
-    validation_errors = validate_config_against_model(data, template, version)
     
-    is_valid = display_validation_results(
-        validation_errors, 
-        success_message="config.yaml is valid!",
-        error_prefix="Config validation errors:"
-    )
-    
-    if not is_valid:
-        sys.exit(1)
-        
-    return data, template, version
-
-
-def validate_config_against_model(config_data: dict, template: str, version: str) -> list:
-    """
-    Validate config data against the appropriate Pydantic model.
-    Returns list of validation error strings, empty if no errors.
-    
-    Args:
-        config_data: Configuration data to validate
-        template: Template name
-        version: Schema version
-        
-    Returns:
-        List of validation error strings
-    """
+    # For CFN templates, validate using HpClusterStack
     template_info = TEMPLATES[template]
-    validation_errors = []
-    
-    try:
-        if template_info["schema_type"] == CFN:
-            # For CFN templates, convert values to strings as expected
+    if template_info["schema_type"] == CFN:
+        try:
+            # Filter out template and namespace fields for validation
             filtered_config = {}
-            for k, v in config_data.items():
+            for k, v in data.items():
                 if k not in ('template', 'namespace') and v is not None:
                     # Convert lists to JSON strings, everything else to string
                     if isinstance(v, list):
                         filtered_config[k] = json.dumps(v)
                     else:
                         filtered_config[k] = str(v)
+            click.secho(filtered_config)
             HpClusterStack(**filtered_config)
-        else:
-            # For CRD templates, use the data as-is to preserve types for custom validators
-            registry = template_info["registry"]
-            model = registry.get(version)
-            if model:
-                # Filter out template and namespace fields but preserve original data types
-                filtered_config = {
-                    k: v for k, v in config_data.items() 
-                    if k not in ('template', 'namespace') and v is not None
-                }
-                model(**filtered_config)
-                
-    except ValidationError as e:
-        for err in e.errors():
-            loc = '.'.join(str(x) for x in err['loc'])
-            msg = err['msg']
-            validation_errors.append(f"{loc}: {msg}")
+        except ValidationError as e:
+            click.secho("❌  Config validation errors:", fg="red")
+            for err in e.errors():
+                loc = '.'.join(str(x) for x in err['loc'])
+                msg = err['msg']
+                click.echo(f"  – {loc}: {msg}")
+            sys.exit(1)
         
-    return validation_errors
-
-
-def extract_user_provided_args_from_cli() -> set:
-    """
-    Extract the field names that the user actually provided from command line arguments.
-    Converts kebab-case CLI args to snake_case field names.
-    
-    Returns:
-        Set of field names that user provided
-    """
-    import sys
-    provided_args = set()
-    
-    # Parse command line arguments to find what user actually provided
-    args = sys.argv[1:]  # Skip the script name
-    i = 0
-    while i < len(args):
-        arg = args[i]
-        if arg.startswith('--'):
-            # Convert kebab-case to snake_case to match model field names
-            field_name = arg[2:].replace('-', '_')
-            provided_args.add(field_name)
-        i += 1
-    
-    return provided_args
-
-
-def filter_validation_errors_for_user_input(validation_errors: list, user_input_fields: set) -> list:
-    """
-    Filter validation errors to only include those related to user input fields.
-    
-    Args:
-        validation_errors: List of validation error strings in format "field: message"
-        user_input_fields: Set of field names that user provided
-        
-    Returns:
-        List of validation errors related only to user input fields
-    """
-    user_input_errors = []
-    for error in validation_errors:
-        # Extract field name from error string (format: "field: message")
-        if ':' in error:
-            field_name = error.split(':', 1)[0].strip()
-            if field_name in user_input_fields:
-                user_input_errors.append(error)
-    return user_input_errors
-
-
-def display_validation_results(validation_errors: list, success_message: str = "Configuration is valid!", 
-                             error_prefix: str = "Validation errors:") -> bool:
-    """
-    Display validation results to the user.
-    
-    Args:
-        validation_errors: List of validation error strings
-        success_message: Message to show when validation passes
-        error_prefix: Prefix for error messages
-        
-    Returns:
-        True if validation passed, False if there were errors
-    """
-    if validation_errors:
-        click.secho(f"❌  {error_prefix}", fg="red")
-        for error in validation_errors:
-            click.echo(f"  – {error}")
-        return False
-    else:
-        click.secho(f"✔️  {success_message}", fg="green")
-        return True
+    return data, template, version
 
 
 def build_config_from_schema(template: str, namespace: str, version: str, model_config=None, existing_config=None) -> Tuple[dict, dict]:
@@ -466,25 +343,12 @@ def build_config_from_schema(template: str, namespace: str, version: str, model_
     info = TEMPLATES[template]
     
     if info["schema_type"] == CFN:
-        # For CFN templates, get fields from HpClusterStack model
+        # For CFN templates, use model fields instead of schema
         if model_config:
             props = {field: {"description": field_info.description or ""} 
                     for field, field_info in model_config.model_fields.items()}
         else:
-            # When no model_config, get fields directly from HpClusterStack
-            # Use JSON schema to get examples
-            json_schema = HpClusterStack.model_json_schema()
-            schema_properties = json_schema.get('properties', {})
-            
             props = {}
-            for field, field_info in HpClusterStack.model_fields.items():
-                prop_info = {"description": field_info.description or ""}
-                
-                # Get examples from JSON schema if available
-                if field in schema_properties and 'examples' in schema_properties[field]:
-                    prop_info["examples"] = schema_properties[field]['examples']
-                
-                props[field] = prop_info
         reqs = []
     else:
         schema = load_schema_for_version(version, info["schema_pkg"])
@@ -500,38 +364,13 @@ def build_config_from_schema(template: str, namespace: str, version: str, model_
     # Prepare values from different sources with priority:
     # 1. model_config (user-provided values)
     # 2. existing_config (values from existing config.yaml)
-    # 3. examples from schema (for reset command)
-    # 4. schema defaults
+    # 3. schema defaults
     values = {}
     
     # Add schema defaults first (lowest priority)
     for key, spec in props.items():
-        # Skip namespace - it's handled specially and shouldn't be overwritten by schema
-        if key == "namespace":
-            continue
         if "default" in spec:
             values[key] = spec.get("default")
-    
-    # Add examples next (for reset command when no existing config)
-    # Only use examples if no model_config and no existing_config (i.e., reset command)
-    if not model_config and not existing_config:
-        for key, spec in props.items():
-            # Skip namespace - it's handled specially and shouldn't be overwritten by examples
-            if key == "namespace":
-                continue
-            if "examples" in spec and spec["examples"]:
-                # Use the first example if it's a list, otherwise use the examples directly
-                examples = spec["examples"]
-                if isinstance(examples, list) and examples:
-                    example_value = examples[0]  # Use first example
-                else:
-                    example_value = examples
-                
-                # Special handling for tags: skip if example is empty array
-                if key == "tags" and example_value == []:
-                    continue
-                
-                values[key] = example_value
     
     # Add existing config values next (middle priority)
     if existing_config:
@@ -540,55 +379,19 @@ def build_config_from_schema(template: str, namespace: str, version: str, model_
                 values[key] = val
     
     # Add model_config values last (highest priority)
-    # But only if they are actually user-provided values, not just defaults/examples
     if model_config:
         cfg_dict = model_config.model_dump(exclude_none=True)
-        
-        # For configure command: detect which values are examples and skip only those
-        if existing_config and info["schema_type"] == CFN:
-            # Get examples from JSON schema to compare
-            json_schema = HpClusterStack.model_json_schema()
-            schema_properties = json_schema.get('properties', {})
-            
-            # Process each model_config value individually
-            for key, val in cfg_dict.items():
-                if key == "namespace":
-                    continue
-                if key not in props:
-                    continue
-                
-                # Check if this specific value is an example
-                is_example_value = False
-                if key in schema_properties and 'examples' in schema_properties[key]:
-                    examples = schema_properties[key]['examples']
-                    if isinstance(examples, list) and examples:
-                        example_value = examples[0]
-                    else:
-                        example_value = examples
-                    
-                    if val == example_value:
-                        is_example_value = True
-                
-                # Only use the value if it's NOT an example value
-                if not is_example_value:
-                    values[key] = val
-                # If it IS an example value, skip it (keep existing_config value)
-        else:
-            # For non-CFN templates or when no existing_config, use all model_config values
-            for key, val in cfg_dict.items():
-                if key == "namespace":
-                    continue
-                if key in props:
-                    values[key] = val
+        for key, val in cfg_dict.items():
+            if key in props:
+                values[key] = val
     
     # Build the final config with required fields first, then optional
-    # Skip namespace since it's already set and handled specially
     for key in reqs:
-        if key in props and key != "namespace":
+        if key in props:
             full_cfg[key] = values.get(key, None)
     
     for key in props:
-        if key not in reqs and key != "namespace":
+        if key not in reqs:
             full_cfg[key] = values.get(key, None)
     
     # Build comment map with [Required] prefix for required fields
@@ -604,6 +407,16 @@ def build_config_from_schema(template: str, namespace: str, version: str, model_
 
 def pascal_to_kebab(pascal_str):
     """Convert PascalCase to CLI kebab-case format"""
+    result = []
+    for i, char in enumerate(pascal_str):
+        if char.isupper() and i > 0:
+            result.append('-')
+        result.append(char.lower())
+    return ''.join(result)
+
+
+def pascal_to_kebab(pascal_str):
+    """Convert PascalCase string  to kebab-case"""
     result = []
     for i, char in enumerate(pascal_str):
         if char.isupper() and i > 0:
