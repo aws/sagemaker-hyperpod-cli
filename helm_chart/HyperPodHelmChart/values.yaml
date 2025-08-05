@@ -2,6 +2,11 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# Global configuration
+global:
+  # AWS region for all components (can be overridden per component)
+  region: ""
+
 replicaCount: 1
 
 image:
@@ -255,7 +260,9 @@ aws-efa-k8s-device-plugin:
 mpi-operator:
   enabled: true
 health-monitoring-agent:
-  enabled: true 
+  enabled: true
+  # AWS region will be automatically detected or can be specified
+  # region: "us-east-1"
 deep-health-check:
   enabled: true
 job-auto-restart:
