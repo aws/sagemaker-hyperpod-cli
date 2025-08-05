@@ -33,11 +33,21 @@ def pytorch_create(version, debug, config):
         job_name = config.get("name")
         namespace = config.get("namespace")
         spec = config.get("spec")
+        queue_name = config.get("queue_name")
+        priority = config.get("priority")
 
         # Prepare metadata
         metadata_kwargs = {"name": job_name}
         if namespace:
             metadata_kwargs["namespace"] = namespace
+
+        metadata_labels = {}
+        if queue_name is not None:
+            metadata_labels["kueue.x-k8s.io/queue-name"] = self.queue_name
+        if priority is not None:
+            metadata_labels["kueue.x-k8s.io/priority-class"] = self.priority
+        if metadata_labels:
+            metadata_kwargs["labels"] = metadata_labels
 
         # Prepare job kwargs
         job_kwargs = {
