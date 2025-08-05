@@ -18,6 +18,11 @@ from sagemaker.hyperpod.cli.init_utils import (
     save_config_yaml,
     TEMPLATES,
     load_config_and_validate,
+    load_config,
+    validate_config_against_model,
+    filter_validation_errors_for_user_input,
+    display_validation_results,
+    extract_user_provided_args_from_cli,
     build_config_from_schema,
     save_template
 )
@@ -144,7 +149,7 @@ def reset():
     dir_path = Path(".").resolve()
     
     # 1) Load and validate config
-    data, template, version = load_config_and_validate(dir_path)
+    data, template, version = load_config(dir_path)
     namespace = data.get("namespace", "default")
     
     # 2) Build config with default values from schema
@@ -164,7 +169,7 @@ def reset():
 
     # 4) Regenerate the k8s Jinja template
     if save_template(template, dir_path):
-        click.secho("✔️  k8s-template.jinja regenerated.", fg="green")
+        click.secho(f"✔️ {template} is regenerated.", fg="green")
 
 
 @click.command("configure")
@@ -172,28 +177,73 @@ def reset():
     require_schema_fields=False,  # flags are all optional
     auto_load_config=True,        # load template/namespace/version from config.yaml
 )
-def configure(model_config):
+@click.pass_context
+def configure(ctx, model_config):
     """
     Update any subset of fields in ./config.yaml by passing
     --<field> flags. E.g.
 
       hyp configure --model-name my-model --instance-type ml.m5.large
+      hyp configure --namespace production
+      hyp configure --namespace test --stage gamma
     """
-    # 1) Load existing config
-    dir_path = Path(".").resolve()
-    data, template, version = load_config_and_validate(dir_path)
-    namespace = data.get("namespace", "default")
+    # Extract namespace from command line arguments manually
+    import sys
+    namespace = None
+    args = sys.argv
+    for i, arg in enumerate(args):
+        if arg in ['--namespace', '-n'] and i + 1 < len(args):
+            namespace = args[i + 1]
+            break
     
-    # 2) Build config with merged values from existing config and user input
+    # 1) Load existing config without validation
+    dir_path = Path(".").resolve()
+    data, template, version = load_config(dir_path)
+    
+    # Use provided namespace or fall back to existing config namespace
+    config_namespace = namespace if namespace is not None else data.get("namespace", "default")
+    
+    # 2) Extract ONLY the user's input arguments by checking what was actually provided
+    provided_args = extract_user_provided_args_from_cli()
+    
+    # Filter model_config to only include user-provided fields
+    all_model_data = model_config.model_dump(exclude_none=True) if model_config else {}
+    user_input = {k: v for k, v in all_model_data.items() if k in provided_args}
+    
+    if not user_input and namespace is None:
+        click.secho("⚠️  No arguments provided to configure.", fg="yellow")
+        return
+
+    # 3) Build merged config with user input
     full_cfg, comment_map = build_config_from_schema(
         template=template,
-        namespace=namespace,
+        namespace=config_namespace,
         version=version,
         model_config=model_config,
         existing_config=data
     )
 
-    # 3) Write out the updated config.yaml
+    # 4) Validate the merged config and filter errors for user input fields only
+    all_validation_errors = validate_config_against_model(full_cfg, template, version)
+    
+    # Include namespace in user input fields if it was provided
+    user_input_fields = set(user_input.keys())
+    if namespace is not None:
+        user_input_fields.add("namespace")
+    
+    user_input_errors = filter_validation_errors_for_user_input(all_validation_errors, user_input_fields)
+    
+    is_valid = display_validation_results(
+        user_input_errors,
+        success_message="User input is valid!" if user_input_errors else "Merged configuration is valid!",
+        error_prefix="Invalid input arguments:"
+    )
+    
+    if not is_valid:
+        click.secho("❌  config.yaml was not updated due to invalid input.", fg="red")
+        sys.exit(1)
+
+    # 5) Write out the updated config.yaml (only if user input is valid)
     try:
         save_config_yaml(
             prefill=full_cfg,
@@ -212,55 +262,7 @@ def validate():
     Validate this directory's config.yaml against the appropriate schema.
     """
     dir_path = Path(".").resolve()
-    data, template, version = load_config_and_validate(dir_path)
-    
-    info = TEMPLATES[template]
-    
-    if info["schema_type"] == CFN:
-        # CFN validation using HpClusterStack
-        payload = {}
-        for k, v in data.items():
-            if k not in ("template", "namespace") and v is not None:
-                # Convert lists to JSON strings for CFN parameters
-                if isinstance(v, list):
-                    payload[k] = json.dumps(v)
-                else:
-                    payload[k] = str(v)
-        
-        try:
-            HpClusterStack(**payload)
-            click.secho("✔️  config.yaml is valid!", fg="green")
-        except ValidationError as e:
-            click.secho("❌  Validation errors:", fg="red")
-            for err in e.errors():
-                loc = ".".join(str(x) for x in err["loc"])
-                msg = err["msg"]
-                click.echo(f"  – {loc}: {msg}")
-            sys.exit(1)
-    else:
-        # CRD validation using schema registry
-        registry = info["registry"]
-        model = registry.get(version)
-        if model is None:
-            click.secho(f"❌  Unsupported schema version: {version}", fg="red")
-            sys.exit(1)
-
-        payload = {
-            k: v
-            for k, v in data.items()
-            if k not in ("template", "namespace")
-        }
-
-        try:
-            model(**payload)
-            click.secho("✔️  config.yaml is valid!", fg="green")
-        except ValidationError as e:
-            click.secho("❌  Validation errors:", fg="red")
-            for err in e.errors():
-                loc = ".".join(str(x) for x in err["loc"])
-                msg = err["msg"]
-                click.echo(f"  – {loc}: {msg}")
-            sys.exit(1)
+    load_config_and_validate(dir_path)
 
 
 @click.command("submit")
@@ -312,45 +314,16 @@ def submit(region):
         click.secho(f"❌  Missing config.yaml or {jinja_file.name}. Run `hyp init` first.", fg="red")
         sys.exit(1)
     
-    # 4) Validate config based on schema type
-    if schema_type == CFN:
-        # For CFN templates, use HpClusterStack validation
-        from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack
-        import json
-        payload = {}
-        for k, v in data.items():
-            if k not in ('template', 'namespace') and v is not None:
-                # Convert lists to JSON strings, everything else to string
-                if isinstance(v, list):
-                    payload[k] = json.dumps(v)
-                else:
-                    payload[k] = str(v)
-        try:
-            HpClusterStack(**payload)
-        except ValidationError as e:
-            click.secho("❌ HpClusterStack Validation errors:", fg="red")
-            for err in e.errors():
-                loc = '.'.join(str(x) for x in err['loc'])
-                msg = err['msg']
-                click.echo(f"  – {loc}: {msg}")
-            sys.exit(1)
-    else:
-        # For CRD templates, use registry validation
-        registry = info["registry"]
-        model = registry.get(version)
-        if model is None:
-            click.secho(f"❌  Unsupported schema version: {version}", fg="red")
-            sys.exit(1)
-        payload = {k: v for k, v in data.items() if k not in ('template', 'namespace')}
-        try:
-            model(**payload)
-        except ValidationError as e:
-            click.secho("❌  Validation errors:", fg="red")
-            for err in e.errors():
-                loc = '.'.join(str(x) for x in err['loc'])
-                msg = err['msg']
-                click.echo(f"  – {loc}: {msg}")
-            sys.exit(1)
+    # 4) Validate config using consolidated function
+    validation_errors = validate_config_against_model(data, template, version)
+    is_valid = display_validation_results(
+        validation_errors,
+        success_message="Configuration is valid!",
+        error_prefix="Validation errors:"
+    )
+    
+    if not is_valid:
+        sys.exit(1)
 
     try:
         template_source = jinja_file.read_text()
