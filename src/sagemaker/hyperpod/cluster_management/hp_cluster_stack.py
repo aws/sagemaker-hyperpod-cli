@@ -3,11 +3,10 @@ import json
 import logging
 import uuid
 from typing import Optional
-
-import boto3
 import click
 import yaml
 from sagemaker.hyperpod.cluster_management.config.hp_cluster_stack_config import _ClusterStackBase
+from sagemaker.hyperpod.common.utils import create_boto3_client
 
 CLUSTER_CREATION_TEMPLATE_FILE_NAME = "creation_template.yaml"
 CLUSTER_STACK_TEMPLATE_PACKAGE_NAME = "hyperpod_cluster_stack_template"
@@ -30,9 +29,7 @@ class HpClusterStack(_ClusterStackBase):
 
     def create(self,
                region: Optional[str] = None):
-        # Get the region from the boto3 session or use the provided region
-        region = region or boto3.session.Session().region_name
-        cf = boto3.client('cloudformation', region_name=region)
+        cf = create_boto3_client('cloudformation', region_name=region)
 
         # Convert the input object to CloudFormation parameters
         parameters = self._create_parameters()
@@ -126,6 +123,50 @@ class HpClusterStack(_ClusterStackBase):
             
         # Default case: capitalize each word
         return ''.join(word.capitalize() for word in snake_str.split('_'))
+    
+    @staticmethod
+    def describe(stack_name, region: Optional[str] = None):
+        cf = create_boto3_client('cloudformation', region_name=region)
+        
+        try:
+            response = cf.describe_stacks(StackName=stack_name)
+            return response
+        except cf.exceptions.ClientError as e:
+            error_code = e.response['Error']['Code']
+            
+            log.debug(f"CloudFormation error: {error_code} for operation on stack")
+            
+            if error_code in ['ValidationError', 'AccessDenied']:
+                log.error("Stack operation failed - check stack name and permissions")
+                raise ValueError("Stack not accessible")
+            else:
+                log.error("CloudFormation operation failed")
+                raise RuntimeError("Stack operation failed")
+        except Exception as e:
+            log.error("Unexpected error during stack operation")
+            raise RuntimeError("Stack operation failed")
+    
+    @staticmethod
+    def list(region: Optional[str] = None):
+        cf = create_boto3_client('cloudformation', region_name=region)
+        
+        try:
+            response = cf.list_stacks()
+            return response
+        except cf.exceptions.ClientError as e:
+            error_code = e.response['Error']['Code']
+            
+            log.debug(f"CloudFormation error: {error_code} for list stacks operation")
+            
+            if error_code == 'AccessDenied':
+                log.error("List stacks operation failed - check permissions")
+                raise ValueError("Insufficient permissions to list stacks")
+            else:
+                log.error("CloudFormation list operation failed")
+                raise RuntimeError("List stacks operation failed")
+        except Exception as e:
+            log.error("Unexpected error during list stacks operation")
+            raise RuntimeError("List stacks operation failed")
 
 
 def _yaml_to_json_string(yaml_path):

@@ -96,3 +96,57 @@ class TestHpClusterStackIntegration(AbstractIntegrationTests):
                     print(f"Stack {stack_name} deletion initiated")
                 except Exception as e:
                     print(f"Error deleting stack: {e}")
+
+    @pytest.mark.dependency(name="list_stacks")
+    def test_list_stacks(self):
+        """Test listing CloudFormation stacks using HpClusterStack.list."""
+        # Test listing stacks - should return a response with StackSummaries
+        response = HpClusterStack.list()
+        
+        # Verify response structure
+        assert isinstance(response, dict)
+        assert 'StackSummaries' in response
+        assert isinstance(response['StackSummaries'], list)
+        
+        # If there are stacks, verify they have expected fields
+        if response['StackSummaries']:
+            stack = response['StackSummaries'][0]
+            assert 'StackName' in stack
+            assert 'StackStatus' in stack
+            assert 'CreationTime' in stack
+
+    def test_list_stacks_with_region(self):
+        """Test listing stacks with explicit region parameter."""
+        # Test with us-east-1 region
+        response = HpClusterStack.list(region="us-east-1")
+        
+        assert isinstance(response, dict)
+        assert 'StackSummaries' in response
+        assert isinstance(response['StackSummaries'], list)
+
+    @pytest.mark.dependency(depends=["list_stacks"])
+    def test_describe_stack(self):
+        """Test describing CloudFormation stacks using HpClusterStack.describe."""
+        # First get a list of existing stacks to test with
+        list_response = HpClusterStack.list()
+        
+        if list_response['StackSummaries']:
+            # Test with an existing stack
+            existing_stack_name = list_response['StackSummaries'][0]['StackName']
+            
+            response = HpClusterStack.describe(existing_stack_name)
+            
+            # Verify response structure
+            assert isinstance(response, dict)
+            assert 'Stacks' in response
+            assert len(response['Stacks']) == 1
+            
+            stack = response['Stacks'][0]
+            assert stack['StackName'] == existing_stack_name
+            assert 'StackStatus' in stack
+            assert 'CreationTime' in stack
+            assert 'StackId' in stack
+        
+        # Test with a non-existent stack - should raise ValueError
+        with pytest.raises(ValueError):
+            HpClusterStack.describe("non-existent-stack-12345")

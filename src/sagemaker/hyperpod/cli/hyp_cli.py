@@ -9,7 +9,8 @@ from importlib.metadata import version, PackageNotFoundError
 
 from sagemaker.hyperpod.cli.commands.cluster import list_cluster, set_cluster_context, get_cluster_context, \
     get_monitoring
-from sagemaker.hyperpod.cli.commands.cluster_stack import create_cluster_stack
+from sagemaker.hyperpod.cli.commands.cluster_stack import create_cluster_stack, describe_cluster_stack, \
+    list_cluster_stacks
 from sagemaker.hyperpod.cli.commands.training import (
     pytorch_create,
     list_jobs,
@@ -138,10 +139,12 @@ create.add_command(custom_create)
 list.add_command(list_jobs)
 list.add_command(js_list)
 list.add_command(custom_list)
+list.add_command(list_cluster_stacks)
 
 describe.add_command(pytorch_describe)
 describe.add_command(js_describe)
 describe.add_command(custom_describe)
+describe.add_command(describe_cluster_stack)
 
 delete.add_command(pytorch_delete)
 delete.add_command(js_delete)
@@ -167,7 +170,6 @@ cli.add_command(set_cluster_context)
 cli.add_command(get_cluster_context)
 cli.add_command(get_monitoring)
 cli.add_command(create_cluster_stack)
-
 
 if __name__ == "__main__":
     cli()
