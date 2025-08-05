@@ -27,9 +27,11 @@ Transform your AI/ML development process with Amazon SageMaker HyperPod CLI and 
 - Automate ML workflows while maintaining operational visibility
 - Optimize computing resources across your AI/ML projects
 
+
 ```{note}
 Version Info - you’re viewing latest documentation for SageMaker Hyperpod CLI and SDK v3.0.0.
 ```
+
 
 ```{admonition} What's New
 :class: important

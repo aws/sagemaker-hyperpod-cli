@@ -55,6 +55,7 @@ def run_apidoc(app):
 
 def setup(app):
     """Register our sphinx hooks."""
+
     #app.connect("builder-inited", run_apidoc)
 
 
