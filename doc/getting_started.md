@@ -2,6 +2,15 @@
 
 # Getting Started
 
+```{toctree}
+:hidden:
+:maxdepth: 1
+
+Training <training>
+Inference <inference>
+
+```
+
 This guide will help you get started with the SageMaker HyperPod CLI and SDK to perform basic operations.
 
 ## List Available Clusters

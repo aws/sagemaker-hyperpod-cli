@@ -17,29 +17,19 @@ keywords:
 
 Installation <installation>
 Getting Started <getting_started>
-Training <training>
-Inference <inference>
 CLI Reference <cli_reference>
-Example Notebooks <examples>
-SDK reference <_apidoc/modules>
+SDK reference <api/api_index>
+Advanced Resources <advanced_resources>
 ```
-
-
-Amazon Hyperpod helps you provision and manage resilient clusters optimized for large-scale machine learning (ML) workloads, including large language models (LLMs), diffusion models, and foundation models (FMs).
-To get started with Hyperpod, visit the [AWS Documentation](https://docs.aws.amazon.com/sagemaker/latest/dg/hyperpod.html).
-
-
-```{note}
-Version Info - you’re viewing latest documentation for SageMaker Hyperpod CLI and SDK v3.0.0.
-```
-
-### Why Choose HyperPod CLI & SDK?
 
 Transform your AI/ML development process with Amazon SageMaker HyperPod CLI and SDK. These tools handle infrastructure management complexities, allowing you to focus on model development and innovation. Whether it's scaling your PyTorch training jobs across thousands of GPUs, deploying production-grade inference endpoints or managing multiple clusters efficiently; the intuitive command-line interface and programmatic control enable you to:
 - Accelerate development cycles and reduce operational overhead
 - Automate ML workflows while maintaining operational visibility
 - Optimize computing resources across your AI/ML projects
 
+```{note}
+Version Info - you’re viewing latest documentation for SageMaker Hyperpod CLI and SDK v3.0.0.
+```
 
 ```{admonition} What's New
 :class: important
@@ -101,7 +91,7 @@ Transform your AI/ML development process with Amazon SageMaker HyperPod CLI and 
 :gutter: 3
 
 :::{grid-item-card} API reference
-:link: _apidoc/modules.html
+:link: api/api_index.html
 :class-card: sd-border-primary
 
 **Explore APIs** - Checkout API Documentation
@@ -114,5 +104,27 @@ Transform your AI/ML development process with Amazon SageMaker HyperPod CLI and 
 
 **Example Notebooks** - Ready-to-use implementation guides
 :::
+
+:::{grid-item-card} AWS SageMaker HyperPod Docs
+:link: https://docs.aws.amazon.com/sagemaker/latest/dg/hyperpod.html
+:class-card: sd-border-secondary
+
+**HyperPod Documentation** - Know more about HyperPod
+:::
+
+:::{grid-item-card} HyperPod Developer Guide
+:link: https://catalog.workshops.aws/sagemaker-hyperpod-eks/en-US
+:class-card: sd-border-secondary
+
+**Developer Guide** - Refer to this practical development guide
+:::
+
+:::{grid-item-card} SageMaker HyperPod Workshop
+:link: https://catalog.workshops.aws/sagemaker-hyperpod-eks/en-US
+:class-card: sd-border-secondary
+
+**Practical Guide** - Refer to the workshop for detailed follow-through steps
+:::
+
 
 ::::

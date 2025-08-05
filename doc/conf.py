@@ -55,7 +55,7 @@ def run_apidoc(app):
 
 def setup(app):
     """Register our sphinx hooks."""
-    app.connect("builder-inited", run_apidoc)
+    #app.connect("builder-inited", run_apidoc)
 
 
 # Get version from setup.py
@@ -99,23 +99,27 @@ extensions = [
     "myst_nb",
     "sphinx_design",
     "sphinx_tabs.tabs",
-    "sphinx_copybutton"
+    "sphinx_copybutton",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.autosectionlabel",
 ]
 
+'''
 # Mock modules that might not be available during documentation build
 autodoc_mock_imports = [
     'sagemaker.hyperpod.training.config.hyperpod_pytorch_job_config',
-    'hyperpod_pytorch_job_template.registry'
-]
+    'hyperpod_pytorch_job_template.registry',
+]'''
+autodoc_mock_imports = ["pyspark", "feature_store_pyspark", "py4j"]
 
 source_suffix = {
     '.rst': 'restructuredtext',
     '.ipynb': 'myst-nb',
     '.md': 'myst-nb',
 }
-master_doc = "index"
 
-autoclass_content = "class"
+autoclass_content = "both"
+autodoc_default_flags = ["show-inheritance", "members", "undoc-members"]
 autodoc_member_order = "bysource"
 default_role = "py:obj"
 
@@ -173,3 +177,13 @@ nb_execution_mode = "off"
 myst_substitutions = {
     "version": version,
 }
+
+# Automatically extract typehints when specified and place them in
+# descriptions of the relevant function/method.
+autodoc_typehints = "description"
+
+# autosummary
+autosummary_generate = True
+
+# autosectionlabel
+autosectionlabel_prefix_document = True

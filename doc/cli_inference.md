@@ -1,6 +1,6 @@
 (cli_inference)=
 
-# Inference CLI
+# Inference
 
 Complete reference for SageMaker HyperPod PyTorch training job parameters and configuration options.
 
