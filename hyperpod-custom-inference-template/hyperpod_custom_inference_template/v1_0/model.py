@@ -243,7 +243,7 @@ class FlatHPEndpoint(BaseModel):
             "Please fill in the path after http://<host>:<port>/ specific to your model server.",
         )
     )
-    
+
     @model_validator(mode='after')
     def validate_model_source_config(self):
         """Validate that required fields are provided based on model_source_type"""
@@ -254,7 +254,7 @@ class FlatHPEndpoint(BaseModel):
             if not self.fsx_file_system_id:
                 raise ValueError("fsx_file_system_id is required when model_source_type is 'fsx'")
         return self
-    
+
     def to_domain(self) -> HPEndpoint:
         env_vars = None
         if self.env:

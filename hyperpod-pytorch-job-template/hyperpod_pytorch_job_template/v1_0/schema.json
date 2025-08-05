@@ -194,22 +194,21 @@
           "type": "null"
         }
       ],
-      "default": null,
+      "default": 1,
       "description": "Number of nodes",
       "title": "Node Count"
     },
     "tasks_per_node": {
       "anyOf": [
         {
-          "minimum": 1,
-          "type": "integer"
+          "type": "string"
         },
         {
           "type": "null"
         }
       ],
-      "default": null,
-      "description": "Number of tasks per node",
+      "default": "auto",
+      "description": "Number of workers per node; supported values: [auto,cpu, gpu, int]",
       "title": "Tasks Per Node"
     },
     "label_selector": {

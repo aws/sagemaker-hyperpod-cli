@@ -101,16 +101,15 @@ class PyTorchJobConfig(BaseModel):
         min_length=1
     )
     node_count: Optional[int] = Field(
-        default=None, 
+        default=1, 
         alias="node_count", 
         description="Number of nodes",
         ge=1
     )
-    tasks_per_node: Optional[int] = Field(
-        default=None, 
+    tasks_per_node: Optional[str] = Field(
+        default="auto", 
         alias="tasks_per_node", 
-        description="Number of tasks per node",
-        ge=1
+        description="Number of workers per node; supported values: [auto,cpu, gpu, int]",
     )
     label_selector: Optional[Dict[str, str]] = Field(
         default=None,
