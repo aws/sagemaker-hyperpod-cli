@@ -109,6 +109,7 @@ Version Info - you’re viewing latest documentation for SageMaker Hyperpod CLI 
 
 :::{grid-item-card} AWS SageMaker HyperPod Docs
 :link: https://docs.aws.amazon.com/sagemaker/latest/dg/hyperpod.html
+:link-type: url
 :class-card: sd-border-secondary
 
 **HyperPod Documentation** - Know more about HyperPod
@@ -116,6 +117,7 @@ Version Info - you’re viewing latest documentation for SageMaker Hyperpod CLI 
 
 :::{grid-item-card} HyperPod Developer Guide
 :link: https://catalog.workshops.aws/sagemaker-hyperpod-eks/en-US
+:link-type: url
 :class-card: sd-border-secondary
 
 **Developer Guide** - Refer to this practical development guide
@@ -123,6 +125,7 @@ Version Info - you’re viewing latest documentation for SageMaker Hyperpod CLI 
 
 :::{grid-item-card} SageMaker HyperPod Workshop
 :link: https://catalog.workshops.aws/sagemaker-hyperpod-eks/en-US
+:link-type: url
 :class-card: sd-border-secondary
 
 **Practical Guide** - Refer to the workshop for detailed follow-through steps

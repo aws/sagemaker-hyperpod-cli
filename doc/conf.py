@@ -22,41 +22,9 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 
 
-def run_apidoc(app):
-    """Generate doc stubs using sphinx-apidoc."""
-    module_dir = os.path.join(app.srcdir, "../src/")
-    output_dir = os.path.join(app.srcdir, "_apidoc")
-    excludes = []
-
-    # Ensure that any stale apidoc files are cleaned up first.
-    if os.path.exists(output_dir):
-        shutil.rmtree(output_dir)
-
-    cmd = [
-        "--separate",
-        "--module-first",
-        "--doc-project=SDK API Reference",
-        "-o",
-        output_dir,
-        module_dir,
-    ]
-    cmd.extend(excludes)
-
-    try:
-        from sphinx.ext import apidoc  # Sphinx >= 1.7
-
-        apidoc.main(cmd)
-    except ImportError:
-        from sphinx import apidoc  # Sphinx < 1.7
-
-        cmd.insert(0, apidoc.__file__)
-        apidoc.main(cmd)
-
 
 def setup(app):
     """Register our sphinx hooks."""
-
-    #app.connect("builder-inited", run_apidoc)
 
 
 # Get version from setup.py
@@ -105,12 +73,6 @@ extensions = [
     "sphinx.ext.autosectionlabel",
 ]
 
-'''
-# Mock modules that might not be available during documentation build
-autodoc_mock_imports = [
-    'sagemaker.hyperpod.training.config.hyperpod_pytorch_job_config',
-    'hyperpod_pytorch_job_template.registry',
-]'''
 autodoc_mock_imports = ["pyspark", "feature_store_pyspark", "py4j"]
 
 source_suffix = {
@@ -150,7 +112,9 @@ copyright = f"{datetime.datetime.now().year}, Amazon Web Services"
 
 htmlhelp_basename = "{}doc".format(project)
 html_static_path = ["_static"]
-html_css_files = ["custom.css"]
+html_css_files = ["custom.css",
+                  "search_accessories.css",
+                  ]
 napoleon_use_rtype = False
 
 # nbsphinx configuration
