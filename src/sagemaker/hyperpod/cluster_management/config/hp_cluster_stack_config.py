@@ -3,6 +3,14 @@ from pydantic import BaseModel, Field
 from typing import Optional, Literal, List, Any
 
 class _ClusterStackBase(BaseModel):
+    stack_id: Optional[str] = Field(
+        None,
+        description="CloudFormation stack ID set after stack creation"
+    )
+    stack_name: Optional[str] = Field(
+        None,
+        description="CloudFormation stack name set after stack creation"
+    )
     tags: Optional[List[Any]] = Field(
         None,
         description="Custom tags for the CloudFormation stack",

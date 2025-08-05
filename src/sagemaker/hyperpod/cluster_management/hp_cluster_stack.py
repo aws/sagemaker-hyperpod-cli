@@ -47,8 +47,14 @@ class HpClusterStack(_ClusterStackBase):
                     }],
                 Capabilities=CAPABILITIES_FOR_STACK_CREATION
             )
+            
             log.info(f"Stack creation initiated. Stack ID: {response['StackId']}")
             click.secho(f"Stack creation initiated. Stack ID: {response['StackId']}")
+
+            self.stack_id = response['StackId']
+            # Setting the stack name here to avoid calling multiple cloud formation APIs again
+            self.stack_name = stack_name
+
             return response['StackId']
         except Exception as e:
             log.error(f"Error creating stack: {e}")
@@ -167,6 +173,32 @@ class HpClusterStack(_ClusterStackBase):
         except Exception as e:
             log.error("Unexpected error during list stacks operation")
             raise RuntimeError("List stacks operation failed")
+    
+    @staticmethod
+    def _get_stack_status_helper(stack_name: str, region: Optional[str] = None):
+        """Helper method to get stack status for any stack identifier."""        
+        log.debug(f"Getting status for stack: {stack_name}")        
+        stack_description = HpClusterStack.describe(stack_name, region)
+
+        if stack_description.get('Stacks'):
+            status = stack_description['Stacks'][0].get('StackStatus')
+            log.debug(f"Stack {stack_name} status: {status}")
+            return status
+        
+        log.debug(f"Stack {stack_name} not found")
+        click.secho(f"Stack {stack_name} not found")
+        return None
+
+    def get_status(self, region: Optional[str] = None):
+        """Get stack status using stored stack_id from create method."""
+        if not self.stack_name:
+            raise ValueError("Stack must be created first. Call create() before checking status.")
+        return self._get_stack_status_helper(self.stack_name, region)
+    
+    @staticmethod
+    def check_status(stack_name: str, region: Optional[str] = None):
+        """Check stack status without instance. Static method for SDK usage."""
+        return HpClusterStack._get_stack_status_helper(stack_name, region)
 
 
 def _yaml_to_json_string(yaml_path):

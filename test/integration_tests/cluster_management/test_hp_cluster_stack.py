@@ -150,3 +150,117 @@ class TestHpClusterStackIntegration(AbstractIntegrationTests):
         # Test with a non-existent stack - should raise ValueError
         with pytest.raises(ValueError):
             HpClusterStack.describe("non-existent-stack-12345")
+
+    @pytest.mark.dependency(depends=["list_stacks"])
+    def test_check_status_static_method(self):
+        """Test checking stack status using static method."""
+        # First get a list of existing stacks to test with
+        list_response = HpClusterStack.list()
+        
+        if list_response['StackSummaries']:
+            # Test with an existing stack
+            existing_stack_name = list_response['StackSummaries'][0]['StackName']
+            
+            status = HpClusterStack.check_status(existing_stack_name)
+            
+            # Verify status is a valid CloudFormation stack status
+            valid_statuses = [
+                'CREATE_IN_PROGRESS', 'CREATE_FAILED', 'CREATE_COMPLETE',
+                'ROLLBACK_IN_PROGRESS', 'ROLLBACK_FAILED', 'ROLLBACK_COMPLETE',
+                'DELETE_IN_PROGRESS', 'DELETE_FAILED', 'DELETE_COMPLETE',
+                'UPDATE_IN_PROGRESS', 'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS',
+                'UPDATE_COMPLETE', 'UPDATE_ROLLBACK_IN_PROGRESS',
+                'UPDATE_ROLLBACK_FAILED', 'UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS',
+                'UPDATE_ROLLBACK_COMPLETE', 'REVIEW_IN_PROGRESS'
+            ]
+            assert status in valid_statuses
+        
+        # Test with a non-existent stack - should raise ValueError
+        with pytest.raises(ValueError):
+            HpClusterStack.check_status("non-existent-stack-12345")
+
+    def test_check_status_with_region(self):
+        """Test checking stack status with explicit region parameter."""
+        # Test with us-east-1 region
+        list_response = HpClusterStack.list(region="us-east-1")
+        
+        if list_response['StackSummaries']:
+            existing_stack_name = list_response['StackSummaries'][0]['StackName']
+            
+            status = HpClusterStack.check_status(existing_stack_name, region="us-east-1")
+            
+            # Should return a valid status string
+            assert isinstance(status, str)
+            assert len(status) > 0
+
+    def test_get_status_instance_method(self):
+        """Test getting stack status using instance method."""
+        # Create a stack instance without stack_name - should raise ValueError
+        stack = HpClusterStack(stage="test")
+        
+        with pytest.raises(ValueError) as exc_info:
+            stack.get_status()
+        
+        assert "Stack must be created first" in str(exc_info.value)
+        
+        # Test with a stack that has stack_name set
+        list_response = HpClusterStack.list()
+        
+        if list_response['StackSummaries']:
+            existing_stack_name = list_response['StackSummaries'][0]['StackName']
+            
+            # Set stack_name manually to test the method
+            stack.stack_name = existing_stack_name
+            
+            status = stack.get_status()
+            
+            # Should return a valid status string
+            assert isinstance(status, str)
+            assert len(status) > 0
+
+    def test_get_status_with_region(self):
+        """Test getting stack status with explicit region parameter."""
+        list_response = HpClusterStack.list(region="us-east-1")
+        
+        if list_response['StackSummaries']:
+            existing_stack_name = list_response['StackSummaries'][0]['StackName']
+            
+            stack = HpClusterStack(stage="test")
+            stack.stack_name = existing_stack_name
+            
+            status = stack.get_status(region="us-east-1")
+            
+            # Should return a valid status string
+            assert isinstance(status, str)
+            assert len(status) > 0
+
+    def test_status_methods_consistency(self):
+        """Test that get_status and check_status return consistent results."""
+        list_response = HpClusterStack.list()
+        
+        if list_response['StackSummaries']:
+            existing_stack_name = list_response['StackSummaries'][0]['StackName']
+            
+            # Test both methods return the same status
+            static_status = HpClusterStack.check_status(existing_stack_name)
+            
+            stack = HpClusterStack(stage="test")
+            stack.stack_name = existing_stack_name
+            instance_status = stack.get_status()
+            
+            # Both methods should return the same status
+            assert static_status == instance_status
+
+    def test_status_methods_with_nonexistent_stack(self):
+        """Test status methods with non-existent stack names."""
+        nonexistent_stack = f"nonexistent-stack-{str(uuid.uuid4())[:8]}"
+        
+        # Both methods should raise ValueError for non-existent stacks
+        with pytest.raises(ValueError):
+            HpClusterStack.check_status(nonexistent_stack)
+        
+        stack = HpClusterStack(stage="test")
+        stack.stack_name = nonexistent_stack
+        
+        with pytest.raises(ValueError):
+            stack.get_status()
