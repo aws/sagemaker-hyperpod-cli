@@ -45,12 +45,18 @@ class TestHpClusterStack(unittest.TestCase):
             create_eks_cluster_stack=True
         )
         
+        mock_create_response = {'StackId': 'test-stack-id'}
+        mock_cf_client.create_stack.return_value = mock_create_response
+        
+        mock_describe_response = {'Stacks': [{'StackName': 'HyperpodClusterStack-12345', 'StackStatus': 'CREATE_IN_PROGRESS'}]}
+        mock_cf_client.describe_stacks.return_value = mock_describe_response
+        
         # Call the method under test
-        stack.create()
+        result = stack.create()
         
         # Verify mocks were called correctly
-        mock_boto3_session.assert_called_once()
-        mock_boto3_client.assert_called_once_with('cloudformation', region_name=mock_region)
+        self.assertEqual(mock_boto3_session.call_count, 2)
+        self.assertEqual(mock_boto3_client.call_count, 2)
         mock_files.assert_called_once_with(CLUSTER_STACK_TEMPLATE_PACKAGE_NAME)
         mock_files.return_value.__truediv__.assert_called_once_with(CLUSTER_CREATION_TEMPLATE_FILE_NAME)
         mock_file_open.assert_called_once_with(mock_template_path, 'r')
@@ -72,6 +78,9 @@ class TestHpClusterStack(unittest.TestCase):
             Tags=[{'Key': 'Environment', 'Value': 'Development'}],
             Capabilities=['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM']
         )
+        
+        # Verify the result is the describe response
+        self.assertEqual(result, mock_describe_response)
 
     @patch('boto3.session.Session')
     @patch('boto3.client')

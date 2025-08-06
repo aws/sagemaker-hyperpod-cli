@@ -55,7 +55,9 @@ class HpClusterStack(_ClusterStackBase):
             # Setting the stack name here to avoid calling multiple cloud formation APIs again
             self.stack_name = stack_name
 
-            return response['StackId']
+            describe_response = self.describe(stack_name, region)
+
+            return describe_response
         except Exception as e:
             log.error(f"Error creating stack: {e}")
             raise
