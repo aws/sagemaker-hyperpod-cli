@@ -353,6 +353,7 @@ class PyTorchJobConfig(BaseModel):
         result = {
             "name": self.job_name,
             "namespace": self.namespace,
+            "labels": metadata_labels,
             "spec": job_kwargs,
         }
         return result
