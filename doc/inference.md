@@ -241,6 +241,20 @@ hyp list-pods hyp-jumpstart-endpoint
 hyp list-pods hyp-custom-endpoint
 ```
 ````
+
+````{tab-item} SDK
+```python
+from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
+from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
+
+# List pods 
+js_pods = HPJumpStartEndpoint.list_pods()
+print(js_pods)
+
+c_pods = HPEndpoint.list_pods()
+print(c_pods)
+```
+````
 `````
 
 ### Get Logs
@@ -253,6 +267,20 @@ hyp get-logs hyp-jumpstart-endpoint --pod-name <pod-name>
 
 # Custom endpoint
 hyp get-logs hyp-custom-endpoint --pod-name <pod-name>
+```
+````
+
+````{tab-item} SDK
+```python
+from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
+from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
+
+# Get logs from pod 
+js_logs = HPJumpStartEndpoint.get_logs(pod=<pod-name>)
+print(js_logs)
+
+c_pods = HPEndpoint.get_logs(pod=<pod-name>)
+print(c_pods)
 ```
 ````
 `````
