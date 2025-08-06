@@ -81,7 +81,7 @@ hyp create hyp-custom-endpoint \
 ````{tab-item} SDK
 ```python
 from sagemaker.hyperpod.inference.config.hp_custom_endpoint_config import Model, Server, SageMakerEndpoint, TlsConfig, EnvironmentVariables
-from sagemaker.hyperpod.inference.hp_custom_endpoint import HPEndpoint
+from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
 
 model = Model(
     model_source_type="s3",
@@ -133,14 +133,19 @@ custom_endpoint.create()
 
 When creating an inference endpoint, you'll need to specify:
 
-- **endpoint-name**: Unique identifier for your endpoint
-- **instance-type**: The EC2 instance type to use
-- **model-id** (JumpStart): ID of the pre-trained JumpStart model
-- **image-uri** (Custom): Docker image containing your inference code
-- **model-name** (Custom): Name of model to create on SageMaker
-- **model-source-type** (Custom): Source type: fsx or s3
-- **model-volume-mount-name** (Custom): Name of the model volume mount
-- **container-port** (Custom): Port on which the model server listens
+1. **Parameters required for Jumpstart Endpoint**
+   - **endpoint-name**: Unique identifier for your endpoint
+   - **instance-type**: The EC2 instance type to use
+   - **model-id**: ID of the pre-trained JumpStart model
+
+2. **Parameters required for Custom Endpoint**
+   - **endpoint-name**: Unique identifier for your endpoint
+   - **instance-type**: The EC2 instance type to use
+   - **image-uri**: Docker image containing your inference code
+   - **model-name**: Name of model to create on SageMaker
+   - **model-source-type**: Source type: fsx or s3
+   - **model-volume-mount-name**: Name of the model volume mount
+   - **container-port**: Port on which the model server listens
 
 ## Managing Inference Endpoints
 
@@ -160,7 +165,7 @@ hyp list hyp-custom-endpoint
 ````{tab-item} SDK
 ```python
 from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
-from sagemaker.hyperpod.inference.hp_custom_endpoint import HPEndpoint
+from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
 
 # List JumpStart endpoints
 jumpstart_endpoints = HPJumpStartEndpoint.list()
@@ -189,7 +194,7 @@ hyp describe hyp-custom-endpoint --name <endpoint-name>
 ````{tab-item} SDK
 ```python
 from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
-from sagemaker.hyperpod.inference.hp_custom_endpoint import HPEndpoint
+from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
 
 # Get JumpStart endpoint details
 jumpstart_endpoint = HPJumpStartEndpoint.get(name="js-endpoint-name", namespace="test")
@@ -222,8 +227,16 @@ hyp invoke hyp-custom-endpoint \
 
 ````{tab-item} SDK
 ```python
+from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
+from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
+
 data = '{"inputs":"What is the capital of USA?"}'
-response = endpoint.invoke(body=data).body.read()
+jumpstart_endpoint = HPJumpStartEndpoint.get(endpoint_name="endpoint-jumpstart")
+response = jumpstart_endpoint.invoke(body=data).body.read()
+print(response)
+
+custom_endpoint = HPEndpoint.get(endpoint_name="endpoint-custom")
+response = custom_endpoint.invoke(body=data).body.read()
 print(response)
 ```
 ````
@@ -279,8 +292,8 @@ from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
 js_logs = HPJumpStartEndpoint.get_logs(pod=<pod-name>)
 print(js_logs)
 
-c_pods = HPEndpoint.get_logs(pod=<pod-name>)
-print(c_pods)
+c_logs = HPEndpoint.get_logs(pod=<pod-name>)
+print(c_logs)
 ```
 ````
 `````
@@ -300,7 +313,16 @@ hyp get-operator-logs hyp-custom-endpoint --since-hours 0.5
 
 ````{tab-item} SDK
 ```python
-print(endpoint.get_operator_logs(since_hours=0.1))
+from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
+from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
+
+# Invoke JumpStart endpoint
+jumpstart_endpoint = HPJumpStartEndpoint.get(endpoint_name="endpoint-jumpstart")
+print(jumpstart_endpoint.get_operator_logs(since_hours=0.1))
+
+# Invoke custom endpoint
+custom_endpoint = HPEndpoint.get(endpoint_name="endpoint-custom")
+print(custom_endpoint.get_operator_logs(since_hours=0.1))
 ```
 ````
 `````
@@ -321,7 +343,7 @@ hyp delete hyp-custom-endpoint --name <endpoint-name>
 ````{tab-item} SDK
 ```python
 from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
-from sagemaker.hyperpod.inference.hp_custom_endpoint import HPEndpoint
+from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
 
 # Delete JumpStart endpoint
 jumpstart_endpoint = HPJumpStartEndpoint.get(endpoint_name="endpoint-jumpstart")
