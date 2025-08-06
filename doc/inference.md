@@ -201,7 +201,7 @@ jumpstart_endpoint = HPJumpStartEndpoint.get(name="js-endpoint-name", namespace=
 print(jumpstart_endpoint)
 
 # Get custom endpoint details
-custom_endpoint = HPEndpoint.get(endpoint_name="endpoint-custom")
+custom_endpoint = HPEndpoint.get(name="endpoint-custom")
 print(custom_endpoint)
 
 ```
@@ -231,11 +231,11 @@ from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoi
 from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
 
 data = '{"inputs":"What is the capital of USA?"}'
-jumpstart_endpoint = HPJumpStartEndpoint.get(endpoint_name="endpoint-jumpstart")
+jumpstart_endpoint = HPJumpStartEndpoint.get(name="endpoint-jumpstart")
 response = jumpstart_endpoint.invoke(body=data).body.read()
 print(response)
 
-custom_endpoint = HPEndpoint.get(endpoint_name="endpoint-custom")
+custom_endpoint = HPEndpoint.get(name="endpoint-custom")
 response = custom_endpoint.invoke(body=data).body.read()
 print(response)
 ```
@@ -317,12 +317,10 @@ from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoi
 from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
 
 # Invoke JumpStart endpoint
-jumpstart_endpoint = HPJumpStartEndpoint.get(endpoint_name="endpoint-jumpstart")
-print(jumpstart_endpoint.get_operator_logs(since_hours=0.1))
+print(HPJumpStartEndpoint.get_operator_logs(since_hours=0.1))
 
 # Invoke custom endpoint
-custom_endpoint = HPEndpoint.get(endpoint_name="endpoint-custom")
-print(custom_endpoint.get_operator_logs(since_hours=0.1))
+print(HPEndpoint.get_operator_logs(since_hours=0.1))
 ```
 ````
 `````
@@ -346,11 +344,11 @@ from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoi
 from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
 
 # Delete JumpStart endpoint
-jumpstart_endpoint = HPJumpStartEndpoint.get(endpoint_name="endpoint-jumpstart")
+jumpstart_endpoint = HPJumpStartEndpoint.get(name="endpoint-jumpstart")
 jumpstart_endpoint.delete()
 
 # Delete custom endpoint
-custom_endpoint = HPEndpoint.get(endpoint_name="endpoint-custom")
+custom_endpoint = HPEndpoint.get(name="endpoint-custom")
 custom_endpoint.delete()
 ```
 ````

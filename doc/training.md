@@ -129,7 +129,7 @@ hyp describe hyp-pytorch-job --job-name <job-name>
 from sagemaker.hyperpod.training import HyperPodPytorchJob
 
 # Get an existing job
-job = HyperPodPytorchJob.get(name="my-pytorch-job", namespace="my-namespace")
+job = HyperPodPytorchJob.get(name="my-pytorch-job")
 
 print(job)
 ```
@@ -147,7 +147,11 @@ hyp list-pods hyp-pytorch-job --job-name <job-name>
 
 ````{tab-item} SDK
 ```python
-print(pytorch_job.list_pods())
+from sagemaker.hyperpod.training import HyperPodPytorchJob
+
+# List Pods for an existing job
+job = HyperPodPytorchJob.get(name="my-pytorch-job")
+print(job.list_pods())
 ```
 ````
 `````
@@ -163,7 +167,11 @@ hyp get-logs hyp-pytorch-job --pod-name test-pytorch-job-cli-pod-0 --job-name te
 
 ````{tab-item} SDK
 ```python
-print(pytorch_job.get_logs_from_pod("pod-name"))
+from sagemaker.hyperpod.training import HyperPodPytorchJob
+
+# Get pod logs for a job
+job = HyperPodPytorchJob.get(name="my-pytorch-job")
+print(job.get_logs_from_pod("pod-name"))
 ```
 ````
 `````
@@ -181,7 +189,7 @@ hyp delete hyp-pytorch-job --job-name <job-name>
 from sagemaker.hyperpod.training import HyperPodPytorchJob
 
 # Get an existing job
-job = HyperPodPytorchJob.get(name="my-pytorch-job", namespace="my-namespace")
+job = HyperPodPytorchJob.get(name="my-pytorch-job")
 
 # Delete the job
 job.delete()
