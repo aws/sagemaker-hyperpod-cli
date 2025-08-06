@@ -314,8 +314,8 @@ class TestHpClusterStackArrayConversion(unittest.TestCase):
     def test_create_parameters_converts_instance_group_settings_list(self):
         """Test conversion of instance_group_settings from list to numbered parameters"""
         settings = [
-            {"instanceType": "ml.g5.xlarge", "instanceCount": 1},
-            {"instanceType": "ml.p4d.24xlarge", "instanceCount": 2}
+            {"instance_type": "ml.g5.xlarge", "instance_count": 1},
+            {"instance_type": "ml.p4d.24xlarge", "instance_count": 2}
         ]
         
         stack = HpClusterStack.model_construct(instance_group_settings=settings)
@@ -329,14 +329,14 @@ class TestHpClusterStackArrayConversion(unittest.TestCase):
         self.assertEqual(ig_params[1]['ParameterKey'], 'InstanceGroupSettings2')
         
         # Verify JSON serialization
-        self.assertEqual(json.loads(ig_params[0]['ParameterValue']), settings[0])
-        self.assertEqual(json.loads(ig_params[1]['ParameterValue']), settings[1])
+        self.assertEqual(json.loads(ig_params[0]['ParameterValue']), {"InstanceType": "ml.g5.xlarge", "InstanceCount": 1})
+        self.assertEqual(json.loads(ig_params[1]['ParameterValue']), {"InstanceType": "ml.p4d.24xlarge", "InstanceCount": 2})
     
     def test_create_parameters_converts_rig_settings_list(self):
         """Test conversion of rig_settings from list to numbered parameters"""
         settings = [
-            {"restrictedInstanceType": "ml.g5.xlarge"},
-            {"restrictedInstanceType": "ml.p4d.24xlarge"}
+            {"restricted_instance_type": "ml.g5.xlarge"},
+            {"restricted_instance_type": "ml.p4d.24xlarge"}
         ]
         
         stack = HpClusterStack.model_construct(rig_settings=settings)
@@ -350,12 +350,12 @@ class TestHpClusterStackArrayConversion(unittest.TestCase):
         self.assertEqual(rig_params[1]['ParameterKey'], 'RigSettings2')
         
         # Verify JSON serialization
-        self.assertEqual(json.loads(rig_params[0]['ParameterValue']), settings[0])
-        self.assertEqual(json.loads(rig_params[1]['ParameterValue']), settings[1])
+        self.assertEqual(json.loads(rig_params[0]['ParameterValue']), {"RestrictedInstanceType": "ml.g5.xlarge"})
+        self.assertEqual(json.loads(rig_params[1]['ParameterValue']), {"RestrictedInstanceType": "ml.p4d.24xlarge"})
     
     def test_create_parameters_handles_json_string_instance_group_settings(self):
         """Test conversion of instance_group_settings from JSON string to numbered parameters"""
-        settings_json = '[{"instanceType": "ml.g5.xlarge", "instanceCount": 1}]'
+        settings_json = '[{"instance_type": "ml.g5.xlarge", "instance_count": 1}]'
         
         stack = HpClusterStack(instance_group_settings=settings_json)
         parameters = stack._create_parameters()
@@ -365,7 +365,7 @@ class TestHpClusterStackArrayConversion(unittest.TestCase):
         
         self.assertEqual(len(ig_params), 1)
         self.assertEqual(ig_params[0]['ParameterKey'], 'InstanceGroupSettings1')
-        self.assertEqual(json.loads(ig_params[0]['ParameterValue']), {"instanceType": "ml.g5.xlarge", "instanceCount": 1})
+        self.assertEqual(json.loads(ig_params[0]['ParameterValue']), {"InstanceType": "ml.g5.xlarge", "InstanceCount": 1})
     
     def test_create_parameters_handles_malformed_json_gracefully(self):
         """Test that malformed JSON strings are handled gracefully"""

@@ -78,9 +78,10 @@ class HpClusterStack(_ClusterStackBase):
                             settings_list = []
                     
                     for i, setting in enumerate(settings_list, 1):
+                        formatted_setting = self._convert_nested_keys(setting)
                         parameters.append({
                             'ParameterKey': f'InstanceGroupSettings{i}',
-                            'ParameterValue': json.dumps(setting) if isinstance(setting, (dict, list)) else str(setting)
+                            'ParameterValue': json.dumps(formatted_setting) if isinstance(formatted_setting, (dict, list)) else str(formatted_setting)
                         })
                 elif field_name == 'rig_settings':
                     # Handle both list and JSON string formats
@@ -94,9 +95,10 @@ class HpClusterStack(_ClusterStackBase):
                             settings_list = []
                     
                     for i, setting in enumerate(settings_list, 1):
+                        formatted_setting = self._convert_nested_keys(setting)
                         parameters.append({
                             'ParameterKey': f'RigSettings{i}',
-                            'ParameterValue': json.dumps(setting) if isinstance(setting, (dict, list)) else str(setting)
+                            'ParameterValue': json.dumps(formatted_setting) if isinstance(formatted_setting, (dict, list)) else str(formatted_setting)
                         })
                 else:
                     # Convert boolean values to strings for CloudFormation
@@ -108,6 +110,14 @@ class HpClusterStack(_ClusterStackBase):
                         'ParameterValue': str(value)
                     })
         return parameters
+
+    def _convert_nested_keys(self, obj):
+        """Convert nested JSON keys from snake_case to PascalCase."""
+        if isinstance(obj, dict):
+            return {self._snake_to_pascal(k): self._convert_nested_keys(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_nested_keys(item) for item in obj]
+        return obj
 
     @staticmethod
     def _snake_to_pascal(snake_str):
@@ -129,6 +139,7 @@ class HpClusterStack(_ClusterStackBase):
             
         # Default case: capitalize each word
         return ''.join(word.capitalize() for word in snake_str.split('_'))
+    
     
     @staticmethod
     def describe(stack_name, region: Optional[str] = None):

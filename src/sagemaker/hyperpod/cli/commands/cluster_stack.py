@@ -7,6 +7,8 @@ import click
 import json
 import os
 
+from sagemaker_core.main.resources import Cluster
+from sagemaker_core.main.shapes import ClusterInstanceGroupSpecification
 from tabulate import tabulate
 from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack
 from sagemaker.hyperpod.common.utils import setup_logging
@@ -189,3 +191,27 @@ def delete(stack_name, debug):
     
     logger.info(f"Deleting stack: {stack_name}")
     logger.info("This feature is not yet implemented.")
+
+
+@click.command("hyp-cluster")
+@click.option("--cluster-name", required=True, help="The name of the cluster to update")
+@click.option("--instance-groups", help="Instance Groups")
+@click.option("--node-recovery", help="Node Recovery")
+@click.option("--debug", is_flag=True, help="Enable debug logging")
+def update_cluster(cluster_name,
+                   instance_groups,
+                   node_recovery,
+                   debug):
+    logger = setup_logging(logging.getLogger(__name__), debug)
+    cluster = Cluster.get(cluster_name=cluster_name)
+    
+    # Convert instance_groups to list of ClusterInstanceGroupSpecification
+    if instance_groups:
+        if isinstance(instance_groups, str):
+            instance_groups = json.loads(instance_groups)
+        instance_groups = [ClusterInstanceGroupSpecification(**ig) for ig in instance_groups]
+    
+    cluster.update(instance_groups=instance_groups, node_recovery=node_recovery)
+    logger.info("Cluster has been updated")
+    click.secho(f"Cluster {cluster_name} has been updated")
+
