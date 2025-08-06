@@ -1,0 +1,61 @@
+/* Custom styles for SageMaker HyperPod documentation */
+
+/* Adjust logo size and alignment */
+.navbar-brand img {
+    max-height: 40px;
+    width: auto;
+    margin-right: 10px;
+    vertical-align: middle;
+}
+
+.navbar-brand .title {
+    font-weight: 800;
+    color: #111827;
+}
+
+/* Ensure logo container doesn't force wrapping */
+.navbar-brand-box {
+    width: auto;
+    flex-shrink: 0;
+}
+
+/* Header styling */
+header {
+    background-color: white;
+
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+
+h1 {
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+h3 {
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: #111827;
+}
+
+p {
+    font-size: 1.0rem;
+    color: #4b5563;
+}
+
+html[data-theme="dark"] .navbar-brand .title {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] p {
+    color: #d1d5db !important;
+}
