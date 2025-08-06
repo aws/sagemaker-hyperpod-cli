@@ -12,7 +12,7 @@ This guide provides installation instructions for the SageMaker HyperPod CLI and
  Windows is not supported at this time.
 ```
 
-### Supported ML Frameworks
+### Supported ML Frameworks for Training
 - PyTorch (version ≥ 1.10)
 
 ### Supported Python Versions
