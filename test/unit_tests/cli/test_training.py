@@ -7,9 +7,9 @@ from sagemaker.hyperpod.cli.commands.training import (
     list_jobs,
     pytorch_describe,
 )
-from unittest.mock import Mock
 import sys
 import os
+import importlib
 
 # Add the hyperpod-pytorch-job-template to the path for testing
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'hyperpod-pytorch-job-template'))
@@ -60,30 +60,37 @@ class TestTrainingCommands(unittest.TestCase):
         self.assertIsNotNone(pytorch_describe)
         self.assertTrue(callable(pytorch_describe))
 
-    @patch("sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob")
-    def test_basic_job_creation(self, mock_hyperpod_job):
+    @patch('sys.argv', ['pytest', '--version', '1.0'])
+    def test_basic_job_creation(self):
         """Test basic job creation with required parameters"""
-        # Setup mock
-        mock_instance = Mock()
-        mock_hyperpod_job.return_value = mock_instance
+        # Reload the training module with mocked sys.argv, as sys.argv is loaded during the import
+        if 'sagemaker.hyperpod.cli.commands.training' in sys.modules:
+            importlib.reload(sys.modules['sagemaker.hyperpod.cli.commands.training'])
+        
+        from sagemaker.hyperpod.cli.commands.training import pytorch_create
+        
+        with patch("sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob") as mock_hyperpod_job:
+            # Setup mock
+            mock_instance = Mock()
+            mock_hyperpod_job.return_value = mock_instance
 
-        # Run command with required parameters
-        result = self.runner.invoke(
-            pytorch_create,
-            ["--version", "1.0", "--job-name", "test-job", "--image", "test-image"],
-        )
+            # Run command with required parameters
+            result = self.runner.invoke(
+                pytorch_create,
+                ["--version", "1.0", "--job-name", "test-job", "--image", "test-image"],
+            )
 
-        # Print output for debugging
-        print(f"Command output: {result.output}")
-        if result.exception:
-            print(f"Exception: {result.exception}")
+            # Print output for debugging
+            print(f"Command output: {result.output}")
+            if result.exception:
+                print(f"Exception: {result.exception}")
 
-        # Assertions
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn("Using version: 1.0", result.output)
+            # Assertions
+            self.assertEqual(result.exit_code, 0)
+            self.assertIn("Using version: 1.0", result.output)
 
-        # Verify HyperPodPytorchJob was created correctly
-        mock_hyperpod_job.assert_called_once()
+            # Verify HyperPodPytorchJob was created correctly
+            mock_hyperpod_job.assert_called_once()
         call_args = mock_hyperpod_job.call_args[1]
         self.assertEqual(call_args["metadata"].name, "test-job")
         mock_instance.create.assert_called_once()
@@ -102,35 +109,42 @@ class TestTrainingCommands(unittest.TestCase):
         self.assertNotEqual(result.exit_code, 0)
         self.assertIn("Missing option '--image'", result.output)
 
-    @patch("sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob")
-    def test_optional_params(self, mock_hyperpod_job):
+    @patch('sys.argv', ['pytest', '--version', '1.0'])
+    def test_optional_params(self):
         """Test job creation with optional parameters"""
-        mock_instance = Mock()
-        mock_hyperpod_job.return_value = mock_instance
+        # Reload the training module with mocked sys.argv
+        if 'sagemaker.hyperpod.cli.commands.training' in sys.modules:
+            importlib.reload(sys.modules['sagemaker.hyperpod.cli.commands.training'])
+        
+        from sagemaker.hyperpod.cli.commands.training import pytorch_create
+        
+        with patch("sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob") as mock_hyperpod_job:
+            mock_instance = Mock()
+            mock_hyperpod_job.return_value = mock_instance
 
-        result = self.runner.invoke(
-            pytorch_create,
-            [
-                "--version",
-                "1.0",
-                "--job-name",
-                "test-job",
-                "--image",
-                "test-image",
-                "--namespace",
-                "test-namespace",
-                "--node-count",
-                "2",
-            ],
-        )
+            result = self.runner.invoke(
+                pytorch_create,
+                [
+                    "--version",
+                    "1.0",
+                    "--job-name",
+                    "test-job",
+                    "--image",
+                    "test-image",
+                    "--namespace",
+                    "test-namespace",
+                    "--node-count",
+                    "2",
+                ],
+            )
 
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn("Using version: 1.0", result.output)
+            self.assertEqual(result.exit_code, 0)
+            self.assertIn("Using version: 1.0", result.output)
 
-        mock_hyperpod_job.assert_called_once()
-        call_args = mock_hyperpod_job.call_args[1]
-        self.assertEqual(call_args["metadata"].name, "test-job")
-        self.assertEqual(call_args["metadata"].namespace, "test-namespace")
+            mock_hyperpod_job.assert_called_once()
+            call_args = mock_hyperpod_job.call_args[1]
+            self.assertEqual(call_args["metadata"].name, "test-job")
+            self.assertEqual(call_args["metadata"].namespace, "test-namespace")
 
     @patch("sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob")
     def test_list_jobs(self, mock_hyperpod_pytorch_job):
