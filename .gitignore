@@ -17,6 +17,7 @@ __pycache__/
 
 /doc/_apidoc/
 /build
+/hyperpod-pytorch-job-template/build
 
 /sagemaker-hyperpod/build
 /sagemaker-hyperpod/.coverage
