@@ -241,6 +241,7 @@ aws-efa-k8s-device-plugin:
       - ml.p5e.48xlarge
       - ml.p5en.48xlarge
       - ml.p6-b200.48xlarge
+      - ml.p6e-gb200.36xlarge
       - ml.r7i.large
       - ml.r7i.xlarge
       - ml.r7i.2xlarge
