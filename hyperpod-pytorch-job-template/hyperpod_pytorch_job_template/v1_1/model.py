@@ -161,15 +161,15 @@ class PyTorchJobConfig(BaseModel):
         description="Service account name",
         min_length=1
     )
-    preferred_topology_label: Optional[str] = Field(
+    preferred_topology: Optional[str] = Field(
         default=None,
-        alias="preferred_topology_label",
-        description="Preferred topology label for scheduling",
+        alias="preferred_topology",
+        description="Preferred topology annotation for scheduling",
     )
-    required_topology_label: Optional[str] = Field(
+    required_topology: Optional[str] = Field(
         default=None,
-        alias="required_topology_label",
-        description="Required topology label for scheduling",
+        alias="required_topology",
+        description="Required topology annotation for scheduling",
     )
 
 
@@ -331,17 +331,21 @@ class PyTorchJobConfig(BaseModel):
             metadata_labels["kueue.x-k8s.io/queue-name"] = self.queue_name
         if self.priority is not None:
             metadata_labels["kueue.x-k8s.io/priority-class"] = self.priority
-        if self.preferred_topology_label is not None:
-            metadata_labels["kueue.x-k8s.io/podset-preferred-topology"] = (
-                self.preferred_topology_label
+        
+        annotations = {}
+        if self.preferred_topology is not None:
+            annotations["kueue.x-k8s.io/podset-preferred-topology"] = (
+                self.preferred_topology
             )
-        if self.required_topology_label is not None:
-            metadata_labels["kueue.x-k8s.io/podset-required-topology"] = (
-                self.required_topology_label
+        if self.required_topology is not None:
+            annotations["kueue.x-k8s.io/podset-required-topology"] = (
+                self.required_topology
             )
 
         if metadata_labels:
             metadata_kwargs["labels"] = metadata_labels
+        if annotations:
+            metadata_kwargs["annotations"] = annotations
 
         # Create replica spec with only non-None values
         replica_kwargs = {
@@ -372,6 +376,8 @@ class PyTorchJobConfig(BaseModel):
         result = {
             "name": self.job_name,
             "namespace": self.namespace,
+            "labels": metadata_labels,
+            "annotations": annotations,
             "spec": job_kwargs,
         }
         return result

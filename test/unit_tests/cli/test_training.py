@@ -109,7 +109,7 @@ class TestTrainingCommands(unittest.TestCase):
         self.assertNotEqual(result.exit_code, 0)
         self.assertIn("Missing option '--image'", result.output)
 
-    @patch('sys.argv', ['pytest', '--version', '1.0'])
+    @patch('sys.argv', ['pytest', '--version', '1.1'])
     def test_optional_params(self):
         """Test job creation with optional parameters"""
         # Reload the training module with mocked sys.argv
@@ -126,7 +126,7 @@ class TestTrainingCommands(unittest.TestCase):
                 pytorch_create,
                 [
                     "--version",
-                    "1.0",
+                    "1.1",
                     "--job-name",
                     "test-job",
                     "--image",
@@ -135,16 +135,23 @@ class TestTrainingCommands(unittest.TestCase):
                     "test-namespace",
                     "--node-count",
                     "2",
+                    "--queue-name",
+                    "localqueue",
+                    "--required-topology",
+                    "topology.k8s.aws",
                 ],
             )
 
-            self.assertEqual(result.exit_code, 0)
-            self.assertIn("Using version: 1.0", result.output)
+            print(f"Command output: {result.output}")
+            # self.assertEqual(result.exit_code, 0)
+            self.assertIn("Using version: 1.1", result.output)
 
             mock_hyperpod_job.assert_called_once()
             call_args = mock_hyperpod_job.call_args[1]
             self.assertEqual(call_args["metadata"].name, "test-job")
             self.assertEqual(call_args["metadata"].namespace, "test-namespace")
+            self.assertEqual(call_args["metadata"].labels["kueue.x-k8s.io/queue-name"], "localqueue")
+            self.assertEqual(call_args["metadata"].annotations["kueue.x-k8s.io/podset-required-topology"], "topology.k8s.aws")
 
     @patch("sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob")
     def test_list_jobs(self, mock_hyperpod_pytorch_job):

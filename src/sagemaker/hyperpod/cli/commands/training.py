@@ -25,6 +25,7 @@ def pytorch_create(version, debug, config):
         namespace = config.get("namespace")
         spec = config.get("spec")
         metadata_labels = config.get("labels")
+        annotations = config.get("annotations")
 
         # Prepare metadata
         metadata_kwargs = {"name": job_name}
@@ -32,6 +33,8 @@ def pytorch_create(version, debug, config):
             metadata_kwargs["namespace"] = namespace
         if metadata_labels:
             metadata_kwargs["labels"] = metadata_labels
+        if annotations:
+            metadata_kwargs["annotations"] = annotations
 
         # Prepare job kwargs
         job_kwargs = {

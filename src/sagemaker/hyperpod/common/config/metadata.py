@@ -16,3 +16,7 @@ class Metadata(BaseModel):
         default=None,
         description="Labels are key value pairs that are attached to objects, such as Pod. Labels are intended to be used to specify identifying attributes of objects. The system ignores labels that are not in the service's selector. Labels can only be added to objects during creation.",
     )
+    annotations: Optional[Dict[str, str]] = Field(
+        default=None,
+        description="Annotations are key-value pairs that can be used to attach arbitrary non-identifying metadata to objects.",
+    )

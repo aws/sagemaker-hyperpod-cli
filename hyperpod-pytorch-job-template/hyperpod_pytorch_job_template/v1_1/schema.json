@@ -329,13 +329,13 @@
       "description": "Service account name",
       "title": "Service Account Name"
     },
-    "preferred-topology-label": {
+    "preferred-topology": {
       "type": "string",
-      "description": "Preferred topology label for scheduling"
+      "description": "Preferred topology annotation for scheduling"
         },
-    "required-topology-label": {
+    "required-topology": {
       "type": "string",
-      "description": "Required topology label for scheduling"
+      "description": "Required topology annotation for scheduling"
         }
   },
   "required": [
