@@ -3,8 +3,8 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config impo
     _HyperPodPytorchJob, HyperPodPytorchJobStatus
 )
 from sagemaker.hyperpod.common.config.metadata import Metadata
-from kubernetes import client, config, __version__ as kubernetes_client_version
-from typing import List, Optional, ClassVar, Tuple
+from kubernetes import client, config
+from typing import List, Optional, ClassVar
 from sagemaker.hyperpod.common.utils import (
     handle_exception,
     get_default_namespace,
@@ -84,7 +84,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
                 plural=PLURAL,
                 body=config,
             )
-            logger.info("Successfully submitted HyperPodPytorchJob!")
+            logger.info(f"Successfully submitted HyperPodPytorchJob '{self.metadata.name}'!")
         except Exception as e:
             logger.error(f"Failed to create HyperPodPytorchJob {self.metadata.name}!")
             handle_exception(e, self.metadata.name, self.metadata.namespace)
@@ -131,7 +131,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
                 plural=PLURAL,
                 name=self.metadata.name,
             )
-            logger.info(f"Successful deleted HyperPodPytorchJob!")
+            logger.info(f"Successful deleted HyperPodPytorchJob '{self.metadata.name}'!")
         except Exception as e:
             logger.error(f"Failed to delete HyperPodPytorchJob {self.metadata.name}!")
             handle_exception(e, self.metadata.name, self.metadata.namespace)
