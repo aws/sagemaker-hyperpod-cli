@@ -9,7 +9,8 @@ import shutil
 
 from sagemaker.hyperpod.cli.constants.init_constants import (
     USAGE_GUIDE_TEXT,
-    CFN
+    CFN,
+    CRD
 )
 from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack
 import json
@@ -22,7 +23,6 @@ from sagemaker.hyperpod.cli.init_utils import (
     validate_config_against_model,
     filter_validation_errors_for_user_input,
     display_validation_results,
-    extract_user_provided_args_from_cli,
     build_config_from_schema,
     save_template
 )
@@ -30,13 +30,11 @@ from sagemaker.hyperpod.cli.init_utils import (
 @click.command("init")
 @click.argument("template", type=click.Choice(list(TEMPLATES.keys())))
 @click.argument("directory", type=click.Path(file_okay=False), default=".")
-@click.option("--namespace", "-n", default="default", help="Namespace, default to default")
 @click.option("--version", "-v", default="1.0", help="Schema version")
 @generate_click_command(require_schema_fields=False)
 def init(
     template: str,
     directory: str,
-    namespace: str,
     version: str,
     model_config,  # Pydantic model from decorator
 ):
@@ -102,7 +100,7 @@ def init(
     # 3) Build config dict + comment map, then write config.yaml
     try:
         # Use the common function to build config from schema
-        full_cfg, comment_map = build_config_from_schema(template, namespace, version, model_config)
+        full_cfg, comment_map = build_config_from_schema(template, version, model_config)
 
         save_config_yaml(
             prefill=full_cfg,
@@ -144,16 +142,15 @@ def init(
 def reset():
     """
     Reset the current directory's config.yaml to an "empty" scaffold:
-    all schema keys set to default values (but keeping the template and namespace).
+    all schema keys set to default values (but keeping the template and version).
     """
     dir_path = Path(".").resolve()
     
     # 1) Load and validate config
     data, template, version = load_config(dir_path)
-    namespace = data.get("namespace", "default")
     
     # 2) Build config with default values from schema
-    full_cfg, comment_map = build_config_from_schema(template, namespace, version)
+    full_cfg, comment_map = build_config_from_schema(template, version)
     
     # 3) Overwrite config.yaml
     try:
@@ -175,67 +172,65 @@ def reset():
 @click.command("configure")
 @generate_click_command(
     require_schema_fields=False,  # flags are all optional
-    auto_load_config=True,        # load template/namespace/version from config.yaml
+    auto_load_config=True,        # load template/version from config.yaml
 )
 @click.pass_context
 def configure(ctx, model_config):
     """
-    Update any subset of fields in ./config.yaml by passing
-    --<field> flags. E.g.
-
-      hyp configure --model-name my-model --instance-type ml.m5.large
-      hyp configure --namespace production
-      hyp configure --namespace test --stage gamma
-    """
-    # Extract namespace from command line arguments manually
-    import sys
-    namespace = None
-    args = sys.argv
-    for i, arg in enumerate(args):
-        if arg in ['--namespace', '-n'] and i + 1 < len(args):
-            namespace = args[i + 1]
-            break
+    Update any subset of fields in ./config.yaml by passing --<field> flags.
     
+    This command allows you to modify specific configuration fields without having
+    to regenerate the entire config or fix unrelated validation issues. Only the
+    fields you explicitly provide will be validated, making it easy to update
+    configurations incrementally.
+    
+    Examples:
+    
+        # Update a single field
+        hyp configure --hyperpod-cluster-name my-new-cluster
+        
+        # Update multiple fields at once
+        hyp configure --instance-type ml.g5.xlarge --endpoint-name my-endpoint
+        
+        # Update complex fields with JSON
+        hyp configure --tags '{"Environment": "prod", "Team": "ml"}'
+    
+    """
     # 1) Load existing config without validation
     dir_path = Path(".").resolve()
     data, template, version = load_config(dir_path)
     
-    # Use provided namespace or fall back to existing config namespace
-    config_namespace = namespace if namespace is not None else data.get("namespace", "default")
+    # 2) Determine which fields the user actually provided
+    # Use Click's parameter source tracking to identify command-line provided parameters
+    user_input_fields = set()
     
-    # 2) Extract ONLY the user's input arguments by checking what was actually provided
-    provided_args = extract_user_provided_args_from_cli()
+    if ctx and hasattr(ctx, 'params') and model_config:
+        # Check which parameters were provided via command line (not defaults)
+        for param_name, param_value in ctx.params.items():
+            # Skip if the parameter source indicates it came from default
+            param_source = ctx.get_parameter_source(param_name)
+            if param_source and param_source.name == 'COMMANDLINE':
+                user_input_fields.add(param_name)
     
-    # Filter model_config to only include user-provided fields
-    all_model_data = model_config.model_dump(exclude_none=True) if model_config else {}
-    user_input = {k: v for k, v in all_model_data.items() if k in provided_args}
-    
-    if not user_input and namespace is None:
+    if not user_input_fields:
         click.secho("⚠️  No arguments provided to configure.", fg="yellow")
         return
 
     # 3) Build merged config with user input
     full_cfg, comment_map = build_config_from_schema(
         template=template,
-        namespace=config_namespace,
         version=version,
         model_config=model_config,
         existing_config=data
     )
 
-    # 4) Validate the merged config and filter errors for user input fields only
+    # 4) Validate the merged config, but only check user-provided fields
     all_validation_errors = validate_config_against_model(full_cfg, template, version)
-    
-    # Include namespace in user input fields if it was provided
-    user_input_fields = set(user_input.keys())
-    if namespace is not None:
-        user_input_fields.add("namespace")
-    
     user_input_errors = filter_validation_errors_for_user_input(all_validation_errors, user_input_fields)
     
     is_valid = display_validation_results(
         user_input_errors,
-        success_message="User input is valid!" if user_input_errors else "Merged configuration is valid!",
+        success_message="User input is valid!" if user_input_errors else "Configuration updated successfully!",
         error_prefix="Invalid input arguments:"
     )
     
@@ -376,6 +371,22 @@ def submit(region):
             from sagemaker.hyperpod.cli.commands.cluster_stack import create_cluster_stack_helper
             create_cluster_stack_helper(config_file=f"{out_dir}/config.yaml",
                                         region=region)
+        else:
+            dir_path = Path(".").resolve()
+            data, template, version = load_config(dir_path)
+            namespace = data.get("namespace", "default")
+            registry = TEMPLATES[template]["registry"]
+            model = registry.get(version)
+            if model:
+                filtered_config = {
+                    k: v for k, v in data.items() 
+                    if k not in ('template', 'version') and v is not None
+                }
+                flat = model(**filtered_config)
+                domain = flat.to_domain()
+                domain.create(namespace=namespace)
+
+
     except Exception as e:
         click.secho(f"❌  Failed to sumbit the command: {e}", fg="red")
         sys.exit(1)

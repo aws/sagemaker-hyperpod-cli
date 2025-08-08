@@ -21,6 +21,7 @@ from sagemaker.hyperpod.cli.constants.init_constants import (
 from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack
 
 log = logging.getLogger()
+
 def save_template(template: str, directory_path: Path) -> bool:
     """
     Save the appropriate k8s template based on the template type.
@@ -105,16 +106,40 @@ def generate_click_command(
     # build the UNION of all schema props + required flags
     union_props = {}
     union_reqs = set()
+    
+    # Process CRD templates first
     for template, template_info in TEMPLATES.items():
         if template_info["schema_type"] == CRD:
             schema = load_schema_for_version("1.0", template_info["schema_pkg"])
             for k, spec in schema.get("properties", {}).items():
+                # Ensure description is always a string
+                if 'description' in spec:
+                    desc = spec['description']
+                    if isinstance(desc, list):
+                        spec = spec.copy()  # Don't modify the original
+                        spec['description'] = ', '.join(str(item) for item in desc)
                 union_props.setdefault(k, spec)
             if require_schema_fields:
                 union_reqs |= set(schema.get("required", []))
-        elif template_info["schema_type"] == CFN:
+    
+    # Process CFN templates second and allow them to override CRD fields
+    for template, template_info in TEMPLATES.items():
+        if template_info["schema_type"] == CFN:
             cluster_template = json.loads(HpClusterStack.get_template())
             cluster_parameters = cluster_template.get("Parameters")
+            # Add CFN fields to union, potentially overriding CRD fields
+            json_schema = HpClusterStack.model_json_schema()
+            schema_properties = json_schema.get('properties', {})
+            
+            for field, field_info in HpClusterStack.model_fields.items():
+                prop_info = {"description": field_info.description or ""}
+                
+                # Get examples from JSON schema if available
+                if field in schema_properties and 'examples' in schema_properties[field]:
+                    prop_info["examples"] = schema_properties[field]['examples']
+                
+                # For CFN templates, override any existing union entry (don't use setdefault)
+                union_props[field] = prop_info
 
     def decorator(func: Callable) -> Callable:
         # JSON flag parser
@@ -128,7 +153,7 @@ def generate_click_command(
 
         @functools.wraps(func)
         def wrapped(*args, **kwargs):
-            # determine template, directory, namespace, version
+            # determine template, directory, version
             if auto_load_config:
                 # configure path: load from existing config.yaml
                 dir_path = Path('.').resolve()
@@ -137,7 +162,6 @@ def generate_click_command(
                     raise click.UsageError("No config.yaml found; run `hyp init` first.")
                 data = yaml.safe_load(config_file.read_text()) or {}
                 template = data.get('template')
-                namespace = data.get('namespace', 'default')
                 version = data.get(version_key_arg, '1.0')
                 directory = str(dir_path)
             else:
@@ -152,7 +176,6 @@ def generate_click_command(
                         directory = kwargs.pop('directory')
                 else:
                     raise RuntimeError('generate_click_command: signature mismatch')
-                namespace = kwargs.pop('namespace', None)
                 version = kwargs.pop(version_key_arg, '1.0')
 
             # lookup registry & schema_pkg
@@ -181,7 +204,7 @@ def generate_click_command(
             if auto_load_config:
                 return func(model_config=model_obj)
             else:
-                return func(template, directory, namespace, version, model_obj)
+                return func(template, directory, version, model_obj)
 
         # inject JSON flags
         for flag in ('env', 'dimensions', 'resources-limits', 'resources-requests'):
@@ -217,13 +240,18 @@ def generate_click_command(
             else:
                 ctype = str
 
+            # Get help text and ensure it's a string
+            help_text = spec.get('description', '')
+            if isinstance(help_text, list):
+                help_text = ', '.join(str(item) for item in help_text)
+
             wrapped = click.option(
                 f"--{name.replace('_','-')}",
                 required=(name in union_reqs),
                 default=spec.get('default'),
                 show_default=('default' in spec),
                 type=ctype,
-                help=spec.get('description',''),
+                help=help_text,
             )(wrapped)
 
         for cfn_param_name, cfn_param_details in cluster_parameters.items():
@@ -245,10 +273,12 @@ def generate_click_command(
                     help=cfn_param_details.get('Description', ''),
                 )(wrapped)
             else:
+                # Override default for Namespace parameter to avoid conflicts
+                cfn_default = cfn_param_details.get('Default') if cfn_param_name != 'Namespace' else None
                 wrapped = click.option(
                     f"--{pascal_to_kebab(cfn_param_name)}",
-                    default=cfn_param_details.get('Default'),
-                    show_default=('Default' in cfn_param_details),
+                    default=cfn_default,
+                    show_default=('Default' in cfn_param_details and cfn_param_name != 'Namespace'),
                     type=click_type,
                     help=cfn_param_details.get('Description', ''),
                 )(wrapped)
@@ -347,27 +377,21 @@ def validate_config_against_model(config_data: dict, template: str, version: str
     validation_errors = []
     
     try:
+        # For CFN templates, convert values to strings as expected
+        filtered_config = {}
+        for k, v in config_data.items():
+            if k not in ('template', 'version') and v is not None:
+                # Convert lists to JSON strings, everything else to string
+                if isinstance(v, list):
+                    filtered_config[k] = json.dumps(v)
+                else:
+                    filtered_config[k] = str(v)
         if template_info["schema_type"] == CFN:
-            # For CFN templates, convert values to strings as expected
-            filtered_config = {}
-            for k, v in config_data.items():
-                if k not in ('template', 'namespace') and v is not None:
-                    # Convert lists to JSON strings, everything else to string
-                    if isinstance(v, list):
-                        filtered_config[k] = json.dumps(v)
-                    else:
-                        filtered_config[k] = str(v)
             HpClusterStack(**filtered_config)
         else:
-            # For CRD templates, use the data as-is to preserve types for custom validators
             registry = template_info["registry"]
             model = registry.get(version)
             if model:
-                # Filter out template and namespace fields but preserve original data types
-                filtered_config = {
-                    k: v for k, v in config_data.items() 
-                    if k not in ('template', 'namespace') and v is not None
-                }
                 model(**filtered_config)
                 
     except ValidationError as e:
@@ -377,31 +401,6 @@ def validate_config_against_model(config_data: dict, template: str, version: str
             validation_errors.append(f"{loc}: {msg}")
         
     return validation_errors
-
-
-def extract_user_provided_args_from_cli() -> set:
-    """
-    Extract the field names that the user actually provided from command line arguments.
-    Converts kebab-case CLI args to snake_case field names.
-    
-    Returns:
-        Set of field names that user provided
-    """
-    import sys
-    provided_args = set()
-    
-    # Parse command line arguments to find what user actually provided
-    args = sys.argv[1:]  # Skip the script name
-    i = 0
-    while i < len(args):
-        arg = args[i]
-        if arg.startswith('--'):
-            # Convert kebab-case to snake_case to match model field names
-            field_name = arg[2:].replace('-', '_')
-            provided_args.add(field_name)
-        i += 1
-    
-    return provided_args
 
 
 def filter_validation_errors_for_user_input(validation_errors: list, user_input_fields: set) -> list:
@@ -448,13 +447,12 @@ def display_validation_results(validation_errors: list, success_message: str = "
         return True
 
 
-def build_config_from_schema(template: str, namespace: str, version: str, model_config=None, existing_config=None) -> Tuple[dict, dict]:
+def build_config_from_schema(template: str, version: str, model_config=None, existing_config=None) -> Tuple[dict, dict]:
     """
     Build a config dictionary and comment map from schema.
     
     Args:
         template: Template name
-        namespace: Namespace value
         version: Schema version
         model_config: Optional Pydantic model with user-provided values
         existing_config: Optional existing config to merge with
@@ -466,25 +464,20 @@ def build_config_from_schema(template: str, namespace: str, version: str, model_
     info = TEMPLATES[template]
     
     if info["schema_type"] == CFN:
-        # For CFN templates, get fields from HpClusterStack model
-        if model_config:
-            props = {field: {"description": field_info.description or ""} 
-                    for field, field_info in model_config.model_fields.items()}
-        else:
-            # When no model_config, get fields directly from HpClusterStack
-            # Use JSON schema to get examples
-            json_schema = HpClusterStack.model_json_schema()
-            schema_properties = json_schema.get('properties', {})
+        # For CFN templates, always get fields from HpClusterStack model
+        # Use JSON schema to get examples
+        json_schema = HpClusterStack.model_json_schema()
+        schema_properties = json_schema.get('properties', {})
+        
+        props = {}
+        for field, field_info in HpClusterStack.model_fields.items():
+            prop_info = {"description": field_info.description or ""}
             
-            props = {}
-            for field, field_info in HpClusterStack.model_fields.items():
-                prop_info = {"description": field_info.description or ""}
-                
-                # Get examples from JSON schema if available
-                if field in schema_properties and 'examples' in schema_properties[field]:
-                    prop_info["examples"] = schema_properties[field]['examples']
-                
-                props[field] = prop_info
+            # Get examples from JSON schema if available
+            if field in schema_properties and 'examples' in schema_properties[field]:
+                prop_info["examples"] = schema_properties[field]['examples']
+            
+            props[field] = prop_info
         reqs = []
     else:
         schema = load_schema_for_version(version, info["schema_pkg"])
@@ -492,10 +485,8 @@ def build_config_from_schema(template: str, namespace: str, version: str, model_
         reqs = schema.get("required", [])
     
     # Build config dict with defaults from schema
-    full_cfg = {
-        "template": template,
-        "namespace": namespace,
-    }
+    # Initialize config with template
+    full_cfg = {"template": template}
     
     # Prepare values from different sources with priority:
     # 1. model_config (user-provided values)
@@ -506,19 +497,17 @@ def build_config_from_schema(template: str, namespace: str, version: str, model_
     
     # Add schema defaults first (lowest priority)
     for key, spec in props.items():
-        # Skip namespace - it's handled specially and shouldn't be overwritten by schema
-        if key == "namespace":
-            continue
         if "default" in spec:
             values[key] = spec.get("default")
     
-    # Add examples next (for reset command when no existing config)
-    # Only use examples if no model_config and no existing_config (i.e., reset command)
-    if not model_config and not existing_config:
+    # Add examples next (for reset command when no existing config, or init command with no user input)
+    # Use examples if no model_config and no existing_config (reset command)
+    # OR if model_config exists but has no user data and no existing_config (init with no args)
+    model_has_user_data = model_config and bool(model_config.model_dump(exclude_none=True))
+    use_examples = (not model_config and not existing_config) or (not model_has_user_data and not existing_config)
+    
+    if use_examples:
         for key, spec in props.items():
-            # Skip namespace - it's handled specially and shouldn't be overwritten by examples
-            if key == "namespace":
-                continue
             if "examples" in spec and spec["examples"]:
                 # Use the first example if it's a list, otherwise use the examples directly
                 examples = spec["examples"]
@@ -536,59 +525,26 @@ def build_config_from_schema(template: str, namespace: str, version: str, model_
     # Add existing config values next (middle priority)
     if existing_config:
         for key, val in existing_config.items():
-            if key not in ("template", "namespace") and key in props:
+            # Skip template as it's handled separately
+            if key == "template":
+                continue
+            if key in props:
                 values[key] = val
     
     # Add model_config values last (highest priority)
-    # But only if they are actually user-provided values, not just defaults/examples
     if model_config:
         cfg_dict = model_config.model_dump(exclude_none=True)
-        
-        # For configure command: detect which values are examples and skip only those
-        if existing_config and info["schema_type"] == CFN:
-            # Get examples from JSON schema to compare
-            json_schema = HpClusterStack.model_json_schema()
-            schema_properties = json_schema.get('properties', {})
-            
-            # Process each model_config value individually
-            for key, val in cfg_dict.items():
-                if key == "namespace":
-                    continue
-                if key not in props:
-                    continue
-                
-                # Check if this specific value is an example
-                is_example_value = False
-                if key in schema_properties and 'examples' in schema_properties[key]:
-                    examples = schema_properties[key]['examples']
-                    if isinstance(examples, list) and examples:
-                        example_value = examples[0]
-                    else:
-                        example_value = examples
-                    
-                    if val == example_value:
-                        is_example_value = True
-                
-                # Only use the value if it's NOT an example value
-                if not is_example_value:
-                    values[key] = val
-                # If it IS an example value, skip it (keep existing_config value)
-        else:
-            # For non-CFN templates or when no existing_config, use all model_config values
-            for key, val in cfg_dict.items():
-                if key == "namespace":
-                    continue
-                if key in props:
-                    values[key] = val
+        for key, val in cfg_dict.items():
+            if key in props:
+                values[key] = val
     
     # Build the final config with required fields first, then optional
-    # Skip namespace since it's already set and handled specially
     for key in reqs:
-        if key in props and key != "namespace":
+        if key in props:
             full_cfg[key] = values.get(key, None)
     
     for key in props:
-        if key not in reqs and key != "namespace":
+        if key not in reqs:
             full_cfg[key] = values.get(key, None)
     
     # Build comment map with [Required] prefix for required fields
