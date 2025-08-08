@@ -12,7 +12,7 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config impo
     HostPath, 
     PersistentVolumeClaim
 )
-from .quota_allocation_util import _is_valid, _get_resources_from_compute_quotas, _get_resources_from_instance, _get_limits
+
 
 class VolumeConfig(BaseModel):
     name: str = Field(
@@ -161,31 +161,6 @@ class PyTorchJobConfig(BaseModel):
         description="Service account name",
         min_length=1
     )
-    accelerators: Optional[int] = Field(
-        default=None,
-        description="Number of accelerators a.k.a GPUs or Trainium Chips",
-    )
-    vcpu: Optional[float] = Field(
-        default=None,
-        description="Number of vCPUs",
-    )
-    memory_in_gib: Optional[float] = Field(
-        default=None,
-        description="Amount of memory in GiB",
-    )
-    accelerators_limit: Optional[int] = Field(
-        default=None,
-        description="Limit for the number of accelerators a.k.a GPUs or Trainium Chips",
-    )
-    vcpu_limit: Optional[float] = Field(
-        default=None,
-        description="Limit for the number of vCPUs",
-    )
-    memory_in_gib_limit: Optional[float] = Field(
-        default=None,
-        description="Limit for the amount of memory in GiB",
-    )
-
 
     @field_validator('volume')
     def validate_no_duplicates(cls, v):
@@ -254,29 +229,15 @@ class PyTorchJobConfig(BaseModel):
     def to_domain(self) -> Dict:
         """
         Convert flat config to domain model (HyperPodPytorchJobSpec)
-        """       
-        valid, error = _is_valid(
-           self.vcpu, self.memory_in_gib, self.accelerators, self.node_count, self.instance_type
-        )
+        """
         
-        if not valid:
-            raise ValueError(error)
-
-        # Create container with required fields
-        if self.instance_type is None:
-            requests_value = {"nvidia.com/gpu": "0"}
-            limits_value = {"nvidia.com/gpu": "0"}
-        else:
-            requests_value = _get_resources_from_compute_quotas(self.instance_type, self.vcpu, self.memory_in_gib, self.accelerators) or _get_resources_from_instance(self.instance_type, self.node_count)
-            limits_value = _get_limits(self.instance_type, self.vcpu_limit, self.memory_in_gib_limit, self.accelerators_limit)
-
         # Create container with required fields
         container_kwargs = {
             "name": "container-name",
             "image": self.image,
             "resources": Resources(
-                requests=requests_value,
-                limits=limits_value
+                requests={"nvidia.com/gpu": "0"},
+                limits={"nvidia.com/gpu": "0"},
             ),
         }
 

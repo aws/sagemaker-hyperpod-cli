@@ -271,36 +271,6 @@
       "description": "Queue name for job scheduling",
       "title": "Queue Name"
     },
-    "accelerators": {
-        "type": "integer",
-        "minimum": 0,
-        "description": "Number of accelerators (GPUs/TPUs)"
-    },
-    "vcpu": {
-      "type": "float",
-      "minimum": 0,
-      "description": "Number of vCPUs"
-    },
-    "memory-in-gib": {
-      "type": "float",
-      "minimum": 0,
-      "description": "Amount of memory in GiB"
-    },
-    "accelerators-limit": {
-      "type": "integer",
-      "minimum": 0,
-      "description": "Limit for the number of accelerators (GPUs/TPUs)"
-    },
-    "vcpu-limit": {
-      "type": "float",
-      "minimum": 0,
-      "description": "Limit for the number of vCPUs"
-    },
-    "memory-in-gib-limit": {
-      "type": "float",
-      "minimum": 0,
-      "description": "Limit for the amount of memory in GiB"
-    },
     "priority": {
       "anyOf": [
         {
