@@ -59,3 +59,103 @@ html[data-theme="dark"] .navbar-brand .title {
 html[data-theme="dark"] p {
     color: #d1d5db !important;
 }
+
+.current.active>a {
+    background-color: aliceblue !important;
+}
+
+.bd-sidebar-primary li.has-children .caption,
+.bd-sidebar-primary li.has-children>.reference {
+    margin-right: inherit;
+}
+
+nav.bd-links li>a {
+    margin-right: inherit;
+}
+
+.table tbody tr:hover {
+    background: none !important;
+}
+
+.wy-table-responsive table td,
+.wy-table-responsive table th {
+    white-space: normal;
+}
+
+.wy-table-responsive {
+    margin-bottom: 24px;
+    max-width: 100%;
+    overflow: visible;
+}
+
+.pagination {
+    display: inline-block;
+}
+
+.pagination a {
+    color: black;
+    float: left;
+    padding: 8px 16px;
+    text-decoration: none;
+}
+
+.pagination a.active {
+    background-color: #2a80b9;
+    color: white;
+}
+
+.pagination a:hover:not(.active) {
+    background-color: #ddd;
+}
+
+
+dl.py.class dt.sig.sig-object.py {
+    display: table;
+    margin: 6px 0;
+    font-size: 90%;
+    line-height: normal;
+    background: #e7f2fa !important;
+    color: #2980b9 !important;
+    border-top: 3px solid #6ab0de !important;
+    padding: 6px;
+    position: relative;
+}
+
+dl.py.method dt.sig.sig-object.py {
+    display: table;
+    margin: 6px 0;
+    font-size: 90%;
+    line-height: normal;
+    background: #e7f2fa !important;
+    color: #2980b9 !important;
+    border-left: 3px solid #6ab0de !important;
+    border-top: none !important;
+    padding: 6px;
+    position: relative;
+}
+
+dl.py.attribute dt.sig.sig-object.py {
+    margin-bottom: 6px;
+    border: none;
+    border-left: 3px solid #ccc;
+    background: #f0f0f0 !important;
+    color: #555 !important;
+    border-top: none !important;
+}
+
+.sig-prename.descclassname {
+    color: #000;
+}
+
+.field-list {
+    display: grid !important;
+    grid-template-columns: 0.5fr 2fr !important;
+}
+
+.field-list dt {
+    background: transparent !important;
+}
+
+.py.class dl {
+    margin: 1rem 0 !important;
+}
