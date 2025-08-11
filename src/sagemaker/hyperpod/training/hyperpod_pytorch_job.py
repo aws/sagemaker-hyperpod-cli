@@ -22,8 +22,6 @@ import logging
 
 from sagemaker.hyperpod.training.quota_allocation_util import _is_valid, _get_resources_from_compute_quotas, _get_resources_from_instance, _get_limits
 
-
-
 TRAINING_GROUP = "sagemaker.amazonaws.com"
 API_VERSION = "v1"
 PLURAL = "hyperpodpytorchjobs"
@@ -48,13 +46,13 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
     @classmethod
     def get_logger(cls):
         return logging.getLogger(__name__)
-    
+
     @classmethod
     def verify_kube_config(cls):
         if not cls.is_kubeconfig_loaded:
             config.load_kube_config()
             cls.is_kubeconfig_loaded = True
-            
+
             # Verify Kubernetes version compatibility
             verify_kubernetes_version_compatibility(cls.get_logger())
     @classmethod
@@ -229,7 +227,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             logger.info(f"Successful deleted HyperPodPytorchJob '{self.metadata.name}'!")
         except Exception as e:
             logger.error(f"Failed to delete HyperPodPytorchJob {self.metadata.name}!")
-            handle_exception(e, self.metadata.name, self.metadata.namespace, 
+            handle_exception(e, self.metadata.name, self.metadata.namespace,
                             operation_type='delete', resource_type='training_job')
 
     @classmethod
@@ -255,7 +253,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             )
             return _load_hp_job(response)
         except Exception as e:
-            handle_exception(e, name, namespace, 
+            handle_exception(e, name, namespace,
                             operation_type='get', resource_type='training_job')
 
     def refresh(self) -> "HyperPodPytorchJob":
