@@ -37,6 +37,7 @@ from sagemaker.hyperpod.cli.commands.inference import (
     js_get_operator_logs,
     custom_get_operator_logs,
 )
+from sagemaker.hyperpod.cli.commands.recipe import recipe_init, recipe_configure,recipe_validate, recipe_submit, find_recipe
 
 from sagemaker.hyperpod.cli.commands.init import (
     init,
@@ -171,6 +172,12 @@ cli.add_command(get_cluster_context)
 cli.add_command(get_monitoring)
 cli.add_command(create_cluster_stack)
 cli.add_command(update_cluster)
+cli.add_command(recipe_init)
+cli.add_command(recipe_configure)
+cli.add_command(recipe_validate)
+cli.add_command(recipe_submit)
+cli.add_command(find_recipe)
+
 
 if __name__ == "__main__":
     cli()
