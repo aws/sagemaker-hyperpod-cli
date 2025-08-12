@@ -43,63 +43,10 @@ class LazyGroup(click.Group):
             ('invoke', 'hyp-custom-endpoint'): 'inference',
         }
 
-    def list_commands(self, ctx):
-        """Return list of commands without loading modules"""
-        # Return static list to avoid loading modules for help
-        base_commands = ['create', 'list', 'describe', 'delete', 'list-pods', 'get-logs', 'invoke', 'get-operator-logs']
-        cluster_commands = ['list-cluster', 'set-cluster-context', 'get-cluster-context', 'get-monitoring']
-        return sorted(base_commands + cluster_commands)
-    
-    def get_help(self, ctx):
-        """Override get_help to avoid loading modules for help text"""
-        # Generate help without loading heavy modules
-        formatter = ctx.make_formatter()
-        self.format_help(ctx, formatter)
-        return formatter.getvalue()
-    
-    def format_usage(self, ctx, formatter):
-        """Format usage without loading modules"""
-        pieces = self.collect_usage_pieces(ctx)
-        prog_name = ctx.find_root().info_name
-        formatter.write_usage(prog_name, ' '.join(pieces))
-    
-    def format_help(self, ctx, formatter):
-        """Format help without loading modules"""
-        self.format_usage(ctx, formatter)
-        self.format_help_text(ctx, formatter)
-        self.format_options(ctx, formatter)
-        self.format_commands(ctx, formatter)
-    
-    def format_commands(self, ctx, formatter):
-        """Format commands section without loading modules"""
-        commands = []
-        # Static command descriptions to avoid module loading
-        command_help = {
-            'create': 'Create endpoints or pytorch jobs.',
-            'delete': 'Delete endpoints or pytorch jobs.',
-            'describe': 'Describe endpoints or pytorch jobs.',
-            'get-logs': 'Get pod logs for endpoints or pytorch jobs.',
-            'get-operator-logs': 'Get operator logs for endpoints.',
-            'invoke': 'Invoke model endpoints.',
-            'list': 'List endpoints or pytorch jobs.',
-            'list-pods': 'List pods for endpoints or pytorch jobs.',
-            'list-cluster': 'List available SageMaker HyperPod clusters.',
-            'set-cluster-context': 'Configure kubectl to interact with a cluster.',
-            'get-cluster-context': 'Get current cluster context.',
-            'get-monitoring': 'Get monitoring configuration.'
-        }
-        
-        for name in self.list_commands(ctx):
-            help_text = command_help.get(name, '')
-            commands.append((name, help_text))
-        
-        if commands:
-            with formatter.section('Commands'):
-                formatter.write_dl(commands)
-
     def get_command(self, ctx, name):
-        # Register modules for subgroups to ensure help works
+        """FIXED: This method must return the command object"""
         self._register_module_for_command(name)
+        # Call parent's get_command to actually return the command
         return super().get_command(ctx, name)
     
     def _register_module_for_command(self, name):
@@ -108,12 +55,13 @@ class LazyGroup(click.Group):
             module_name = self._command_module_map[name]
             if module_name not in self.modules_registered:
                 self._register_module(module_name)
-        elif name in ['create', 'list', 'describe', 'delete', 'list-pods', 'get-logs', 'invoke', 'get-operator-logs']:
-            # These are subgroup commands - register all modules so subcommands show in help
+        else:
+            # For subgroup commands, we might need to load all for discovery
+            # This could be optimized further but is complex with click's architecture
             self._ensure_all_modules_registered()
     
     def _ensure_all_modules_registered(self):
-        """Register all modules - used when actually accessing subcommands"""
+        """Register all modules - used for command listing (hyp --help)"""
         for module in ['training', 'inference', 'cluster']:
             if module not in self.modules_registered:
                 self._register_module(module)
@@ -124,13 +72,12 @@ class LazyGroup(click.Group):
             return
         
         if module_name == 'training':
+            # LAZY IMPORT: Only import when needed
             from sagemaker.hyperpod.cli.commands.training import (
             pytorch_create, list_jobs, pytorch_describe, pytorch_delete,
             pytorch_list_pods, pytorch_get_logs,
             )
-            # pytorch_create is a factory function that returns a command
-            self.commands['create'].add_command(pytorch_create())
-            # All others are already command objects - don't call them!
+            self.commands['create'].add_command(pytorch_create)
             self.commands['list'].add_command(list_jobs)
             self.commands['describe'].add_command(pytorch_describe)
             self.commands['delete'].add_command(pytorch_delete)
@@ -138,16 +85,15 @@ class LazyGroup(click.Group):
             self.commands['get-logs'].add_command(pytorch_get_logs)
         
         elif module_name == 'inference':
+            # LAZY IMPORT: Only import when needed
             from sagemaker.hyperpod.cli.commands.inference import (
                 js_create, custom_create, custom_invoke, js_list, custom_list,
                 js_describe, custom_describe, js_delete, custom_delete,
                 js_list_pods, custom_list_pods, js_get_logs, custom_get_logs,
                 js_get_operator_logs, custom_get_operator_logs,
             )
-            # Factory functions that return commands (need to be called)
-            self.commands['create'].add_command(js_create())
-            self.commands['create'].add_command(custom_create())
-            # Command objects (should NOT be called)
+            self.commands['create'].add_command(js_create)
+            self.commands['create'].add_command(custom_create)
             self.commands['list'].add_command(js_list)
             self.commands['list'].add_command(custom_list)
             self.commands['describe'].add_command(js_describe)
@@ -163,6 +109,7 @@ class LazyGroup(click.Group):
             self.commands['invoke'].add_command(custom_invoke)
 
         elif module_name == 'cluster':
+            # LAZY IMPORT: Only import when needed
             from sagemaker.hyperpod.cli.commands.cluster import list_cluster, set_cluster_context, get_cluster_context, get_monitoring
             self.add_command(list_cluster)
             self.add_command(set_cluster_context)
@@ -180,49 +127,49 @@ class CLICommand(click.Group):
 cli = LazyGroup()
 
 # Create subgroups, lightweight and don't trigger imports
-@cli.group()
+@cli.group(cls=CLICommand)
 def create():
     """Create endpoints or pytorch jobs."""
     pass
 
 
-@cli.group(name='list')
+@cli.group(cls=CLICommand, name='list')
 def list_cmd():
     """List endpoints or pytorch jobs."""
     pass
 
 
-@cli.group()
+@cli.group(cls=CLICommand)
 def describe():
     """Describe endpoints or pytorch jobs."""
     pass
 
 
-@cli.group()
+@cli.group(cls=CLICommand)
 def delete():
     """Delete endpoints or pytorch jobs."""
     pass
 
 
-@cli.group()
+@cli.group(cls=CLICommand)
 def list_pods():
     """List pods for endpoints or pytorch jobs."""
     pass
 
 
-@cli.group()
+@cli.group(cls=CLICommand)
 def get_logs():
     """Get pod logs for endpoints or pytorch jobs."""
     pass
 
 
-@cli.group()
+@cli.group(cls=CLICommand)
 def invoke():
     """Invoke model endpoints."""
     pass
 
 
-@cli.group()
+@cli.group(cls=CLICommand)
 def get_operator_logs():
     """Get operator logs for endpoints."""
     pass

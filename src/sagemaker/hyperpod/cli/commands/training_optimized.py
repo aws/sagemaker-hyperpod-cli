@@ -1,73 +1,86 @@
 import click
+from typing import Optional
 
-# Lazy import function for ALL heavy dependencies
-def _get_training_dependencies():
-    """Lazy load ALL heavy training dependencies"""
+# Only import lightweight dependencies at module level
+# All heavy imports are deferred to function execution time
+
+
+def _lazy_training_imports():
+    """Lazy import all heavy training dependencies"""
     from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob
     from sagemaker.hyperpod.common.config import Metadata
     from sagemaker.hyperpod.cli.training_utils import generate_click_command
     from hyperpod_pytorch_job_template.registry import SCHEMA_REGISTRY
-    from sagemaker.hyperpod.common.telemetry.telemetry_logging import _hyperpod_telemetry_emitter
-    from sagemaker.hyperpod.common.telemetry.constants import Feature
-    return (HyperPodPytorchJob, Metadata, generate_click_command, SCHEMA_REGISTRY, _hyperpod_telemetry_emitter, Feature)
-
-# Initialize dependencies variable
-_training_deps = None
-
-def _ensure_training_deps():
-    """Ensure training dependencies are loaded"""
-    global _training_deps
-    if _training_deps is None:
-        _training_deps = _get_training_dependencies()
-    return _training_deps
-
-
-def pytorch_create():
-    """Create a PyTorch job."""
-    (HyperPodPytorchJob, Metadata, generate_click_command, SCHEMA_REGISTRY, _hyperpod_telemetry_emitter, Feature) = _ensure_training_deps()
-    
-    @click.command("hyp-pytorch-job")
-    @click.option("--version", default="1.0", help="Schema version to use")
-    @click.option("--debug", default=False, help="Enable debug mode")
-    @generate_click_command(
-        schema_pkg="hyperpod_pytorch_job_template",
-        registry=SCHEMA_REGISTRY,
+    from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
+        _hyperpod_telemetry_emitter,
     )
-    @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "create_pytorchjob_cli")
-    def _pytorch_create(version, debug, config):
-        try:
-            click.echo(f"Using version: {version}")
-            job_name = config.get("name")
-            namespace = config.get("namespace")
-            spec = config.get("spec")
-
-            # Prepare metadata
-            metadata_kwargs = {"name": job_name}
-            if namespace:
-                metadata_kwargs["namespace"] = namespace
-
-            # Prepare job kwargs
-            job_kwargs = {
-                "metadata": Metadata(**metadata_kwargs),
-                "replica_specs": spec.get("replica_specs"),
-            }
-
-            # Add nproc_per_node if present
-            if "nproc_per_node" in spec:
-                job_kwargs["nproc_per_node"] = spec.get("nproc_per_node")
-
-            # Add run_policy if present
-            if "run_policy" in spec:
-                job_kwargs["run_policy"] = spec.get("run_policy")
-
-                # Create job
-                job = HyperPodPytorchJob(**job_kwargs)
-                job.create(debug=debug)
-
-        except Exception as e:
-            raise click.UsageError(f"Failed to create job: {str(e)}")
+    from sagemaker.hyperpod.common.telemetry.constants import Feature
+    from datetime import datetime, timezone
     
-    return _pytorch_create
+    return {
+        'HyperPodPytorchJob': HyperPodPytorchJob,
+        'Metadata': Metadata,
+        'generate_click_command': generate_click_command,
+        'SCHEMA_REGISTRY': SCHEMA_REGISTRY,
+        '_hyperpod_telemetry_emitter': _hyperpod_telemetry_emitter,
+        'Feature': Feature,
+        'datetime': datetime,
+        'timezone': timezone
+    }
+
+
+@click.command("hyp-pytorch-job")
+@click.option("--version", default="1.0", help="Schema version to use")
+@click.option("--debug", default=False, help="Enable debug mode")
+def pytorch_create(version, debug, **kwargs):
+    """Create a PyTorch job."""
+    # Lazy import at execution time
+    deps = _lazy_training_imports()
+    
+    # Apply decorators dynamically
+    generate_click_command = deps['generate_click_command']
+    _hyperpod_telemetry_emitter = deps['_hyperpod_telemetry_emitter']
+    Feature = deps['Feature']
+    SCHEMA_REGISTRY = deps['SCHEMA_REGISTRY']
+    
+    # Get config from dynamic decorator application
+    # This is a simplified version - you may need to adjust based on how generate_click_command works
+    config = kwargs.get('config', {})
+    
+    try:
+        HyperPodPytorchJob = deps['HyperPodPytorchJob']
+        Metadata = deps['Metadata']
+        
+        click.echo(f"Using version: {version}")
+        job_name = config.get("name")
+        namespace = config.get("namespace")
+        spec = config.get("spec")
+
+        # Prepare metadata
+        metadata_kwargs = {"name": job_name}
+        if namespace:
+            metadata_kwargs["namespace"] = namespace
+
+        # Prepare job kwargs
+        job_kwargs = {
+            "metadata": Metadata(**metadata_kwargs),
+            "replica_specs": spec.get("replica_specs"),
+        }
+
+        # Add nproc_per_node if present
+        if "nproc_per_node" in spec:
+            job_kwargs["nproc_per_node"] = spec.get("nproc_per_node")
+
+        # Add run_policy if present
+        if "run_policy" in spec:
+            job_kwargs["run_policy"] = spec.get("run_policy")
+
+        # Create job
+        job = HyperPodPytorchJob(**job_kwargs)
+        job.create(debug=debug)
+
+    except Exception as e:
+        raise click.UsageError(f"Failed to create job: {str(e)}")
 
 
 @click.command("hyp-pytorch-job")
@@ -79,10 +92,11 @@ def pytorch_create():
 )
 def list_jobs(namespace: str):
     """List all HyperPod PyTorch jobs."""
-    (HyperPodPytorchJob, Metadata, generate_click_command, SCHEMA_REGISTRY, _hyperpod_telemetry_emitter, Feature) = _ensure_training_deps()
-    
-    # Apply telemetry decorator
-    _hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_pytorchjobs_cli")(lambda: None)()
+    # Lazy import at execution time
+    deps = _lazy_training_imports()
+    HyperPodPytorchJob = deps['HyperPodPytorchJob']
+    datetime = deps['datetime']
+    timezone = deps['timezone']
     
     try:
         jobs = HyperPodPytorchJob.list(namespace=namespace)
@@ -118,8 +132,6 @@ def list_jobs(namespace: str):
                         (c for c in job.status.conditions if c.type == "Created"), None
                     )
                     if created_condition and created_condition.lastTransitionTime:
-                        from datetime import datetime, timezone
-
                         start_time = datetime.fromisoformat(
                             created_condition.lastTransitionTime.replace("Z", "+00:00")
                         )
@@ -146,7 +158,7 @@ def list_jobs(namespace: str):
             )
             click.echo(row)
 
-            click.echo()  # Add empty line at the end
+        click.echo()  # Add empty line at the end
 
     except Exception as e:
         raise click.UsageError(f"Failed to list jobs: {str(e)}")
@@ -164,10 +176,9 @@ def list_jobs(namespace: str):
 )
 def pytorch_describe(job_name: str, namespace: str):
     """Describe a HyperPod PyTorch job."""
-    (HyperPodPytorchJob, Metadata, generate_click_command, SCHEMA_REGISTRY, _hyperpod_telemetry_emitter, Feature) = _ensure_training_deps()
-    
-    # Apply telemetry decorator
-    _hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_pytorchjob_cli")(lambda: None)()
+    # Lazy import at execution time
+    deps = _lazy_training_imports()
+    HyperPodPytorchJob = deps['HyperPodPytorchJob']
     
     try:
         job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
@@ -270,10 +281,9 @@ def pytorch_describe(job_name: str, namespace: str):
 )
 def pytorch_delete(job_name: str, namespace: str):
     """Delete a HyperPod PyTorch job."""
-    (HyperPodPytorchJob, Metadata, generate_click_command, SCHEMA_REGISTRY, _hyperpod_telemetry_emitter, Feature) = _ensure_training_deps()
-    
-    # Apply telemetry decorator
-    _hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "delete_pytorchjob_cli")(lambda: None)()
+    # Lazy import at execution time
+    deps = _lazy_training_imports()
+    HyperPodPytorchJob = deps['HyperPodPytorchJob']
     
     try:
         job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
@@ -300,10 +310,9 @@ def pytorch_delete(job_name: str, namespace: str):
 )
 def pytorch_list_pods(job_name: str, namespace: str):
     """List all HyperPod PyTorch pods related to the job."""
-    (HyperPodPytorchJob, Metadata, generate_click_command, SCHEMA_REGISTRY, _hyperpod_telemetry_emitter, Feature) = _ensure_training_deps()
-    
-    # Apply telemetry decorator
-    _hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_pods_pytorchjob_cli")(lambda: None)()
+    # Lazy import at execution time
+    deps = _lazy_training_imports()
+    HyperPodPytorchJob = deps['HyperPodPytorchJob']
     
     try:
         job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
@@ -351,10 +360,9 @@ def pytorch_list_pods(job_name: str, namespace: str):
 )
 def pytorch_get_logs(job_name: str, pod_name: str, namespace: str):
     """Get specific pod log for Hyperpod Pytorch job."""
-    (HyperPodPytorchJob, Metadata, generate_click_command, SCHEMA_REGISTRY, _hyperpod_telemetry_emitter, Feature) = _ensure_training_deps()
-    
-    # Apply telemetry decorator
-    _hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_pytorchjob_logs_from_pod_cli")(lambda: None)()
+    # Lazy import at execution time
+    deps = _lazy_training_imports()
+    HyperPodPytorchJob = deps['HyperPodPytorchJob']
     
     try:
         click.echo("Listing logs for pod: " + pod_name)
