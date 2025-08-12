@@ -268,7 +268,7 @@ def _get_accelerator_type_and_count(instance_type: str) -> Tuple[Optional[str], 
     
     # Determine the appropriate key based on instance type
     if trainium_count > 0:
-        accelerator_key = "aws.amazon.com/neuron"
+        accelerator_key = "aws.amazon.com/neurondevice"
         instance_accelerator_count = trainium_count
     elif gpu_count > 0:
         accelerator_key = "nvidia.com/gpu"

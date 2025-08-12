@@ -64,9 +64,9 @@ class TestQuotaAllocationUtil:
             ("ml.g5.12xlarge", "nvidia.com/gpu", 4),
             ("ml.g6.48xlarge", "nvidia.com/gpu", 8),
             # Trainium instances
-            ("ml.trn1.32xlarge", "aws.amazon.com/neuron", 16),
-            ("ml.trn1n.32xlarge", "aws.amazon.com/neuron", 16),
-            ("ml.trn2.48xlarge", "aws.amazon.com/neuron", 16),
+            ("ml.trn1.32xlarge", "aws.amazon.com/neurondevice", 16),
+            ("ml.trn1n.32xlarge", "aws.amazon.com/neurondevice", 16),
+            ("ml.trn2.48xlarge", "aws.amazon.com/neurondevice", 16),
             # CPU-only instances
             ("ml.c5.large", None, 0),
             ("ml.m5.xlarge", None, 0),
@@ -110,7 +110,7 @@ class TestQuotaAllocationUtil:
         result = _get_resources_from_compute_quotas("ml.trn1.32xlarge", None, None, 8)
         # ml.trn1.32xlarge has 16 trainium, 128 CPUs, 512GB memory
         # 8 trainium is half, so we should get half of CPU and memory
-        assert result == {"cpu": "64.0", "memory": "256.0Gi", "aws.amazon.com/neuron": 8}
+        assert result == {"cpu": "64.0", "memory": "256.0Gi", "aws.amazon.com/neurondevice": 8}
 
     def test_get_resources_from_compute_quotas_cpu_only_instance(self):
         result = _get_resources_from_compute_quotas("ml.c5.large", 1.0, 2.0, 1)
@@ -137,8 +137,8 @@ class TestQuotaAllocationUtil:
             ("ml.g5.xlarge", 1, {"cpu": "4", "memory": "16Gi", "nvidia.com/gpu": 1}),
             ("ml.g5.xlarge", 3, {"cpu": "12", "memory": "48Gi", "nvidia.com/gpu": 3}),
             # Trainium instances
-            ("ml.trn1.32xlarge", 1, {"cpu": "128", "memory": "512Gi", "aws.amazon.com/neuron": 16}),
-            ("ml.trn1.32xlarge", 2, {"cpu": "256", "memory": "1024Gi", "aws.amazon.com/neuron": 32}),
+            ("ml.trn1.32xlarge", 1, {"cpu": "128", "memory": "512Gi", "aws.amazon.com/neurondevice": 16}),
+            ("ml.trn1.32xlarge", 2, {"cpu": "256", "memory": "1024Gi", "aws.amazon.com/neurondevice": 32}),
             # CPU-only instances
             ("ml.c5.large", 1, {"cpu": "2", "memory": "4Gi"}),
             ("ml.c5.large", 5, {"cpu": "10", "memory": "20Gi"}),
@@ -177,7 +177,7 @@ class TestQuotaAllocationUtil:
 
     def test_get_limits_trainium_instance(self):
         result = _get_limits("ml.trn1.32xlarge", 8.0, 32.0, 4)
-        assert result == {"cpu": "8.0", "memory": "32.0Gi", "aws.amazon.com/neuron": 4}
+        assert result == {"cpu": "8.0", "memory": "32.0Gi", "aws.amazon.com/neurondevice": 4}
 
     def test_get_limits_cpu_only_instance(self):
         result = _get_limits("ml.c5.large", 2.0, 8.0, 1)
