@@ -126,7 +126,36 @@ def list_cluster(
         debug: bool,
         namespace: Optional[List],
     ):
-        """List SageMaker Hyperpod Clusters with metadata."""
+        """List SageMaker Hyperpod Clusters with metadata.
+
+        Example Usage:
+        1. List clusters with JSON output: hyperpod get-clusters -n hyperpod-ns-test-team
+
+        Output:
+            [
+                {
+                    "Cluster": "hyperpod-eks-cluster-a",
+                    "InstanceType": "ml.g5.2xlarge",
+                    "TotalNodes": 2,
+                    "AcceleratorDevicesAvailable": 1,
+                    "NodeHealthStatus=Schedulable": 2,
+                    "DeepHealthCheckStatus=Passed": "N/A",
+                    "Namespaces": {
+                        "hyperpod-ns-test-team": {
+                            "AvailableAcceleratorDevices": 1,
+                            "TotalAcceleratorDevices": 1
+                        }
+                    }
+                }
+            ]
+
+        2. List clusters with table output: hyperpod get-clusters -n hyperpod-ns-test-team --output table
+
+        Output:
+            Cluster                | InstanceType   |   TotalNodes | AcceleratorDevicesAvailable   |   NodeHealthStatus=Schedulable | DeepHealthCheckStatus=Passed | hyperpod-ns-test-teamTotalAcceleratorDevices   | hyperpod-ns-test-teamAvailableAcceleratorDevices
+            -----------------------+----------------+--------------+-------------------------------+--------------------------------+------------------------------+------------------------------------------------+----------------------------------------------------
+            hyperpod-eks-cluster-a | ml.g5.2xlarge  |            2 |                              1|                              2 |                          N/A | 1                                              | 1
+        """
         if debug:
             set_logging_level(logger, logging.DEBUG)
         validator = ClusterValidator()
@@ -483,17 +512,20 @@ def set_cluster_context(
     debug: bool,
     namespace: str,
 ) -> None:
-    """Connect to a HyperPod EKS cluster."""
+    """
+    Connect to a HyperPod EKS cluster.
+
+    Args:
+        cluster_name (str): The name of the HyperPod EKS cluster to connect to.
+        namespace (str): The namespace connect to. Default as 'default' namespace.
+        debug (bool): Enable debug mode.
+        region (Optional[str]): The AWS region where the HyperPod EKS cluster resides.
+            If not provided, the default region from the AWS credentials will be used.
+
+    Returns:
+        None
+    """
     _ensure_cluster_deps()
-    return _set_cluster_context_impl(cluster_name, region, debug, namespace)
-    
-def _set_cluster_context_impl(
-    cluster_name: str,
-    region: Optional[str],
-    debug: bool,
-    namespace: str,
-) -> None:
-    """Connect to a HyperPod EKS cluster."""
     if debug:
         set_logging_level(logger, logging.DEBUG)
     validator = ClusterValidator()
@@ -540,7 +572,15 @@ def _set_cluster_context_impl(
 def get_cluster_context(
     debug: bool,
 ) -> Tuple[Any, str]:
-    """Get context related to the current set cluster."""
+    """
+    Get context related to the current set cluster.
+
+    Args:
+        debug (bool): Enable debug mode.
+
+    Returns:
+        None
+    """
     _ensure_cluster_deps()
     return _get_cluster_context_impl(debug)
     
