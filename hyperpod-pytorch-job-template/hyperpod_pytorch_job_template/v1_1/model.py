@@ -149,7 +149,7 @@ class PyTorchJobConfig(BaseModel):
         default=None,
         description="Number of vCPUs",
     )
-    memory_in_gib: Optional[float] = Field(
+    memory: Optional[float] = Field(
         default=None,
         description="Amount of memory in GiB",
     )
@@ -161,7 +161,7 @@ class PyTorchJobConfig(BaseModel):
         default=None,
         description="Limit for the number of vCPUs",
     )
-    memory_in_gib_limit: Optional[float] = Field(
+    memory_limit: Optional[float] = Field(
         default=None,
         description="Limit for the amount of memory in GiB",
     )
@@ -268,7 +268,7 @@ class PyTorchJobConfig(BaseModel):
         """
         
         valid, error = _is_valid(
-           self.vcpu, self.memory_in_gib, self.accelerators, self.node_count, self.instance_type
+           self.vcpu, self.memory, self.accelerators, self.node_count, self.instance_type
         )
         
         if not valid:
@@ -279,8 +279,8 @@ class PyTorchJobConfig(BaseModel):
             requests_value = {"nvidia.com/gpu": "0"}
             limits_value = {"nvidia.com/gpu": "0"}
         else:
-            requests_value = _get_resources_from_compute_quotas(self.instance_type, self.vcpu, self.memory_in_gib, self.accelerators) or _get_resources_from_instance(self.instance_type, self.node_count)
-            limits_value = _get_limits(self.instance_type, self.vcpu_limit, self.memory_in_gib_limit, self.accelerators_limit)
+            requests_value = _get_resources_from_compute_quotas(self.instance_type, self.vcpu, self.memory, self.accelerators) or _get_resources_from_instance(self.instance_type, self.node_count)
+            limits_value = _get_limits(self.instance_type, self.vcpu_limit, self.memory_limit, self.accelerators_limit)
 
         # Create container with required fields
         container_kwargs = {

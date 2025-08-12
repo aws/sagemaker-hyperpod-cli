@@ -281,7 +281,7 @@
       "minimum": 0,
       "description": "Number of vCPUs"
     },
-    "memory-in-gib": {
+    "memory": {
       "type": "float",
       "minimum": 0,
       "description": "Amount of memory in GiB"
@@ -296,7 +296,7 @@
       "minimum": 0,
       "description": "Limit for the number of vCPUs"
     },
-    "memory-in-gib-limit": {
+    "memory-limit": {
       "type": "float",
       "minimum": 0,
       "description": "Limit for the amount of memory in GiB"
