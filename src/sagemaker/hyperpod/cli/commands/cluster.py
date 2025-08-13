@@ -582,12 +582,6 @@ def get_cluster_context(
         None
     """
     _ensure_cluster_deps()
-    return _get_cluster_context_impl(debug)
-    
-def _get_cluster_context_impl(
-    debug: bool,
-) -> Tuple[Any, str]:
-    """Get context related to the current set cluster."""
     if debug:
         set_logging_level(logger, logging.DEBUG)
 
@@ -613,10 +607,6 @@ def _get_cluster_context_impl(
 def get_monitoring(grafana: bool, prometheus: bool, list: bool) -> None:
     """Get monitoring configurations for Hyperpod cluster."""
     _ensure_cluster_deps()
-    return _get_monitoring_impl(grafana, prometheus, list)
-    
-def _get_monitoring_impl(grafana: bool, prometheus: bool, list: bool) -> None:
-    """Get monitoring configurations for Hyperpod cluster."""
     try:
         if not any([grafana, prometheus, list]):
             print("Error: Please select at least one option")
