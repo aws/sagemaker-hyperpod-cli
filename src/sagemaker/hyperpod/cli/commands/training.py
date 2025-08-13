@@ -24,11 +24,14 @@ def pytorch_create(version, debug, config):
         job_name = config.get("name")
         namespace = config.get("namespace")
         spec = config.get("spec")
+        metadata_labels = config.get("labels")
 
         # Prepare metadata
         metadata_kwargs = {"name": job_name}
         if namespace:
             metadata_kwargs["namespace"] = namespace
+        if metadata_labels:
+            metadata_kwargs["labels"] = metadata_labels
 
         # Prepare job kwargs
         job_kwargs = {
