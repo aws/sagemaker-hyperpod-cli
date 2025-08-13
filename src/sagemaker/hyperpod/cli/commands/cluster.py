@@ -142,11 +142,13 @@ def list_cluster(
     2. List clusters with table output: hyperpod get-clusters -n hyperpod-ns-test-team --output table
 
     Output:
-        Cluster                | InstanceType   |   TotalNodes | AcceleratorDevicesAvailable   |   NodeHealthStatus=Schedulable | DeepHealthCheckStatus=Passed | hyperpod-ns-test-teamTotalAcceleratorDevices   | hyperpod-ns-test-teamAvailableAcceleratorDevices
-        -----------------------+----------------+--------------+-------------------------------+--------------------------------+------------------------------+------------------------------------------------+----------------------------------------------------
-        hyperpod-eks-cluster-a | ml.g5.2xlarge  |            2 |                              1|                              2 |                          N/A | 1                                              | 1
+       Cluster                | InstanceType   |   TotalNodes | AcceleratorDevicesAvailable   |   NodeHealthStatus=Schedulable | DeepHealthCheckStatus=Passed | hyperpod-ns-test-teamTotalAcceleratorDevices   | hyperpod-ns-test-teamAvailableAcceleratorDevices
+       -----------------------+----------------+--------------+-------------------------------+--------------------------------+------------------------------+------------------------------------------------+----------------------------------------------------
+       hyperpod-eks-cluster-a | ml.g5.2xlarge  |            2 |                              1|                              2 |                          N/A | 1                                              | 1
     """
     _ensure_cluster_deps()
+
+    _hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_cluster")(lambda: None)()
 
     if debug:
         set_logging_level(logger, logging.DEBUG)
