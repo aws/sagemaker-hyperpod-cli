@@ -1,6 +1,14 @@
 import pytest
 import json
 import click
+from click.testing import CliRunner
+from unittest.mock import Mock, patch, mock_open
+from pathlib import Path
+
+from sagemaker.hyperpod.cli.init_utils import load_schema_for_version, save_template, generate_click_command, save_cfn_jinja, _process_cfn_template_content
+from sagemaker.hyperpod.cli.constants.init_constants import CFN
+
+
 import yaml
 import tempfile
 from click.testing import CliRunner
@@ -16,7 +24,6 @@ from sagemaker.hyperpod.cli.init_utils import (
     save_k8s_jinja,
     _process_cfn_template_content,
     save_config_yaml,
-    load_config,
     load_config_and_validate,
     validate_config_against_model,
     filter_validation_errors_for_user_input,
@@ -206,7 +213,7 @@ namespace: test-namespace
              patch('pathlib.Path.read_text', return_value=config_content), \
              patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates):
             
-            data, template, version = load_config()
+            data, template, version = load_config_and_validate()
             
             assert data['template'] == 'hyp-cluster'
             assert data['version'] == 1.0  # YAML loads this as float
@@ -228,13 +235,12 @@ namespace: test-namespace
              patch('pathlib.Path.read_text', return_value=config_content), \
              patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates):
             
-            data, template, version = load_config()
+            data, template, version = load_config_and_validate()
             
             assert version == '1.0'  # Default version
     
     @patch('sagemaker.hyperpod.cli.init_utils.click.secho')
-    @patch('sagemaker.hyperpod.cli.init_utils.sys.exit')
-    def test_load_config_unknown_template(self, mock_exit, mock_secho):
+    def test_load_config_unknown_template(self, mock_secho):
         """Test load_config with unknown template"""
         config_content = """
 template: unknown-template
@@ -248,13 +254,17 @@ version: 1.0
              patch('pathlib.Path.read_text', return_value=config_content), \
              patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates):
             
-            load_config()
+            # This should raise SystemExit due to unknown template
+            with pytest.raises(SystemExit) as exc_info:
+                load_config_and_validate()
+            
+            # Verify exit code
+            assert exc_info.value.code == 1
             
             mock_secho.assert_called_once_with(
                 "❌  Unknown template 'unknown-template' in config.yaml", 
                 fg="red"
             )
-            mock_exit.assert_called_once_with(1)
 
 
 class TestValidateConfigAgainstModel:
@@ -480,6 +490,14 @@ class TestBuildConfigFromSchema:
         mock_field_info = Mock()
         mock_field_info.description = "Test description"
         
+        # Mock the model class to have model_fields
+        mock_model_class = Mock()
+        mock_model_class.model_fields = {
+            'namespace': mock_field_info,
+            'instance_type': mock_field_info
+        }
+        mock_model.__class__ = mock_model_class
+        
         with patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates), \
              patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack:
             
@@ -686,43 +704,67 @@ namespace: test-namespace
 class TestLoadConfigAndValidate:
     """Test cases for load_config_and_validate function"""
     
-    @patch('sagemaker.hyperpod.cli.init_utils.load_config')
-    @patch('sagemaker.hyperpod.cli.init_utils.validate_config_against_model')
-    @patch('sagemaker.hyperpod.cli.init_utils.display_validation_results')
-    def test_load_config_and_validate_success(self, mock_display, mock_validate, mock_load):
+    def test_load_config_and_validate_success(self):
         """Test successful config loading and validation"""
-        # Mock successful loading and validation
-        mock_load.return_value = ({'template': 'hyp-cluster'}, 'hyp-cluster', '1.0')
-        mock_validate.return_value = []  # No validation errors
-        mock_display.return_value = True  # Validation passed
+        config_content = """
+template: hyp-cluster
+version: 1.0
+namespace: test-namespace
+"""
+        mock_templates = {
+            'hyp-cluster': {'schema_type': CFN}
+        }
         
-        data, template, version = load_config_and_validate()
-        
-        assert data == {'template': 'hyp-cluster'}
-        assert template == 'hyp-cluster'
-        assert version == '1.0'
-        
-        mock_validate.assert_called_once_with({'template': 'hyp-cluster'}, 'hyp-cluster', '1.0')
-        mock_display.assert_called_once_with(
-            [], 
-            success_message="config.yaml is valid!",
-            error_prefix="Config validation errors:"
-        )
-    
-    @patch('sagemaker.hyperpod.cli.init_utils.load_config')
-    @patch('sagemaker.hyperpod.cli.init_utils.validate_config_against_model')
-    @patch('sagemaker.hyperpod.cli.init_utils.display_validation_results')
-    @patch('sagemaker.hyperpod.cli.init_utils.sys.exit')
-    def test_load_config_and_validate_failure(self, mock_exit, mock_display, mock_validate, mock_load):
+        with patch('pathlib.Path.is_file', return_value=True), \
+             patch('pathlib.Path.read_text', return_value=config_content), \
+             patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates), \
+             patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack:
+            
+            # Mock successful validation
+            mock_cluster_stack.return_value = Mock()
+            
+            data, template, version = load_config_and_validate()
+            
+            assert data['template'] == 'hyp-cluster'
+            assert data['version'] == 1.0  # YAML loads this as float
+            assert data['namespace'] == 'test-namespace'
+            assert template == 'hyp-cluster'
+            assert version == 1.0  # YAML loads this as float
+
+    def test_load_config_and_validate_failure(self):
         """Test config loading with validation failure"""
-        # Mock loading success but validation failure
-        mock_load.return_value = ({'template': 'hyp-cluster'}, 'hyp-cluster', '1.0')
-        mock_validate.return_value = ['namespace: Field required']  # Validation errors
-        mock_display.return_value = False  # Validation failed
+        config_content = """
+template: hyp-cluster
+version: 1.0
+namespace: test-namespace
+"""
+        mock_templates = {
+            'hyp-cluster': {'schema_type': CFN}
+        }
         
-        load_config_and_validate()
+        with patch('pathlib.Path.is_file', return_value=True), \
+             patch('pathlib.Path.read_text', return_value=config_content), \
+             patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates), \
+             patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack:
+            
+            # Mock validation failure
+            mock_error = ValidationError.from_exception_data('TestModel', [
+                {
+                    'type': 'missing',
+                    'loc': ('required_field',),
+                    'msg': 'Field required',
+                    'input': {}
+                }
+            ])
+            mock_cluster_stack.side_effect = mock_error
+            
+            # This should raise SystemExit due to validation failure
+            with pytest.raises(SystemExit) as exc_info:
+                load_config_and_validate()
+            
+            # Verify exit code
+            assert exc_info.value.code == 1
         
-        mock_exit.assert_called_once_with(1)
     @patch('sagemaker.hyperpod.cli.init_utils.pkgutil.get_data')
     def test_success(self, mock_get_data):
         data = {"properties": {"x": {"type": "string"}}}

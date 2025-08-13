@@ -331,6 +331,6 @@ def pytorch_get_logs(job_name: str, pod_name: str, namespace: str):
 def pytorch_get_operator_logs(since_hours: float):
     """Get operator logs for pytorch training jobs."""
     logs = HyperPodPytorchJob.get_operator_logs(since_hours=since_hours)
-    
+
     # Use common log display utility for consistent formatting across all job types
     display_formatted_logs(logs, title="PyTorch Operator Logs")

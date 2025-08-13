@@ -68,6 +68,12 @@ class FlatHPJumpStartEndpoint(BaseModel):
         max_length=63,
         pattern=r"^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$",
     )
+    tls_certificate_output_s3_uri: Optional[str] = Field(
+        None,
+        alias="tls_certificate_output_s3_uri",
+        description="S3 URI to write the TLS certificate",
+        pattern=r"^s3://([^/]+)/?(.*)$",
+    )
 
     def to_domain(self) -> HPJumpStartEndpoint:
         # Build nested domain (pydantic) objects

@@ -12,7 +12,6 @@ import functools
 from pydantic import ValidationError
 import inspect
 
-
 from sagemaker.hyperpod.cli.constants.init_constants import (
     TEMPLATES,
     CRD,
@@ -107,40 +106,23 @@ def generate_click_command(
     union_props = {}
     union_reqs = set()
     
-    # Process CRD templates first
     for template, template_info in TEMPLATES.items():
         if template_info["schema_type"] == CRD:
             schema = load_schema_for_version("1.0", template_info["schema_pkg"])
             for k, spec in schema.get("properties", {}).items():
-                # Ensure description is always a string
-                if 'description' in spec:
-                    desc = spec['description']
-                    if isinstance(desc, list):
-                        spec = spec.copy()  # Don't modify the original
-                        spec['description'] = ', '.join(str(item) for item in desc)
                 union_props.setdefault(k, spec)
             if require_schema_fields:
                 union_reqs |= set(schema.get("required", []))
-    
-    # Process CFN templates second and allow them to override CRD fields
-    for template, template_info in TEMPLATES.items():
-        if template_info["schema_type"] == CFN:
-            cluster_template = json.loads(HpClusterStack.get_template())
-            cluster_parameters = cluster_template.get("Parameters")
-            # Add CFN fields to union, potentially overriding CRD fields
-            json_schema = HpClusterStack.model_json_schema()
-            schema_properties = json_schema.get('properties', {})
-            
-            for field, field_info in HpClusterStack.model_fields.items():
-                prop_info = {"description": field_info.description or ""}
-                
-                # Get examples from JSON schema if available
-                if field in schema_properties and 'examples' in schema_properties[field]:
-                    prop_info["examples"] = schema_properties[field]['examples']
-                
-                # For CFN templates, override any existing union entry (don't use setdefault)
-                union_props[field] = prop_info
-
+        elif template_info["schema_type"] == CFN:
+            # For CFN templates, use HpClusterStack model fields instead of loading template
+            # This avoids making AWS calls at import time
+            try:
+                for field_name, field_info in HpClusterStack.model_fields.items():
+                    prop_info = {"description": field_info.description or ""}
+                    union_props.setdefault(field_name, prop_info)
+            except Exception:
+                # If model fields are not available, skip CFN parameters for now
+                pass
     def decorator(func: Callable) -> Callable:
         # JSON flag parser
         def _parse_json_flag(ctx, param, value):
@@ -206,15 +188,6 @@ def generate_click_command(
             else:
                 return func(template, directory, version, model_obj)
 
-        # inject JSON flags
-        for flag in ('env', 'dimensions', 'resources-limits', 'resources-requests'):
-            wrapped = click.option(
-                f"--{flag}",
-                callback=_parse_json_flag,
-                metavar="JSON",
-                help=f"JSON object for {flag.replace('-', ' ')}",
-            )(wrapped)
-
         # inject every union schema property
         for name, spec in reversed(list(union_props.items())):
             if name in (
@@ -244,7 +217,6 @@ def generate_click_command(
             help_text = spec.get('description', '')
             if isinstance(help_text, list):
                 help_text = ', '.join(str(item) for item in help_text)
-
             wrapped = click.option(
                 f"--{name.replace('_','-')}",
                 required=(name in union_reqs),
@@ -254,34 +226,46 @@ def generate_click_command(
                 help=help_text,
             )(wrapped)
 
-        for cfn_param_name, cfn_param_details in cluster_parameters.items():
-            # Convert CloudFormation type to Click type
-            cfn_type = cfn_param_details.get('Type', 'String')
-            if cfn_type == 'Number':
-                click_type = float
-            elif cfn_type == 'Integer':
-                click_type = int
-            else:
-                click_type = str
+        # inject CFN parameters if we have them
+        if 'cluster_parameters' in locals():
+            for param_name, param_info in cluster_parameters.items():
+                if param_name in (
+                    template_arg_name,
+                    'directory',
+                    version_key_arg,
+                    'env',
+                    'dimensions',
+                    'resources_limits',
+                    'resources_requests',
+                ):
+                    continue
+                    
+                help_text = param_info.get('Description', '')
+                param_type = param_info.get('Type', 'String')
+                
+                # Map CFN types to click types
+                if param_type == 'Number':
+                    ctype = float
+                elif 'List' in param_type:
+                    ctype = str  # Handle as comma-separated string
+                else:
+                    ctype = str
+                    
+                wrapped = click.option(
+                    f"--{pascal_to_kebab(param_name)}",
+                    type=ctype,
+                    help=help_text,
+                )(wrapped)
 
-            # Special handling for tags parameter
-            if cfn_param_name == 'Tags':
-                wrapped = click.option(
-                    f"--{pascal_to_kebab(cfn_param_name)}",
-                    callback=_parse_json_flag,
-                    metavar="JSON",
-                    help=cfn_param_details.get('Description', ''),
-                )(wrapped)
-            else:
-                # Override default for Namespace parameter to avoid conflicts
-                cfn_default = cfn_param_details.get('Default') if cfn_param_name != 'Namespace' else None
-                wrapped = click.option(
-                    f"--{pascal_to_kebab(cfn_param_name)}",
-                    default=cfn_default,
-                    show_default=('Default' in cfn_param_details and cfn_param_name != 'Namespace'),
-                    type=click_type,
-                    help=cfn_param_details.get('Description', ''),
-                )(wrapped)
+        # inject JSON flags
+        for flag in ('env', 'dimensions', 'resources-limits', 'resources-requests'):
+            wrapped = click.option(
+                f"--{flag}",
+                callback=_parse_json_flag,
+                metavar="JSON",
+                help=f"JSON object for {flag.replace('-', ' ')}",
+            )(wrapped)
+        
         return wrapped
 
     return decorator
@@ -304,20 +288,10 @@ def save_config_yaml(prefill: dict, comment_map: dict, directory: str):
 
     print(f"Configuration saved to: {path}")
 
-
-def load_config(dir_path: Path = None) -> Tuple[dict, str, str]:
+def load_config_and_validate(dir_path: Path = None) -> Tuple[dict, str, str]:
     """
-    Base function to load and parse config.yaml file.
+    Load config.yaml, validate it exists, and extract template and version.
     Returns (config_data, template, version)
-    
-    Args:
-        dir_path: Directory path to look for config.yaml (defaults to current directory)
-        
-    Returns:
-        Tuple of (config_data, template, version)
-        
-    Raises:
-        SystemExit: If config.yaml not found or template is unknown
     """
     if dir_path is None:
         dir_path = Path(".").resolve()
@@ -335,27 +309,28 @@ def load_config(dir_path: Path = None) -> Tuple[dict, str, str]:
     if template not in TEMPLATES:
         click.secho(f"❌  Unknown template '{template}' in config.yaml", fg="red")
         sys.exit(1)
-        
-    return data, template, version
-
-
-def load_config_and_validate(dir_path: Path = None) -> Tuple[dict, str, str]:
-    """
-    Load config.yaml, validate it exists, and extract template and version.
-    Returns (config_data, template, version)
-    Exits on validation errors - use for commands that require valid config.
-    """
-    data, template, version = load_config(dir_path)
-    validation_errors = validate_config_against_model(data, template, version)
-    
-    is_valid = display_validation_results(
-        validation_errors, 
-        success_message="config.yaml is valid!",
-        error_prefix="Config validation errors:"
-    )
-    
-    if not is_valid:
-        sys.exit(1)
+    # For CFN templates, validate using HpClusterStack
+    template_info = TEMPLATES[template]
+    if template_info["schema_type"] == CFN:
+        try:
+            # Filter out template and namespace fields for validation
+            filtered_config = {}
+            for k, v in data.items():
+                if k not in ('template', 'namespace') and v is not None:
+                    # Convert lists to JSON strings, everything else to string
+                    if isinstance(v, list):
+                        filtered_config[k] = json.dumps(v)
+                    else:
+                        filtered_config[k] = str(v)
+            click.secho(filtered_config)
+            HpClusterStack(**filtered_config)
+        except ValidationError as e:
+            click.secho("❌  Config validation errors:", fg="red")
+            for err in e.errors():
+                loc = '.'.join(str(x) for x in err['loc'])
+                msg = err['msg']
+                click.echo(f"  – {loc}: {msg}")
+            sys.exit(1)
         
     return data, template, version
 
@@ -464,6 +439,12 @@ def build_config_from_schema(template: str, version: str, model_config=None, exi
     info = TEMPLATES[template]
     
     if info["schema_type"] == CFN:
+        # For CFN templates, use model fields instead of schema
+        if model_config:
+            props = {field: {"description": field_info.description or ""} 
+                    for field, field_info in model_config.__class__.model_fields.items()}
+        else:
+            props = {}
         # For CFN templates, always get fields from HpClusterStack model
         # Use JSON schema to get examples
         json_schema = HpClusterStack.model_json_schema()
@@ -499,7 +480,7 @@ def build_config_from_schema(template: str, version: str, model_config=None, exi
     for key, spec in props.items():
         if "default" in spec:
             values[key] = spec.get("default")
-    
+
     # Add examples next (for reset command when no existing config, or init command with no user input)
     # Use examples if no model_config and no existing_config (reset command)
     # OR if model_config exists but has no user data and no existing_config (init with no args)

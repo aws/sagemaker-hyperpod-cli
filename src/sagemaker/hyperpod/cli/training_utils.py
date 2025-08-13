@@ -46,6 +46,9 @@ def generate_click_command(
 
         def _parse_volume_param(ctx, param, value):
             """Parse volume parameters from command line format to dictionary format."""
+            if not value:
+                return None
+            
             volumes = []
             for i, v in enumerate(value):
                 try:
@@ -75,8 +78,11 @@ def generate_click_command(
             if Model is None:
                 raise click.ClickException(f"Unsupported schema version: {version}")
 
+            # Filter out None values to avoid passing them to the model
+            filtered_kwargs = {k: v for k, v in kwargs.items() if v is not None}
+
             try:
-                flat = Model(**kwargs)
+                flat = Model(**filtered_kwargs)
                 domain_config = flat.to_domain()
             except ValidationError as e:
                 error_messages = []

@@ -9,7 +9,7 @@ from importlib.metadata import version, PackageNotFoundError
 
 from sagemaker.hyperpod.cli.commands.cluster import list_cluster, set_cluster_context, get_cluster_context, \
     get_monitoring
-from sagemaker.hyperpod.cli.commands.cluster_stack import create_cluster_stack, describe_cluster_stack, \
+from sagemaker.hyperpod.cli.commands.cluster_stack import create_cluster_stack, describe_cluster, \
     list_cluster_stacks, update_cluster
 from sagemaker.hyperpod.cli.commands.training import (
     pytorch_create,
@@ -38,6 +38,14 @@ from sagemaker.hyperpod.cli.commands.inference import (
     custom_get_operator_logs,
 )
 from sagemaker.hyperpod.cli.commands.recipe import recipe_init, recipe_configure,recipe_validate, recipe_submit, find_recipe
+
+from sagemaker.hyperpod.cli.commands.init import (
+    init,
+    reset,
+    configure,
+    validate,
+    submit
+)
 
 from sagemaker.hyperpod.cli.commands.init import (
     init,
@@ -145,7 +153,7 @@ list.add_command(list_cluster_stacks)
 describe.add_command(pytorch_describe)
 describe.add_command(js_describe)
 describe.add_command(custom_describe)
-describe.add_command(describe_cluster_stack)
+describe.add_command(describe_cluster)
 
 delete.add_command(pytorch_delete)
 delete.add_command(js_delete)
@@ -172,6 +180,7 @@ cli.add_command(get_cluster_context)
 cli.add_command(get_monitoring)
 cli.add_command(create_cluster_stack)
 cli.add_command(update_cluster)
+cli.add_command(describe)
 cli.add_command(recipe_init)
 cli.add_command(recipe_configure)
 cli.add_command(recipe_validate)
