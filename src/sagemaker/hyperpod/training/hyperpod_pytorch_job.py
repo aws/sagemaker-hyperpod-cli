@@ -5,8 +5,8 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config impo
     _HyperPodPytorchJob, HyperPodPytorchJobStatus
 )
 from sagemaker.hyperpod.common.config.metadata import Metadata
-from kubernetes import client, config, __version__ as kubernetes_client_version
-from typing import List, Optional, ClassVar, Tuple
+from kubernetes import client, config
+from typing import List, Optional, ClassVar
 from sagemaker.hyperpod.common.utils import (
     handle_exception,
     get_default_namespace,
