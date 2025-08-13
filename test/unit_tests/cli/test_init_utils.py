@@ -219,7 +219,7 @@ namespace: test-namespace
             assert data['version'] == 1.0  # YAML loads this as float
             assert data['namespace'] == 'test-namespace'
             assert template == 'hyp-cluster'
-            assert version == 1.0  # YAML loads this as float
+            assert version == '1.0'
     
     def test_load_config_default_version(self):
         """Test loading config with default version when not specified"""
@@ -667,8 +667,8 @@ class TestGenerateClickCommandEnhanced:
                 decorator = generate_click_command()
                 assert callable(decorator)
     
-    def test_generate_click_command_auto_load_config_path(self):
-        """Test generate_click_command with auto_load_config=True"""
+    def test_generate_click_command_path(self):
+        """Test generate_click_command"""
         mock_templates = {
             'hyp-cluster': {
                 'schema_type': CFN
@@ -691,7 +691,7 @@ namespace: test-namespace
             mock_cluster_stack.model_json_schema.return_value = {'properties': {}}
             mock_cluster_stack.get_template.return_value = json.dumps({'Parameters': {}})
             
-            decorator = generate_click_command(auto_load_config=True)
+            decorator = generate_click_command()
             
             @decorator
             def test_func(model_config):

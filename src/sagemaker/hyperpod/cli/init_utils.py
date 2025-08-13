@@ -80,6 +80,82 @@ def save_k8s_jinja(directory: str, content: str):
     return path
 
 
+def filter_cli_metadata_fields(config_data: dict) -> dict:
+    """
+    Filter out CLI metadata fields that should not be passed to Pydantic models.
+    
+    Args:
+        config_data: Configuration data dictionary
+        
+    Returns:
+        Filtered dictionary without CLI metadata fields
+    """
+    return {
+        k: v for k, v in config_data.items() 
+        if k not in ('template', 'version') and v is not None
+    }
+
+
+def get_latest_version_from_registry(template: str) -> str:
+    """
+    Get the latest version available in the registry for a given template.
+    
+    Args:
+        template: Template name
+        
+    Returns:
+        Latest version string (e.g., "1.0", "2.0")
+    """
+    template_info = TEMPLATES.get(template)
+    if not template_info:
+        raise click.ClickException(f"Unknown template: {template}")
+    
+    if template_info.get("schema_type") == CFN:
+        # CFN templates don't have versioned registries, return default
+        return "1.0"
+    
+    registry = template_info.get("registry")
+    if not registry:
+        raise click.ClickException(f"No registry found for template: {template}")
+    
+    # Get all available versions and return the latest
+    available_versions = list(registry.keys())
+    if not available_versions:
+        raise click.ClickException(f"No versions available in registry for template: {template}")
+    
+    # Sort versions to get the latest (assuming semantic versioning)
+    # Convert to tuples for proper version comparison (e.g., "1.0" -> (1, 0))
+    def version_key(v):
+        try:
+            return tuple(map(int, v.split('.')))
+        except ValueError:
+            # Fallback for non-numeric versions
+            return (0, 0)
+    
+    latest_version = max(available_versions, key=version_key)
+    return latest_version
+
+
+def get_default_version_for_template(template: str) -> str:
+    """
+    Get the default version for a template (latest available).
+    
+    Args:
+        template: Template name
+        
+    Returns:
+        Default version string
+    """
+    # Check if template exists first
+    if template not in TEMPLATES:
+        raise click.ClickException(f"Unknown template: {template}")
+        
+    try:
+        return get_latest_version_from_registry(template)
+    except Exception:
+        raise click.ClickException(f"Could not get the latest version for template: {template}")
+
+
 def load_schema_for_version(version: str, schema_pkg: str) -> dict:
     ver_pkg = f"{schema_pkg}.v{version.replace('.', '_')}"
     raw = pkgutil.get_data(ver_pkg, "schema.json")
@@ -91,9 +167,7 @@ def load_schema_for_version(version: str, schema_pkg: str) -> dict:
 def generate_click_command(
     *,
     version_key_arg: str = "version",
-    require_schema_fields: bool = True,
     template_arg_name: str = "template",
-    auto_load_config: bool = False,
 ) -> Callable:
     """
     Decorator that:
@@ -105,24 +179,33 @@ def generate_click_command(
     # build the UNION of all schema props + required flags
     union_props = {}
     union_reqs = set()
-    
-    for template, template_info in TEMPLATES.items():
+    for template_name, template_info in TEMPLATES.items():
         if template_info["schema_type"] == CRD:
-            schema = load_schema_for_version("1.0", template_info["schema_pkg"])
+            # Use latest version for building union schema
+            latest_version = get_default_version_for_template(template_name)
+            schema = load_schema_for_version(latest_version, template_info["schema_pkg"])
             for k, spec in schema.get("properties", {}).items():
                 union_props.setdefault(k, spec)
-            if require_schema_fields:
-                union_reqs |= set(schema.get("required", []))
-        elif template_info["schema_type"] == CFN:
-            # For CFN templates, use HpClusterStack model fields instead of loading template
-            # This avoids making AWS calls at import time
-            try:
-                for field_name, field_info in HpClusterStack.model_fields.items():
-                    prop_info = {"description": field_info.description or ""}
-                    union_props.setdefault(field_name, prop_info)
-            except Exception:
-                # If model fields are not available, skip CFN parameters for now
-                pass
+    
+    # Process CFN templates second and allow them to override CRD fields
+    for template, template_info in TEMPLATES.items():
+        if template_info["schema_type"] == CFN:
+            cluster_template = json.loads(HpClusterStack.get_template())
+            cluster_parameters = cluster_template.get("Parameters")
+            # Add CFN fields to union, potentially overriding CRD fields
+            json_schema = HpClusterStack.model_json_schema()
+            schema_properties = json_schema.get('properties', {})
+            
+            for field, field_info in HpClusterStack.model_fields.items():
+                prop_info = {"description": field_info.description or ""}
+                
+                # Get examples from JSON schema if available
+                if field in schema_properties and 'examples' in schema_properties[field]:
+                    prop_info["examples"] = schema_properties[field]['examples']
+                
+                # For CFN templates, override any existing union entry (don't use setdefault)
+                union_props[field] = prop_info
+
     def decorator(func: Callable) -> Callable:
         # JSON flag parser
         def _parse_json_flag(ctx, param, value):
@@ -130,35 +213,100 @@ def generate_click_command(
                 return None
             try:
                 return json.loads(value)
-            except json.JSONDecodeError as e:
-                raise click.BadParameter(f"{param.name!r} must be valid JSON: {e}")
+            except json.JSONDecodeError:
+                # Try to fix unquoted list items: [python, train.py] -> ["python", "train.py"]
+                if value.strip().startswith('[') and value.strip().endswith(']'):
+                    try:
+                        # Remove brackets and split by comma
+                        inner = value.strip()[1:-1]
+                        items = [item.strip() for item in inner.split(',')]
+                        return items
+                    except:
+                        pass
+                raise click.BadParameter(f"{param.name!r} must be valid JSON or a list like [item1, item2]")
+
+
+        # Volume flag parser
+        def _parse_volume_flag(ctx, param, value):
+            if not value:
+                return None
+            
+            # Handle multiple volume flags
+            if not isinstance(value, (list, tuple)):
+                value = [value]
+            
+            from hyperpod_pytorch_job_template.v1_0.model import VolumeConfig
+            volumes = []
+            
+            for vol_str in value:
+                # Parse volume string: name=model-data,type=hostPath,mount_path=/data,path=/data
+                vol_dict = {}
+                for pair in vol_str.split(','):
+                    if '=' in pair:
+                        key, val = pair.split('=', 1)
+                        key = key.strip()
+                        val = val.strip()
+                        
+                        # Convert read_only to boolean
+                        if key == 'read_only':
+                            vol_dict[key] = val.lower() in ('true', '1', 'yes', 'on')
+                        else:
+                            vol_dict[key] = val
+                
+                try:
+                    volumes.append(VolumeConfig(**vol_dict))
+                except Exception as e:
+                    raise click.BadParameter(f"Invalid volume configuration '{vol_str}': {e}")
+            
+            return volumes
 
         @functools.wraps(func)
         def wrapped(*args, **kwargs):
-            # determine template, directory, version
-            if auto_load_config:
-                # configure path: load from existing config.yaml
-                dir_path = Path('.').resolve()
-                config_file = dir_path / 'config.yaml'
-                if not config_file.is_file():
-                    raise click.UsageError("No config.yaml found; run `hyp init` first.")
-                data = yaml.safe_load(config_file.read_text()) or {}
-                template = data.get('template')
-                version = data.get(version_key_arg, '1.0')
-                directory = str(dir_path)
+            # Template-aware field mapping for --env flag
+            if 'env' in kwargs and kwargs['env'] is not None:
+                # Read template from existing config to determine correct field mapping
+                directory = kwargs.get('directory', '.')
+                config_path = os.path.join(directory, 'config.yaml')
+                if os.path.exists(config_path):
+                    try:
+                        with open(config_path, 'r') as f:
+                            existing_config = yaml.safe_load(f)
+                        template = existing_config.get('template')
+                        if template == 'hyp-pytorch-job':
+                            kwargs['environment'] = kwargs.pop('env')
+                        # For other templates (like hyp-custom-endpoint), keep as 'env'
+                    except:
+                        pass  # If config reading fails, keep original field name
+            
+
+            # configure path: load from existing config.yaml
+            dir_path = Path('.').resolve()
+            config_file = dir_path / 'config.yaml'
+            if not config_file.is_file():
+                raise click.UsageError("No config.yaml found; run `hyp init` first.")
+            data = yaml.safe_load(config_file.read_text()) or {}
+            template = data.get('template')
+            version = data.get(version_key_arg, '1.0')
+            
+            # Extract user version and config version
+            user_version = kwargs.pop(version_key_arg, None)
+            config_version = data.get(version_key_arg)
+            
+            # Ensure config_version is always a string (YAML might load it as float)
+            if config_version is not None:
+                config_version = str(config_version)
+
+            # Configure/Reset/Validate commands: Config file version is PRIMARY source of truth
+            # Priority: config file version > 1.0 (backward compatibility) > user --version flag (rare override)
+            if config_version is not None:
+                version = config_version
+            elif user_version is not None:
+                # Rare case: user explicitly overrides with --version flag
+                version = user_version
             else:
-                # init path: pull off template & directory from args/kwargs
-                sig = inspect.signature(func)
-                params = list(sig.parameters)
-                if params[0] == template_arg_name:
-                    if args:
-                        template, directory, *rest = args
-                    else:
-                        template = kwargs.pop(template_arg_name)
-                        directory = kwargs.pop('directory')
-                else:
-                    raise RuntimeError('generate_click_command: signature mismatch')
-                version = kwargs.pop(version_key_arg, '1.0')
+                # Config file has no version - default to 1.0 for backward compatibility
+                raise click.ClickException(f"Could not get the latest version for template: {template}")
+
 
             # lookup registry & schema_pkg
             template_info = TEMPLATES.get(template)
@@ -172,21 +320,23 @@ def generate_click_command(
                     raise click.ClickException(f"Unsupported schema version: {version}")
 
                 # build Pydantic model (bypass validation on configure)
-                if require_schema_fields:
-                    model_obj = Model(**kwargs)
-                else:
-                    try:
-                        model_obj = Model(**kwargs)
-                    except ValidationError:
-                        model_obj = Model.model_construct(**kwargs)
+                filtered_kwargs = filter_cli_metadata_fields(kwargs)
+                model_obj = Model.model_construct(**filtered_kwargs)
             elif template_info.get("schema_type") == CFN:
                 model_obj = HpClusterStack(**kwargs)
 
             # call underlying function
-            if auto_load_config:
-                return func(model_config=model_obj)
-            else:
-                return func(template, directory, version, model_obj)
+            return func(model_config=model_obj)
+
+        # inject JSON flags with proper field names
+        for flag in ('env', 'args', 'command', 'label-selector', 'dimensions', 'resources-limits', 'resources-requests', 'tags'):
+            wrapped = click.option(
+                f"--{flag}",
+                callback=_parse_json_flag,
+                metavar="JSON",
+                help=f"JSON object for {flag.replace('-', ' ')}",
+            )(wrapped)
+
 
         # inject every union schema property
         for name, spec in reversed(list(union_props.items())):
@@ -194,10 +344,13 @@ def generate_click_command(
                 template_arg_name,
                 'directory',
                 version_key_arg,
-                'env',
+                'args', # Skip since handled by JSON flag
+                'command', # Skip since handled by JSON flag
+                'label_selector', # Skip since handled by --label-selector JSON flag
                 'dimensions',
                 'resources_limits',
                 'resources_requests',
+                'tags',
             ):
                 continue
 
@@ -217,44 +370,53 @@ def generate_click_command(
             help_text = spec.get('description', '')
             if isinstance(help_text, list):
                 help_text = ', '.join(str(item) for item in help_text)
-            wrapped = click.option(
-                f"--{name.replace('_','-')}",
-                required=(name in union_reqs),
-                default=spec.get('default'),
-                show_default=('default' in spec),
-                type=ctype,
-                help=help_text,
-            )(wrapped)
 
-        # inject CFN parameters if we have them
-        if 'cluster_parameters' in locals():
-            for param_name, param_info in cluster_parameters.items():
-                if param_name in (
-                    template_arg_name,
-                    'directory',
-                    version_key_arg,
-                    'env',
-                    'dimensions',
-                    'resources_limits',
-                    'resources_requests',
-                ):
-                    continue
-                    
-                help_text = param_info.get('Description', '')
-                param_type = param_info.get('Type', 'String')
-                
-                # Map CFN types to click types
-                if param_type == 'Number':
-                    ctype = float
-                elif 'List' in param_type:
-                    ctype = str  # Handle as comma-separated string
-                else:
-                    ctype = str
-                    
+            # Special handling for volume parameter
+            if name == 'volume':
                 wrapped = click.option(
-                    f"--{pascal_to_kebab(param_name)}",
+                    f"--{name.replace('_','-')}",
+                    multiple=True,
+                    callback=_parse_volume_flag,
+                    help=help_text,
+                )(wrapped)
+            else:
+                wrapped = click.option(
+                    f"--{name.replace('_','-')}",
+                    required=(name in union_reqs),
+                    default=spec.get('default'),
+                    show_default=('default' in spec),
                     type=ctype,
                     help=help_text,
+                )(wrapped)
+
+        for cfn_param_name, cfn_param_details in cluster_parameters.items():
+            # Convert CloudFormation type to Click type
+            cfn_type = cfn_param_details.get('Type', 'String')
+            if cfn_type == 'Number':
+                click_type = float
+            elif cfn_type == 'Integer':
+                click_type = int
+            else:
+                click_type = str
+
+            # Special handling for tags parameter
+            if cfn_param_name == 'Tags':
+                wrapped = click.option(
+                    f"--{pascal_to_kebab(cfn_param_name)}",
+                    callback=_parse_json_flag,
+                    metavar="JSON",
+                    help=cfn_param_details.get('Description', ''),
+                )(wrapped)
+            else:
+                cfn_default = cfn_param_details.get('Default')
+                wrapped = click.option(
+                    f"--{pascal_to_kebab(cfn_param_name)}",
+                    default=cfn_default,
+                    show_default=cfn_default,
+
+                    type=click_type,
+                    help=cfn_param_details.get('Description', ''),
+
                 )(wrapped)
 
         # inject JSON flags
@@ -274,8 +436,8 @@ def generate_click_command(
 def save_config_yaml(prefill: dict, comment_map: dict, directory: str):
     os.makedirs(directory, exist_ok=True)
     filename = "config.yaml"
-
     path = os.path.join(directory, filename)
+    
     with open(path, 'w') as f:
         for key in prefill:
             comment = comment_map.get(key)
@@ -283,8 +445,25 @@ def save_config_yaml(prefill: dict, comment_map: dict, directory: str):
                 f.write(f"# {comment}\n")
 
             val = prefill.get(key)
-            val = "" if val is None else val
-            f.write(f"{key}: {val}\n\n")
+            
+            # Handle nested structures like volumes
+            if key == 'volume' and isinstance(val, list) and val:
+                f.write(f"{key}:\n")
+                for vol in val:
+                    f.write(f"  - name: {vol.get('name', '')}\n")
+                    f.write(f"    type: {vol.get('type', '')}\n") 
+                    f.write(f"    mount_path: {vol.get('mount_path', '')}\n")
+                    if vol.get('path'):
+                        f.write(f"    path: {vol.get('path')}\n")
+                    if vol.get('claim_name'):
+                        f.write(f"    claim_name: {vol.get('claim_name')}\n")
+                    if vol.get('read_only') is not None:
+                        f.write(f"    read_only: {vol.get('read_only')}\n")
+                f.write("\n")
+            else:
+                # Handle simple values
+                val = "" if val is None else val
+                f.write(f"{key}: {val}\n\n")
 
     print(f"Configuration saved to: {path}")
 
@@ -304,33 +483,39 @@ def load_config_and_validate(dir_path: Path = None) -> Tuple[dict, str, str]:
     # Load existing config
     data = yaml.safe_load(config_file.read_text()) or {}
     template = data.get("template")
-    version = data.get("version", "1.0")
-
+    
     if template not in TEMPLATES:
         click.secho(f"❌  Unknown template '{template}' in config.yaml", fg="red")
         sys.exit(1)
-    # For CFN templates, validate using HpClusterStack
-    template_info = TEMPLATES[template]
-    if template_info["schema_type"] == CFN:
-        try:
-            # Filter out template and namespace fields for validation
-            filtered_config = {}
-            for k, v in data.items():
-                if k not in ('template', 'namespace') and v is not None:
-                    # Convert lists to JSON strings, everything else to string
-                    if isinstance(v, list):
-                        filtered_config[k] = json.dumps(v)
-                    else:
-                        filtered_config[k] = str(v)
-            click.secho(filtered_config)
-            HpClusterStack(**filtered_config)
-        except ValidationError as e:
-            click.secho("❌  Config validation errors:", fg="red")
-            for err in e.errors():
-                loc = '.'.join(str(x) for x in err['loc'])
-                msg = err['msg']
-                click.echo(f"  – {loc}: {msg}")
-            sys.exit(1)
+    
+    # Use "1.0" as default if version not specified in config (for backward compatibility)
+    # The dynamic version logic should only apply when creating new configs, not loading existing ones
+    version = data.get("version", "1.0")
+    
+    # Ensure version is always a string (YAML might load it as float)
+    version = str(version)
+        
+    return data, template, version
+
+
+def load_config_and_validate(dir_path: Path = None) -> Tuple[dict, str, str]:
+    """
+    Load config.yaml, validate it exists, and extract template and version.
+    Returns (config_data, template, version)
+    Exits on validation errors - use for commands that require valid config.
+    """
+    data, template, version = load_config(dir_path)
+    validation_errors = validate_config_against_model(data, template, version)
+    
+    is_valid = display_validation_results(
+        validation_errors, 
+        success_message="config.yaml is valid!",
+        error_prefix="Config validation errors:"
+    )
+    
+    if not is_valid:
+        sys.exit(1)
+
         
     return data, template, version
 
@@ -367,6 +552,34 @@ def validate_config_against_model(config_data: dict, template: str, version: str
             registry = template_info["registry"]
             model = registry.get(version)
             if model:
+                # For validation, include all values (including None) so model_validator can check required fields
+                filtered_config = {
+                    k: v for k, v in config_data.items() 
+                    if k not in ('template', 'version')
+                }
+                
+                # Special handling for JSON fields that might be passed as strings
+                for key in ('args', 'environment'):
+                    if key in filtered_config and isinstance(filtered_config[key], str):
+                        val = filtered_config[key].strip()
+                        # Try to parse as JSON if it looks like JSON
+                        if val.startswith('[') or val.startswith('{'):
+                            try:
+                                filtered_config[key] = json.loads(val)
+                            except json.JSONDecodeError:
+                                # If JSON parsing fails, keep as string and let validation handle it
+                                pass
+                
+                # Special handling for nested structures like volumes
+                if 'volume' in filtered_config and filtered_config['volume']:
+                    # Convert YAML volume structure back to VolumeConfig objects for validation
+                    from hyperpod_pytorch_job_template.v1_0.model import VolumeConfig
+                    volume_configs = []
+                    for vol_dict in filtered_config['volume']:
+                        if isinstance(vol_dict, dict):
+                            volume_configs.append(VolumeConfig(**vol_dict))
+                    filtered_config['volume'] = volume_configs
+                
                 model(**filtered_config)
                 
     except ValidationError as e:
@@ -422,7 +635,8 @@ def display_validation_results(validation_errors: list, success_message: str = "
         return True
 
 
-def build_config_from_schema(template: str, version: str, model_config=None, existing_config=None) -> Tuple[dict, dict]:
+def build_config_from_schema(template: str, version: str, model_config=None, existing_config=None, user_provided_fields=None) -> Tuple[dict, dict]:
+
     """
     Build a config dictionary and comment map from schema.
     
@@ -461,13 +675,20 @@ def build_config_from_schema(template: str, version: str, model_config=None, exi
             props[field] = prop_info
         reqs = []
     else:
+        # For CRD templates, use the provided version (should always be provided)
+        # Don't fallback to latest version here - version should come from caller
+        if not version:
+            raise ValueError(f"Version must be provided for template {template}")
         schema = load_schema_for_version(version, info["schema_pkg"])
         props = schema.get("properties", {})
         reqs = schema.get("required", [])
     
     # Build config dict with defaults from schema
-    # Initialize config with template
-    full_cfg = {"template": template}
+    full_cfg = {
+        "template": template,
+        "version": version,  
+    }
+
     
     # Prepare values from different sources with priority:
     # 1. model_config (user-provided values)
@@ -506,18 +727,120 @@ def build_config_from_schema(template: str, version: str, model_config=None, exi
     # Add existing config values next (middle priority)
     if existing_config:
         for key, val in existing_config.items():
-            # Skip template as it's handled separately
-            if key == "template":
+            # Skip template and version as they're handled separately
+            if key in ("template", "version"):
+
                 continue
             if key in props:
                 values[key] = val
     
     # Add model_config values last (highest priority)
-    if model_config:
+    # Only use fields that were actually provided by the user
+    if model_config and user_provided_fields:
+        cfg_dict = model_config.model_dump(exclude_none=True)
+        for key, val in cfg_dict.items():
+            if key in props and key in user_provided_fields:
+                # Special handling for JSON fields that might be passed as strings
+                if key in ('args', 'environment', 'env', 'command', 'label_selector', 'dimensions', 'resources_limits', 'resources_requests', 'tags') and isinstance(val, str):
+                    # Try to parse as JSON if it looks like JSON
+                    val_stripped = val.strip()
+                    if val_stripped.startswith('[') or val_stripped.startswith('{'):
+                        try:
+                            val = json.loads(val_stripped)
+                        except json.JSONDecodeError:
+                            # Try to fix unquoted list items: [python, train.py] -> ["python", "train.py"]
+                            if val_stripped.startswith('[') and val_stripped.endswith(']'):
+                                try:
+                                    inner = val_stripped[1:-1]
+                                    val = [item.strip() for item in inner.split(',')]
+                                except:
+                                    pass
+                
+                # Special handling for nested structures like volumes
+                if key == 'volume' and val:
+                    # Get existing volumes from config
+                    existing_volumes = values.get('volume', []) or []
+                    
+                    # Convert new volumes to dict format
+                    new_volumes = []
+                    for vol in val:
+                        if hasattr(vol, 'name'):  # VolumeConfig object
+                            vol_dict = {
+                                'name': vol.name,
+                                'type': vol.type,
+                                'mount_path': vol.mount_path
+                            }
+                            if vol.path:
+                                vol_dict['path'] = vol.path
+                            if vol.claim_name:
+                                vol_dict['claim_name'] = vol.claim_name
+                            if vol.read_only is not None:
+                                vol_dict['read_only'] = vol.read_only
+                        else:  # Already a dict
+                            vol_dict = vol
+                        new_volumes.append(vol_dict)
+                    
+                    # Merge: update existing volumes by name or add new ones
+                    merged_volumes = existing_volumes.copy()
+                    for new_vol in new_volumes:
+                        # Find if volume with same name exists
+                        updated = False
+                        for i, existing_vol in enumerate(merged_volumes):
+                            if existing_vol.get('name') == new_vol.get('name'):
+                                merged_volumes[i] = new_vol  # Update existing
+                                updated = True
+                                break
+                        if not updated:
+                            merged_volumes.append(new_vol)  # Add new
+                    
+                    values[key] = merged_volumes
+                else:
+                    values[key] = val
+    elif model_config and not user_provided_fields:
+        # For init command, use all model_config values
         cfg_dict = model_config.model_dump(exclude_none=True)
         for key, val in cfg_dict.items():
             if key in props:
-                values[key] = val
+                # Special handling for nested structures like volumes
+                if key == 'volume' and val:
+                    # Get existing volumes from config
+                    existing_volumes = values.get('volume', []) or []
+                    
+                    # Convert new volumes to dict format
+                    new_volumes = []
+                    for vol in val:
+                        if hasattr(vol, 'name'):  # VolumeConfig object
+                            vol_dict = {
+                                'name': vol.name,
+                                'type': vol.type,
+                                'mount_path': vol.mount_path
+                            }
+                            if vol.path:
+                                vol_dict['path'] = vol.path
+                            if vol.claim_name:
+                                vol_dict['claim_name'] = vol.claim_name
+                            if vol.read_only is not None:
+                                vol_dict['read_only'] = vol.read_only
+                        else:  # Already a dict
+                            vol_dict = vol
+                        new_volumes.append(vol_dict)
+                    
+                    # Merge: update existing volumes by name or add new ones
+                    merged_volumes = existing_volumes.copy()
+                    for new_vol in new_volumes:
+                        # Find if volume with same name exists
+                        updated = False
+                        for i, existing_vol in enumerate(merged_volumes):
+                            if existing_vol.get('name') == new_vol.get('name'):
+                                merged_volumes[i] = new_vol  # Update existing
+                                updated = True
+                                break
+                        if not updated:
+                            merged_volumes.append(new_vol)  # Add new
+                    
+                    values[key] = merged_volumes
+                else:
+                    values[key] = val
     
     # Build the final config with required fields first, then optional
     for key in reqs:
@@ -529,7 +852,10 @@ def build_config_from_schema(template: str, version: str, model_config=None, exi
             full_cfg[key] = values.get(key, None)
     
     # Build comment map with [Required] prefix for required fields
-    comment_map = {}
+    comment_map = {
+        "template": "Template type",
+        "version": "Schema version (latest available version used by default)",
+    }
     for key, spec in props.items():
         desc = spec.get("description", "")
         if key in reqs:

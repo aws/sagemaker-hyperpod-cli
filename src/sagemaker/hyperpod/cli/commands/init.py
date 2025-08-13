@@ -1,6 +1,7 @@
 import click
 import yaml
 import sys
+import warnings
 from pathlib import Path
 from pydantic import ValidationError
 from datetime import datetime
@@ -12,6 +13,8 @@ from sagemaker.hyperpod.cli.constants.init_constants import (
     CFN,
     CRD
 )
+from sagemaker.hyperpod.common.config import Metadata
+from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob
 from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack
 import json
 from sagemaker.hyperpod.cli.init_utils import (
@@ -23,19 +26,18 @@ from sagemaker.hyperpod.cli.init_utils import (
     filter_validation_errors_for_user_input,
     display_validation_results,
     build_config_from_schema,
-    save_template
+    save_template,
+    get_default_version_for_template
 )
 
 @click.command("init")
 @click.argument("template", type=click.Choice(list(TEMPLATES.keys())))
 @click.argument("directory", type=click.Path(file_okay=False), default=".")
-@click.option("--version", "-v", default="1.0", help="Schema version")
-@generate_click_command(require_schema_fields=False)
+@click.option("--version", "-v", default=None, help="Schema version")
 def init(
     template: str,
     directory: str,
     version: str,
-    model_config,  # Pydantic model from decorator
 ):
     """
     Initialize a TEMPLATE scaffold in DIRECTORY.
@@ -98,8 +100,12 @@ def init(
 
     # 3) Build config dict + comment map, then write config.yaml
     try:
+        # Determine version: use user-provided version or default to latest
+        if version is None:
+            version = get_default_version_for_template(template)
+
         # Use the common function to build config from schema
-        full_cfg, comment_map = build_config_from_schema(template, version, model_config)
+        full_cfg, comment_map = build_config_from_schema(template, version)
 
         save_config_yaml(
             prefill=full_cfg,
@@ -168,10 +174,7 @@ def reset():
 
 
 @click.command("configure")
-@generate_click_command(
-    require_schema_fields=False,  # flags are all optional
-    auto_load_config=True,        # load template/namespace/version from config.yaml
-)
+@generate_click_command()
 @click.pass_context
 def configure(ctx, model_config):
     """
@@ -190,8 +193,8 @@ def configure(ctx, model_config):
         # Update multiple fields at once
         hyp configure --instance-type ml.g5.xlarge --endpoint-name my-endpoint
         
-        # Update complex fields with JSON
-        hyp configure --tags '{"Environment": "prod", "Team": "ml"}'
+        # Update complex fields with list and JSON
+        hyp configure --args '[--epochs, 10]' --env '{"KEY": "value"}'
     
     """
     # 1) Load existing config without validation
@@ -219,7 +222,8 @@ def configure(ctx, model_config):
         template=template,
         version=version,
         model_config=model_config,
-        existing_config=data
+        existing_config=data,
+        user_provided_fields=user_input_fields
     )
 
     # 4) Validate the merged config, but only check user-provided fields
@@ -464,15 +468,43 @@ def submit(region):
             registry = TEMPLATES[template]["registry"]
             model = registry.get(version)
             if model:
-                filtered_config = {
-                    k: v for k, v in data.items() 
-                    if k not in ('template', 'version') and v is not None
-                }
+                # Filter out CLI metadata fields before passing to model
+                from sagemaker.hyperpod.cli.init_utils import filter_cli_metadata_fields
+                filtered_config = filter_cli_metadata_fields(data)
                 flat = model(**filtered_config)
                 domain = flat.to_domain()
-                domain.create(namespace=namespace)
+                if template == "hyp-custom-endpoint" or template == "hyp-jumpstart-endpoint":
+                    domain.create(namespace=namespace)
+                elif template == "hyp-pytorch-job":
+                    # Currently algin with pytorch_create. Open for refactor and simplify              
+                    # Prepare metadata
+                    job_name = domain.get("name")
+                    namespace = domain.get("namespace")
+                    spec = domain.get("spec")
+
+                    # Prepare metadata
+                    metadata_kwargs = {"name": job_name}
+                    if namespace:
+                        metadata_kwargs["namespace"] = namespace
+                    
+                        # Prepare job kwargs
+                    job_kwargs = {
+                        "metadata": Metadata(**metadata_kwargs),
+                        "replica_specs": spec.get("replica_specs"),
+                    }
+
+                    # Add nproc_per_node if present
+                    if "nproc_per_node" in spec:
+                        job_kwargs["nproc_per_node"] = spec.get("nproc_per_node")
+
+                    # Add run_policy if present
+                    if "run_policy" in spec:
+                        job_kwargs["run_policy"] = spec.get("run_policy")
+
+                    job = HyperPodPytorchJob(**job_kwargs)
+                    job.create()
 
 
     except Exception as e:
-        click.secho(f"❌  Failed to sumbit the command: {e}", fg="red")
+        click.secho(f"❌  Failed to submit the command: {e}", fg="red")
         sys.exit(1)

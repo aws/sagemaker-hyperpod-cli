@@ -11,64 +11,58 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 KUBERNETES_PYTORCH_JOB_TEMPLATE = """### Please keep template file unchanged ###
-defaults:
-    - override hydra/job_logging: stdout
-
-hydra:
-    run:
-        dir: .
-    output_subdir: null
-
-training_cfg:
-    entry_script: ??? # Path to the entry script of training/fine-tuning. This path should be inside container or relative path in git repo
-    script_args: ??? # Entry script arguments
-    run:
-        nodes: ??? # Number of nodes to use for current training
-        ntasks_per_node: ??? # Number of tasks per node
-cluster:
-    cluster_type: k8s  # currently k8s only
-    instance_type: ???
-    cluster_config:
-        namespace: ??? # the namespace to submit job
-        custom_labels: ???
-        service_account_name: null
-        annotations: ???
-        priority_class_name: ???
-        # Create k8s NodeAffinity to select nodes to deploy jobs which matches required and preferred labels
-        # Structure:
-        #   label_selector:
-        #     required: <required label key-values pair>
-        #     preferred: <preferred label key-values pair>
-        #     weights: <weights list used by preferred labels to get nodes priority>
-        # Example:
-        #   label_selector:
-        #     required:
-        #       example-label-key:
-        #         - expected-label-value-1
-        #         - expected-label-value-2
-        #     preferred:
-        #       preferred-label-key:
-        #         - preferred-label-value-1
-        #         - preferred-label-value-2
-        #     weights:
-        #       - 100
-        label_selector: ???
-        # persistent volume, usually used to mount FSx
-        persistent_volume_claims: null
-        pullPolicy: ??? # policy to pull container, can be Always, IfNotPresent and Never
-        restartPolicy: ??? # PyTorchJob restart policy
-        # temp volume, usually used to mount temp directory
-        # volumes, used to mount temp path to container
-        # example:
-        # volumes:
-        #  - volumeName: data1
-        #    hostPath: "/data"
-        #    mountPath: "/data"              
-        volumes: null
-
-base_results_dir: ???  # Location to store the results, checkpoints and logs.
-container: ??? # container to use
-
-env_vars:
-    NCCL_DEBUG: INFO # Logging level for NCCL. Set to "INFO" for debug information
-"""
+apiVersion: sagemaker.amazonaws.com/v1
+kind: HyperPodPyTorchJob
+metadata:
+  name: "{{ job_name }}"
+  namespace: "{{ namespace }}"
+{% if queue_name or priority %}  labels:
+{% if queue_name %}    kueue.x-k8s.io/queue-name: "{{ queue_name }}"
+{% endif %}{% if priority %}    kueue.x-k8s.io/priority-class: "{{ priority }}"
+{% endif %}{% endif %}spec:
+{% if tasks_per_node %}  nprocPerNode: "{{ tasks_per_node }}"
+{% endif %}  replicaSpecs:
+    - name: "pod"
+{% if node_count %}      replicas: {{ node_count }}
+{% endif %}      template:
+        metadata:
+          name: "{{ job_name }}"
+{% if namespace %}          namespace: "{{ namespace }}"
+{% endif %}{% if queue_name or priority %}          labels:
+{% if queue_name %}            kueue.x-k8s.io/queue-name: "{{ queue_name }}"
+{% endif %}{% if priority %}            kueue.x-k8s.io/priority-class: "{{ priority }}"
+{% endif %}{% endif %}        spec:
+          containers:
+            - name: "container-name"
+              image: "{{ image }}"
+{% if pull_policy %}              imagePullPolicy: "{{ pull_policy }}"
+{% endif %}{% if command %}              command: {{ command | tojson }}
+{% endif %}{% if args %}              args: {{ args | tojson }}
+{% endif %}{% if environment %}              env:
+{% for key, value in environment.items() %}                - name: "{{ key }}"
+                  value: "{{ value }}"
+{% endfor %}{% endif %}{% if volume %}              volumeMounts:
+{% for vol in volume %}                - name: "{{ vol.name }}"
+                  mountPath: "{{ vol.mount_path }}"
+{% if vol.read_only is not none and vol.read_only != "" %}                  readOnly: {{ vol.read_only | lower }}
+{% endif %}{% endfor %}{% endif %}              resources:
+                requests:
+                  nvidia.com/gpu: "0"
+                limits:
+                  nvidia.com/gpu: "0"
+{% if instance_type or label_selector or deep_health_check_passed_nodes_only %}          nodeSelector:
+{% if instance_type %}            node.kubernetes.io/instance-type: "{{ instance_type }}"
+{% endif %}{% if label_selector %}{% for key, value in label_selector.items() %}            {{ key }}: "{{ value }}"
+{% endfor %}{% endif %}{% if deep_health_check_passed_nodes_only %}            deep-health-check-passed: "true"
+{% endif %}{% endif %}{% if service_account_name %}          serviceAccountName: "{{ service_account_name }}"
+{% endif %}{% if scheduler_type %}          schedulerName: "{{ scheduler_type }}"
+{% endif %}{% if volume %}          volumes:
+{% for vol in volume %}            - name: "{{ vol.name }}"
+{% if vol.type == "hostPath" %}              hostPath:
+                path: "{{ vol.path }}"
+{% elif vol.type == "pvc" %}              persistentVolumeClaim:
+                claimName: "{{ vol.claim_name }}"
+{% endif %}{% endfor %}{% endif %}{% if max_retry %}  runPolicy:
+    cleanPodPolicy: "None"
+    jobMaxRetryCount: {{ max_retry }}
+{% endif %}"""

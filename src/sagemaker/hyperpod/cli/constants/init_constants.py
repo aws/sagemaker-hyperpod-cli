@@ -1,9 +1,11 @@
 from sagemaker.hyperpod.cli.templates.cfn_cluster_creation import CLOUDFORMATION_CLUSTER_CREATION_TEMPLATE
 from sagemaker.hyperpod.cli.templates.k8s_js_endpoint_template import KUBERNETES_JS_ENDPOINT_TEMPLATE
 from sagemaker.hyperpod.cli.templates.k8s_custom_endpoint_template import KUBERNETES_CUSTOM_ENDPOINT_TEMPLATE
+from sagemaker.hyperpod.cli.templates.k8s_pytorch_job_template import KUBERNETES_PYTORCH_JOB_TEMPLATE
 
 from hyperpod_jumpstart_inference_template.registry import SCHEMA_REGISTRY as JS_REG
 from hyperpod_custom_inference_template.registry import SCHEMA_REGISTRY as C_REG
+from hyperpod_pytorch_job_template.registry import SCHEMA_REGISTRY as P_REG
 
 # Here is the list of existing templates supported
 # You can onboard new template by adding the mapping here
@@ -23,6 +25,13 @@ TEMPLATES = {
         "schema_pkg": "hyperpod_custom_inference_template",
         "schema_type": CRD,
         'template': KUBERNETES_CUSTOM_ENDPOINT_TEMPLATE,
+        'type': "jinja"
+    },
+    "hyp-pytorch-job": {
+        "registry": P_REG,
+        "schema_pkg": "hyperpod_pytorch_job_template",
+        "schema_type": CRD,
+        'template': KUBERNETES_PYTORCH_JOB_TEMPLATE,
         'type': "jinja"
     },
     "hyp-cluster": {

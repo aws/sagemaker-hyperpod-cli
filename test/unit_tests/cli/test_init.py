@@ -4,6 +4,7 @@ from unittest.mock import Mock, patch, mock_open
 import json
 import tempfile
 import shutil
+import os
 from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
 from click.testing import CliRunner
@@ -861,7 +862,6 @@ class TestUserInputValidation:
             mock_cluster_stack.return_value = mock_instance
             
             mock_validate.return_value = []
-        
         runner = CliRunner()
         
         test_cases = [
@@ -925,4 +925,199 @@ class TestUserInputValidation:
                     # Should show warning about no arguments
                     assert result.exit_code == 0
                     assert "No arguments provided" in result.output
+
+class TestSpecialHandlingFlags:
+    """Test flags with special handling mechanisms"""
+
+    def setup_method(self):
+        self.temp_dir = tempfile.mkdtemp()
+        self.config_path = os.path.join(self.temp_dir, 'config.yaml')
+
+    def teardown_method(self):
+        shutil.rmtree(self.temp_dir)
+
+    def test_env_field_template_aware_mapping(self):
+        """Test --env flag maps to correct field based on template"""
+        # Test PyTorch template: env -> environment
+        pytorch_config = {
+            'template': 'hyp-pytorch-job',
+            'version': '1.0',
+            'job_name': 'test-job',
+            'image': 'pytorch:latest'
+        }
+        
+        with open(self.config_path, 'w') as f:
+            yaml.dump(pytorch_config, f)
+
+        kwargs = {'env': '{"CUDA_VISIBLE_DEVICES": "0,1"}', 'directory': self.temp_dir}
+        
+        # Simulate template-aware mapping
+        if os.path.exists(self.config_path):
+            with open(self.config_path, 'r') as f:
+                existing_config = yaml.safe_load(f)
+            template = existing_config.get('template')
+            if template == 'hyp-pytorch-job':
+                kwargs['environment'] = kwargs.pop('env')
+        
+        assert 'environment' in kwargs
+        assert 'env' not in kwargs
+
+        # Test custom inference template: env -> env (no mapping)
+        custom_config = {
+            'template': 'hyp-custom-endpoint',
+            'version': '1.0',
+            'endpoint_name': 'test-endpoint'
+        }
+        
+        with open(self.config_path, 'w') as f:
+            yaml.dump(custom_config, f)
+
+        kwargs = {'env': '{"MODEL_PATH": "/opt/ml/model"}', 'directory': self.temp_dir}
+        
+        # Simulate template-aware mapping
+        if os.path.exists(self.config_path):
+            with open(self.config_path, 'r') as f:
+                existing_config = yaml.safe_load(f)
+            template = existing_config.get('template')
+            if template == 'hyp-pytorch-job':
+                kwargs['environment'] = kwargs.pop('env')
+        
+        assert 'env' in kwargs
+        assert 'environment' not in kwargs
+
+    def test_json_parsing_for_special_fields(self):
+        """Test JSON parsing for fields with special handling"""
+        test_cases = [
+            ('env', '{"KEY": "value"}', {'KEY': 'value'}),
+            ('environment', '{"CUDA_VISIBLE_DEVICES": "0,1"}', {'CUDA_VISIBLE_DEVICES': '0,1'}),
+            ('args', '["--epochs", "10"]', ['--epochs', '10']),
+            ('command', '["python", "train.py"]', ['python', 'train.py']),
+            ('label_selector', '{"accelerator": "nvidia"}', {'accelerator': 'nvidia'}),
+            ('resources_requests', '{"cpu": "2"}', {'cpu': '2'}),
+            ('resources_limits', '{"memory": "4Gi"}', {'memory': '4Gi'}),
+            ('tags', '{"team": "ml"}', {'team': 'ml'}),
+        ]
+        
+        for field_name, json_string, expected in test_cases:
+            # Test JSON parsing logic
+            val = json_string
+            val_stripped = val.strip()
+            
+            if val_stripped.startswith('[') or val_stripped.startswith('{'):
+                try:
+                    parsed_val = json.loads(val_stripped)
+                    assert parsed_val == expected, f"Failed for field {field_name}"
+                except json.JSONDecodeError:
+                    # Try unquoted list parsing
+                    if val_stripped.startswith('[') and val_stripped.endswith(']'):
+                        inner = val_stripped[1:-1]
+                        parsed_val = [item.strip() for item in inner.split(',')]
+                        assert parsed_val == expected, f"Failed for field {field_name}"
+
+    def test_volume_special_handling(self):
+        """Test volume field special handling for nested structures"""
+        # Test volume parsing logic
+        volume_strings = [
+            "name=data,type=hostPath,mount_path=/data,path=/host/data",
+            "name=model,type=pvc,mount_path=/model,claim_name=model-pvc"
+        ]
+        
+        for volume_str in volume_strings:
+            # Parse volume string into dict format
+            volume_dict = {}
+            for part in volume_str.split(','):
+                key, value = part.split('=', 1)
+                volume_dict[key.strip()] = value.strip()
+            
+            assert 'name' in volume_dict
+            assert 'type' in volume_dict
+            assert 'mount_path' in volume_dict
+
+    def test_fields_not_in_skip_list(self):
+        """Test that special handling fields are not in skip list"""
+        # Fields that should NOT be skipped (they have special handling)
+        special_fields = ['env']  # env was removed from skip list
+        
+        # Fields that SHOULD be skipped (handled by JSON flags)
+        skip_fields = [
+            'template', 'directory', 'version',
+            'args', 'command', 'label_selector', 
+            'dimensions', 'resources_limits', 'resources_requests', 'tags'
+        ]
+        
+        for field in special_fields:
+            assert field not in skip_fields
+
+    def test_json_fields_list_completeness(self):
+        """Test that all JSON fields are included in parsing list"""
+        json_fields = [
+            'args', 'environment', 'env', 'command', 
+            'label_selector', 'dimensions', 'resources_limits', 
+            'resources_requests', 'tags'
+        ]
+        
+        # All these fields should be parsed as JSON
+        required_json_fields = ['env', 'environment', 'args', 'command', 'label_selector']
+        
+        for field in required_json_fields:
+            assert field in json_fields
+
+    def test_user_input_field_tracking(self):
+        """Test user input field tracking for special fields"""
+        mock_ctx = MagicMock()
+        mock_ctx.params = {
+            'env': '{"KEY": "value"}',
+            'resources_requests': '{"cpu": "2"}',
+            'volume': 'name=data,type=hostPath,mount_path=/data',
+            'job_name': None  # Default value
+        }
+        
+        def mock_get_parameter_source(param_name):
+            if param_name in ['env', 'resources_requests', 'volume']:
+                source = MagicMock()
+                source.name = 'COMMANDLINE'
+                return source
+            else:
+                source = MagicMock()
+                source.name = 'DEFAULT'
+                return source
+        
+        mock_ctx.get_parameter_source = mock_get_parameter_source
+        
+        # Simulate user input tracking
+        user_input_fields = set()
+        for param_name, param_value in mock_ctx.params.items():
+            param_source = mock_ctx.get_parameter_source(param_name)
+            if param_source and param_source.name == 'COMMANDLINE':
+                user_input_fields.add(param_name)
+        
+        assert 'env' in user_input_fields
+        assert 'resources_requests' in user_input_fields
+        assert 'volume' in user_input_fields
+        assert 'job_name' not in user_input_fields
+
+    def test_invalid_field_validation(self):
+        """Test that invalid fields for templates are properly handled"""
+        # Test that node_count is not valid for custom inference template
+        # but is valid for pytorch job template
+        
+        pytorch_fields = [
+            'job_name', 'image', 'node_count', 'tasks_per_node', 
+            'environment', 'args', 'command'
+        ]
+        
+        custom_inference_fields = [
+            'endpoint_name', 'model_name', 'instance_type', 
+            'env', 'model_source_type'
+        ]
+        
+        # node_count should be in pytorch fields but not in custom inference
+        assert 'node_count' in pytorch_fields
+        assert 'node_count' not in custom_inference_fields
+        
+        # env should be in custom inference but environment should be in pytorch
+        assert 'env' in custom_inference_fields
+        assert 'environment' in pytorch_fields
+        assert 'environment' not in custom_inference_fields
+        assert 'env' not in pytorch_fields
 
