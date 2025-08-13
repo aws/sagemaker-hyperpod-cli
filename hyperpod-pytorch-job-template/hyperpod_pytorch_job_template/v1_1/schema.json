@@ -1,5 +1,13 @@
 {
   "$defs": {
+    "topologyLabels": {
+      "enum": [
+        "topology.k8s.aws/ultraserver-id",
+        "topology.k8s.aws/network-node-layer-1",
+        "topology.k8s.aws/network-node-layer-2",
+        "topology.k8s.aws/network-node-layer-3"
+      ]
+    },
     "VolumeConfig": {
       "properties": {
         "name": {
@@ -361,11 +369,13 @@
     },
     "preferred-topology": {
       "type": "string",
-      "description": "Preferred topology annotation for scheduling"
+      "description": "Preferred topology annotation for scheduling",
+      "$ref": "#/$defs/topologyLabels"
         },
     "required-topology": {
-      "type": "string",
-      "description": "Required topology annotation for scheduling"
+      "type": "string", 
+      "description": "Required topology annotation for scheduling",
+      "$ref": "#/$defs/topologyLabels"
         }
   },
   "required": [

@@ -12,6 +12,14 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config impo
     HostPath, 
     PersistentVolumeClaim
 )
+
+# Constants
+ALLOWED_TOPOLOGY_LABELS = {
+    'topology.k8s.aws/ultraserver-id',
+    'topology.k8s.aws/network-node-layer-1',
+    'topology.k8s.aws/network-node-layer-2',
+    'topology.k8s.aws/network-node-layer-3'
+}
 from .quota_allocation_util import _is_valid, _get_resources_from_compute_quotas, _get_resources_from_instance, _get_limits
 
 class VolumeConfig(BaseModel):
@@ -140,7 +148,7 @@ class PyTorchJobConfig(BaseModel):
         default=None, 
         description="Priority class for job scheduling",
         min_length=1
-    ),
+    )
     accelerators: Optional[int] = Field(
         default=None,
         description="Number of accelerators a.k.a GPUs or Trainium Chips",
@@ -259,6 +267,17 @@ class PyTorchJobConfig(BaseModel):
         for key in v.keys():
             if not key or not label_key_pattern.match(key) or '..' in key:
                 raise ValueError(f"Label selector key '{key}' must follow Kubernetes label naming conventions")
+        
+        return v
+
+    @field_validator('preferred_topology', 'required_topology')
+    def validate_topology_labels(cls, v):
+        """Validate topology labels are from allowed set."""
+        if v is None:
+            return v
+        
+        if v not in ALLOWED_TOPOLOGY_LABELS:
+            raise ValueError(f"Topology label '{v}' must be one of: {', '.join(sorted(ALLOWED_TOPOLOGY_LABELS))}")
         
         return v
 
