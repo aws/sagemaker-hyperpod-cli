@@ -180,49 +180,49 @@ class CLICommand(click.Group):
 cli = LazyGroup()
 
 # Create subgroups, lightweight and don't trigger imports
-@cli.group()
+@cli.group(cls=CLICommand)
 def create():
     """Create endpoints or pytorch jobs."""
     pass
 
 
-@cli.group(name='list')
-def list_cmd():
+@cli.group(cls=CLICommand)
+def list():
     """List endpoints or pytorch jobs."""
     pass
 
 
-@cli.group()
+@cli.group(cls=CLICommand)
 def describe():
     """Describe endpoints or pytorch jobs."""
     pass
 
 
-@cli.group()
+@cli.group(cls=CLICommand)
 def delete():
     """Delete endpoints or pytorch jobs."""
     pass
 
 
-@cli.group()
+@cli.group(cls=CLICommand)
 def list_pods():
     """List pods for endpoints or pytorch jobs."""
     pass
 
 
-@cli.group()
+@cli.group(cls=CLICommand)
 def get_logs():
     """Get pod logs for endpoints or pytorch jobs."""
     pass
 
 
-@cli.group()
+@cli.group(cls=CLICommand)
 def invoke():
     """Invoke model endpoints."""
     pass
 
 
-@cli.group()
+@cli.group(cls=CLICommand)
 def get_operator_logs():
     """Get operator logs for endpoints."""
     pass
