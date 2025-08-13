@@ -39,7 +39,7 @@ def save_cfn_jinja(directory: str, content: str):
     Path(directory).mkdir(parents=True, exist_ok=True)
     path = os.path.join(directory, "cfn_params.jinja")
     
-    # Process content to handle array conversion for instance_group_settings and rig_settings
+    # Process content to handle array conversion
     processed_content = _process_cfn_template_content(content)
     
     with open(path, "w", encoding="utf-8") as f:
@@ -49,27 +49,24 @@ def save_cfn_jinja(directory: str, content: str):
 
 def _process_cfn_template_content(content: str) -> str:
     """
-    Process CFN template content to convert array attributes to numbered format.
-    Converts instance_group_settings and rig_settings arrays to numbered parameters.
+    Process CFN template content to include the full CloudFormation template.
     """
-    # Add Jinja2 logic to handle array conversion
-    array_conversion_logic = """
-{%- if instance_group_settings %}
-{%- for i in range(instance_group_settings|length) %}
-{%- set param_name = "InstanceGroupSettings" + (i+1)|string %}
-{{ param_name }}={{ instance_group_settings[i] }}
-{%- endfor %}
-{%- endif %}
-{%- if rig_settings %}
-{%- for i in range(rig_settings|length) %}
-{%- set param_name = "RigSettings" + (i+1)|string %}
-{{ param_name }}={{ rig_settings[i] }}
-{%- endfor %}
-{%- endif %}
+    try:
+        # Get the full CloudFormation template
+        full_template = HpClusterStack.get_template()
+    except Exception as e:
+        # Output the error and format as JSON in the file
+        click.secho(f"⚠️ Failed to generate CloudFormation template: {str(e)}", fg="red")        
+        full_template = ""
+    
+    # Add the complete template
+    template_content = f"""
+# CloudFormation Template:
+{full_template}
 """
     
-    # Insert the conversion logic at the beginning of the template
-    return array_conversion_logic + "\n" + content
+    # Insert the template at the beginning
+    return template_content + "\n" + content
 
 def save_k8s_jinja(directory: str, content: str):
     Path(directory).mkdir(parents=True, exist_ok=True)

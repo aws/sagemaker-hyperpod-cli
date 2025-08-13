@@ -72,15 +72,15 @@ def create_cluster_stack_helper(config_file: str, region: Optional[str] = None, 
 
 @click.command("hyp-cluster")
 @click.argument("stack-name", required=True)
-@click.option("--debug", is_flag=True, help="Enable debug logging")
 @click.option("--region", help="AWS region")
-def describe_cluster(stack_name: str, debug: bool, region: str) -> None:
+@click.option("--debug", is_flag=True, help="Enable debug logging")
+def describe_cluster_stack(stack_name: str, debug: bool, region: str) -> None:
     """Describe the status of a HyperPod cluster stack."""
     logger = setup_logging(logging.getLogger(__name__), debug)
     
     try:
         stack_info = HpClusterStack.describe(stack_name=stack_name, region=region)
-
+        
         if not stack_info or 'Stacks' not in stack_info or not stack_info['Stacks']:
             click.secho(f"❌ Stack '{stack_name}' not found", fg='red')
             return

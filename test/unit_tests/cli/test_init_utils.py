@@ -107,6 +107,7 @@ class TestSaveTemplate:
                 content='cfn template content'
             )
     
+    
     @patch('sagemaker.hyperpod.cli.init_utils.save_k8s_jinja')
     @patch('sagemaker.hyperpod.cli.init_utils.click.secho')
     def test_save_template_exception_handling(self, mock_secho, mock_save_k8s):
@@ -790,7 +791,9 @@ namespace: test-namespace
 @patch('builtins.open', new_callable=mock_open)
 @patch('sagemaker.hyperpod.cli.init_utils.Path')
 @patch('sagemaker.hyperpod.cli.init_utils.os.path.join')
-def test_save_cfn_jinja_called(mock_join,
+@patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack.get_template')
+def test_save_cfn_jinja_called(mock_get_template,
+                               mock_join,
                                mock_path,
                                mock_file):
     # Setup
@@ -802,6 +805,7 @@ def test_save_cfn_jinja_called(mock_join,
     }
     mock_join.return_value = '/test/dir/cfn_params.jinja'
     mock_path.return_value.mkdir = Mock()
+    mock_get_template.return_value = '{"Parameters": {}}'
 
     with patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates):
         # Execute
@@ -810,10 +814,11 @@ def test_save_cfn_jinja_called(mock_join,
         # Assert
         assert result is True
         mock_file.assert_called_once_with('/test/dir/cfn_params.jinja', 'w', encoding='utf-8')
-        # Content should now be processed with array conversion logic
+        # Content should now be processed with CloudFormation template
         written_content = mock_file().write.call_args[0][0]
         assert 'test template content' in written_content
-        assert 'instance_group_settings' in written_content
+        assert 'CloudFormation Template' in written_content
+        assert '{"Parameters": {}}' in written_content
 
 
 def test_generate_click_command_cfn_case():
@@ -837,53 +842,90 @@ def test_generate_click_command_cfn_case():
         assert callable(dummy_func)
 
 
-class TestCfnTemplateArrayConversion:
+class TestCfnTemplateProcessing:
     
-    def test_process_cfn_template_content_adds_conversion_logic(self):
-        """Test that _process_cfn_template_content adds array conversion logic"""
+    @patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack.get_template')
+    def test_process_cfn_template_content(self, mock_get_template):
+        """Test _process_cfn_template_content"""
         original_content = "Original template content"
+        mock_template = '{"Parameters": {"TestParam": {"Type": "String"}}}'
+        mock_get_template.return_value = mock_template
         
         result = _process_cfn_template_content(original_content)
         
-        assert "instance_group_settings" in result
-        assert "rig_settings" in result
-        assert "InstanceGroupSettings" in result
-        assert "RigSettings" in result
+        assert "CloudFormation Template" in result
+        assert mock_template in result
         assert original_content in result
     
-    def test_process_cfn_template_content_jinja_logic(self):
-        """Test that the Jinja2 logic is correctly formatted"""
-        content = "test content"
-        
-        result = _process_cfn_template_content(content)
-        
-        # Check for proper Jinja2 syntax
-        assert "{%- if instance_group_settings %}" in result
-        assert "{%- for i in range(instance_group_settings|length) %}" in result
-        assert '{{ param_name }}={{ instance_group_settings[i] }}' in result
-        assert "{%- if rig_settings %}" in result
-        assert "{%- for i in range(rig_settings|length) %}" in result
-        assert '{{ param_name }}={{ rig_settings[i] }}' in result
     
-    @patch('builtins.open', new_callable=mock_open)
-    @patch('sagemaker.hyperpod.cli.init_utils.Path')
-    @patch('sagemaker.hyperpod.cli.init_utils.os.path.join')
+    @patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack')
     @patch('sagemaker.hyperpod.cli.init_utils.click.secho')
-    def test_save_cfn_jinja_processes_content(self, mock_secho, mock_join, mock_path, mock_file):
-        """Test that save_cfn_jinja processes content before saving"""
-        directory = "/test/dir"
-        content = "original content"
-        mock_join.return_value = "/test/dir/cfn_params.jinja"
-        mock_path.return_value.mkdir = Mock()
+    def test_process_cfn_template_content_handles_exceptions(self, mock_secho, mock_cluster_stack_class):
+        """Test _process_cfn_template_content handles exceptions gracefully"""
+        original_content = "Original template content"
         
-        result = save_cfn_jinja(directory, content)
+        # Mock get_template to raise exception
+        mock_cluster_stack_class.get_template.side_effect = Exception("Test exception")
         
-        # Verify file was written with processed content
-        mock_file.assert_called_once_with("/test/dir/cfn_params.jinja", "w", encoding="utf-8")
-        written_content = mock_file().write.call_args[0][0]
+        # Should not raise exception and should use empty fallback
+        result = _process_cfn_template_content(original_content)
         
-        # Verify content was processed (contains array conversion logic)
-        assert "instance_group_settings" in written_content
-        assert "rig_settings" in written_content
-        assert content in written_content
-        assert result == "/test/dir/cfn_params.jinja"
+        # Verify error was displayed and empty fallback is used
+        mock_secho.assert_called_once_with(
+            "⚠️ Failed to generate CloudFormation template: Test exception", 
+            fg="red"
+        )
+        assert "CloudFormation Template" in result
+        assert original_content in result
+    
+
+
+class TestProcessCfnTemplateContentEdgeCases:
+    """Test edge cases for _process_cfn_template_content function"""
+    
+    @patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack')
+    def test_process_cfn_template_content_json_parse_error(self, mock_cluster_stack_class):
+        """Test handling of JSON parse errors in template"""
+        original_content = "test content"
+        
+        # Mock get_template to return invalid JSON
+        mock_cluster_stack_class.get_template.return_value = 'invalid json'
+        
+        # Should not raise exception, should include the invalid JSON as-is
+        result = _process_cfn_template_content(original_content)
+        
+        assert "CloudFormation Template" in result
+        assert "invalid json" in result
+        assert original_content in result
+    
+    @patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack')
+    def test_process_cfn_template_content_with_parameters(self, mock_cluster_stack_class):
+        """Test handling of template with parameters"""
+        original_content = "test content"
+        
+        mock_template = '{"Parameters": {"Namespace": {"Type": "String"}}}'
+        mock_cluster_stack_class.get_template.return_value = mock_template
+        
+        result = _process_cfn_template_content(original_content)
+        
+        # Should include template and content without modifications
+        assert "CloudFormation Template" in result
+        assert original_content in result
+        assert '"Type": "String"' in result
+        assert mock_template in result
+    
+    @patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack')
+    def test_process_cfn_template_content_preserves_template_structure(self, mock_cluster_stack_class):
+        """Test that template structure is preserved"""
+        original_content = "test content"
+        
+        mock_template = '{"Parameters": {"OtherParam": {"Type": "String"}}}'
+        mock_cluster_stack_class.get_template.return_value = mock_template
+        
+        result = _process_cfn_template_content(original_content)
+        
+        # Should preserve original template structure
+        assert "CloudFormation Template" in result
+        assert original_content in result
+        assert "OtherParam" in result
+        assert mock_template in result
