@@ -116,133 +116,124 @@ def list_cluster(
     debug: bool,
     namespace: Optional[List],
 ):
-    _ensure_cluster_deps()
-    
-    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_cluster")
-    def _list_cluster_impl(
-        region: Optional[str],
-        output: Optional[str],
-        clusters: Optional[str],
-        debug: bool,
-        namespace: Optional[List],
-    ):
-        """List SageMaker Hyperpod Clusters with metadata.
+    """List SageMaker Hyperpod Clusters with metadata.
 
-        Example Usage:
-        1. List clusters with JSON output: hyperpod get-clusters -n hyperpod-ns-test-team
+    Example Usage:
+    1. List clusters with JSON output: hyperpod get-clusters -n hyperpod-ns-test-team
 
-        Output:
-            [
-                {
-                    "Cluster": "hyperpod-eks-cluster-a",
-                    "InstanceType": "ml.g5.2xlarge",
-                    "TotalNodes": 2,
-                    "AcceleratorDevicesAvailable": 1,
-                    "NodeHealthStatus=Schedulable": 2,
-                    "DeepHealthCheckStatus=Passed": "N/A",
-                    "Namespaces": {
-                        "hyperpod-ns-test-team": {
-                            "AvailableAcceleratorDevices": 1,
-                            "TotalAcceleratorDevices": 1
-                        }
+    Output:
+        [
+            {
+                "Cluster": "hyperpod-eks-cluster-a",
+                "InstanceType": "ml.g5.2xlarge",
+                "TotalNodes": 2,
+                "AcceleratorDevicesAvailable": 1,
+                "NodeHealthStatus=Schedulable": 2,
+                "DeepHealthCheckStatus=Passed": "N/A",
+                "Namespaces": {
+                    "hyperpod-ns-test-team": {
+                        "AvailableAcceleratorDevices": 1,
+                        "TotalAcceleratorDevices": 1
                     }
                 }
-            ]
-
-        2. List clusters with table output: hyperpod get-clusters -n hyperpod-ns-test-team --output table
-
-        Output:
-            Cluster                | InstanceType   |   TotalNodes | AcceleratorDevicesAvailable   |   NodeHealthStatus=Schedulable | DeepHealthCheckStatus=Passed | hyperpod-ns-test-teamTotalAcceleratorDevices   | hyperpod-ns-test-teamAvailableAcceleratorDevices
-            -----------------------+----------------+--------------+-------------------------------+--------------------------------+------------------------------+------------------------------------------------+----------------------------------------------------
-            hyperpod-eks-cluster-a | ml.g5.2xlarge  |            2 |                              1|                              2 |                          N/A | 1                                              | 1
-        """
-        if debug:
-            set_logging_level(logger, logging.DEBUG)
-        validator = ClusterValidator()
-
-        # Make use of user_agent_extra field of the botocore_config object
-        # to append SageMaker Hyperpod CLI specific user_agent suffix
-        # to the current User-Agent header value from boto3
-        # This config will also make sure that user_agent never fails to log the User-Agent string
-        # even if boto User-Agent header format is updated in the future
-        # Ref: https://botocore.amazonaws.com/v1/documentation/api/latest/reference/config.html
-        botocore_config = botocore.config.Config(
-            user_agent_extra=get_user_agent_extra_suffix()
-        )
-
-        session = boto3.Session(region_name=region) if region else boto3.Session()
-        if not validator.validate_aws_credential(session):
-            logger.error("Failed to list clusters capacity due to invalid AWS credentials.")
-            sys.exit(1)
-
-        try:
-            sm_client = get_sagemaker_client(session, botocore_config)
-        except botocore.exceptions.NoRegionError:
-            logger.error(
-                f"Please ensure you have configured the AWS default region or use the '--region' argument to specify the region."
-            )
-            sys.exit(1)
-        except Exception as e:
-            logger.error(f"Failed to initialize the SageMaker client: {e}")
-            sys.exit(1)
-
-        if clusters:
-            cluster_names = clusters.split(",")
-        else:
-            try:
-                cluster_names = _get_hyperpod_clusters(sm_client)
-            except Exception as e:
-                logger.error(f"Failed to list HyperPod clusters due to an error: {e}")
-                sys.exit(1)
-
-        cluster_capacities: List[List[str]] = []
-
-        counter = 0
-        for cluster_name in cluster_names:
-            current_cluster_capacities_size = len(cluster_capacities)
-            rate_limited_operation(
-                cluster_name=cluster_name,
-                validator=validator,
-                sm_client=sm_client,
-                region=region,
-                temp_config_file=TEMP_KUBE_CONFIG_FILE,
-                cluster_capacities=cluster_capacities,
-                namespace=namespace,
-            )
-            # cluster_capacities will only be updated when the cluster
-            # is a valid Hyperpod EKS cluster. This check avoid
-            # we skipped many Hyperpod Slurm clusters and didn't return
-            # any Hyperpod EKS clusters.
-            if len(cluster_capacities) > current_cluster_capacities_size:
-                counter += 1
-            # Currently only support list <= 50 clusters
-            if counter >= 50:
-                logger.debug(
-                    "The 'get-clusters' command has reached the maximum number of HyperPod clusters that can be listed, which is 50."
-                )
-                break
-
-        headers = [
-            "Cluster",
-            "InstanceType",
-            "TotalNodes",
-            "AcceleratorDevicesAvailable",
-            "NodeHealthStatus=Schedulable",
-            "DeepHealthCheckStatus=Passed",
+            }
         ]
 
-        if namespace is not None:
-            for ns in namespace:
-                headers.append(ns + TOTAL_ACCELERATOR_DEVICES_KEY)
-                headers.append(ns + AVAILABLE_ACCELERATOR_DEVICES_KEY)
-        if output == OutputFormat.TABLE.value:
-            print(tabulate(cluster_capacities, headers=headers, tablefmt="presto"))
-        elif output == OutputFormat.JSON.value:
-            json_list = [dict(zip(headers, value)) for value in cluster_capacities]
-            json_list = _restructure_output(json_list, namespace)
-            print(json.dumps(json_list, indent=4))
+    2. List clusters with table output: hyperpod get-clusters -n hyperpod-ns-test-team --output table
+
+    Output:
+        Cluster                | InstanceType   |   TotalNodes | AcceleratorDevicesAvailable   |   NodeHealthStatus=Schedulable | DeepHealthCheckStatus=Passed | hyperpod-ns-test-teamTotalAcceleratorDevices   | hyperpod-ns-test-teamAvailableAcceleratorDevices
+        -----------------------+----------------+--------------+-------------------------------+--------------------------------+------------------------------+------------------------------------------------+----------------------------------------------------
+        hyperpod-eks-cluster-a | ml.g5.2xlarge  |            2 |                              1|                              2 |                          N/A | 1                                              | 1
+    """
+    _ensure_cluster_deps()
+
+    if debug:
+        set_logging_level(logger, logging.DEBUG)
+    validator = ClusterValidator()
+
+    # Make use of user_agent_extra field of the botocore_config object
+    # to append SageMaker Hyperpod CLI specific user_agent suffix
+    # to the current User-Agent header value from boto3
+    # This config will also make sure that user_agent never fails to log the User-Agent string
+    # even if boto User-Agent header format is updated in the future
+    # Ref: https://botocore.amazonaws.com/v1/documentation/api/latest/reference/config.html
+    botocore_config = botocore.config.Config(
+        user_agent_extra=get_user_agent_extra_suffix()
+    )
+
+    session = boto3.Session(region_name=region) if region else boto3.Session()
+    if not validator.validate_aws_credential(session):
+        logger.error("Failed to list clusters capacity due to invalid AWS credentials.")
+        sys.exit(1)
+
+    try:
+        sm_client = get_sagemaker_client(session, botocore_config)
+    except botocore.exceptions.NoRegionError:
+        logger.error(
+            f"Please ensure you have configured the AWS default region or use the '--region' argument to specify the region."
+        )
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Failed to initialize the SageMaker client: {e}")
+        sys.exit(1)
+
+    if clusters:
+        cluster_names = clusters.split(",")
+    else:
+        try:
+            cluster_names = _get_hyperpod_clusters(sm_client)
+        except Exception as e:
+            logger.error(f"Failed to list HyperPod clusters due to an error: {e}")
+            sys.exit(1)
+
+    cluster_capacities: List[List[str]] = []
+
+    counter = 0
+    for cluster_name in cluster_names:
+        current_cluster_capacities_size = len(cluster_capacities)
+        rate_limited_operation(
+            cluster_name=cluster_name,
+            validator=validator,
+            sm_client=sm_client,
+            region=region,
+            temp_config_file=TEMP_KUBE_CONFIG_FILE,
+            cluster_capacities=cluster_capacities,
+            namespace=namespace,
+        )
+        # cluster_capacities will only be updated when the cluster
+        # is a valid Hyperpod EKS cluster. This check avoid
+        # we skipped many Hyperpod Slurm clusters and didn't return
+        # any Hyperpod EKS clusters.
+        if len(cluster_capacities) > current_cluster_capacities_size:
+            counter += 1
+        # Currently only support list <= 50 clusters
+        if counter >= 50:
+            logger.debug(
+                "The 'get-clusters' command has reached the maximum number of HyperPod clusters that can be listed, which is 50."
+            )
+            break
+
+    headers = [
+        "Cluster",
+        "InstanceType",
+        "TotalNodes",
+        "AcceleratorDevicesAvailable",
+        "NodeHealthStatus=Schedulable",
+        "DeepHealthCheckStatus=Passed",
+    ]
+
+    if namespace is not None:
+        for ns in namespace:
+            headers.append(ns + TOTAL_ACCELERATOR_DEVICES_KEY)
+            headers.append(ns + AVAILABLE_ACCELERATOR_DEVICES_KEY)
+    if output == OutputFormat.TABLE.value:
+        print(tabulate(cluster_capacities, headers=headers, tablefmt="presto"))
+    elif output == OutputFormat.JSON.value:
+        json_list = [dict(zip(headers, value)) for value in cluster_capacities]
+        json_list = _restructure_output(json_list, namespace)
+        print(json.dumps(json_list, indent=4))
     
-    return _list_cluster_impl(region, output, clusters, debug, namespace)
 
 
 @sleep_and_retry
