@@ -59,7 +59,15 @@ class TestGenerateClickCommand:
 
     @patch('sagemaker.hyperpod.cli.inference_utils.load_schema_for_version')
     def test_json_flags(self, mock_load_schema):
-        mock_load_schema.return_value = {'properties': {}, 'required': []}
+        mock_load_schema.return_value = {
+            'properties': {
+                'env': {'type': 'object'},
+                'dimensions': {'type': 'object'},
+                'resources_limits': {'type': 'object'},
+                'resources_requests': {'type': 'object'}
+            }, 
+            'required': []
+        }
         # Domain receives flags as attributes env, dimensions, resources_limits, resources_requests
         class DummyFlat:
             def __init__(self, **kwargs): self.__dict__.update(kwargs)

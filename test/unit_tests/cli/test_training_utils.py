@@ -80,7 +80,7 @@ class TestGenerateClickCommand:
         # Test valid JSON input
         result = self.runner.invoke(cmd, [
             '--environment', '{"VAR1":"val1"}',
-            '--label_selector', '{"key":"value"}'
+            '--label-selector', '{"key":"value"}'
         ])
         assert result.exit_code == 0
         output = json.loads(result.output)
