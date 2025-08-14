@@ -220,7 +220,7 @@ namespace: test-namespace
             assert data['version'] == 1.0  # YAML loads this as float
             assert data['namespace'] == 'test-namespace'
             assert template == 'hyp-cluster'
-            assert version == '1.0'
+            assert str(version) == '1.0'
     
     def test_load_config_default_version(self):
         """Test loading config with default version when not specified"""
@@ -730,7 +730,7 @@ namespace: test-namespace
             assert data['version'] == 1.0  # YAML loads this as float
             assert data['namespace'] == 'test-namespace'
             assert template == 'hyp-cluster'
-            assert version == 1.0  # YAML loads this as float
+            assert str(version) == '1.0'  # YAML loads this as float
 
     def test_load_config_and_validate_failure(self):
         """Test config loading with validation failure"""

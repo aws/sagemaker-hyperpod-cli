@@ -182,13 +182,23 @@ def generate_click_command(
             latest_version = get_default_version_for_template(template_name)
             schema = load_schema_for_version(latest_version, template_info["schema_pkg"])
             for k, spec in schema.get("properties", {}).items():
+                # Ensure description is always a string
+                if 'description' in spec:
+                    desc = spec['description']
+                    if isinstance(desc, list):
+                        spec = spec.copy()  # Don't modify the original
+                        spec['description'] = ', '.join(str(item) for item in desc)
                 union_props.setdefault(k, spec)
     
     # Process CFN templates second and allow them to override CRD fields
     for template, template_info in TEMPLATES.items():
         if template_info["schema_type"] == CFN:
-            cluster_template = json.loads(HpClusterStack.get_template())
-            cluster_parameters = cluster_template.get("Parameters")
+            try:
+                cluster_template = json.loads(HpClusterStack.get_template())
+                cluster_parameters = cluster_template.get("Parameters")
+            except Exception:
+                # If template can't be fetched, skip parameter processing
+                cluster_parameters = {}
             # Add CFN fields to union, potentially overriding CRD fields
             json_schema = HpClusterStack.model_json_schema()
             schema_properties = json_schema.get('properties', {})
@@ -416,15 +426,6 @@ def generate_click_command(
 
                 )(wrapped)
 
-        # inject JSON flags
-        for flag in ('env', 'dimensions', 'resources-limits', 'resources-requests'):
-            wrapped = click.option(
-                f"--{flag}",
-                callback=_parse_json_flag,
-                metavar="JSON",
-                help=f"JSON object for {flag.replace('-', ' ')}",
-            )(wrapped)
-        
         return wrapped
 
     return decorator
@@ -464,10 +465,20 @@ def save_config_yaml(prefill: dict, comment_map: dict, directory: str):
 
     print(f"Configuration saved to: {path}")
 
-def load_config_and_validate(dir_path: Path = None) -> Tuple[dict, str, str]:
+
+def load_config(dir_path: Path = None) -> Tuple[dict, str, str]:
     """
-    Load config.yaml, validate it exists, and extract template and version.
+    Base function to load and parse config.yaml file.
     Returns (config_data, template, version)
+    
+    Args:
+        dir_path: Directory path to look for config.yaml (defaults to current directory)
+        
+    Returns:
+        Tuple of (config_data, template, version)
+        
+    Raises:
+        SystemExit: If config.yaml not found or template is unknown
     """
     if dir_path is None:
         dir_path = Path(".").resolve()
@@ -480,18 +491,33 @@ def load_config_and_validate(dir_path: Path = None) -> Tuple[dict, str, str]:
     # Load existing config
     data = yaml.safe_load(config_file.read_text()) or {}
     template = data.get("template")
-    
+    version = data.get("version", "1.0")
+
     if template not in TEMPLATES:
         click.secho(f"❌  Unknown template '{template}' in config.yaml", fg="red")
         sys.exit(1)
-    
-    # Use "1.0" as default if version not specified in config (for backward compatibility)
-    # The dynamic version logic should only apply when creating new configs, not loading existing ones
-    version = data.get("version", "1.0")
-    
-    # Ensure version is always a string (YAML might load it as float)
-    version = str(version)
         
+    return data, template, version
+
+
+def load_config_and_validate(dir_path: Path = None) -> Tuple[dict, str, str]:
+    """
+    Load config.yaml, validate it exists, and extract template and version.
+    Returns (config_data, template, version)
+    Exits on validation errors - use for commands that require valid config.
+    """
+    data, template, version = load_config(dir_path)
+    validation_errors = validate_config_against_model(data, template, version)
+    
+    is_valid = display_validation_results(
+        validation_errors, 
+        success_message="config.yaml is valid!",
+        error_prefix="Config validation errors:"
+    )
+    
+    if not is_valid:
+        sys.exit(1)
+
     return data, template, version
 
 
@@ -665,6 +691,10 @@ def build_config_from_schema(template: str, version: str, model_config=None, exi
         for field, field_info in HpClusterStack.model_fields.items():
             prop_info = {"description": field_info.description or ""}
             
+            # Add default from model field if available
+            if hasattr(field_info, 'default') and field_info.default is not None:
+                prop_info["default"] = field_info.default
+            
             # Get examples from JSON schema if available
             if field in schema_properties and 'examples' in schema_properties[field]:
                 prop_info["examples"] = schema_properties[field]['examples']
@@ -696,7 +726,7 @@ def build_config_from_schema(template: str, version: str, model_config=None, exi
     
     # Add schema defaults first (lowest priority)
     for key, spec in props.items():
-        if "default" in spec:
+        if "default" in spec and spec["default"] is not None:
             values[key] = spec.get("default")
 
     # Add examples next (for reset command when no existing config, or init command with no user input)
@@ -732,112 +762,113 @@ def build_config_from_schema(template: str, version: str, model_config=None, exi
                 values[key] = val
     
     # Add model_config values last (highest priority)
-    # Only use fields that were actually provided by the user
-    if model_config and user_provided_fields:
-        cfg_dict = model_config.model_dump(exclude_none=True)
-        for key, val in cfg_dict.items():
-            if key in props and key in user_provided_fields:
-                # Special handling for JSON fields that might be passed as strings
-                if key in ('args', 'environment', 'env', 'command', 'label_selector', 'dimensions', 'resources_limits', 'resources_requests', 'tags') and isinstance(val, str):
-                    # Try to parse as JSON if it looks like JSON
-                    val_stripped = val.strip()
-                    if val_stripped.startswith('[') or val_stripped.startswith('{'):
-                        try:
-                            val = json.loads(val_stripped)
-                        except json.JSONDecodeError:
-                            # Try to fix unquoted list items: [python, train.py] -> ["python", "train.py"]
-                            if val_stripped.startswith('[') and val_stripped.endswith(']'):
-                                try:
-                                    inner = val_stripped[1:-1]
-                                    val = [item.strip() for item in inner.split(',')]
-                                except:
-                                    pass
-                
-                # Special handling for nested structures like volumes
-                if key == 'volume' and val:
-                    # Get existing volumes from config
-                    existing_volumes = values.get('volume', []) or []
+    if model_config:
+        # Only use fields that were actually provided by the user
+        if user_provided_fields:
+            cfg_dict = model_config.model_dump(exclude_none=True)
+            for key, val in cfg_dict.items():
+                if key in props and key in user_provided_fields:
+                    # Special handling for JSON fields that might be passed as strings
+                    if key in ('args', 'environment', 'env', 'command', 'label_selector', 'dimensions', 'resources_limits', 'resources_requests', 'tags') and isinstance(val, str):
+                        # Try to parse as JSON if it looks like JSON
+                        val_stripped = val.strip()
+                        if val_stripped.startswith('[') or val_stripped.startswith('{'):
+                            try:
+                                val = json.loads(val_stripped)
+                            except json.JSONDecodeError:
+                                # Try to fix unquoted list items: [python, train.py] -> ["python", "train.py"]
+                                if val_stripped.startswith('[') and val_stripped.endswith(']'):
+                                    try:
+                                        inner = val_stripped[1:-1]
+                                        val = [item.strip() for item in inner.split(',')]
+                                    except:
+                                        pass
                     
-                    # Convert new volumes to dict format
-                    new_volumes = []
-                    for vol in val:
-                        if hasattr(vol, 'name'):  # VolumeConfig object
-                            vol_dict = {
-                                'name': vol.name,
-                                'type': vol.type,
-                                'mount_path': vol.mount_path
-                            }
-                            if vol.path:
-                                vol_dict['path'] = vol.path
-                            if vol.claim_name:
-                                vol_dict['claim_name'] = vol.claim_name
-                            if vol.read_only is not None:
-                                vol_dict['read_only'] = vol.read_only
-                        else:  # Already a dict
-                            vol_dict = vol
-                        new_volumes.append(vol_dict)
-                    
-                    # Merge: update existing volumes by name or add new ones
-                    merged_volumes = existing_volumes.copy()
-                    for new_vol in new_volumes:
-                        # Find if volume with same name exists
-                        updated = False
-                        for i, existing_vol in enumerate(merged_volumes):
-                            if existing_vol.get('name') == new_vol.get('name'):
-                                merged_volumes[i] = new_vol  # Update existing
-                                updated = True
-                                break
-                        if not updated:
-                            merged_volumes.append(new_vol)  # Add new
-                    
-                    values[key] = merged_volumes
-                else:
-                    values[key] = val
-    elif model_config and not user_provided_fields:
-        # For init command, use all model_config values
-        cfg_dict = model_config.model_dump(exclude_none=True)
-        for key, val in cfg_dict.items():
-            if key in props:
-                # Special handling for nested structures like volumes
-                if key == 'volume' and val:
-                    # Get existing volumes from config
-                    existing_volumes = values.get('volume', []) or []
-                    
-                    # Convert new volumes to dict format
-                    new_volumes = []
-                    for vol in val:
-                        if hasattr(vol, 'name'):  # VolumeConfig object
-                            vol_dict = {
-                                'name': vol.name,
-                                'type': vol.type,
-                                'mount_path': vol.mount_path
-                            }
-                            if vol.path:
-                                vol_dict['path'] = vol.path
-                            if vol.claim_name:
-                                vol_dict['claim_name'] = vol.claim_name
-                            if vol.read_only is not None:
-                                vol_dict['read_only'] = vol.read_only
-                        else:  # Already a dict
-                            vol_dict = vol
-                        new_volumes.append(vol_dict)
-                    
-                    # Merge: update existing volumes by name or add new ones
-                    merged_volumes = existing_volumes.copy()
-                    for new_vol in new_volumes:
-                        # Find if volume with same name exists
-                        updated = False
-                        for i, existing_vol in enumerate(merged_volumes):
-                            if existing_vol.get('name') == new_vol.get('name'):
-                                merged_volumes[i] = new_vol  # Update existing
-                                updated = True
-                                break
-                        if not updated:
-                            merged_volumes.append(new_vol)  # Add new
-                    
-                    values[key] = merged_volumes
-                else:
-                    values[key] = val
+                    # Special handling for nested structures like volumes
+                    if key == 'volume' and val:
+                        # Get existing volumes from config
+                        existing_volumes = values.get('volume', []) or []
+                        
+                        # Convert new volumes to dict format
+                        new_volumes = []
+                        for vol in val:
+                            if hasattr(vol, 'name'):  # VolumeConfig object
+                                vol_dict = {
+                                    'name': vol.name,
+                                    'type': vol.type,
+                                    'mount_path': vol.mount_path
+                                }
+                                if vol.path:
+                                    vol_dict['path'] = vol.path
+                                if vol.claim_name:
+                                    vol_dict['claim_name'] = vol.claim_name
+                                if vol.read_only is not None:
+                                    vol_dict['read_only'] = vol.read_only
+                            else:  # Already a dict
+                                vol_dict = vol
+                            new_volumes.append(vol_dict)
+                        
+                        # Merge: update existing volumes by name or add new ones
+                        merged_volumes = existing_volumes.copy()
+                        for new_vol in new_volumes:
+                            # Find if volume with same name exists
+                            updated = False
+                            for i, existing_vol in enumerate(merged_volumes):
+                                if existing_vol.get('name') == new_vol.get('name'):
+                                    merged_volumes[i] = new_vol  # Update existing
+                                    updated = True
+                                    break
+                            if not updated:
+                                merged_volumes.append(new_vol)  # Add new
+                        
+                        values[key] = merged_volumes
+                    else:
+                        values[key] = val
+        else:
+            # For init command, use all model_config values
+            cfg_dict = model_config.model_dump(exclude_none=True)
+            for key, val in cfg_dict.items():
+                if key in props:
+                    # Special handling for nested structures like volumes
+                    if key == 'volume' and val:
+                        # Get existing volumes from config
+                        existing_volumes = values.get('volume', []) or []
+                        
+                        # Convert new volumes to dict format
+                        new_volumes = []
+                        for vol in val:
+                            if hasattr(vol, 'name'):  # VolumeConfig object
+                                vol_dict = {
+                                    'name': vol.name,
+                                    'type': vol.type,
+                                    'mount_path': vol.mount_path
+                                }
+                                if vol.path:
+                                    vol_dict['path'] = vol.path
+                                if vol.claim_name:
+                                    vol_dict['claim_name'] = vol.claim_name
+                                if vol.read_only is not None:
+                                    vol_dict['read_only'] = vol.read_only
+                            else:  # Already a dict
+                                vol_dict = vol
+                            new_volumes.append(vol_dict)
+                        
+                        # Merge: update existing volumes by name or add new ones
+                        merged_volumes = existing_volumes.copy()
+                        for new_vol in new_volumes:
+                            # Find if volume with same name exists
+                            updated = False
+                            for i, existing_vol in enumerate(merged_volumes):
+                                if existing_vol.get('name') == new_vol.get('name'):
+                                    merged_volumes[i] = new_vol  # Update existing
+                                    updated = True
+                                    break
+                            if not updated:
+                                merged_volumes.append(new_vol)  # Add new
+                        
+                        values[key] = merged_volumes
+                    else:
+                        values[key] = val
     
     # Build the final config with required fields first, then optional
     for key in reqs:

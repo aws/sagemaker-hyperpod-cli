@@ -21,6 +21,7 @@ from sagemaker.hyperpod.cli.init_utils import (
     generate_click_command,
     save_config_yaml,
     TEMPLATES,
+    load_config,
     load_config_and_validate,
     validate_config_against_model,
     filter_validation_errors_for_user_input,
@@ -152,7 +153,7 @@ def reset():
     dir_path = Path(".").resolve()
     
     # 1) Load and validate config
-    data, template, version = load_config_and_validate(dir_path)
+    data, template, version = load_config(dir_path)
     
     # 2) Build config with default values from schema
     full_cfg, comment_map = build_config_from_schema(template, version)
@@ -199,7 +200,7 @@ def configure(ctx, model_config):
     """
     # 1) Load existing config without validation
     dir_path = Path(".").resolve()
-    data, template, version = load_config_and_validate(dir_path)
+    data, template, version = load_config(dir_path)
     
     # 2) Determine which fields the user actually provided
     # Use Click's parameter source tracking to identify command-line provided parameters
@@ -259,55 +260,6 @@ def validate():
     Validate this directory's config.yaml against the appropriate schema.
     """
     dir_path = Path(".").resolve()
-    data, template, version = load_config_and_validate(dir_path)
-    
-    info = TEMPLATES[template]
-    
-    if info["schema_type"] == CFN:
-        # CFN validation using HpClusterStack
-        payload = {}
-        for k, v in data.items():
-            if k not in ("template", "namespace") and v is not None:
-                # Convert lists to JSON strings for CFN parameters
-                if isinstance(v, list):
-                    payload[k] = json.dumps(v)
-                else:
-                    payload[k] = str(v)
-        
-        try:
-            HpClusterStack(**payload)
-            click.secho("✔️  config.yaml is valid!", fg="green")
-        except ValidationError as e:
-            click.secho("❌  Validation errors:", fg="red")
-            for err in e.errors():
-                loc = ".".join(str(x) for x in err["loc"])
-                msg = err["msg"]
-                click.echo(f"  – {loc}: {msg}")
-            sys.exit(1)
-    else:
-        # CRD validation using schema registry
-        registry = info["registry"]
-        model = registry.get(version)
-        if model is None:
-            click.secho(f"❌  Unsupported schema version: {version}", fg="red")
-            sys.exit(1)
-
-        payload = {
-            k: v
-            for k, v in data.items()
-            if k not in ("template", "namespace")
-        }
-
-        try:
-            model(**payload)
-            click.secho("✔️  config.yaml is valid!", fg="green")
-        except ValidationError as e:
-            click.secho("❌  Validation errors:", fg="red")
-            for err in e.errors():
-                loc = ".".join(str(x) for x in err["loc"])
-                msg = err["msg"]
-                click.echo(f"  – {loc}: {msg}")
-            sys.exit(1)
     load_config_and_validate(dir_path)
 
 
@@ -360,45 +312,6 @@ def submit(region):
         click.secho(f"❌  Missing config.yaml or {jinja_file.name}. Run `hyp init` first.", fg="red")
         sys.exit(1)
     
-    # 4) Validate config based on schema type
-    if schema_type == CFN:
-        # For CFN templates, use HpClusterStack validation
-        from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack
-        import json
-        payload = {}
-        for k, v in data.items():
-            if k not in ('template', 'namespace') and v is not None:
-                # Convert lists to JSON strings, everything else to string
-                if isinstance(v, list):
-                    payload[k] = json.dumps(v)
-                else:
-                    payload[k] = str(v)
-        try:
-            HpClusterStack(**payload)
-        except ValidationError as e:
-            click.secho("❌ HpClusterStack Validation errors:", fg="red")
-            for err in e.errors():
-                loc = '.'.join(str(x) for x in err['loc'])
-                msg = err['msg']
-                click.echo(f"  – {loc}: {msg}")
-            sys.exit(1)
-    else:
-        # For CRD templates, use registry validation
-        registry = info["registry"]
-        model = registry.get(version)
-        if model is None:
-            click.secho(f"❌  Unsupported schema version: {version}", fg="red")
-            sys.exit(1)
-        payload = {k: v for k, v in data.items() if k not in ('template', 'namespace')}
-        try:
-            model(**payload)
-        except ValidationError as e:
-            click.secho("❌  Validation errors:", fg="red")
-            for err in e.errors():
-                loc = '.'.join(str(x) for x in err['loc'])
-                msg = err['msg']
-                click.echo(f"  – {loc}: {msg}")
-            sys.exit(1)
     # 4) Validate config using consolidated function
     validation_errors = validate_config_against_model(data, template, version)
     is_valid = display_validation_results(
@@ -463,7 +376,7 @@ def submit(region):
                                         region=region)
         else:
             dir_path = Path(".").resolve()
-            data, template, version = load_config_and_validate(dir_path)
+            data, template, version = load_config(dir_path)
             namespace = data.get("namespace", "default")
             registry = TEMPLATES[template]["registry"]
             model = registry.get(version)
