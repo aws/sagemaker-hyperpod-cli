@@ -2,24 +2,20 @@ import json
 import pkgutil
 import click
 from typing import Callable, Optional, Mapping, Type
-
-
-def load_schema_for_version(version: str, schema_pkg: str) -> dict:
-    ver_pkg = f"{schema_pkg}.v{version.replace('.', '_')}"
-    raw = pkgutil.get_data(ver_pkg, "schema.json")
-    if raw is None:
-        raise click.ClickException(f"Could not load schema.json for version {version}")
-    return json.loads(raw)
+import sys
+from sagemaker.hyperpod.cli.common_utils import extract_version_from_args, get_latest_version, load_schema_for_version
 
 
 def generate_click_command(
     *,
-    version_key: Optional[str] = None,
     schema_pkg: str = "hyperpod_jumpstart_inference_template",
     registry: Mapping[str, Type] = None,
 ) -> Callable:
     if registry is None:
         raise ValueError("You must pass a registry mapping version→Model")
+
+    default_version = get_latest_version(registry)
+    version = extract_version_from_args(registry, schema_pkg, default_version)
 
     def decorator(func: Callable) -> Callable:
         # Parser for the single JSON‐dict env var flag
@@ -34,7 +30,7 @@ def generate_click_command(
         # 1) the wrapper click actually invokes
         def wrapped_func(*args, **kwargs):
             namespace = kwargs.pop("namespace", None)
-            version = version_key or kwargs.pop("version", "1.0")
+            pop_version = kwargs.pop("version", "1.0")
 
             Model = registry.get(version)
             if Model is None:
@@ -81,7 +77,7 @@ def generate_click_command(
         )(wrapped_func)
 
         # 3) auto-inject all schema.json fields
-        schema = load_schema_for_version(version_key or "1.0", schema_pkg)
+        schema = load_schema_for_version(version, schema_pkg)
         props = schema.get("properties", {})
         reqs = set(schema.get("required", []))
 
