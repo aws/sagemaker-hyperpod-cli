@@ -37,8 +37,7 @@ from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import Mod
 from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
 
 model = Model(
-    model_id="deepseek-llm-r1-distill-qwen-1-5b",
-    model_version="2.0.4"
+    model_id="deepseek-llm-r1-distill-qwen-1-5b"
 )
 
 server = Server(
