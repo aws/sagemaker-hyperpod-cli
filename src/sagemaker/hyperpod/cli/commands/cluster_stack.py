@@ -14,6 +14,7 @@ from sagemaker_core.main.shapes import ClusterInstanceGroupSpecification
 from tabulate import tabulate
 from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack
 from sagemaker.hyperpod.common.utils import setup_logging
+from sagemaker.hyperpod.cli.utils import convert_datetimes
 
 logger = logging.getLogger(__name__)
 
@@ -146,30 +147,26 @@ def list_cluster_stacks(region, debug):
 
         stack_summaries = stacks_info['StackSummaries']
 
-        logger.debug(f"Listing stacks in region: {region or 'default'}\ninfo: {json.dumps(stack_summaries, indent=2, default=str)}")
+        stack_summaries = [convert_datetimes(stack) for stack in stack_summaries]
+
+        logger.debug(f"Listing stacks in region: {region or 'default'}")
 
         click.echo(f"📋 HyperPod Cluster Stacks ({len(stack_summaries)} found)")
 
         if stack_summaries:
             for i, stack in enumerate(stack_summaries, 1):
-                click.echo(f"\n[{i}] Stack Details:")
+                try:
+                    click.echo(f"\n[{i}] Stack Details:")
 
-                table_data = []
-                for key, value in stack.items():
-                    value_str = str(value)
+                    table_data = []
+                    for key, value in stack.items():
+                        table_data.append([key, str(value)])
 
-                    if key in ['CreationTime', 'DeletionTime'] and value:
-                        # Format timestamps
-                        formatted_value = value_str.split('.')[0].replace('+00:00', '')
-                    elif isinstance(value, dict):
-                        # Format dict values compactly
-                        formatted_value = json.dumps(value, separators=(',', ':'))
-                    else:
-                        formatted_value = value_str
-
-                    table_data.append([key, formatted_value])
-
-                click.echo(tabulate(table_data, headers=["Field", "Value"], tablefmt="presto"))
+                    click.echo(tabulate(table_data, headers=["Field", "Value"], tablefmt="presto"))
+                except Exception as e:
+                    logger.error(f"Error processing stack {i}: {e}")
+                    click.echo(f"❌ Error processing stack {i}: {stack.get('StackName', 'Unknown')}")
+                    continue
         else:
             click.echo("No stacks found")
 

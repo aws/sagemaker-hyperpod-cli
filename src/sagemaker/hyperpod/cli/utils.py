@@ -181,3 +181,14 @@ def get_eks_cluster_name():
 def get_hyperpod_cluster_region():
     hyperpod_context_cluster = _retrieve_current_hyperpod_context()
     return hyperpod_context_cluster.get("ClusterArn").split(":")[3]
+
+# Convert all datetime objects to strings to avoid JSON serialization issues
+def convert_datetimes(obj):
+    if hasattr(obj, 'strftime'):
+        return obj.strftime('%Y-%m-%d %H:%M:%S')
+    elif isinstance(obj, dict):
+        return {k: convert_datetimes(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_datetimes(item) for item in obj]
+    else:
+        return obj
