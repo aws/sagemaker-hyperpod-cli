@@ -94,14 +94,14 @@ def generate_click_command(
             default=None,
             help=(
                 "Dictionary of environment variables, e.g. "
-                '\'{\"VAR1\": \"foo\", \"VAR2\": \"bar\"}\''
+                '\'{"VAR1": "foo", "VAR2": "bar"}\''
             ),
             metavar="DICT",
         )(wrapped_func)
         wrapped_func = click.option(
             "--label_selector",
             callback=_parse_dict_flag,
-            help='Dictionary of resource limits, e.g. "{\'cpu\': \'2\', \'memory\': \'4Gi\'}"',
+            help='Dictionary of resource limits, e.g. \'{"cpu": "2", "memory": "4Gi"}\'',
             metavar="DICT",
         )(wrapped_func)
 
@@ -109,17 +109,17 @@ def generate_click_command(
             "--volume",
             multiple=True,
             callback=_parse_volume_param,
-            help="Volume configurations as dictionaries. \
-                Example: --volume \"{\'name\': \'vol1\', \'type\': \'hostPath\', \'mountPath\': \'/data\', \'hostPath\': \'/host\'}\" \
-                For hostPath: --volume \"{\'name\': \'model-data\', \'type\': \'hostPath\', \'mountPath\': \'/data\', \'hostPath\': \'/data\'}\"  \
-                For persistentVolumeClaim: --volume \"{\'name\': \'training-output\', \'type\': \'pvc\', \'mountPath\': \'/mnt/output\', \'claimName\': \'training-output-pvc\', \'readOnly\': False}\" \
-                Use multiple --volume flags if multiple volumes are needed.",
+            help='Volume configurations as dictionaries. \
+                Example: --volume \'{"name": "vol1", "type": "hostPath", "mountPath": "/data", "hostPath": "/host"}\' \
+                For hostPath: --volume \'{"name": "model-data", "type": "hostPath", "mountPath": "/data", "hostPath": "/data"}\'  \
+                For persistentVolumeClaim: --volume \'{"name": "training-output", "type": "pvc", "mountPath": "/mnt/output", "claimName": "training-output-pvc", "readOnly": false}\' \
+                Use multiple --volume flags if multiple volumes are needed.',
         )(wrapped_func)
 
         # Add list options
         list_params = {
-            "command": "List of command arguments, e.g. \"['python', 'train.py']\"",
-            "args": "List of script arguments, e.g. \"['--batch-size', '32', '--learning-rate', '0.001']\"",
+            "command": 'List of command arguments, e.g. \'["python", "train.py"]\'',
+            "args": 'List of script arguments, e.g. \'["--batch-size", "32", "--learning-rate", "0.001"]\'',
         }
 
         for param_name, help_text in list_params.items():

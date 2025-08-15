@@ -50,7 +50,7 @@ def generate_click_command(
             default=None,
             help=(
                 "JSON object of environment variables, e.g. "
-                '\'{"VAR1":"foo","VAR2":"bar"}\''
+                '\'{"VAR1": "foo", "VAR2": "bar"}\''
             ),
             metavar="JSON"
         )(wrapped_func)
@@ -60,21 +60,21 @@ def generate_click_command(
             callback=_parse_json_flag,
             type=str,
             default=None,
-            help=("JSON object of dimensions, e.g. " '\'{"VAR1":"foo","VAR2":"bar"}\''),
+            help=("JSON object of dimensions, e.g. " '\'{"VAR1": "foo", "VAR2": "bar"}\''),
             metavar="JSON",
         )(wrapped_func)
 
         wrapped_func = click.option(
             "--resources-limits",
             callback=_parse_json_flag,
-            help='JSON object of resource limits, e.g. \'{"cpu":"2","memory":"4Gi"}\'',
+            help='JSON object of resource limits, e.g. \'{"cpu": "2", "memory": "4Gi"}\'',
             metavar="JSON",
         )(wrapped_func)
 
         wrapped_func = click.option(
             "--resources-requests",
             callback=_parse_json_flag,
-            help='JSON object of resource requests, e.g. \'{"cpu":"1","memory":"2Gi"}\'',
+            help='JSON object of resource requests, e.g. \'{"cpu": "1", "memory": "2Gi"}\'',
             metavar="JSON",
         )(wrapped_func)
 
