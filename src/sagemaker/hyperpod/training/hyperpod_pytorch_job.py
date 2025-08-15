@@ -18,7 +18,6 @@ from sagemaker.hyperpod.common.telemetry.constants import Feature
 import yaml
 import logging
 
-
 TRAINING_GROUP = "sagemaker.amazonaws.com"
 API_VERSION = "v1"
 PLURAL = "hyperpodpytorchjobs"
@@ -26,13 +25,19 @@ KIND = "HyperPodPyTorchJob"
 
 
 class HyperPodPytorchJob(_HyperPodPytorchJob):
-    is_kubeconfig_loaded: ClassVar[bool] = False
+    """HyperPod PyTorch job for distributed training on Amazon SageMaker HyperPod clusters.
+    
+    This class provides methods to create, manage, and monitor PyTorch training jobs
+    on SageMaker HyperPod clusters orchestrated by Amazon EKS.
+        
+    """        
+    is_kubeconfig_loaded: ClassVar[bool] = False 
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid") 
 
-    metadata: Metadata = Field(
-        description="The metadata of the HyperPodPytorchJob",
-    )
+    metadata: Metadata = Field( 
+        description="The metadata of the HyperPodPytorchJob", 
+    ) 
 
     status: Optional[HyperPodPytorchJobStatus] = Field(
         default=None, description="The status of the HyperPodPytorchJob"
@@ -53,6 +58,36 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
 
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_pytorchjob")
     def create(self, debug=False):
+        """Create and submit the HyperPod PyTorch job to the Kubernetes cluster.
+
+        **Parameters:**
+        
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - debug
+             - bool, optional
+             - Enable debug logging. Defaults to False.
+
+        **Raises:**
+        
+        Exception: If the job creation fails or Kubernetes API call fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> job = HyperPodPytorchJob(metadata=Metadata(name="my-job"), ...)
+              >>> job.create()
+              >>> 
+              >>> # Create with debug logging
+              >>> job.create(debug=True)
+        """
         self.verify_kube_config()
 
         logger = self.get_logger()
@@ -92,6 +127,46 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
     @classmethod
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_pytorchjobs")
     def list(cls, namespace=None) -> List["HyperPodPytorchJob"]:
+        """
+        List all HyperPod PyTorch jobs in the specified namespace.
+
+        **Parameters:**
+        
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - namespace
+             - str, optional
+             - The Kubernetes namespace to list jobs from. If None, uses the default namespace from current context.
+
+        **Returns:**
+        
+        List[HyperPodPytorchJob]: List of HyperPodPytorchJob instances found in the namespace
+
+        **Raises:**
+        
+        Exception: If the Kubernetes API call fails or jobs cannot be retrieved
+
+        Notes
+        -----
+        This method requires a valid kubeconfig to be available and will
+        automatically load it if not already loaded.
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> jobs = HyperPodPytorchJob.list()
+              >>> print(f"Found {len(jobs)} jobs")
+              >>> 
+              >>> # List jobs in specific namespace
+              >>> jobs = HyperPodPytorchJob.list(namespace="my-namespace")
+        """
         cls.verify_kube_config()
 
         if namespace is None:
@@ -116,9 +191,23 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
 
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "delete_pytorchjob")
     def delete(self):
-        self.verify_kube_config()
+        """Delete the HyperPod PyTorch job from the Kubernetes cluster.
 
-        logger = self.get_logger()
+        **Raises:**
+        
+        Exception: If the job deletion fails or Kubernetes API call fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> job = HyperPodPytorchJob.get("my-job")
+              >>> job.delete()
+        """
+        self._verify_kube_config()
+
+        logger = self._get_logger()
         logger = setup_logging(logger)
 
         custom_api = client.CustomObjectsApi()
@@ -139,6 +228,43 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
     @classmethod
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "get_pytorchjob")
     def get(cls, name, namespace=None) -> "HyperPodPytorchJob":
+        """Get a specific HyperPod PyTorch job by name.
+
+        **Parameters:**
+        
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - name
+             - str
+             - The name of the HyperPod PyTorch job to retrieve
+           * - namespace
+             - str, optional
+             - The Kubernetes namespace to search in. If None, uses the default namespace from current context.
+
+        **Returns:**
+        
+        HyperPodPytorchJob: The requested HyperPod PyTorch job instance
+
+        **Raises:**
+        
+        Exception: If the job is not found or Kubernetes API call fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> job = HyperPodPytorchJob.get("my-job")
+              >>> print(job.metadata.name)
+              >>> 
+              >>> # Get job from specific namespace
+              >>> job = HyperPodPytorchJob.get("my-job", namespace="my-namespace")
+        """
         cls.verify_kube_config()
 
         if namespace is None:
@@ -163,6 +289,25 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             handle_exception(e, name, namespace)
 
     def refresh(self) -> "HyperPodPytorchJob":
+        """Refresh the job status by fetching the latest state from the Kubernetes cluster.
+
+        **Returns:**
+        
+        HyperPodPytorchJob: The updated job instance with refreshed status
+
+        **Raises:**
+        
+        Exception: If the refresh operation fails or Kubernetes API call fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> job = HyperPodPytorchJob.get("my-job")
+              >>> updated_job = job.refresh()
+              >>> print(updated_job.status)
+        """
         self.verify_kube_config()
 
         logger = self.get_logger()
@@ -187,6 +332,25 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
 
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_pods_pytorchjob")
     def list_pods(self) -> List[str]:
+        """List all pods associated with this HyperPod PyTorch job.
+
+        **Returns:**
+        
+        List[str]: List of pod names associated with this job
+
+        **Raises:**
+        
+        Exception: If listing pods fails or Kubernetes API call fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> job = HyperPodPytorchJob.get("my-job")
+              >>> pods = job.list_pods()
+              >>> print(f"Found {len(pods)} pods: {pods}")
+        """
         self.verify_kube_config()
 
         logger = self.get_logger()
@@ -209,6 +373,45 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
 
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "get_pytorchjob_logs_from_pod")
     def get_logs_from_pod(self, pod_name: str, container: Optional[str] = None) -> str:
+        """Get logs from a specific pod associated with this HyperPod PyTorch job.
+
+        **Parameters:**
+        
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - pod_name
+             - str
+             - The name of the pod to get logs from
+           * - container
+             - str, optional
+             - The container name within the pod. If None, uses the first container.
+
+        **Returns:**
+        
+        str: The log output from the specified pod and container
+
+        **Raises:**
+        
+        Exception: If getting logs fails or Kubernetes API call fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> job = HyperPodPytorchJob.get("my-job")
+              >>> pods = job.list_pods()
+              >>> logs = job.get_logs_from_pod(pods[0])
+              >>> print(logs)
+              >>> 
+              >>> # Get logs from specific container
+              >>> logs = job.get_logs_from_pod(pods[0], container="pytorch")
+        """
         self.verify_kube_config()
 
         logger = self.get_logger()

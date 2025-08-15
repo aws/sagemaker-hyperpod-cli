@@ -18,7 +18,7 @@ keywords:
 Installation <installation>
 Getting Started <getting_started>
 CLI Reference <cli_reference>
-SDK reference <api/api_index>
+SDK Reference <api/api_index>
 Advanced Resources <advanced_resources>
 ```
 

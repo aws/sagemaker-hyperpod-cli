@@ -23,14 +23,32 @@ from sagemaker.hyperpod.common.telemetry.constants import Feature
 
 
 class HPEndpointBase:
+    """Base class for HyperPod inference endpoints.
+    
+    This class provides common functionality for managing inference endpoints
+    on SageMaker HyperPod clusters orchestrated by Amazon EKS. It handles
+    Kubernetes API interactions for creating, listing, getting, and deleting
+    inference endpoints.
+    """
     is_kubeconfig_loaded = False
 
     @classmethod
     def get_logger(cls):
+        """Get logger instance for the class.
+        
+        **Returns:**
+        
+        logging.Logger: Logger instance for this module.
+        """
         return logging.getLogger(__name__)
     
     @classmethod
     def verify_kube_config(cls):
+        """Verify and load Kubernetes configuration.
+        
+        Loads the Kubernetes configuration if not already loaded and verifies
+        Kubernetes version compatibility.
+        """
         if not cls.is_kubeconfig_loaded:
             config.load_kube_config()
             cls.is_kubeconfig_loaded = True
@@ -46,6 +64,43 @@ class HPEndpointBase:
         namespace: str,
         spec: Union[_HPJumpStartEndpoint, _HPEndpoint],
     ):
+        """Create an inference endpoint using Kubernetes API.
+        
+        **Parameters:**
+        
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - name
+             - str
+             - Name of the endpoint to create
+           * - kind
+             - str
+             - Kubernetes resource kind (e.g., 'HPJumpStartEndpoint')
+           * - namespace
+             - str
+             - Kubernetes namespace to create the endpoint in
+           * - spec
+             - Union[_HPJumpStartEndpoint, _HPEndpoint]
+             - Endpoint specification
+            
+        **Raises:**
+        
+        Exception: If endpoint creation fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import _HPJumpStartEndpoint
+              >>> spec = _HPJumpStartEndpoint(...)
+              >>> HPEndpointBase.call_create_api("my-endpoint", "HPJumpStartEndpoint", "default", spec)
+        """
         cls.verify_kube_config()
 
         logger = cls.get_logger()
@@ -80,6 +135,40 @@ class HPEndpointBase:
         kind: str,
         namespace: str,
     ):
+        """List inference endpoints using Kubernetes API.
+        
+        **Parameters:**
+        
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - kind
+             - str
+             - Kubernetes resource kind to list
+           * - namespace
+             - str
+             - Kubernetes namespace to list endpoints from
+            
+        **Returns:**
+        
+        dict: List of endpoints in the specified namespace
+            
+        **Raises:**
+        
+        Exception: If listing endpoints fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> endpoints = HPEndpointBase.call_list_api("HPJumpStartEndpoint", "default")
+              >>> print(f"Found {len(endpoints['items'])} endpoints")
+        """
         cls.verify_kube_config()
 
         custom_api = client.CustomObjectsApi()
@@ -101,6 +190,43 @@ class HPEndpointBase:
         kind: str,
         namespace: str,
     ):
+        """Get a specific inference endpoint using Kubernetes API.
+        
+        **Parameters:**
+        
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - name
+             - str
+             - Name of the endpoint to retrieve
+           * - kind
+             - str
+             - Kubernetes resource kind
+           * - namespace
+             - str
+             - Kubernetes namespace containing the endpoint
+            
+        **Returns:**
+        
+        dict: Endpoint details
+            
+        **Raises:**
+        
+        Exception: If retrieving endpoint fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> endpoint = HPEndpointBase.call_get_api("my-endpoint", "HPJumpStartEndpoint", "default")
+              >>> print(endpoint['metadata']['name'])
+        """
         cls.verify_kube_config()
 
         custom_api = client.CustomObjectsApi()
@@ -122,6 +248,39 @@ class HPEndpointBase:
         kind: str,
         namespace: str,
     ):
+        """Delete an inference endpoint using Kubernetes API.
+        
+        **Parameters:**
+        
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - name
+             - str
+             - Name of the endpoint to delete
+           * - kind
+             - str
+             - Kubernetes resource kind
+           * - namespace
+             - str
+             - Kubernetes namespace containing the endpoint
+            
+        **Raises:**
+        
+        Exception: If deleting endpoint fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> base = HPEndpointBase()
+              >>> base.call_delete_api("my-endpoint", "HPJumpStartEndpoint", "default")
+        """
         self.verify_kube_config()
 
         custom_api = client.CustomObjectsApi()
@@ -140,6 +299,43 @@ class HPEndpointBase:
     @classmethod
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "get_operator_logs")
     def get_operator_logs(cls, since_hours: float):
+        """Get logs from the inference operator.
+        
+        Retrieves logs from the HyperPod inference operator pods for debugging
+        and monitoring purposes.
+        
+        **Parameters:**
+        
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - since_hours
+             - float
+             - Number of hours back to retrieve logs from
+            
+        **Returns:**
+        
+        str: Operator logs with timestamps
+            
+        **Raises:**
+        
+        Exception: If no operator pods found or log retrieval fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> logs = HPEndpointBase.get_operator_logs(1.0)
+              >>> print(logs)
+              >>> 
+              >>> # Get logs from last 30 minutes
+              >>> logs = HPEndpointBase.get_operator_logs(0.5)
+        """
         cls.verify_kube_config()
 
         v1 = client.CoreV1Api()
@@ -175,6 +371,51 @@ class HPEndpointBase:
         container: str = None,
         namespace=None,
     ):
+        """Get logs from a specific pod.
+        
+        Retrieves logs from a pod associated with an inference endpoint.
+        
+        **Parameters:**
+        
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - pod
+             - str
+             - Name of the pod to get logs from
+           * - container
+             - str, optional
+             - Container name. If not specified, uses the first container in the pod
+           * - namespace
+             - str, optional
+             - Kubernetes namespace. If not specified, uses the default namespace
+                
+        **Returns:**
+        
+        str: Pod logs with timestamps
+            
+        **Raises:**
+        
+        Exception: If log retrieval fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> logs = HPEndpointBase.get_logs("my-pod-name")
+              >>> print(logs)
+              >>> 
+              >>> # Get logs from specific container
+              >>> logs = HPEndpointBase.get_logs("my-pod", container="inference")
+              >>> 
+              >>> # Get logs from specific namespace
+              >>> logs = HPEndpointBase.get_logs("my-pod", namespace="my-namespace")
+        """
         cls.verify_kube_config()
 
         v1 = client.CoreV1Api()
@@ -206,6 +447,36 @@ class HPEndpointBase:
     @classmethod
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_pods_endpoint")
     def list_pods(cls, namespace=None):
+        """List all pods in a namespace.
+        
+        **Parameters:**
+        
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - namespace
+             - str, optional
+             - Kubernetes namespace to list pods from. If not specified, uses the default namespace
+                
+        **Returns:**
+        
+        List[str]: List of pod names in the namespace
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> pods = HPEndpointBase.list_pods()
+              >>> print(f"Found {len(pods)} pods: {pods}")
+              >>> 
+              >>> # List pods in specific namespace
+              >>> pods = HPEndpointBase.list_pods(namespace="my-namespace")
+        """
         cls.verify_kube_config()
 
         if not namespace:
@@ -223,6 +494,20 @@ class HPEndpointBase:
     @classmethod
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_namespaces")
     def list_namespaces(cls):
+        """List all available Kubernetes namespaces.
+        
+        **Returns:**
+        
+        List[str]: List of namespace names
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> namespaces = HPEndpointBase.list_namespaces()
+              >>> print(f"Available namespaces: {namespaces}")
+        """
         cls.verify_kube_config()
 
         v1 = client.CoreV1Api()
