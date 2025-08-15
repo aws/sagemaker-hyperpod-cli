@@ -94,7 +94,7 @@ def generate_click_command(
             default=None,
             help=(
                 "Dictionary of environment variables, e.g. "
-                '"{\'VAR1\': \'foo\', \'VAR2\': \'bar\'}"'
+                '\'{\"VAR1\": \"foo\", \"VAR2\": \"bar\"}\''
             ),
             metavar="DICT",
         )(wrapped_func)
