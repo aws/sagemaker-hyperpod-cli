@@ -171,7 +171,7 @@ hyp create hyp-pytorch-job \
     --priority "high" \
     --max-retry 3 \
     --volume name=model-data,type=hostPath,mount_path=/data,path=/data \
-    --volume name=training-output,type=pvc,mount_path=/data,claim_name=my-pvc,read_only=false
+    --volume name=training-output,type=pvc,mount_path=/data2,claim_name=my-pvc,read_only=false
 ```
 
 Key required parameters explained:
@@ -219,7 +219,8 @@ hyp create hyp-custom-endpoint \
     --endpoint-name my-custom-endpoint \
     --model-name my-pytorch-model \
     --model-source-type s3 \
-    --model-location my-pytorch-training/model.tar.gz \
+    --model-location my-pytorch-training \
+    --model-volume-mount-name test-volume \
     --s3-bucket-name your-bucket \
     --s3-region us-east-1 \
     --instance-type ml.g5.8xlarge \
@@ -333,8 +334,7 @@ from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import Mod
 from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
 
 model=Model(
-    model_id='deepseek-llm-r1-distill-qwen-1-5b',
-    model_version='2.0.4',
+    model_id='deepseek-llm-r1-distill-qwen-1-5b'
 )
 server=Server(
     instance_type='ml.g5.8xlarge',
