@@ -107,7 +107,7 @@ def generate_click_command(
             metavar="JSON",
         )(wrapped_func)
         wrapped_func = click.option(
-            "--label_selector",
+            "--label-selector",
             callback=_parse_json_flag,
             help='JSON object of resource limits, e.g. \'{"cpu":"2","memory":"4Gi"}\'',
             metavar="JSON",

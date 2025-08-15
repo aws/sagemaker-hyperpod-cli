@@ -40,45 +40,29 @@ def generate_click_command(
             domain = flat.to_domain()
             return func(namespace, version, domain)
 
-        # 2) inject the special JSON‐env flag before everything else
-        wrapped_func = click.option(
-            "--env",
-            callback=_parse_json_flag,
-            type=str,
-            default=None,
-            help=(
-                "JSON object of environment variables, e.g. "
-                '\'{"VAR1":"foo","VAR2":"bar"}\''
-            ),
-            metavar="JSON",
-        )(wrapped_func)
-
-        wrapped_func = click.option(
-            "--dimensions",
-            callback=_parse_json_flag,
-            type=str,
-            default=None,
-            help=("JSON object of dimensions, e.g. " '\'{"VAR1":"foo","VAR2":"bar"}\''),
-            metavar="JSON",
-        )(wrapped_func)
-
-        wrapped_func = click.option(
-            "--resources-limits",
-            callback=_parse_json_flag,
-            help='JSON object of resource limits, e.g. \'{"cpu":"2","memory":"4Gi"}\'',
-            metavar="JSON",
-        )(wrapped_func)
-
-        wrapped_func = click.option(
-            "--resources-requests",
-            callback=_parse_json_flag,
-            help='JSON object of resource requests, e.g. \'{"cpu":"1","memory":"2Gi"}\'',
-            metavar="JSON",
-        )(wrapped_func)
-
-        # 3) auto-inject all schema.json fields
+        # 2) inject JSON flags only if they exist in the schema
         schema = load_schema_for_version(version, schema_pkg)
         props = schema.get("properties", {})
+        
+        json_flags = {
+            "env": ("JSON object of environment variables, e.g. " '\'{"VAR1":"foo","VAR2":"bar"}\''),
+            "dimensions": ("JSON object of dimensions, e.g. " '\'{"VAR1":"foo","VAR2":"bar"}\''),
+            "resources_limits": ('JSON object of resource limits, e.g. \'{"cpu":"2","memory":"4Gi"}\''),
+            "resources_requests": ('JSON object of resource requests, e.g. \'{"cpu":"1","memory":"2Gi"}\''),
+        }
+        
+        for flag_name, help_text in json_flags.items():
+            if flag_name in props:
+                wrapped_func = click.option(
+                    f"--{flag_name.replace('_', '-')}",
+                    callback=_parse_json_flag,
+                    type=str,
+                    default=None,
+                    help=help_text,
+                    metavar="JSON",
+                )(wrapped_func)
+
+        # 3) auto-inject all schema.json fields
         reqs = set(schema.get("required", []))
 
         for name, spec in reversed(list(props.items())):
