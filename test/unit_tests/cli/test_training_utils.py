@@ -89,10 +89,10 @@ class TestGenerateClickCommand:
             'label_selector': {'key': 'value'}
         }
 
-        # Test invalid JSON input
-        result = self.runner.invoke(cmd, ['--environment', 'invalid'])
+        # Test invalid Python literal input
+        result = self.runner.invoke(cmd, ['--environment', 'invalid_python_syntax'])
         assert result.exit_code == 2
-        assert 'must be valid JSON' in result.output
+        assert 'Invalid format' in result.output
 
     @patch('sagemaker.hyperpod.cli.training_utils.pkgutil.get_data')
     def test_list_parameters(self, mock_get_data):
@@ -124,10 +124,10 @@ class TestGenerateClickCommand:
                 'args': config.args
             }))
 
-        # Test list input
+        # Test list input - using consistent single quotes outside, double quotes inside
         result = self.runner.invoke(cmd, [
-            '--command', '[python, train.py]',
-            '--args', '[--epochs, 10]'
+            '--command', '["python", "train.py"]',
+            '--args', '["--epochs", "10"]'
         ])
         assert result.exit_code == 0
         output = json.loads(result.output)
@@ -256,7 +256,7 @@ class TestGenerateClickCommand:
 
         # Test single hostPath volume
         result = self.runner.invoke(cmd, [
-            '--volume', 'name=model-data,type=hostPath,mount_path=/data,path=/host/data'
+            '--volume', '{"name": "model-data", "type": "hostPath", "mount_path": "/data", "path": "/host/data"}'
         ])
         assert result.exit_code == 0
         output = json.loads(result.output)
@@ -270,7 +270,7 @@ class TestGenerateClickCommand:
 
         # Test single PVC volume
         result = self.runner.invoke(cmd, [
-            '--volume', 'name=training-output,type=pvc,mount_path=/output,claim_name=my-pvc,read_only=false'
+            '--volume', '{"name": "training-output", "type": "pvc", "mount_path": "/output", "claim_name": "my-pvc", "read_only": "false"}'
         ])
         assert result.exit_code == 0
         output = json.loads(result.output)
@@ -285,8 +285,8 @@ class TestGenerateClickCommand:
 
         # Test multiple volumes
         result = self.runner.invoke(cmd, [
-            '--volume', 'name=model-data,type=hostPath,mount_path=/data,path=/host/data',
-            '--volume', 'name=training-output,type=pvc,mount_path=/output,claim_name=my-pvc,read_only=true'
+            '--volume', '{"name": "model-data", "type": "hostPath", "mount_path": "/data", "path": "/host/data"}',
+            '--volume', '{"name": "training-output", "type": "pvc", "mount_path": "/output", "claim_name": "my-pvc", "read_only": "true"}'
         ])
         assert result.exit_code == 0
         output = json.loads(result.output)
@@ -372,7 +372,7 @@ class TestGenerateClickCommand:
         result = self.runner.invoke(cmd, [
             '--job-name', 'test-job',
             '--image', 'test-image',
-            '--volume', 'name=model-data,type=hostPath,mount_path=/data,path=/host/data'
+            '--volume', '{"name": "model-data", "type": "hostPath", "mount_path": "/data", "path": "/host/data"}'
         ])
         assert result.exit_code == 0
         output = json.loads(result.output)
@@ -383,7 +383,7 @@ class TestGenerateClickCommand:
         result = self.runner.invoke(cmd, [
             '--job-name', 'test-job',
             '--image', 'test-image',
-            '--volume', 'name=training-output,type=pvc,mount_path=/output,claim_name=my-pvc,read_only=true'
+            '--volume', '{"name": "training-output", "type": "pvc", "mount_path": "/output", "claim_name": "my-pvc", "read_only": "true"}'
         ])
         assert result.exit_code == 0
         output = json.loads(result.output)
@@ -394,7 +394,7 @@ class TestGenerateClickCommand:
 
     @patch('sagemaker.hyperpod.cli.training_utils.pkgutil.get_data')
     def test_volume_flag_parsing_errors(self, mock_get_data):
-        """Test volume flag parsing error handling"""
+        """Test volume flag parsing error handling with new format"""
         schema = {
             'properties': {
                 'volume': {
@@ -421,23 +421,23 @@ class TestGenerateClickCommand:
         def cmd(version, debug, config):
             click.echo("success")
 
-        # Test invalid format (missing equals sign)
+        # Test invalid Python literal (old key=value format)
         result = self.runner.invoke(cmd, [
-            '--volume', 'name=model-data,type=hostPath,mount_path,path=/host/data'
+            '--volume', 'name=model-data,type=hostPath,mount_path=/data'
         ])
         assert result.exit_code == 2
-        assert "should be key=value" in result.output
+        assert "Invalid format" in result.output
 
-        # Test empty volume parameter
+        # Test invalid JSON syntax
         result = self.runner.invoke(cmd, [
-            '--volume', ''
+            '--volume', '{"name": "test", invalid}'
         ])
         assert result.exit_code == 2
-        assert "Error parsing volume" in result.output
+        assert "Invalid format" in result.output
 
     @patch('sagemaker.hyperpod.cli.training_utils.pkgutil.get_data')
-    def test_volume_flag_with_equals_in_value(self, mock_get_data):
-        """Test volume flag parsing with equals signs in values"""
+    def test_volume_flag_with_special_characters(self, mock_get_data):
+        """Test volume flag parsing with special characters in new format"""
         schema = {
             'properties': {
                 'volume': {
@@ -466,9 +466,9 @@ class TestGenerateClickCommand:
                 'volume': config.volume if hasattr(config, 'volume') else None
             }))
 
-        # Test volume with equals sign in path value
+        # Test volume with special characters in path
         result = self.runner.invoke(cmd, [
-            '--volume', 'name=model-data,type=hostPath,mount_path=/data,path=/host/data=special'
+            '--volume', '{"name": "model-data", "type": "hostPath", "mount_path": "/data", "path": "/host/data=special"}'
         ])
         assert result.exit_code == 0
         output = json.loads(result.output)

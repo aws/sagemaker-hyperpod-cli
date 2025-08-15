@@ -2,6 +2,7 @@ import json
 import pkgutil
 import click
 from typing import Callable, Optional, Mapping, Type
+from .parser_utils import parse_complex_parameter
 
 
 def load_schema_for_version(version: str, schema_pkg: str) -> dict:
@@ -22,14 +23,11 @@ def generate_click_command(
         raise ValueError("You must pass a registry mapping version→Model")
 
     def decorator(func: Callable) -> Callable:
-        # Parser for the single JSON‐dict env var flag
+        # Parser for dictionary parameters using the shared universal parser
         def _parse_json_flag(ctx, param, value):
             if value is None:
                 return None
-            try:
-                return json.loads(value)
-            except json.JSONDecodeError as e:
-                raise click.BadParameter(f"{param.name!r} must be valid JSON: {e}")
+            return parse_complex_parameter(ctx, param, value, expected_type=dict)
 
         # 1) the wrapper click actually invokes
         def wrapped_func(*args, **kwargs):
@@ -54,7 +52,7 @@ def generate_click_command(
                 "JSON object of environment variables, e.g. "
                 '\'{"VAR1":"foo","VAR2":"bar"}\''
             ),
-            metavar="JSON",
+            metavar="JSON"
         )(wrapped_func)
 
         wrapped_func = click.option(

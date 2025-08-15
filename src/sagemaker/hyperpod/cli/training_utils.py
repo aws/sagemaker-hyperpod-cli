@@ -3,6 +3,7 @@ import pkgutil
 import click
 from typing import Callable, Optional, Mapping, Type, Dict, Any
 from pydantic import ValidationError
+from .parser_utils import parse_complex_parameter
 
 
 def load_schema_for_version(
@@ -41,42 +42,19 @@ def generate_click_command(
         raise ValueError("You must pass a registry mapping version→Model")
 
     def decorator(func: Callable) -> Callable:
-        # Parser for the single JSON‐dict env var flag
-        def _parse_json_flag(ctx, param, value):
-            if value is None:
-                return None
-            try:
-                return json.loads(value)
-            except json.JSONDecodeError as e:
-                raise click.BadParameter(f"{param.name!r} must be valid JSON: {e}")
 
-        # Parser for list flags
+        # Specific parser functions for different parameter types
         def _parse_list_flag(ctx, param, value):
-            if value is None:
-                return None
-            # Remove brackets and split by comma
-            value = value.strip("[]")
-            return [item.strip() for item in value.split(",") if item.strip()]
-
+            """Parse list parameters like --command and --args"""
+            return parse_complex_parameter(ctx, param, value, list)
+        
+        def _parse_dict_flag(ctx, param, value):
+            """Parse dictionary parameters like --environment and --label_selector"""
+            return parse_complex_parameter(ctx, param, value, dict)
+        
         def _parse_volume_param(ctx, param, value):
-            """Parse volume parameters from command line format to dictionary format."""
-            volumes = []
-            for i, v in enumerate(value):
-                try:
-                    # Split by comma and then by equals, with validation
-                    parts = {}
-                    for item in v.split(','):
-                        if '=' not in item:
-                            raise click.UsageError(f"Invalid volume format in volume {i+1}: '{item}' should be key=value")
-                        key, val = item.split('=', 1)  # Split only on first '=' to handle values with '='
-                        parts[key.strip()] = val.strip()
-                    
-                    volumes.append(parts)
-                except Exception as e:
-                    raise click.UsageError(f"Error parsing volume {i+1}: {str(e)}")
-            
-            # Note: Detailed validation will be handled by schema validation
-            return volumes
+            """Parse volume parameters (multiple dictionaries)"""
+            return parse_complex_parameter(ctx, param, value, dict, allow_multiple=True)
     
         # 1) the wrapper click will call
         def wrapped_func(*args, **kwargs):
@@ -111,37 +89,37 @@ def generate_click_command(
         
         wrapped_func = click.option(
             "--environment",
-            callback=_parse_json_flag,
+            callback=_parse_dict_flag,
             type=str,
             default=None,
             help=(
-                "JSON object of environment variables, e.g. "
-                '\'{"VAR1":"foo","VAR2":"bar"}\''
+                "Dictionary of environment variables, e.g. "
+                '"{\'VAR1\': \'foo\', \'VAR2\': \'bar\'}"'
             ),
-            metavar="JSON",
+            metavar="DICT",
         )(wrapped_func)
         wrapped_func = click.option(
             "--label_selector",
-            callback=_parse_json_flag,
-            help='JSON object of resource limits, e.g. \'{"cpu":"2","memory":"4Gi"}\'',
-            metavar="JSON",
+            callback=_parse_dict_flag,
+            help='Dictionary of resource limits, e.g. "{\'cpu\': \'2\', \'memory\': \'4Gi\'}"',
+            metavar="DICT",
         )(wrapped_func)
 
         wrapped_func = click.option(
             "--volume",
             multiple=True,
             callback=_parse_volume_param,
-            help="List of volume configurations. \
-                Command structure: --volume name=<volume_name>,type=<volume_type>,mount_path=<mount_path>,<type-specific options> \
-                For hostPath: --volume name=model-data,type=hostPath,mount_path=/data,path=/data  \
-                For persistentVolumeClaim: --volume name=training-output,type=pvc,mount_path=/mnt/output,claim_name=training-output-pvc,read_only=false \
-                If multiple --volume flag if multiple volumes are needed.",
+            help="Volume configurations as dictionaries. \
+                Example: --volume \"{\'name\': \'vol1\', \'type\': \'hostPath\', \'mountPath\': \'/data\', \'hostPath\': \'/host\'}\" \
+                For hostPath: --volume \"{\'name\': \'model-data\', \'type\': \'hostPath\', \'mountPath\': \'/data\', \'hostPath\': \'/data\'}\"  \
+                For persistentVolumeClaim: --volume \"{\'name\': \'training-output\', \'type\': \'pvc\', \'mountPath\': \'/mnt/output\', \'claimName\': \'training-output-pvc\', \'readOnly\': False}\" \
+                Use multiple --volume flags if multiple volumes are needed.",
         )(wrapped_func)
 
         # Add list options
         list_params = {
-            "command": "List of command arguments",
-            "args": "List of script arguments, e.g. '[--batch-size, 32, --learning-rate, 0.001]'",
+            "command": "List of command arguments, e.g. \"['python', 'train.py']\"",
+            "args": "List of script arguments, e.g. \"['--batch-size', '32', '--learning-rate', '0.001']\"",
         }
 
         for param_name, help_text in list_params.items():

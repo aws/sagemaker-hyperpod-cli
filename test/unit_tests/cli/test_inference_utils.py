@@ -82,10 +82,10 @@ class TestGenerateClickCommand:
         out = json.loads(res_ok.output)
         assert out == {'env': {'a':1}, 'dimensions': {'b':2}, 'limits': {'c':3}, 'reqs': {'d':4}}
 
-        # invalid JSON produces click error
+        # invalid format produces click error
         res_err = self.runner.invoke(cmd, ['--env', 'notjson'])
         assert res_err.exit_code == 2
-        assert 'must be valid JSON' in res_err.output
+        assert 'Invalid format for' in res_err.output and 'Expected Python literal' in res_err.output
 
     @patch('sagemaker.hyperpod.cli.inference_utils.load_schema_for_version')
     def test_type_mapping_and_defaults(self, mock_load_schema):
