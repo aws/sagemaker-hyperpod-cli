@@ -225,16 +225,14 @@ from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoi
 
 {types_comment}
 
-# Create configs
+# Create configs - REPLACE PLACEHOLDER VALUE BELOW
 model = Model(
     model_id='{model_id}',
 )
 server = Server(
     instance_type='{instance_type}',
 )
-
-# Default endpoint name using model_id, modify as desired
-endpoint_name = SageMakerEndpoint(name='{model_id}')
+endpoint_name = SageMakerEndpoint(name='ENTER-YOUR-ENDPOINT-NAME')
 
 # Create endpoint spec
 js_endpoint = HPJumpStartEndpoint(
