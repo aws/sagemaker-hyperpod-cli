@@ -161,7 +161,8 @@ class HpClusterStack(ClusterStackBase):
             "sagemaker_iam_role_name": "SageMakerIAMRoleName",
             "vpc_cidr": "VpcCIDR",
             "enable_hp_inference_feature": "EnableHPInferenceFeature",
-            "fsx_availability_zone_id": "FsxAvailabilityZoneId"
+            "fsx_availability_zone_id": "FsxAvailabilityZoneId",
+            "hyperpod_cluster_name": "HyperPodClusterName"
         }
         
         if snake_str in mappings:
