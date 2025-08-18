@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator, ConfigDict
 from typing import Optional, List, Dict, Union, Literal
 
 from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
@@ -31,9 +31,19 @@ from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
 from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
 
 class FlatHPEndpoint(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    metadata_name: Optional[str]  = Field(
+        None,
+        alias="metadata_name",
+        description="Name of the jumpstart endpoint object",
+        max_length=63,
+        pattern=r"^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$",
+    )
+
     # endpoint_name
     endpoint_name: Optional[str] = Field(
-        "",
+        None,
         alias="endpoint_name",
         description="Name of SageMaker endpoint; empty string means no creation",
         max_length=63,
@@ -130,7 +140,7 @@ class FlatHPEndpoint(BaseModel):
         description="FSX File System DNS Name",
     )
     fsx_file_system_id: Optional[str] = Field(
-        ...,  
+        None,  
         alias="fsx_file_system_id",
         description="FSX File System ID",
     )
@@ -142,12 +152,12 @@ class FlatHPEndpoint(BaseModel):
 
     # S3Storage
     s3_bucket_name: Optional[str] = Field(
-        ..., 
+        None, 
         alias="s3_bucket_name",
         description="S3 bucket location",
     )
     s3_region: Optional[str] = Field(
-        ..., 
+        None, 
         alias="s3_region",
         description="S3 bucket region",
     )
@@ -229,12 +239,22 @@ class FlatHPEndpoint(BaseModel):
     invocation_endpoint: Optional[str] = Field(
         default="invocations",
         description=(
-            "The invocation endpoint of the model server. "
-            "http://<host>:<port>/ would be pre-populated based on the other fields. "
+            "The invocation endpoint of the model server. http://<host>:<port>/ would be pre-populated based on the other fields. "
             "Please fill in the path after http://<host>:<port>/ specific to your model server.",
         )
     )
-
+    
+    @model_validator(mode='after')
+    def validate_model_source_config(self):
+        """Validate that required fields are provided based on model_source_type"""
+        if self.model_source_type == "s3":
+            if not self.s3_bucket_name or not self.s3_region:
+                raise ValueError("s3_bucket_name and s3_region are required when model_source_type is 's3'")
+        elif self.model_source_type == "fsx":
+            if not self.fsx_dns_name or not self.fsx_file_system_id or not self.fsx_mount_name:
+                raise ValueError("fsx_dns_name, fsx_file_system_id and fsx_mount_name are required when model_source_type is 'fsx'")
+        return self
+    
     def to_domain(self) -> HPEndpoint:
         env_vars = None
         if self.env:

@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-from pydantic import BaseModel, Field, constr
+from pydantic import BaseModel, Field, model_validator, ConfigDict
 from typing import Optional
 
 # reuse the nested types
@@ -23,10 +23,20 @@ from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
 from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
 
 class FlatHPJumpStartEndpoint(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     accept_eula: bool = Field(
         False, alias="accept_eula", description="Whether model terms of use have been accepted"
     )
     
+    metadata_name: Optional[str]  = Field(
+        None,
+        alias="metadata_name",
+        description="Name of the jumpstart endpoint object",
+        max_length=63,
+        pattern=r"^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$",
+    )
+
     model_id: str = Field(
         ...,
         alias="model_id",
@@ -53,7 +63,7 @@ class FlatHPJumpStartEndpoint(BaseModel):
     )
 
     endpoint_name: Optional[str] = Field(
-        "",
+        None,
         alias="endpoint_name",
         description="Name of SageMaker endpoint; empty string means no creation",
         max_length=63,

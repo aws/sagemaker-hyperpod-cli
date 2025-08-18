@@ -63,7 +63,7 @@ def test_js_create_with_required_args():
         ])
 
         assert result.exit_code == 0, result.output
-        domain_obj.create.assert_called_once_with(namespace='test-ns')
+        domain_obj.create.assert_called_once_with(name=None, namespace='test-ns')
 
 
 def test_js_create_missing_required_args():
@@ -180,7 +180,7 @@ def test_custom_create_with_required_args():
         ])
 
         assert result.exit_code == 0, result.output
-        domain_obj.create.assert_called_once_with(namespace='test-ns')
+        domain_obj.create.assert_called_once_with(name=None, namespace='test-ns')
 
 
 def test_custom_create_missing_required_args():
