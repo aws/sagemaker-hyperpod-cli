@@ -13,8 +13,8 @@ import yaml
 from kubernetes.config import (
     KUBE_CONFIG_DEFAULT_LOCATION,
 )
-from .not_found_handler import get_404_message
-from .error_constants import ResourceType, OperationType
+from .exceptions.not_found_handler import get_404_message
+from .exceptions.error_constants import ResourceType, OperationType
 
 EKS_ARN_PATTERN = r"arn:aws:eks:([\w-]+):\d+:cluster/([\w-]+)"
 CLIENT_VERSION_PATTERN = r'^\d+\.\d+\.\d+$'

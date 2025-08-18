@@ -15,7 +15,7 @@ from sagemaker.hyperpod.common.cli_decorators import (
     _detect_resource_type,
     _detect_operation_type
 )
-from sagemaker.hyperpod.common.error_constants import ResourceType, OperationType
+from sagemaker.hyperpod.common.exceptions.error_constants import ResourceType, OperationType
 
 
 class TestHandleCliExceptions:

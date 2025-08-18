@@ -6,13 +6,13 @@ Tests NotFoundMessageGenerator, NotFoundHandler, and convenience functions.
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 
-from sagemaker.hyperpod.common.not_found_handler import (
+from sagemaker.hyperpod.common.exceptions.not_found_handler import (
     NotFoundMessageGenerator,
     NotFoundHandler,
     get_404_message
 )
-from sagemaker.hyperpod.common.error_context import ErrorContext
-from sagemaker.hyperpod.common.error_constants import ResourceType, OperationType
+from sagemaker.hyperpod.common.exceptions.error_context import ErrorContext
+from sagemaker.hyperpod.common.exceptions.error_constants import ResourceType, OperationType
 
 
 class TestNotFoundMessageGenerator:
@@ -195,7 +195,7 @@ class TestNotFoundHandler:
         for part in expected_parts:
             assert part in result
     
-    @patch('sagemaker.hyperpod.common.not_found_handler.ContextGatherer')
+    @patch('sagemaker.hyperpod.common.exceptions.not_found_handler.ContextGatherer')
     def test_generate_404_message_exception_fallback(self, mock_gatherer_class):
         """Test generate_404_message falls back on exception."""
         # Mock context gatherer to raise exception
@@ -245,7 +245,7 @@ class TestNotFoundHandler:
 class TestConvenienceFunction:
     """Test get_404_message convenience function."""
     
-    @patch('sagemaker.hyperpod.common.not_found_handler._handler')
+    @patch('sagemaker.hyperpod.common.exceptions.not_found_handler._handler')
     def test_get_404_message_calls_handler(self, mock_handler):
         """Test get_404_message calls the global handler."""
         mock_handler.generate_404_message.return_value = "Test message"
@@ -259,7 +259,7 @@ class TestConvenienceFunction:
             "test-resource", "test-ns", ResourceType.HYP_PYTORCH_JOB, OperationType.DELETE
         )
     
-    @patch('sagemaker.hyperpod.common.not_found_handler._handler')
+    @patch('sagemaker.hyperpod.common.exceptions.not_found_handler._handler')
     def test_get_404_message_default_operation(self, mock_handler):
         """Test get_404_message with default operation type."""
         mock_handler.generate_404_message.return_value = "Test message"

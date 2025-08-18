@@ -8,7 +8,7 @@ import functools
 import logging
 from kubernetes.client.exceptions import ApiException
 from .utils import handle_404
-from .error_constants import ResourceType, OperationType
+from .exceptions.error_constants import ResourceType, OperationType
 
 logger = logging.getLogger(__name__)
 

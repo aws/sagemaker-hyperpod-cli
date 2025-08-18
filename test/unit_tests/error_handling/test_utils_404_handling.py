@@ -9,7 +9,7 @@ from kubernetes.client.exceptions import ApiException
 from pydantic import ValidationError
 
 from sagemaker.hyperpod.common.utils import handle_404, handle_exception
-from sagemaker.hyperpod.common.error_constants import ResourceType, OperationType
+from sagemaker.hyperpod.common.exceptions.error_constants import ResourceType, OperationType
 
 
 class TestHandle404:

@@ -7,11 +7,11 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from concurrent.futures import TimeoutError as FutureTimeoutError
 
-from sagemaker.hyperpod.common.error_context import (
+from sagemaker.hyperpod.common.exceptions.error_context import (
     ErrorContext,
     ContextGatherer
 )
-from sagemaker.hyperpod.common.error_constants import ResourceType, OperationType
+from sagemaker.hyperpod.common.exceptions.error_constants import ResourceType, OperationType
 
 
 class TestErrorContext:
@@ -104,7 +104,7 @@ class TestContextGatherer:
             
             assert context.operation_type == OperationType.DELETE  # Default
     
-    @patch('sagemaker.hyperpod.common.error_context.ThreadPoolExecutor')
+    @patch('sagemaker.hyperpod.common.exceptions.error_context.ThreadPoolExecutor')
     def test_gather_context_timeout_handling(self, mock_executor):
         """Test gather_context handles timeout gracefully."""
         # Mock ThreadPoolExecutor to raise timeout
@@ -122,7 +122,7 @@ class TestContextGatherer:
         assert isinstance(context, ErrorContext)
         assert context.available_count == 0  # No count due to timeout
     
-    @patch('sagemaker.hyperpod.common.error_context.ThreadPoolExecutor')
+    @patch('sagemaker.hyperpod.common.exceptions.error_context.ThreadPoolExecutor')
     def test_gather_context_exception_handling(self, mock_executor):
         """Test gather_context handles exceptions gracefully."""
         # Mock ThreadPoolExecutor to raise exception
