@@ -80,7 +80,7 @@ class TestGenerateClickCommand:
         # Test valid JSON input
         result = self.runner.invoke(cmd, [
             '--environment', '{"VAR1":"val1"}',
-            '--label_selector', '{"key":"value"}'
+            '--label-selector', '{"key":"value"}'
         ])
         assert result.exit_code == 0
         output = json.loads(result.output)
@@ -135,32 +135,6 @@ class TestGenerateClickCommand:
             'command': ['python', 'train.py'],
             'args': ['--epochs', '10']
         }
-
-    @patch('sagemaker.hyperpod.cli.training_utils.pkgutil.get_data')
-    def test_version_handling(self, mock_get_data):
-        """Test version handling in command generation"""
-        schema = {'properties': {}}
-        mock_get_data.return_value = json.dumps(schema).encode()
-
-        class DummyModel:
-            def __init__(self, **kwargs): pass
-
-            def to_domain(self): return self
-
-        registry = {'2.0': DummyModel}
-
-        @click.command()
-        @generate_click_command(
-            version_key='2.0',
-            schema_pkg="test_package",
-            registry=registry
-        )
-        def cmd(version, debug, config):
-            click.echo(version)
-
-        result = self.runner.invoke(cmd, [])
-        assert result.exit_code == 0
-        assert result.output.strip() == '2.0'
 
     @patch('sagemaker.hyperpod.cli.training_utils.pkgutil.get_data')
     def test_type_conversion(self, mock_get_data):
@@ -479,3 +453,158 @@ class TestGenerateClickCommand:
             'path': '/host/data=special'
         }]
         assert output['volume'] == expected_volume
+
+    @patch('sagemaker.hyperpod.cli.training_utils.extract_version_from_args')
+    @patch('sagemaker.hyperpod.cli.training_utils.load_schema_for_version')
+    def test_version_handling(self, mock_load_schema, mock_extract_version):
+        """Test basic version handling and command generation"""
+        # Setup mocks
+        schema = {
+            'properties': {
+                'job-name': {
+                    'type': 'string',
+                    'description': 'Job name'
+                }
+            },
+            'required': ['job-name']
+        }
+        mock_load_schema.return_value = schema
+        mock_extract_version.return_value = '2.0'
+
+        class DummyModel:
+            def __init__(self, **kwargs):
+                self.kwargs = kwargs
+
+            def to_domain(self):
+                return {'job-name': self.kwargs.get('job_name'),}
+                #return self.kwargs
+
+        registry = {'2.0': DummyModel}
+
+        @click.command()
+        @click.option('--version', default='2.0', help='Schema version')
+        @click.option('--debug', is_flag=True, help='Enable debug mode')
+        @generate_click_command(
+            schema_pkg="test_package",
+            registry=registry
+        )
+        def cmd(version, debug, domain):
+            click.echo(f"version:{version}")
+            click.echo(f"debug:{debug}")
+            click.echo(f"job-name:{domain.get('job-name')}")
+
+        # Test basic command execution
+        result = self.runner.invoke(cmd, ['--job-name', 'test-job'])
+        assert result.exit_code == 0
+        assert "version:2.0" in result.output
+        assert "debug:False" in result.output
+        assert "job-name:test-job" in result.output
+
+        # Test with debug flag
+        result = self.runner.invoke(cmd, [
+            '--job-name', 'test-job',
+            '--debug'
+        ])
+        assert result.exit_code == 0
+        assert "debug:True" in result.output
+
+        # Verify mock calls
+        mock_load_schema.assert_called_with('2.0', 'test_package')
+        mock_extract_version.assert_called()
+
+    @patch('sagemaker.hyperpod.cli.training_utils.extract_version_from_args')
+    @patch('sagemaker.hyperpod.cli.training_utils.load_schema_for_version')
+    def test_parameter_validation(self, mock_load_schema, mock_extract_version):
+        """Test parameter validation and special parameter handling"""
+        # Setup mocks
+        schema = {
+            'properties': {
+                'job_name': {
+                    'type': 'string',
+                    'description': 'Job name'
+                }
+            },
+            'required': ['job_name']
+        }
+        mock_load_schema.return_value = schema
+        mock_extract_version.return_value = '2.0'
+
+        class DummyModel:
+            def __init__(self, **kwargs):
+                self.kwargs = kwargs
+
+            def to_domain(self):
+                domain_data = {
+                    'job-name': self.kwargs.get('job_name'),
+                    'environment': self.kwargs.get('environment'),
+                    'command': self.kwargs.get('command'),
+                    'args': self.kwargs.get('args'),
+                    'volume': self.kwargs.get('volume')
+                }
+                return {k: v for k, v in domain_data.items() if v is not None}
+
+        registry = {'2.0': DummyModel}
+
+        @click.command()
+        @generate_click_command(
+            schema_pkg="test_package",
+            registry=registry
+        )
+        def cmd(version, debug, domain):
+            click.echo(json.dumps(domain))
+
+        # Test with all special parameters
+        result = self.runner.invoke(cmd, [
+            '--job-name', 'test-job',
+            '--environment', '{"VAR1":"value1"}',
+            '--command', '[python,train.py]',
+            '--args', '[--epochs,10]',
+            '--volume', 'name=vol1,type=hostPath,mount_path=/data,path=/mnt/data'
+        ])
+        assert result.exit_code == 0
+        output = json.loads(result.output)
+        assert output.get('job-name') == 'test-job'
+        assert output.get('environment') == {"VAR1": "value1"}
+        assert 'python' in output.get('command', [])
+        assert '--epochs' in output.get('args', [])
+
+        # Test validation errors
+        test_cases = [
+            # Missing required parameter
+            {
+                'args': [],
+                'expected_error': True,
+                'error_message': None  # Will fail because job-name is required
+            },
+            # Invalid JSON for environment
+            {
+                'args': ['--job-name', 'test-job', '--environment', 'invalid-json'],
+                'expected_error': True,
+                'error_message': "must be valid JSON"
+            },
+            # Invalid volume format
+            {
+                'args': ['--job-name', 'test-job', '--volume', 'invalid-volume-format'],
+                'expected_error': True,
+                'error_message': "Invalid volume format"
+            },
+            # Multiple valid volumes
+            {
+                'args': [
+                    '--job-name', 'test-job',
+                    '--volume', 'name=vol1,type=hostPath,mount_path=/data1,path=/mnt/data1',
+                    '--volume', 'name=vol2,type=hostPath,mount_path=/data2,path=/mnt/data2'
+                ],
+                'expected_error': False,
+                'error_message': None
+            }
+        ]
+
+        for test_case in test_cases:
+            result = self.runner.invoke(cmd, test_case['args'])
+            if test_case['expected_error']:
+                assert result.exit_code != 0
+                if test_case['error_message']:
+                    assert test_case['error_message'] in result.output
+            else:
+                assert result.exit_code == 0

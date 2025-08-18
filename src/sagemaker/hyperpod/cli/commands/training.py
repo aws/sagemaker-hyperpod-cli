@@ -180,6 +180,8 @@ def pytorch_describe(job_name: str, namespace: str):
         click.echo("=" * 80)
         click.echo(f"Name:           {job.metadata.name}")
         click.echo(f"Namespace:      {job.metadata.namespace}")
+        click.echo(f"Labels:         {job.metadata.labels}")
+        click.echo(f"Annotations:    {job.metadata.annotations}")
 
         # Print Spec details
         click.echo("\nSpec:")

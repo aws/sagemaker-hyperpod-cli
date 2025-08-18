@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.1.0 (2025-08-13)
+
+### Features
+
+ * Task Governance feature for training jobs.
+
 ## v3.0.2 (2025-07-31)
 
 ### Features
