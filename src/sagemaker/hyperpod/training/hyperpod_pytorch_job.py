@@ -236,11 +236,9 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
 
 
 def _load_hp_job(response: dict) -> HyperPodPytorchJob:
-    name = response["metadata"]["name"]
-    namespace = response["metadata"]["namespace"]
 
     spec = _HyperPodPytorchJob.model_validate(response["spec"], by_name=True)
-    metadata = Metadata(name=name, namespace=namespace)
+    metadata = Metadata(**response["metadata"])
 
     if "status" in response:
         status = HyperPodPytorchJobStatus.model_validate(

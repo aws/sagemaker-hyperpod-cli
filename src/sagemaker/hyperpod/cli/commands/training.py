@@ -24,11 +24,17 @@ def pytorch_create(version, debug, config):
         job_name = config.get("name")
         namespace = config.get("namespace")
         spec = config.get("spec")
+        metadata_labels = config.get("labels")
+        annotations = config.get("annotations")
 
         # Prepare metadata
         metadata_kwargs = {"name": job_name}
         if namespace:
             metadata_kwargs["namespace"] = namespace
+        if metadata_labels:
+            metadata_kwargs["labels"] = metadata_labels
+        if annotations:
+            metadata_kwargs["annotations"] = annotations
 
         # Prepare job kwargs
         job_kwargs = {
@@ -154,6 +160,8 @@ def pytorch_describe(job_name: str, namespace: str):
         click.echo("=" * 80)
         click.echo(f"Name:           {job.metadata.name}")
         click.echo(f"Namespace:      {job.metadata.namespace}")
+        click.echo(f"Labels:         {job.metadata.labels}")
+        click.echo(f"Annotations:    {job.metadata.annotations}")
 
         # Print Spec details
         click.echo("\nSpec:")

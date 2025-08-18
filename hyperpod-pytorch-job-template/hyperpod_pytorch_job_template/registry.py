@@ -10,11 +10,13 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-from .v1_0.model import PyTorchJobConfig  # Import your model
+from .v1_0 import model as v1_0_model # Import your model
+from .v1_1 import model as v1_1_model
 from typing import Dict, Type
 from pydantic import BaseModel
 
 # Direct version-to-model mapping
 SCHEMA_REGISTRY: Dict[str, Type[BaseModel]] = {
-    "1.0": PyTorchJobConfig,
+    "1.0": v1_0_model.PyTorchJobConfig,
+    "1.1": v1_1_model.PyTorchJobConfig,
 }
