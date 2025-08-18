@@ -14,63 +14,6 @@ logger = logging.getLogger(__name__)
 
 def handle_cli_exceptions(func):
     """
-    Decorator that provides consistent exception handling for CLI commands.
-    
-    Replaces the repetitive pattern:
-        except Exception as e:
-            click.echo(str(e))
-            import sys
-            sys.exit(1)
-    
-    Usage:
-        @handle_cli_exceptions
-        @click.command()
-        def my_command():
-            # Command logic here
-            pass
-    """
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            # Clean error output - no "Error:" prefix or "Aborted!" suffix
-            click.echo(str(e))
-            sys.exit(1)
-    
-    return wrapper
-
-def handle_cli_exceptions_with_debug(func):
-    """
-    Enhanced decorator that provides debug information when requested.
-    
-    This version logs the full exception details for debugging purposes
-    while still showing clean messages to users.
-    
-    Usage:
-        @handle_cli_exceptions_with_debug
-        @click.command()
-        def my_command():
-            # Command logic here
-            pass
-    """
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            # Log full exception details for debugging
-            logger.debug(f"CLI command failed: {func.__name__}", exc_info=True)
-            
-            # Clean error output for users
-            click.echo(str(e))
-            sys.exit(1)
-    
-    return wrapper
-
-
-def smart_cli_exception_handler(func):
-    """
     Smart decorator that automatically detects resource/operation types and applies
     enhanced 404 handling. Eliminates repetitive exception handling across CLI commands.
     
@@ -81,7 +24,7 @@ def smart_cli_exception_handler(func):
     4. Handles all other exceptions consistently
     
     Usage:
-        @smart_cli_exception_handler
+        @handle_cli_exceptions
         @click.command("hyp-jumpstart-endpoint")
         def js_delete(name, namespace):
             # Command logic here - no try/catch needed!
@@ -127,9 +70,9 @@ def _detect_resource_type(func) -> ResourceType:
     Returns:
         ResourceType enum or None if not detected
     """
+    # First try to get the Click command name from the decorator
     try:
-        # First try to get the Click command name from the decorator
-        if hasattr(func, 'name'):
+        if hasattr(func, 'name') and func.name and isinstance(func.name, str):
             command_name = func.name.lower()
             if 'jumpstart' in command_name:
                 return ResourceType.HYP_JUMPSTART_ENDPOINT
@@ -137,12 +80,12 @@ def _detect_resource_type(func) -> ResourceType:
                 return ResourceType.HYP_CUSTOM_ENDPOINT
             elif 'pytorch' in command_name:
                 return ResourceType.HYP_PYTORCH_JOB
-        
-        # Fallback to function name detection
-        try:
-            func_name = func.__name__.lower()
-        except (AttributeError, TypeError):
-            func_name = ""
+    except (AttributeError, TypeError):
+        pass
+    
+    # Fallback to function name detection
+    try:
+        func_name = func.__name__.lower()
         
         # Function name patterns
         if 'js_' in func_name or 'jumpstart' in func_name:
@@ -151,12 +94,11 @@ def _detect_resource_type(func) -> ResourceType:
             return ResourceType.HYP_CUSTOM_ENDPOINT
         elif 'pytorch' in func_name or 'training' in func_name:
             return ResourceType.HYP_PYTORCH_JOB
-        
-        return None
-        
-    except Exception:
-        # Handle any other exceptions during detection gracefully
-        return None
+            
+    except (AttributeError, TypeError):
+        pass
+    
+    return None
 
 
 def _detect_operation_type(func) -> OperationType:

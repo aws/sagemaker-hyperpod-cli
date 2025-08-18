@@ -14,7 +14,7 @@ from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
     _hyperpod_telemetry_emitter,
 )
 from sagemaker.hyperpod.common.telemetry.constants import Feature
-from sagemaker.hyperpod.common.cli_decorators import handle_cli_exceptions, smart_cli_exception_handler
+from sagemaker.hyperpod.common.cli_decorators import handle_cli_exceptions
 
 
 # CREATE
@@ -561,7 +561,7 @@ def custom_describe(
     help="Optional. The namespace of the jumpstart model endpoint to delete. Default set to 'default'.",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "delete_js_endpoint_cli")
-@smart_cli_exception_handler
+@handle_cli_exceptions
 def js_delete(
     name: str,
     namespace: Optional[str],

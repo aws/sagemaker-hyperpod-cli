@@ -10,8 +10,6 @@ from kubernetes.client.exceptions import ApiException
 
 from sagemaker.hyperpod.common.cli_decorators import (
     handle_cli_exceptions,
-    handle_cli_exceptions_with_debug,
-    smart_cli_exception_handler,
     _detect_resource_type,
     _detect_operation_type
 )
@@ -56,50 +54,12 @@ class TestHandleCliExceptions:
         assert documented_function.__doc__ == "This is a test function."
 
 
-class TestHandleCliExceptionsWithDebug:
-    """Test handle_cli_exceptions_with_debug decorator."""
+class TestHandleCliExceptions404Handling:
+    """Test handle_cli_exceptions decorator 404 handling functionality."""
     
     def test_successful_function_execution(self):
         """Test decorator allows successful function execution."""
-        @handle_cli_exceptions_with_debug
-        def test_function():
-            return "success"
-        
-        result = test_function()
-        assert result == "success"
-    
-    @patch('sagemaker.hyperpod.common.cli_decorators.click')
-    @patch('sagemaker.hyperpod.common.cli_decorators.sys')
-    @patch('sagemaker.hyperpod.common.cli_decorators.logger')
-    def test_exception_handling_with_debug(self, mock_logger, mock_sys, mock_click):
-        """Test decorator handles exceptions with debug logging."""
-        @handle_cli_exceptions_with_debug
-        def failing_function():
-            raise Exception("Debug test error")
-        
-        failing_function()
-        
-        mock_logger.debug.assert_called_once()
-        mock_click.echo.assert_called_once_with("Debug test error")
-        mock_sys.exit.assert_called_once_with(1)
-    
-    def test_preserves_function_metadata(self):
-        """Test decorator preserves original function metadata."""
-        @handle_cli_exceptions_with_debug
-        def documented_function():
-            """This is a debug test function."""
-            pass
-        
-        assert documented_function.__name__ == "documented_function"
-        assert documented_function.__doc__ == "This is a debug test function."
-
-
-class TestSmartCliExceptionHandler:
-    """Test smart_cli_exception_handler decorator."""
-    
-    def test_successful_function_execution(self):
-        """Test decorator allows successful function execution."""
-        @smart_cli_exception_handler
+        @handle_cli_exceptions
         def test_function():
             return "success"
         
@@ -114,7 +74,7 @@ class TestSmartCliExceptionHandler:
         # Create 404 ApiException
         api_exception = ApiException(status=404, reason="Not Found")
         
-        @smart_cli_exception_handler
+        @handle_cli_exceptions
         def js_delete(name, namespace):
             raise api_exception
         
@@ -137,7 +97,7 @@ class TestSmartCliExceptionHandler:
     @patch('sagemaker.hyperpod.common.cli_decorators.sys')
     def test_non_404_exception_handling(self, mock_sys, mock_click):
         """Test decorator handles non-404 exceptions normally."""
-        @smart_cli_exception_handler
+        @handle_cli_exceptions
         def failing_function():
             raise Exception("Generic error")
         
@@ -150,7 +110,7 @@ class TestSmartCliExceptionHandler:
     @patch('sagemaker.hyperpod.common.cli_decorators.sys')
     def test_non_api_exception_handling(self, mock_sys, mock_click):
         """Test decorator handles non-ApiException errors normally."""
-        @smart_cli_exception_handler
+        @handle_cli_exceptions
         def failing_function():
             raise ValueError("Value error")
         
@@ -166,7 +126,7 @@ class TestSmartCliExceptionHandler:
         """Test decorator falls back when resource/operation detection fails."""
         api_exception = ApiException(status=404, reason="Not Found")
         
-        @smart_cli_exception_handler
+        @handle_cli_exceptions
         def unknown_function(name, namespace):
             raise api_exception
         
@@ -179,7 +139,7 @@ class TestSmartCliExceptionHandler:
     
     def test_preserves_function_metadata(self):
         """Test decorator preserves original function metadata."""
-        @smart_cli_exception_handler
+        @handle_cli_exceptions
         def documented_function():
             """This is a smart test function."""
             pass
@@ -303,7 +263,7 @@ class TestIntegrationSmartHandler:
         api_exception = ApiException(status=404, reason="Not Found")
         mock_handle_404.side_effect = Exception("Enhanced 404 message")
         
-        @smart_cli_exception_handler
+        @handle_cli_exceptions
         def js_delete(name, namespace="default"):
             raise api_exception
         
@@ -327,7 +287,7 @@ class TestIntegrationSmartHandler:
         api_exception = ApiException(status=404, reason="Not Found")
         mock_handle_404.side_effect = Exception("Custom endpoint not found message")
         
-        @smart_cli_exception_handler
+        @handle_cli_exceptions
         def custom_describe(name, namespace="default"):
             raise api_exception
         
@@ -351,7 +311,7 @@ class TestIntegrationSmartHandler:
         api_exception = ApiException(status=404, reason="Not Found")
         mock_handle_404.side_effect = Exception("Training job not found message")
         
-        @smart_cli_exception_handler
+        @handle_cli_exceptions
         def training_list(name, namespace="default"):
             raise api_exception
         
@@ -371,7 +331,7 @@ class TestIntegrationSmartHandler:
     @patch('sagemaker.hyperpod.common.cli_decorators.sys')
     def test_non_404_exception_passthrough(self, mock_sys, mock_click):
         """Test non-404 exceptions are handled normally."""
-        @smart_cli_exception_handler
+        @handle_cli_exceptions
         def js_delete(name, namespace="default"):
             raise ValueError("Invalid configuration")
         
@@ -382,7 +342,7 @@ class TestIntegrationSmartHandler:
     
     def test_function_with_no_exceptions(self):
         """Test function that completes successfully."""
-        @smart_cli_exception_handler
+        @handle_cli_exceptions
         def successful_function(name, namespace="default"):
             return f"Success: {name} in {namespace}"
         
