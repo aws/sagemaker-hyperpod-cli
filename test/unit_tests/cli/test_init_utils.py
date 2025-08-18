@@ -929,3 +929,44 @@ class TestProcessCfnTemplateContentEdgeCases:
         assert original_content in result
         assert "OtherParam" in result
         assert mock_template in result
+
+
+class TestProcessCfnTemplateContentUpdated:
+    """Test updated _process_cfn_template_content function"""
+    
+    @patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack.get_template')
+    def test_process_cfn_template_content_uses_package_template(self, mock_get_template):
+        """Test that _process_cfn_template_content uses HpClusterStack.get_template from package"""
+        original_content = "Original template content"
+        mock_template = '{"Parameters": {"TestParam": {"Type": "String"}}}'
+        mock_get_template.return_value = mock_template
+        
+        result = _process_cfn_template_content(original_content)
+        
+        # Verify get_template was called (not S3)
+        mock_get_template.assert_called_once()
+        
+        # Verify content structure
+        assert "CloudFormation Template:" in result
+        assert mock_template in result
+        assert original_content in result
+    
+    @patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack.get_template')
+    @patch('sagemaker.hyperpod.cli.init_utils.click.secho')
+    def test_process_cfn_template_content_handles_package_error(self, mock_secho, mock_get_template):
+        """Test error handling when package template fails to load"""
+        original_content = "Original template content"
+        mock_get_template.side_effect = RuntimeError("Failed to load template from package")
+        
+        result = _process_cfn_template_content(original_content)
+        
+        # Verify error was logged
+        mock_secho.assert_called_once_with(
+            "⚠️ Failed to generate CloudFormation template: Failed to load template from package", 
+            fg="red"
+        )
+        
+        # Verify fallback behavior
+        assert "CloudFormation Template:" in result
+        assert original_content in result
+        assert result.count("CloudFormation Template:") == 1

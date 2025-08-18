@@ -226,7 +226,7 @@ def generate_click_command(
                     try:
                         # Remove brackets and split by comma
                         inner = value.strip()[1:-1]
-                        items = [item.strip() for item in inner.split(',')]
+                        items = [item.strip().strip('"').strip("'") for item in inner.split(',')]
                         return items
                     except:
                         pass
@@ -457,6 +457,15 @@ def save_config_yaml(prefill: dict, comment_map: dict, directory: str):
                         f.write(f"    claim_name: {vol.get('claim_name')}\n")
                     if vol.get('read_only') is not None:
                         f.write(f"    read_only: {vol.get('read_only')}\n")
+                f.write("\n")
+            elif isinstance(val, list):
+                # Handle arrays in YAML format
+                if val:
+                    f.write(f"{key}:\n")
+                    for item in val:
+                        f.write(f"  - {item}\n")
+                else:
+                    f.write(f"{key}: []\n")
                 f.write("\n")
             else:
                 # Handle simple values
@@ -780,7 +789,7 @@ def build_config_from_schema(template: str, version: str, model_config=None, exi
                                 if val_stripped.startswith('[') and val_stripped.endswith(']'):
                                     try:
                                         inner = val_stripped[1:-1]
-                                        val = [item.strip() for item in inner.split(',')]
+                                        val = [item.strip().strip('"').strip("'") for item in inner.split(',')]
                                     except:
                                         pass
                     

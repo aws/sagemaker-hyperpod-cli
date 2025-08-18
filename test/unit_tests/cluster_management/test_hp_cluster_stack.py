@@ -4,8 +4,7 @@ from unittest.mock import patch, MagicMock, mock_open
 from botocore.exceptions import ClientError
 import boto3
 
-from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack, CLUSTER_STACK_TEMPLATE_PACKAGE_NAME, CLUSTER_CREATION_TEMPLATE_FILE_NAME
-
+from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack
 
 class TestHpClusterStack(unittest.TestCase):
     @patch('uuid.uuid4')
@@ -392,9 +391,134 @@ class TestHpClusterStackArrayConversion(unittest.TestCase):
         
         # Should have the other fields
         param_keys = [p['ParameterKey'] for p in other_params]
-        self.assertIn('HyperpodClusterName', param_keys)
+        self.assertIn('HyperPodClusterName', param_keys)
         self.assertIn('CreateVPCStack', param_keys)
         
         # Verify boolean conversion
         vpc_param = next(p for p in other_params if p['ParameterKey'] == 'CreateVPCStack')
         self.assertEqual(vpc_param['ParameterValue'], 'true')
+
+class TestHpClusterStackInit(unittest.TestCase):
+    """Test HpClusterStack __init__ method array conversion"""
+    
+    def test_init_converts_arrays_to_json_strings(self):
+        """Test that __init__ converts array values to JSON strings"""
+        data = {
+            'tags': [{'Key': 'Environment', 'Value': 'Test'}],
+            'availability_zone_ids': ['us-east-1a', 'us-east-1b'],
+            'hyperpod_cluster_name': 'test-cluster',
+            'storage_capacity': 1200
+        }
+        
+        stack = HpClusterStack(**data)
+        
+        # Arrays should be converted to JSON strings
+        self.assertEqual(stack.tags, '[{"Key": "Environment", "Value": "Test"}]')
+        self.assertEqual(stack.availability_zone_ids, '["us-east-1a", "us-east-1b"]')
+        
+        # Other types should remain unchanged
+        self.assertEqual(stack.hyperpod_cluster_name, 'test-cluster')
+        self.assertEqual(stack.storage_capacity, 1200)
+    
+    def test_init_handles_empty_arrays(self):
+        """Test that empty arrays are converted to empty JSON arrays"""
+        data = {'tags': []}
+        
+        stack = HpClusterStack(**data)
+        
+        self.assertEqual(stack.tags, '[]')
+    
+    def test_init_handles_no_arrays(self):
+        """Test that __init__ works normally when no arrays are present"""
+        data = {
+            'hyperpod_cluster_name': 'test-cluster',
+            'stage': 'gamma'
+        }
+        
+        stack = HpClusterStack(**data)
+        
+        self.assertEqual(stack.hyperpod_cluster_name, 'test-cluster')
+        self.assertEqual(stack.stage, 'gamma')
+
+
+class TestHpClusterStackParseTags(unittest.TestCase):
+    """Test HpClusterStack _parse_tags method"""
+    
+    def test_parse_tags_valid_json_array(self):
+        """Test parsing valid JSON array of tags"""
+        tags_json = '[{"Key": "Environment", "Value": "Test"}, {"Key": "Project", "Value": "HyperPod"}]'
+        stack = HpClusterStack(tags=tags_json)
+        
+        result = stack._parse_tags()
+        
+        expected = [
+            {"Key": "Environment", "Value": "Test"},
+            {"Key": "Project", "Value": "HyperPod"}
+        ]
+        self.assertEqual(result, expected)
+    
+    def test_parse_tags_empty_string(self):
+        """Test parsing empty tags string returns empty list"""
+        stack = HpClusterStack(tags="")
+        
+        result = stack._parse_tags()
+        
+        self.assertEqual(result, [])
+    
+    def test_parse_tags_none_value(self):
+        """Test parsing None tags returns empty list"""
+        stack = HpClusterStack(tags=None)
+        
+        result = stack._parse_tags()
+        
+        self.assertEqual(result, [])
+    
+    def test_parse_tags_invalid_json(self):
+        """Test parsing invalid JSON returns empty list"""
+        stack = HpClusterStack(tags="invalid json")
+        
+        result = stack._parse_tags()
+        
+        self.assertEqual(result, [])
+    
+    def test_parse_tags_empty_json_array(self):
+        """Test parsing empty JSON array returns empty list"""
+        stack = HpClusterStack(tags="[]")
+        
+        result = stack._parse_tags()
+        
+        self.assertEqual(result, [])
+
+
+class TestHpClusterStackGetTemplate(unittest.TestCase):
+    """Test HpClusterStack get_template method using package instead of S3"""
+    
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.importlib.resources.read_text')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.yaml.safe_load')
+    def test_get_template_from_package(self, mock_yaml_load, mock_read_text):
+        """Test get_template reads from package instead of S3"""
+        mock_yaml_content = "Parameters:\n  TestParam:\n    Type: String"
+        mock_read_text.return_value = mock_yaml_content
+        
+        mock_yaml_data = {"Parameters": {"TestParam": {"Type": "String"}}}
+        mock_yaml_load.return_value = mock_yaml_data
+        
+        result = HpClusterStack.get_template()
+        
+        # Verify package resource was read
+        mock_read_text.assert_called_once_with('hyperpod_cluster_stack_template', 'creation_template.yaml')
+        mock_yaml_load.assert_called_once_with(mock_yaml_content)
+        
+        # Verify JSON output
+        expected_json = json.dumps(mock_yaml_data, indent=2, ensure_ascii=False)
+        self.assertEqual(result, expected_json)
+    
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.importlib.resources.read_text')
+    def test_get_template_handles_package_error(self, mock_read_text):
+        """Test get_template handles package read errors"""
+        mock_read_text.side_effect = FileNotFoundError("Template not found")
+        
+        with self.assertRaises(RuntimeError) as context:
+            HpClusterStack.get_template()
+        
+        self.assertIn("Failed to load template from package", str(context.exception))

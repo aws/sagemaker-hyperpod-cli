@@ -12,9 +12,6 @@ from hyperpod_cluster_stack_template.v1_0.model import ClusterStackBase
 
 from sagemaker.hyperpod import create_boto3_client
 
-CLUSTER_CREATION_TEMPLATE_FILE_NAME = "v1_0/main-stack-eks-based-cfn-template.yaml"
-CLUSTER_STACK_TEMPLATE_PACKAGE_NAME = "hyperpod_cluster_stack_template"
-
 CAPABILITIES_FOR_STACK_CREATION = [
 'CAPABILITY_IAM',
 'CAPABILITY_NAMED_IAM'
@@ -31,17 +28,25 @@ class HpClusterStack(ClusterStackBase):
         None,
         description="CloudFormation stack name set after stack creation"
     )
+    
+    def __init__(self, **data):
+        # Convert array values to JSON strings
+        for key, value in data.items():
+            if isinstance(value, list):
+                data[key] = json.dumps(value)
+        super().__init__(**data)
 
     @staticmethod
     def get_template() -> str:
-        s3 = create_boto3_client('s3')
-        response = s3.get_object(
-            Bucket='sagemaker-hyperpod-cluster-stack-bucket',
-            Key='1.0/main-stack-eks-based-cfn-template.yaml'
-        )
-        yaml_content = response['Body'].read().decode('utf-8')
-        yaml_data = yaml.safe_load(yaml_content)
-        return json.dumps(yaml_data, indent=2, ensure_ascii=False)
+        try:
+            template_content = importlib.resources.read_text(
+                'hyperpod_cluster_stack_template', 
+                'creation_template.yaml'
+            )
+            yaml_data = yaml.safe_load(template_content)
+            return json.dumps(yaml_data, indent=2, ensure_ascii=False)
+        except Exception as e:
+            raise RuntimeError(f"Failed to load template from package: {e}")
 
     def create(self,
                region: Optional[str] = None) -> str:
@@ -56,7 +61,7 @@ class HpClusterStack(ClusterStackBase):
         # Get account ID and create bucket name
         bucket_name = f"sagemaker-hyperpod-cluster-stack-bucket"
         template_key = f"1.0/main-stack-eks-based-cfn-template.yaml"
-        
+
         try:
             # Use TemplateURL for large templates (>51KB)
             template_url = f"https://{bucket_name}.s3.amazonaws.com/{template_key}"
@@ -65,10 +70,7 @@ class HpClusterStack(ClusterStackBase):
                 StackName=stack_name,
                 TemplateURL=template_url,
                 Parameters=parameters,
-                Tags=self.tags or [{
-                        'Key': 'Environment',
-                        'Value': 'Development'
-                    }],
+                Tags=self._parse_tags(),
                 Capabilities=CAPABILITIES_FOR_STACK_CREATION
             )
 
@@ -136,6 +138,13 @@ class HpClusterStack(ClusterStackBase):
                         'ParameterValue': str(value)
                     })
         return parameters
+
+    def _parse_tags(self) -> List[Dict[str, str]]:
+        """Parse tags field and return proper CloudFormation tags format."""
+        try:
+            return json.loads(self.tags) if self.tags else []
+        except (json.JSONDecodeError, TypeError):
+            return []
 
     def _convert_nested_keys(self, obj: Any) -> Any:
         """Convert nested JSON keys from snake_case to PascalCase."""
