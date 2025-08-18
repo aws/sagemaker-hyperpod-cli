@@ -13,6 +13,7 @@ import yaml
 from kubernetes.config import (
     KUBE_CONFIG_DEFAULT_LOCATION,
 )
+from .not_found_handler import get_404_message
 
 EKS_ARN_PATTERN = r"arn:aws:eks:([\w-]+):\d+:cluster/([\w-]+)"
 CLIENT_VERSION_PATTERN = r'^\d+\.\d+\.\d+$'
@@ -36,7 +37,8 @@ def get_default_namespace():
             "No active context. Please use set_cluster_context() method to set current context."
         )
 
-def handle_exception(e: Exception, name: str, namespace: str):
+def handle_exception(e: Exception, name: str, namespace: str, 
+                    operation_type: str = 'unknown', resource_type: str = 'unknown'):
     if isinstance(e, ApiException):
         if e.status == 401:
             raise Exception(f"Credentials unauthorized.") from e
@@ -45,9 +47,16 @@ def handle_exception(e: Exception, name: str, namespace: str):
                 f"Access denied to resource '{name}' in namespace '{namespace}'."
             ) from e
         if e.status == 404:
+            # NEW: Enhanced 404 handling
+            if operation_type != 'unknown' and resource_type != 'unknown':
+                enhanced_message = get_404_message(name, namespace, resource_type, operation_type)
+                raise Exception(enhanced_message)
+            
+            # Improved generic fallback
             raise Exception(
-                f"Resource '{name}' not found in namespace '{namespace}'."
-            ) from e
+                f"Resource '{name}' not found in namespace '{namespace}'. "
+                f"Please check the resource name and namespace."
+            )
         elif e.status == 409:
             raise Exception(
                 f"Resource '{name}' already exists in namespace '{namespace}'."

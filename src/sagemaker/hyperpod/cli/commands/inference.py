@@ -244,9 +244,13 @@ def js_describe(
     """
     Describe a Hyperpod Jumpstart model endpoint.
     """
-
-    my_endpoint = HPJumpStartEndpoint.model_construct().get(name, namespace)
-    data = my_endpoint.model_dump()
+    try:
+        my_endpoint = HPJumpStartEndpoint.model_construct().get(name, namespace)
+        data = my_endpoint.model_dump()
+    except Exception as e:
+        click.echo(str(e))
+        import sys
+        sys.exit(1)
 
     if full:
         click.echo("\nFull JSON:")
@@ -393,9 +397,13 @@ def custom_describe(
     """
     Describe a Hyperpod custom model endpoint.
     """
-
-    my_endpoint = HPEndpoint.model_construct().get(name, namespace)
-    data = my_endpoint.model_dump()
+    try:
+        my_endpoint = HPEndpoint.model_construct().get(name, namespace)
+        data = my_endpoint.model_dump()
+    except Exception as e:
+        click.echo(str(e))
+        import sys
+        sys.exit(1)
 
     if full:
         click.echo("\nFull JSON:")
@@ -567,8 +575,13 @@ def js_delete(
     """
     Delete a Hyperpod Jumpstart model endpoint.
     """
-    my_endpoint = HPJumpStartEndpoint.model_construct().get(name, namespace)
-    my_endpoint.delete()
+    try:
+        my_endpoint = HPJumpStartEndpoint.model_construct().get(name, namespace)
+        my_endpoint.delete()
+    except Exception as e:
+        click.echo(str(e))
+        import sys
+        sys.exit(1)
 
 
 @click.command("hyp-custom-endpoint")
@@ -593,8 +606,13 @@ def custom_delete(
     """
     Delete a Hyperpod custom model endpoint.
     """
-    my_endpoint = HPEndpoint.model_construct().get(name, namespace)
-    my_endpoint.delete()
+    try:
+        my_endpoint = HPEndpoint.model_construct().get(name, namespace)
+        my_endpoint.delete()
+    except Exception as e:
+        click.echo(str(e))
+        import sys
+        sys.exit(1)
 
 
 @click.command("hyp-jumpstart-endpoint")

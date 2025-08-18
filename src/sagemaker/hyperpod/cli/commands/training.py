@@ -229,7 +229,9 @@ def pytorch_describe(job_name: str, namespace: str):
             click.echo("No status information available")
 
     except Exception as e:
-        raise click.UsageError(f"Failed to describe job: {str(e)}")
+        click.echo(str(e))
+        import sys
+        sys.exit(1)
 
 
 @click.command("hyp-pytorch-job")
@@ -248,12 +250,10 @@ def pytorch_delete(job_name: str, namespace: str):
     try:
         job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
         job.delete()
-
-        if job is None:
-            raise click.UsageError(f"Job {job_name} not found in namespace {namespace}")
-
     except Exception as e:
-        raise click.UsageError(f"Failed to describe job: {str(e)}")
+        click.echo(str(e))
+        import sys
+        sys.exit(1)
 
 
 @click.command("hyp-pytorch-job")

@@ -134,7 +134,8 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             logger.info(f"Successful deleted HyperPodPytorchJob '{self.metadata.name}'!")
         except Exception as e:
             logger.error(f"Failed to delete HyperPodPytorchJob {self.metadata.name}!")
-            handle_exception(e, self.metadata.name, self.metadata.namespace)
+            handle_exception(e, self.metadata.name, self.metadata.namespace, 
+                            operation_type='delete', resource_type='training_job')
 
     @classmethod
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "get_pytorchjob")
@@ -159,8 +160,8 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             )
             return _load_hp_job(response)
         except Exception as e:
-            logger.error(f"Failed to describe HyperPodPytorchJob {name}: {e}")
-            handle_exception(e, name, namespace)
+            handle_exception(e, name, namespace, 
+                            operation_type='get', resource_type='training_job')
 
     def refresh(self) -> "HyperPodPytorchJob":
         self.verify_kube_config()

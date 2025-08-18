@@ -114,7 +114,8 @@ class HPEndpointBase:
                 name=name,
             )
         except Exception as e:
-            handle_exception(e, name, namespace)
+            handle_exception(e, name, namespace, 
+                            operation_type='get', resource_type='inference_endpoint')
 
     def call_delete_api(
         self,
@@ -135,7 +136,8 @@ class HPEndpointBase:
                 name=name,
             )
         except Exception as e:
-            handle_exception(e, name, namespace)
+            handle_exception(e, name, namespace, 
+                            operation_type='delete', resource_type='inference_endpoint')
 
     @classmethod
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "get_operator_logs")
