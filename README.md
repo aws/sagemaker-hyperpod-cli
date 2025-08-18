@@ -192,7 +192,6 @@ hyp create hyp-jumpstart-endpoint \
     --model-id jumpstart-model-id\
     --instance-type ml.g5.8xlarge \
     --endpoint-name endpoint-jumpstart \
-    --tls-output-s3-uri s3://sample-bucket
 ```
 
 
@@ -340,13 +339,11 @@ server=Server(
     instance_type='ml.g5.8xlarge',
 )
 endpoint_name=SageMakerEndpoint(name='<my-endpoint-name>')
-tls_config=TlsConfig(tls_certificate_output_s3_uri='s3://<my-tls-bucket>')
 
 js_endpoint=HPJumpStartEndpoint(
     model=model,
     server=server,
-    sage_maker_endpoint=endpoint_name,
-    tls_config=tls_config,
+    sage_maker_endpoint=endpoint_name
 )
 
 js_endpoint.create()

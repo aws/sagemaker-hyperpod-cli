@@ -46,13 +46,10 @@ server = Server(
 
 endpoint_name = SageMakerEndpoint(name="endpoint-jumpstart")
 
-tls_config = TlsConfig(tls_certificate_output_s3_uri="s3://sample-bucket")
-
 js_endpoint = HPJumpStartEndpoint(
     model=model,
     server=server,
-    sage_maker_endpoint=endpoint_name,
-    tls_config=tls_config
+    sage_maker_endpoint=endpoint_name
 )
 
 js_endpoint.create()
