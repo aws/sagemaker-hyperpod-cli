@@ -630,9 +630,14 @@ def js_list_pods(
     """
     List all pods related to jumpstart model endpoint.
     """
-    my_endpoint = HPJumpStartEndpoint.model_construct()
-    pods = my_endpoint.list_pods(namespace=namespace)
-    click.echo(pods)
+    try:
+        my_endpoint = HPJumpStartEndpoint.model_construct()
+        pods = my_endpoint.list_pods(namespace=namespace)
+        click.echo(pods)
+    except Exception as e:
+        click.echo(str(e))
+        import sys
+        sys.exit(1)
 
 
 @click.command("hyp-custom-endpoint")
@@ -650,9 +655,14 @@ def custom_list_pods(
     """
     List all pods related to custom model endpoint.
     """
-    my_endpoint = HPEndpoint.model_construct()
-    pods = my_endpoint.list_pods(namespace=namespace)
-    click.echo(pods)
+    try:
+        my_endpoint = HPEndpoint.model_construct()
+        pods = my_endpoint.list_pods(namespace=namespace)
+        click.echo(pods)
+    except Exception as e:
+        click.echo(str(e))
+        import sys
+        sys.exit(1)
 
 
 @click.command("hyp-jumpstart-endpoint")
@@ -684,9 +694,14 @@ def js_get_logs(
     """
     Get specific pod log for jumpstart model endpoint.
     """
-    my_endpoint = HPJumpStartEndpoint.model_construct()
-    logs = my_endpoint.get_logs(pod=pod_name, container=container, namespace=namespace)
-    click.echo(logs)
+    try:
+        my_endpoint = HPJumpStartEndpoint.model_construct()
+        logs = my_endpoint.get_logs(pod=pod_name, container=container, namespace=namespace)
+        click.echo(logs)
+    except Exception as e:
+        click.echo(str(e))
+        import sys
+        sys.exit(1)
 
 
 @click.command("hyp-custom-endpoint")
@@ -718,9 +733,14 @@ def custom_get_logs(
     """
     Get specific pod log for custom model endpoint.
     """
-    my_endpoint = HPEndpoint.model_construct()
-    logs = my_endpoint.get_logs(pod=pod_name, container=container, namespace=namespace)
-    click.echo(logs)
+    try:
+        my_endpoint = HPEndpoint.model_construct()
+        logs = my_endpoint.get_logs(pod=pod_name, container=container, namespace=namespace)
+        click.echo(logs)
+    except Exception as e:
+        click.echo(str(e))
+        import sys
+        sys.exit(1)
 
 
 @click.command("hyp-jumpstart-endpoint")
