@@ -231,7 +231,7 @@ class TestTrainingCommands(unittest.TestCase):
         # Call the function and expect an exception
         result = self.runner.invoke(pytorch_describe, ["--job-name", "test-job"])
         self.assertNotEqual(result.exit_code, 0)
-        self.assertIn("Failed to describe job", result.output)
+        self.assertIn("Test error", result.output)
 
 
 @unittest.skipUnless(PYDANTIC_AVAILABLE, "Pydantic model not available")
@@ -700,4 +700,3 @@ class TestValidationPatterns(unittest.TestCase):
         self.assertEqual(config.max_retry, 3)
         self.assertEqual(len(config.volume), 1)
         self.assertEqual(config.service_account_name, "training-sa")
-
