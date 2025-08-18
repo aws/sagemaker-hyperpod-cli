@@ -217,10 +217,6 @@ class ModelDataLoader:
             instance_type = default_type if default_type else '\<ENTER-INSTANCE-TYPE\>'
             types_comment = self._format_instance_types_comment(supported_types)
         
-        # Generate timestamp for unique endpoint name
-        timestamp = str(int(time.time()))
-        endpoint_name_value = f"{model_id}-{timestamp}"
-        
         config_code = f'''# Deployment configuration for {model_id}
 from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
     Model, Server, SageMakerEndpoint
@@ -236,7 +232,9 @@ model = Model(
 server = Server(
     instance_type='{instance_type}',
 )
-endpoint_name = SageMakerEndpoint(name='{endpoint_name_value}')
+
+# Default endpoint name using model_id, modify as desired
+endpoint_name = SageMakerEndpoint(name='{model_id}')
 
 # Create endpoint spec
 js_endpoint = HPJumpStartEndpoint(
