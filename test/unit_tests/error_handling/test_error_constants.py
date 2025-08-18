@@ -4,7 +4,7 @@ Tests all enums and constant mappings.
 """
 
 import pytest
-from sagemaker.hyperpod.common.error_constants import (
+from sagemaker.hyperpod.common.exceptions.error_constants import (
     ResourceType,
     OperationType,
     RESOURCE_LIST_COMMANDS,
