@@ -1,13 +1,10 @@
 import click
 import yaml
 import sys
-import warnings
 from pathlib import Path
-from pydantic import ValidationError
 from datetime import datetime
 from jinja2 import Template
 import shutil
-
 from sagemaker.hyperpod.cli.constants.init_constants import (
     USAGE_GUIDE_TEXT,
     CFN,
@@ -16,7 +13,6 @@ from sagemaker.hyperpod.cli.constants.init_constants import (
 from sagemaker.hyperpod.common.config import Metadata
 from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob
 from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack
-import json
 from sagemaker.hyperpod.cli.init_utils import (
     generate_click_command,
     save_config_yaml,
@@ -29,6 +25,9 @@ from sagemaker.hyperpod.cli.init_utils import (
     build_config_from_schema,
     save_template,
     get_default_version_for_template
+)
+from sagemaker.hyperpod.common.utils import (
+    get_aws_default_region,
 )
 
 @click.command("init")
@@ -264,7 +263,7 @@ def validate():
 
 
 @click.command("submit")
-@click.option("--region", "-r", default="us-west-2", help="Region, Default is us-west-2")
+@click.option("--region", "-r", default=None, help="Region, default to your region in aws configure")
 def submit(region):
     """
     Validate configuration and render template files for deployment.
@@ -370,6 +369,10 @@ def submit(region):
 
     # 7) Make the downstream call
     try :
+        if region is None:
+            region = get_aws_default_region()
+            click.echo(f"Submitting to default region: {region}")
+
         if schema_type == CFN:
             from sagemaker.hyperpod.cli.commands.cluster_stack import create_cluster_stack_helper
             create_cluster_stack_helper(config_file=f"{out_dir}/config.yaml",

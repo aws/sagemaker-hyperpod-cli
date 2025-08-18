@@ -308,15 +308,19 @@ def get_current_cluster():
         f"Failed to get current Hyperpod cluster name. Check your config file at {KUBE_CONFIG_DEFAULT_LOCATION}"
     )
 
+def get_aws_default_region():
+    try:
+        return boto3.Session().region_name
+    except:
+        raise Exception(f"Failed to get AWS region. Check your config file at ~/.aws/config")
 
 def get_current_region():
     eks_arn = get_cluster_context()
     try:
         return get_region_from_eks_arn(eks_arn)
     except:
-        return boto3.session.Session().region_name
-
-
+        return get_aws_default_region()
+      
 def create_boto3_client(service_name: str, region_name: Optional[str] = None, **kwargs):
     """Create a boto3 client with smart region handling.
 

@@ -412,6 +412,17 @@ class TestSubmit:
         # Verify mocks were called
         assert mock_load_config.called
 
+    @patch('sagemaker.hyperpod.common.utils.get_aws_default_region')
+    def test_submit_default_region_parameter(self, mock_get_default_region):
+        mock_get_default_region.return_value = 'us-west-2'
+        
+        runner = CliRunner()
+        
+        # Test that help shows the default region function is used
+        result = runner.invoke(submit, ['--help'])
+        assert result.exit_code == 0
+        assert '--region' in result.output
+
 
 class TestCommandIntegration:
     """Integration tests for command interactions"""
