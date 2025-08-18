@@ -283,6 +283,24 @@ class TestHyperPodPytorchJob(unittest.TestCase):
         )
         self.assertEqual(result, "test logs")
 
+    @patch("kubernetes.client.CoreV1Api")
+    @patch.object(HyperPodPytorchJob, "verify_kube_config")
+    def test_get_operator_logs(self, mock_verify_config, mock_core_api):
+        mock_pod = MagicMock()
+        mock_pod.metadata.name = "training-operator-pod"
+        mock_core_api.return_value.list_namespaced_pod.return_value.items = [mock_pod]
+        mock_core_api.return_value.read_namespaced_pod_log.return_value = "training operator logs"
+
+        result = HyperPodPytorchJob.get_operator_logs(2.5)
+
+        self.assertEqual(result, "training operator logs")
+        mock_core_api.return_value.read_namespaced_pod_log.assert_called_once_with(
+            name="training-operator-pod",
+            namespace="aws-hyperpod",
+            timestamps=True,
+            since_seconds=9000,
+        )
+
 
 class TestLoadHpJob(unittest.TestCase):
     """Test the _load_hp_job function"""

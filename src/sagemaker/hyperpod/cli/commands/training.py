@@ -354,3 +354,21 @@ def pytorch_get_logs(job_name: str, pod_name: str, namespace: str):
 
     except Exception as e:
         raise click.UsageError(f"Failed to list jobs: {str(e)}")
+
+
+@click.command("hyp-pytorch-job")
+@click.option(
+    "--since-hours",
+    type=click.FLOAT,
+    required=True,
+    help="Required. The time frame to get logs for.",
+)
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_pytorch_operator_logs")
+def pytorch_get_operator_logs(
+    since_hours: float,
+):
+    """
+    Get operator logs for pytorch training jobs.
+    """
+    logs = HyperPodPytorchJob.get_operator_logs(since_hours=since_hours)
+    click.echo(logs)

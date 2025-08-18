@@ -15,6 +15,7 @@ from sagemaker.hyperpod.cli.commands.training import (
     pytorch_delete,
     pytorch_list_pods,
     pytorch_get_logs,
+    pytorch_get_operator_logs,
 )
 from sagemaker.hyperpod.cli.commands.inference import (
     js_create,
@@ -116,6 +117,7 @@ get_logs.add_command(pytorch_get_logs)
 get_logs.add_command(js_get_logs)
 get_logs.add_command(custom_get_logs)
 
+get_operator_logs.add_command(pytorch_get_operator_logs)
 get_operator_logs.add_command(js_get_operator_logs)
 get_operator_logs.add_command(custom_get_operator_logs)
 

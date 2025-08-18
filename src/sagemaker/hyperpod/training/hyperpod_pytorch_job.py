@@ -23,6 +23,7 @@ TRAINING_GROUP = "sagemaker.amazonaws.com"
 API_VERSION = "v1"
 PLURAL = "hyperpodpytorchjobs"
 KIND = "HyperPodPyTorchJob"
+TRAINING_OPERATOR_NAMESPACE = "aws-hyperpod"
 
 
 class HyperPodPytorchJob(_HyperPodPytorchJob):
@@ -232,6 +233,36 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
         except Exception as e:
             logger.error(f"Failed to get logs from pod {pod_name}!")
             handle_exception(e, self.metadata.name, self.metadata.namespace)
+
+    @classmethod
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "get_operator_logs_pytorchjob")
+    def get_operator_logs(cls, since_hours: float):
+        cls.verify_kube_config()
+
+        v1 = client.CoreV1Api()
+
+        pods = v1.list_namespaced_pod(namespace=TRAINING_OPERATOR_NAMESPACE)
+
+        if not pods.items:
+            raise Exception(
+                f"No pod found in namespace {TRAINING_OPERATOR_NAMESPACE}"
+            )
+
+        # Get logs from first pod
+        first_pod = pods.items[0]
+        pod_name = first_pod.metadata.name
+
+        try:
+            logs = v1.read_namespaced_pod_log(
+                name=pod_name,
+                namespace=TRAINING_OPERATOR_NAMESPACE,
+                timestamps=True,
+                since_seconds=int(3600 * since_hours),
+            )
+        except Exception as e:
+            handle_exception(e, pod_name, TRAINING_OPERATOR_NAMESPACE)
+
+        return logs
 
 
 def _load_hp_job(response: dict) -> HyperPodPytorchJob:
