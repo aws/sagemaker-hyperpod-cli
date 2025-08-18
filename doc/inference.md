@@ -81,7 +81,7 @@ from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
 
 model = Model(
     model_source_type="s3",
-    model_location="test-pytorch-job/model.tar.gz",
+    model_location="test-pytorch-job",
     s3_bucket_name="my-bucket",
     s3_region="us-east-2",
     prefetch_enabled=True
