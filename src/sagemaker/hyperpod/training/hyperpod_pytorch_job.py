@@ -24,6 +24,7 @@ API_VERSION = "v1"
 PLURAL = "hyperpodpytorchjobs"
 KIND = "HyperPodPyTorchJob"
 TRAINING_OPERATOR_NAMESPACE = "aws-hyperpod"
+TRAINING_OPERATOR_POD_PREFIX = "hp-training-operator-hp-training-controller-manager-"
 
 
 class HyperPodPytorchJob(_HyperPodPytorchJob):
@@ -248,9 +249,19 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
                 f"No pod found in namespace {TRAINING_OPERATOR_NAMESPACE}"
             )
 
-        # Get logs from first pod
-        first_pod = pods.items[0]
-        pod_name = first_pod.metadata.name
+        # Find the training operator pod
+        operator_pod = None
+        for pod in pods.items:
+            if pod.metadata.name.startswith(TRAINING_OPERATOR_POD_PREFIX):
+                operator_pod = pod
+                break
+
+        if not operator_pod:
+            raise Exception(
+                f"No training operator pod found with prefix {TRAINING_OPERATOR_POD_PREFIX}"
+            )
+
+        pod_name = operator_pod.metadata.name
 
         try:
             logs = v1.read_namespaced_pod_log(
