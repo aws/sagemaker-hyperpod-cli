@@ -14,6 +14,7 @@ from kubernetes.config import (
     KUBE_CONFIG_DEFAULT_LOCATION,
 )
 from .not_found_handler import get_404_message
+from .error_constants import ResourceType, OperationType
 
 EKS_ARN_PATTERN = r"arn:aws:eks:([\w-]+):\d+:cluster/([\w-]+)"
 CLIENT_VERSION_PATTERN = r'^\d+\.\d+\.\d+$'
@@ -37,8 +38,43 @@ def get_default_namespace():
             "No active context. Please use set_cluster_context() method to set current context."
         )
 
+def handle_404(name: str, namespace: str, resource_type: Optional[ResourceType] = None, 
+               operation_type: Optional[OperationType] = None) -> None:
+    """
+    Abstract method for handling 404 errors with enhanced contextual messaging.
+    
+    Args:
+        name: Resource name that was not found
+        namespace: Kubernetes namespace
+        resource_type: Type of resource (enum)
+        operation_type: Type of operation (enum)
+        
+    Raises:
+        Exception: With contextual 404 error message
+    """
+    if resource_type is not None and operation_type is not None:
+        enhanced_message = get_404_message(name, namespace, resource_type, operation_type)
+        raise Exception(enhanced_message)
+    
+    # Fallback for cases where resource/operation type unknown
+    raise Exception(
+        f"Resource '{name}' not found in namespace '{namespace}'. "
+        f"Please check the resource name and namespace."
+    )
+
+
 def handle_exception(e: Exception, name: str, namespace: str, 
                     operation_type: str = 'unknown', resource_type: str = 'unknown'):
+    """
+    Handle various Kubernetes API exceptions with appropriate error messages.
+    
+    Args:
+        e: The exception to handle
+        name: Resource name
+        namespace: Kubernetes namespace
+        operation_type: Operation type (legacy string, kept for backward compatibility)
+        resource_type: Resource type (legacy string, kept for backward compatibility)
+    """
     if isinstance(e, ApiException):
         if e.status == 401:
             raise Exception(f"Credentials unauthorized.") from e
@@ -46,17 +82,33 @@ def handle_exception(e: Exception, name: str, namespace: str,
             raise Exception(
                 f"Access denied to resource '{name}' in namespace '{namespace}'."
             ) from e
-        if e.status == 404:
-            # NEW: Enhanced 404 handling
-            if operation_type != 'unknown' and resource_type != 'unknown':
-                enhanced_message = get_404_message(name, namespace, resource_type, operation_type)
-                raise Exception(enhanced_message)
+        elif e.status == 404:
+            # Delegate to abstract 404 handler
+            # Convert string types to enums if possible, otherwise pass None for fallback
+            resource_enum = None
+            operation_enum = None
             
-            # Improved generic fallback
-            raise Exception(
-                f"Resource '{name}' not found in namespace '{namespace}'. "
-                f"Please check the resource name and namespace."
-            )
+            try:
+                if resource_type != 'unknown':
+                    # Map legacy string values to enums
+                    resource_mapping = {
+                        'training_job': ResourceType.HYP_PYTORCH_JOB,
+                        'hyp_pytorch_job': ResourceType.HYP_PYTORCH_JOB,
+                        'inference_endpoint': ResourceType.HYP_CUSTOM_ENDPOINT,  # Default to custom
+                        'hyp_custom_endpoint': ResourceType.HYP_CUSTOM_ENDPOINT,
+                        'hyp_jumpstart_endpoint': ResourceType.HYP_JUMPSTART_ENDPOINT,
+                    }
+                    resource_enum = resource_mapping.get(resource_type)
+                    
+                if operation_type != 'unknown':
+                    operation_enum = OperationType(operation_type)
+                    
+            except (ValueError, KeyError):
+                # Invalid enum values, use fallback
+                pass
+                
+            handle_404(name, namespace, resource_enum, operation_enum)
+            
         elif e.status == 409:
             raise Exception(
                 f"Resource '{name}' already exists in namespace '{namespace}'."

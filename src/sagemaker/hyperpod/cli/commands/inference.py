@@ -14,6 +14,7 @@ from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
     _hyperpod_telemetry_emitter,
 )
 from sagemaker.hyperpod.common.telemetry.constants import Feature
+from sagemaker.hyperpod.common.cli_decorators import handle_cli_exceptions, smart_cli_exception_handler
 
 
 # CREATE
@@ -236,6 +237,7 @@ def custom_list(
     help="Optional. If set to `True`, the full json will be displayed",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_js_endpoint_cli")
+@handle_cli_exceptions
 def js_describe(
     name: str,
     namespace: Optional[str],
@@ -244,13 +246,8 @@ def js_describe(
     """
     Describe a Hyperpod Jumpstart model endpoint.
     """
-    try:
-        my_endpoint = HPJumpStartEndpoint.model_construct().get(name, namespace)
-        data = my_endpoint.model_dump()
-    except Exception as e:
-        click.echo(str(e))
-        import sys
-        sys.exit(1)
+    my_endpoint = HPJumpStartEndpoint.model_construct().get(name, namespace)
+    data = my_endpoint.model_dump()
 
     if full:
         click.echo("\nFull JSON:")
@@ -389,6 +386,7 @@ def js_describe(
     help="Optional. If set to `True`, the full json will be displayed",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_custom_endpoint_cli")
+@handle_cli_exceptions
 def custom_describe(
     name: str,
     namespace: Optional[str],
@@ -397,13 +395,8 @@ def custom_describe(
     """
     Describe a Hyperpod custom model endpoint.
     """
-    try:
-        my_endpoint = HPEndpoint.model_construct().get(name, namespace)
-        data = my_endpoint.model_dump()
-    except Exception as e:
-        click.echo(str(e))
-        import sys
-        sys.exit(1)
+    my_endpoint = HPEndpoint.model_construct().get(name, namespace)
+    data = my_endpoint.model_dump()
 
     if full:
         click.echo("\nFull JSON:")
@@ -568,6 +561,7 @@ def custom_describe(
     help="Optional. The namespace of the jumpstart model endpoint to delete. Default set to 'default'.",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "delete_js_endpoint_cli")
+@smart_cli_exception_handler
 def js_delete(
     name: str,
     namespace: Optional[str],
@@ -575,13 +569,10 @@ def js_delete(
     """
     Delete a Hyperpod Jumpstart model endpoint.
     """
-    try:
-        my_endpoint = HPJumpStartEndpoint.model_construct().get(name, namespace)
-        my_endpoint.delete()
-    except Exception as e:
-        click.echo(str(e))
-        import sys
-        sys.exit(1)
+    # Auto-detects the endpoint type and operation
+    # 0Provides 404 message: "❓ JumpStart endpoint 'missing-name' not found..."
+    my_endpoint = HPJumpStartEndpoint.model_construct().get(name, namespace)
+    my_endpoint.delete()
 
 
 @click.command("hyp-custom-endpoint")
@@ -599,6 +590,7 @@ def js_delete(
     help="Optional. The namespace of the custom model endpoint to delete. Default set to 'default'.",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "delete_custom_endpoint_cli")
+@handle_cli_exceptions
 def custom_delete(
     name: str,
     namespace: Optional[str],
@@ -606,13 +598,8 @@ def custom_delete(
     """
     Delete a Hyperpod custom model endpoint.
     """
-    try:
-        my_endpoint = HPEndpoint.model_construct().get(name, namespace)
-        my_endpoint.delete()
-    except Exception as e:
-        click.echo(str(e))
-        import sys
-        sys.exit(1)
+    my_endpoint = HPEndpoint.model_construct().get(name, namespace)
+    my_endpoint.delete()
 
 
 @click.command("hyp-jumpstart-endpoint")
@@ -624,20 +611,16 @@ def custom_delete(
     help="Optional. The namespace of the jumpstart model to list pods for. Default set to 'default'.",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_pods_js_endpoint_cli")
+@handle_cli_exceptions
 def js_list_pods(
     namespace: Optional[str],
 ):
     """
     List all pods related to jumpstart model endpoint.
     """
-    try:
-        my_endpoint = HPJumpStartEndpoint.model_construct()
-        pods = my_endpoint.list_pods(namespace=namespace)
-        click.echo(pods)
-    except Exception as e:
-        click.echo(str(e))
-        import sys
-        sys.exit(1)
+    my_endpoint = HPJumpStartEndpoint.model_construct()
+    pods = my_endpoint.list_pods(namespace=namespace)
+    click.echo(pods)
 
 
 @click.command("hyp-custom-endpoint")
@@ -649,20 +632,16 @@ def js_list_pods(
     help="Optional. The namespace of the custom model to list pods for. Default set to 'default'.",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_pods_custom_endpoint_cli")
+@handle_cli_exceptions
 def custom_list_pods(
     namespace: Optional[str],
 ):
     """
     List all pods related to custom model endpoint.
     """
-    try:
-        my_endpoint = HPEndpoint.model_construct()
-        pods = my_endpoint.list_pods(namespace=namespace)
-        click.echo(pods)
-    except Exception as e:
-        click.echo(str(e))
-        import sys
-        sys.exit(1)
+    my_endpoint = HPEndpoint.model_construct()
+    pods = my_endpoint.list_pods(namespace=namespace)
+    click.echo(pods)
 
 
 @click.command("hyp-jumpstart-endpoint")
@@ -686,6 +665,7 @@ def custom_list_pods(
     help="Optional. The namespace of the jumpstart model to get logs for. Default set to 'default'.",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_logs_js_endpoint")
+@handle_cli_exceptions
 def js_get_logs(
     pod_name: str,
     container: Optional[str],
@@ -694,14 +674,9 @@ def js_get_logs(
     """
     Get specific pod log for jumpstart model endpoint.
     """
-    try:
-        my_endpoint = HPJumpStartEndpoint.model_construct()
-        logs = my_endpoint.get_logs(pod=pod_name, container=container, namespace=namespace)
-        click.echo(logs)
-    except Exception as e:
-        click.echo(str(e))
-        import sys
-        sys.exit(1)
+    my_endpoint = HPJumpStartEndpoint.model_construct()
+    logs = my_endpoint.get_logs(pod=pod_name, container=container, namespace=namespace)
+    click.echo(logs)
 
 
 @click.command("hyp-custom-endpoint")
@@ -725,6 +700,7 @@ def js_get_logs(
     help="Optional. The namespace of the custom model to get logs for. Default set to 'default'.",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_logs_custom_endpoint")
+@handle_cli_exceptions
 def custom_get_logs(
     pod_name: str,
     container: Optional[str],
@@ -733,14 +709,9 @@ def custom_get_logs(
     """
     Get specific pod log for custom model endpoint.
     """
-    try:
-        my_endpoint = HPEndpoint.model_construct()
-        logs = my_endpoint.get_logs(pod=pod_name, container=container, namespace=namespace)
-        click.echo(logs)
-    except Exception as e:
-        click.echo(str(e))
-        import sys
-        sys.exit(1)
+    my_endpoint = HPEndpoint.model_construct()
+    logs = my_endpoint.get_logs(pod=pod_name, container=container, namespace=namespace)
+    click.echo(logs)
 
 
 @click.command("hyp-jumpstart-endpoint")

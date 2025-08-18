@@ -7,6 +7,7 @@ from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
     _hyperpod_telemetry_emitter,
 )
 from sagemaker.hyperpod.common.telemetry.constants import Feature
+from sagemaker.hyperpod.common.cli_decorators import handle_cli_exceptions
 
 
 @click.command("hyp-pytorch-job")
@@ -147,99 +148,94 @@ def list_jobs(namespace: str):
     help="Optional. The namespace of the job. Defaults to 'default' namespace.",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_pytorchjob_cli")
+@handle_cli_exceptions
 def pytorch_describe(job_name: str, namespace: str):
     """Describe a HyperPod PyTorch job."""
-    try:
-        job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
+    job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
 
-        if job is None:
-            raise click.UsageError(f"Job {job_name} not found in namespace {namespace}")
+    if job is None:
+        raise click.UsageError(f"Job {job_name} not found in namespace {namespace}")
 
-        # Print basic info
-        click.echo("\nJob Details:")
-        click.echo("=" * 80)
-        click.echo(f"Name:           {job.metadata.name}")
-        click.echo(f"Namespace:      {job.metadata.namespace}")
-        click.echo(f"Labels:         {job.metadata.labels}")
-        click.echo(f"Annotations:    {job.metadata.annotations}")
+    # Print basic info
+    click.echo("\nJob Details:")
+    click.echo("=" * 80)
+    click.echo(f"Name:           {job.metadata.name}")
+    click.echo(f"Namespace:      {job.metadata.namespace}")
+    click.echo(f"Labels:         {job.metadata.labels}")
+    click.echo(f"Annotations:    {job.metadata.annotations}")
 
-        # Print Spec details
-        click.echo("\nSpec:")
-        click.echo("-" * 80)
-        click.echo(f"Processes per Node: {getattr(job, 'nprocPerNode', 'N/A')}")
+    # Print Spec details
+    click.echo("\nSpec:")
+    click.echo("-" * 80)
+    click.echo(f"Processes per Node: {getattr(job, 'nprocPerNode', 'N/A')}")
 
-        # Print Replica Specs
-        for replica in job.replicaSpecs:
-            click.echo(f"\nReplica Spec:")
-            click.echo(f"  Name:     {getattr(replica, 'name', 'N/A')}")
-            click.echo(f"  Replicas: {getattr(replica, 'replicas', 'N/A')}")
-            click.echo(f"  Spares:   {getattr(replica, 'spares', 'N/A')}")
+    # Print Replica Specs
+    for replica in job.replicaSpecs:
+        click.echo(f"\nReplica Spec:")
+        click.echo(f"  Name:     {getattr(replica, 'name', 'N/A')}")
+        click.echo(f"  Replicas: {getattr(replica, 'replicas', 'N/A')}")
+        click.echo(f"  Spares:   {getattr(replica, 'spares', 'N/A')}")
 
-            # Container details
-            if (
-                hasattr(replica, "template")
-                and hasattr(replica.template, "spec")
-                and hasattr(replica.template.spec, "containers")
-            ):
-                for container in replica.template.spec.containers:
-                    click.echo("\n  Container:")
-                    click.echo(
-                        f"    Name:            {getattr(container, 'name', 'N/A')}"
-                    )
-                    click.echo(
-                        f"    Image:           {getattr(container, 'image', 'N/A')}"
-                    )
-                    click.echo(
-                        f"    Image Pull Policy: {getattr(container, 'imagePullPolicy', 'N/A')}"
-                    )
-                    if container.resources:
-                        click.echo("    Resources:")
-                        if container.resources.limits:
-                            click.echo(f"      Limits:   {container.resources.limits}")
-                        if container.resources.requests:
-                            click.echo(
-                                f"      Requests: {container.resources.requests}"
-                            )
+        # Container details
+        if (
+            hasattr(replica, "template")
+            and hasattr(replica.template, "spec")
+            and hasattr(replica.template.spec, "containers")
+        ):
+            for container in replica.template.spec.containers:
+                click.echo("\n  Container:")
+                click.echo(
+                    f"    Name:            {getattr(container, 'name', 'N/A')}"
+                )
+                click.echo(
+                    f"    Image:           {getattr(container, 'image', 'N/A')}"
+                )
+                click.echo(
+                    f"    Image Pull Policy: {getattr(container, 'imagePullPolicy', 'N/A')}"
+                )
+                if container.resources:
+                    click.echo("    Resources:")
+                    if container.resources.limits:
+                        click.echo(f"      Limits:   {container.resources.limits}")
+                    if container.resources.requests:
+                        click.echo(
+                            f"      Requests: {container.resources.requests}"
+                        )
 
-        # Print Run Policy
-        click.echo("\nRun Policy:")
-        click.echo("-" * 80)
-        if hasattr(job, "runPolicy"):
-            click.echo(
-                f"Clean Pod Policy:          {getattr(job.runPolicy, 'cleanPodPolicy', 'N/A')}"
-            )
-            click.echo(
-                f"TTL Seconds After Finished: {getattr(job.runPolicy, 'ttlSecondsAfterFinished', 'N/A')}"
-            )
-        else:
-            click.echo("Run Policy: N/A")
+    # Print Run Policy
+    click.echo("\nRun Policy:")
+    click.echo("-" * 80)
+    if hasattr(job, "runPolicy"):
+        click.echo(
+            f"Clean Pod Policy:          {getattr(job.runPolicy, 'cleanPodPolicy', 'N/A')}"
+        )
+        click.echo(
+            f"TTL Seconds After Finished: {getattr(job.runPolicy, 'ttlSecondsAfterFinished', 'N/A')}"
+        )
+    else:
+        click.echo("Run Policy: N/A")
 
-        # Print Status
-        click.echo("\nStatus:")
-        click.echo("-" * 80)
-        if job.status:
-            if job.status.conditions:
-                click.echo("Conditions:")
-                for condition in job.status.conditions:
-                    click.echo(
-                        f"  Type:               {getattr(condition, 'type', 'N/A')}"
-                    )
-                    click.echo(
-                        f"  Status:             {getattr(condition, 'status', 'N/A')}"
-                    )
-                    click.echo(
-                        f"  Last Transition:    {getattr(condition, 'lastTransitionTime', 'N/A')}"
-                    )
-                    if condition.message:
-                        click.echo(f"  Message:            {condition.message}")
-                    click.echo()
-        else:
-            click.echo("No status information available")
-
-    except Exception as e:
-        click.echo(str(e))
-        import sys
-        sys.exit(1)
+    # Print Status
+    click.echo("\nStatus:")
+    click.echo("-" * 80)
+    if job.status:
+        if job.status.conditions:
+            click.echo("Conditions:")
+            for condition in job.status.conditions:
+                click.echo(
+                    f"  Type:               {getattr(condition, 'type', 'N/A')}"
+                )
+                click.echo(
+                    f"  Status:             {getattr(condition, 'status', 'N/A')}"
+                )
+                click.echo(
+                    f"  Last Transition:    {getattr(condition, 'lastTransitionTime', 'N/A')}"
+                )
+                if condition.message:
+                    click.echo(f"  Message:            {condition.message}")
+                click.echo()
+    else:
+        click.echo("No status information available")
 
 
 @click.command("hyp-pytorch-job")
@@ -253,15 +249,11 @@ def pytorch_describe(job_name: str, namespace: str):
     help="Optional. The namespace of the job. Defaults to 'default' namespace.",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "delete_pytorchjob_cli")
+@handle_cli_exceptions
 def pytorch_delete(job_name: str, namespace: str):
     """Delete a HyperPod PyTorch job."""
-    try:
-        job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
-        job.delete()
-    except Exception as e:
-        click.echo(str(e))
-        import sys
-        sys.exit(1)
+    job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
+    job.delete()
 
 
 @click.command("hyp-pytorch-job")
@@ -277,35 +269,32 @@ def pytorch_delete(job_name: str, namespace: str):
     help="Optional. The namespace of the job. Defaults to 'default' namespace.",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_pods_pytorchjob_cli")
+@handle_cli_exceptions
 def pytorch_list_pods(job_name: str, namespace: str):
     """List all HyperPod PyTorch pods related to the job."""
-    try:
-        job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
-        pods = job.list_pods()
+    job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
+    pods = job.list_pods()
 
-        if not pods:
-            click.echo(f"\nNo pods found for job: {job_name}")
-            return
+    if not pods:
+        click.echo(f"\nNo pods found for job: {job_name}")
+        return
 
-        # Define headers and widths
-        headers = ["POD NAME", "NAMESPACE"]
-        widths = [50, 20]
+    # Define headers and widths
+    headers = ["POD NAME", "NAMESPACE"]
+    widths = [50, 20]
 
-        # Print header
-        click.echo(f"\nPods for job: {job_name}")
-        header = "".join(f"{h:<{w}}" for h, w in zip(headers, widths))
-        click.echo("\n" + header)
-        click.echo("-" * sum(widths))
+    # Print header
+    click.echo(f"\nPods for job: {job_name}")
+    header = "".join(f"{h:<{w}}" for h, w in zip(headers, widths))
+    click.echo("\n" + header)
+    click.echo("-" * sum(widths))
 
-        # Print each pod
-        for pod in pods:
-            row = "".join([f"{pod:<{widths[0]}}", f"{namespace:<{widths[1]}}"])
-            click.echo(row)
+    # Print each pod
+    for pod in pods:
+        row = "".join([f"{pod:<{widths[0]}}", f"{namespace:<{widths[1]}}"])
+        click.echo(row)
 
-        click.echo()
-
-    except Exception as e:
-        raise click.UsageError(f"Failed to list jobs: {str(e)}")
+    click.echo()
 
 
 @click.command("hyp-pytorch-job")
@@ -324,33 +313,30 @@ def pytorch_list_pods(job_name: str, namespace: str):
     help="Optional. The namespace of the job. Defaults to 'default' namespace.",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_pytorchjob_logs_from_pod_cli")
+@handle_cli_exceptions
 def pytorch_get_logs(job_name: str, pod_name: str, namespace: str):
     """Get specific pod log for Hyperpod Pytorch job."""
-    try:
-        click.echo("Listing logs for pod: " + pod_name)
-        job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
-        logs = job.get_logs_from_pod(pod_name=pod_name)
+    click.echo("Listing logs for pod: " + pod_name)
+    job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
+    logs = job.get_logs_from_pod(pod_name=pod_name)
 
-        if not logs:
-            click.echo("No logs available.")
-            return
+    if not logs:
+        click.echo("No logs available.")
+        return
 
-        # Split logs into lines and display them
-        log_lines = logs.split("\n")
-        for line in log_lines:
-            if line.strip():  # Skip empty lines
-                # Color coding based on log level
-                if "ERROR" in line.upper():
-                    click.secho(line, fg="red")
-                elif "WARNING" in line.upper():
-                    click.secho(line, fg="yellow")
-                elif "INFO" in line.upper():
-                    click.secho(line, fg="green")
-                else:
-                    click.echo(line)
+    # Split logs into lines and display them
+    log_lines = logs.split("\n")
+    for line in log_lines:
+        if line.strip():  # Skip empty lines
+            # Color coding based on log level
+            if "ERROR" in line.upper():
+                click.secho(line, fg="red")
+            elif "WARNING" in line.upper():
+                click.secho(line, fg="yellow")
+            elif "INFO" in line.upper():
+                click.secho(line, fg="green")
+            else:
+                click.echo(line)
 
-        click.echo("\nEnd of logs")
-        click.echo("=" * 80)
-
-    except Exception as e:
-        raise click.UsageError(f"Failed to list jobs: {str(e)}")
+    click.echo("\nEnd of logs")
+    click.echo("=" * 80)
