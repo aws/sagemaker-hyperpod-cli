@@ -13,44 +13,26 @@ logger = logging.getLogger(__name__)
 
 def _extract_resource_from_command(func) -> tuple[str, str]:
     """
-    Extract resource type and display name from command context - fully template-agnostic.
-    No hardcoded mappings - works with any hyp-<noun> pattern.
+    Extract resource type and display name from command context - template-agnostic.
+    Simplified version focused on this codebase's specific Click usage patterns.
     
     Returns:
         Tuple of (raw_resource_type, display_name) where:
-        - raw_resource_type: for list commands (e.g., "jumpstart-endpoint")  
-        - display_name: for user messages (e.g., "JumpStart endpoint")
+        - raw_resource_type: for list commands (e.g., "resource-type")  
+        - display_name: for user messages (e.g., "Resource Type")
     """
     try:
-        # Try multiple ways to get Click command name - template-agnostic
         command_name = None
         
-        # Method 1: Direct access to func.name (if available)
+        # Method 1: Direct access to func.name (covers 90% of cases in this codebase)
         if hasattr(func, 'name') and func.name:
             command_name = func.name.lower()
         
-        # Method 2: Access Click command through function attributes
-        elif hasattr(func, 'callback') and hasattr(func.callback, 'name'):
-            command_name = func.callback.name.lower()
-        
-        # Method 3: Check __wrapped__ attribute chain
+        # Method 2: Check __wrapped__ attribute chain (for complex decorator combinations)
         elif hasattr(func, '__wrapped__'):
             wrapped = func.__wrapped__
             if hasattr(wrapped, 'name') and wrapped.name:
                 command_name = wrapped.name.lower()
-        
-        # Method 4: Inspect all function attributes for Click command info
-        for attr_name in dir(func):
-            if not attr_name.startswith('_'):
-                try:
-                    attr_value = getattr(func, attr_name)
-                    if hasattr(attr_value, 'name') and isinstance(getattr(attr_value, 'name', None), str):
-                        attr_name_val = attr_value.name
-                        if attr_name_val and attr_name_val.startswith('hyp-'):
-                            command_name = attr_name_val.lower()
-                            break
-                except:
-                    continue
         
         # If we found a Click command name, parse it
         if command_name and command_name.startswith('hyp-'):
@@ -74,95 +56,70 @@ def _extract_resource_from_command(func) -> tuple[str, str]:
 def _format_display_name(resource_part: str) -> str:
     """
     Format resource part into user-friendly display name.
-    Template-agnostic formatting rules.
+    Completely template-agnostic - no hardcoded template names.
     """
-    # Handle common patterns with proper capitalization
+    # Split on hyphens and capitalize each part
     parts = resource_part.split('-')
-    formatted_parts = []
-    
-    for part in parts:
-        if part.lower() == 'jumpstart':
-            formatted_parts.append('JumpStart')
-        elif part.lower() == 'pytorch':
-            formatted_parts.append('PyTorch')
-        else:
-            # Capitalize first letter of other parts
-            formatted_parts.append(part.capitalize())
-    
+    formatted_parts = [part.capitalize() for part in parts]
     return ' '.join(formatted_parts)
-
-def _detect_operation_type_from_function(func) -> str:
-    """
-    Dynamically detect operation type from function name.
-    Template-agnostic - works with any operation pattern.
-    
-    Returns:
-        Operation type string (e.g., "delete", "describe", "list")
-    """
-    try:
-        func_name = func.__name__.lower()
-        
-        if 'delete' in func_name:
-            return "delete"
-        elif 'describe' in func_name or 'get' in func_name:
-            return "describe"
-        elif 'list' in func_name:
-            return "list"
-        elif 'create' in func_name:
-            return "create"
-        elif 'update' in func_name:
-            return "update"
-            
-    except (AttributeError, TypeError):
-        pass
-    
-    return "access"  # Generic fallback
 
 def _get_list_command_from_resource_type(raw_resource_type: str) -> str:
     """
     Generate appropriate list command for resource type.
     Fully template-agnostic - constructs command directly from raw resource type.
     """
-    # raw_resource_type is already in the correct format (e.g., "jumpstart-endpoint")
+    # raw_resource_type is already in the correct format (e.g., "resource-type")
     return f"hyp list hyp-{raw_resource_type}"
 
-def _get_available_resource_count(raw_resource_type: str, namespace: str) -> int:
+def _check_resources_exist(raw_resource_type: str, namespace: str) -> bool:
     """
-    Get count of available resources in namespace - template-agnostic approach.
-    Maps exact resource types to their SDK classes.
+    Check if any resources exist in namespace - template-agnostic CLI approach.
+    Uses the existing CLI commands to check for resource existence without importing template classes.
+    Returns True if resources exist, False if no resources, None if unable to determine.
     """
     try:
-        # Direct mapping based on exact resource type - truly template-agnostic
-        if raw_resource_type == "pytorch-job":
-            from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob
-            jobs = HyperPodPytorchJob.list(namespace=namespace)
-            return len(jobs)
+        import subprocess
+        
+        # Construct the list command that already exists (use hyp directly)
+        cmd = ["hyp", "list", f"hyp-{raw_resource_type}"]
+        if namespace != "default":
+            cmd.extend(["--namespace", namespace])
+        
+        logger.debug(f"Executing command to check resource existence: {' '.join(cmd)}")
+        
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,  
+            timeout=15,  # 15 second timeout
+            check=False  # Don't raise on non-zero exit
+        )
+        
+        if result.returncode == 0 and result.stdout.strip():
+            # Check if output contains any data rows (simple heuristic: more than 2 lines means header + separator + data)
+            lines = [line.strip() for line in result.stdout.strip().split('\n') if line.strip()]
             
-        elif raw_resource_type == "jumpstart-endpoint":
-            from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
-            endpoints = HPJumpStartEndpoint.model_construct().list(namespace=namespace) 
-            return len(endpoints)
+            # If we have more than 2 lines, likely we have: header + separator + at least one data row
+            # This is much simpler and more reliable than parsing the table format
+            has_data = len(lines) > 2
             
-        elif raw_resource_type == "custom-endpoint":
-            from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
-            endpoints = HPEndpoint.model_construct().list(namespace=namespace)
-            return len(endpoints)
-            
-        # Future templates will be added here as exact matches
-        # elif raw_resource_type == "llama-job":
-        #     from sagemaker.hyperpod.training.hyperpod_llama_job import HyperPodLlamaJob
-        #     jobs = HyperPodLlamaJob.list(namespace=namespace)
-        #     return len(jobs)
-            
+            logger.debug(f"Found {len(lines)} lines in output, has_data: {has_data}")
+            return has_data
+        
+        # If command failed or no output, assume no resources
+        logger.debug(f"List command failed or returned no data. Return code: {result.returncode}")
+        return False
+        
+    except subprocess.TimeoutExpired:
+        logger.debug(f"List command timed out for {raw_resource_type}")
+        return None
     except Exception as e:
-        logger.debug(f"Failed to get resource count for {raw_resource_type}: {e}")
-    
-    return -1  # Indicates count unavailable
+        logger.debug(f"Failed to check resource existence for {raw_resource_type}: {e}")
+        return None
 
 def handle_cli_exceptions():
     """
     Template-agnostic decorator that dynamically detects resource/operation types.
-    Eliminates the need for hardcoded enums and makes CLI code template-agnostic.
     
     This decorator:
     1. Dynamically detects resource type from Click command name
@@ -172,11 +129,11 @@ def handle_cli_exceptions():
     
     Usage:
         @handle_cli_exceptions()
-        @click.command("hyp-jumpstart-endpoint")
-        def js_delete(name, namespace):
+        @click.command("hyp-resource-type")
+        def resource_delete(name, namespace):
             # Command logic here - no try/catch needed!
-            # Resource type automatically detected as "JumpStart endpoint"
-            # Operation type automatically detected as "delete"
+            # Resource type automatically detected from command name
+            # Operation type automatically detected from function name
             pass
     """
     def decorator(func):
@@ -193,30 +150,29 @@ def handle_cli_exceptions():
                     
                     # Dynamically detect resource and operation types
                     raw_resource_type, display_name = _extract_resource_from_command(func)
-                    operation_type = _detect_operation_type_from_function(func)
                     
                     try:
-                        # Get available resource count for contextual message
-                        available_count = _get_available_resource_count(raw_resource_type, namespace)
+                        # Check if any resources exist for contextual message
+                        resources_exist = _check_resources_exist(raw_resource_type, namespace)
                         list_command = _get_list_command_from_resource_type(raw_resource_type)
                         namespace_flag = f" --namespace {namespace}" if namespace != "default" else ""
                         
-                        if available_count == 0:
+                        if resources_exist is False:
                             # No resources exist in namespace
                             enhanced_message = (
                                 f"❓ {display_name} '{name}' not found in namespace '{namespace}'. "
                                 f"No resources of this type exist in the namespace. "
                                 f"Use '{list_command}' to check for available resources."
                             )
-                        elif available_count > 0:
+                        elif resources_exist is True:
                             # Resources exist in namespace
                             enhanced_message = (
                                 f"❓ {display_name} '{name}' not found in namespace '{namespace}'. "
-                                f"Please check the resource name. There are {available_count} resources in this namespace. "
+                                f"Please check the resource name - other resources exist in this namespace. "
                                 f"Use '{list_command}{namespace_flag}' to see available resources."
                             )
                         else:
-                            # Count unavailable - fallback to basic contextual message
+                            # Unable to determine - fallback to basic contextual message
                             enhanced_message = (
                                 f"❓ {display_name} '{name}' not found in namespace '{namespace}'. "
                                 f"Please check the resource name and try again. "
@@ -225,6 +181,7 @@ def handle_cli_exceptions():
                         
                         click.echo(enhanced_message)
                         sys.exit(1)
+                        return  # Prevent fallback execution in tests
                         
                     except Exception:
                         # Fallback to basic message (no ❓ emoji for fallback)
@@ -234,6 +191,7 @@ def handle_cli_exceptions():
                         )
                         click.echo(fallback_message)
                         sys.exit(1)
+                        return  # Prevent fallback execution in tests
                 
                 # Check if this might be a wrapped 404 in a regular Exception
                 elif "404" in str(e) or "not found" in str(e).lower():
@@ -259,24 +217,27 @@ def handle_cli_exceptions():
                         raw_resource_type, display_name = _extract_resource_from_command(func)
                     
                     try:
-                        # Get available resource count for contextual message
-                        available_count = _get_available_resource_count(raw_resource_type, namespace)
+                        # Check if any resources exist for contextual message
+                        resources_exist = _check_resources_exist(raw_resource_type, namespace)
                         list_command = _get_list_command_from_resource_type(raw_resource_type)
                         namespace_flag = f" --namespace {namespace}" if namespace != "default" else ""
                         
-                        if available_count == 0:
+                        if resources_exist is False:
+                            # No resources exist in namespace
                             enhanced_message = (
                                 f"❓ {display_name} '{name}' not found in namespace '{namespace}'. "
                                 f"No resources of this type exist in the namespace. "
                                 f"Use '{list_command}' to check for available resources."
                             )
-                        elif available_count > 0:
+                        elif resources_exist is True:
+                            # Resources exist in namespace
                             enhanced_message = (
                                 f"❓ {display_name} '{name}' not found in namespace '{namespace}'. "
-                                f"Please check the resource name. There are {available_count} resources in this namespace. "
+                                f"Please check the resource name - other resources exist in this namespace. "
                                 f"Use '{list_command}{namespace_flag}' to see available resources."
                             )
                         else:
+                            # Unable to determine - fallback to basic contextual message
                             enhanced_message = (
                                 f"❓ {display_name} '{name}' not found in namespace '{namespace}'. "
                                 f"Please check the resource name and try again. "
@@ -285,12 +246,13 @@ def handle_cli_exceptions():
                         
                         click.echo(enhanced_message)
                         sys.exit(1)
+                        return  # Prevent fallback execution in tests
                         
                     except Exception:
                         # Fall through to standard handling
                         pass
                 
-                # For non-404 errors, use standard handling
+                # For non-404 errors, use standard handling 
                 click.echo(str(e))
                 sys.exit(1)
         

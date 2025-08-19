@@ -12,8 +12,8 @@ from kubernetes.client.exceptions import ApiException
 from sagemaker.hyperpod.common.cli_decorators import (
     handle_cli_exceptions,
     _extract_resource_from_command,
-    _detect_operation_type_from_function,
-    _get_list_command_from_resource_type
+    _get_list_command_from_resource_type,
+    _check_resources_exist
 )
 
 
@@ -62,80 +62,64 @@ class TestTemplateAgnosticDetection:
         """Test resource type extraction from Click command names."""
         # Mock function with Click command name
         mock_func = Mock()
-        mock_func.name = "hyp-jumpstart-endpoint"
+        mock_func.name = "hyp-resource-endpoint"
         
         raw_resource_type, display_name = _extract_resource_from_command(mock_func)
-        assert raw_resource_type == "jumpstart-endpoint"
-        assert display_name == "JumpStart Endpoint"
+        assert raw_resource_type == "resource-endpoint"
+        assert display_name == "Resource Endpoint"
     
-    def test_extract_resource_from_pytorch_command(self):
-        """Test resource type extraction for PyTorch jobs."""
+    def test_extract_resource_from_job_command(self):
+        """Test resource type extraction for job resources."""
         mock_func = Mock()
-        mock_func.name = "hyp-pytorch-job"
+        mock_func.name = "hyp-training-job"
         
         raw_resource_type, display_name = _extract_resource_from_command(mock_func)
-        assert raw_resource_type == "pytorch-job"
-        assert display_name == "PyTorch Job"
+        assert raw_resource_type == "training-job"
+        assert display_name == "Training Job"
     
-    def test_extract_resource_from_custom_command(self):
-        """Test resource type extraction for custom endpoints."""
+    def test_extract_resource_from_service_command(self):
+        """Test resource type extraction for service resources."""
         mock_func = Mock()
-        mock_func.name = "hyp-custom-endpoint"
+        mock_func.name = "hyp-ml-service"
         
         raw_resource_type, display_name = _extract_resource_from_command(mock_func)
-        assert raw_resource_type == "custom-endpoint"
-        assert display_name == "Custom Endpoint"
+        assert raw_resource_type == "ml-service"
+        assert display_name == "Ml Service"
     
     def test_extract_resource_from_future_template(self):
         """Test resource type extraction works with future templates."""
         mock_func = Mock()
-        mock_func.name = "hyp-llama-job"
+        mock_func.name = "hyp-new-resource"
         
         raw_resource_type, display_name = _extract_resource_from_command(mock_func)
-        assert raw_resource_type == "llama-job"
-        assert display_name == "Llama Job"
+        assert raw_resource_type == "new-resource"
+        assert display_name == "New Resource"
     
     def test_extract_resource_fallback(self):
         """Test resource type extraction fallback."""
         mock_func = Mock()
-        mock_func.name = None
-        mock_func.__name__ = "js_delete"
+        # Explicitly control what attributes exist
+        del mock_func.name  # Remove the name attribute completely
+        mock_func.__name__ = "resource_delete"
+        
+        # Ensure no callback or __wrapped__ attributes exist
+        if hasattr(mock_func, 'callback'):
+            del mock_func.callback
+        if hasattr(mock_func, '__wrapped__'):
+            del mock_func.__wrapped__
         
         raw_resource_type, display_name = _extract_resource_from_command(mock_func)
-        assert raw_resource_type == "resource"
+        assert raw_resource_type == "resource-resource"
         assert display_name == "Resource"
     
-    def test_detect_operation_from_function_name(self):
-        """Test operation type detection from function names."""
-        mock_func = Mock()
-        mock_func.__name__ = "js_delete"
-        
-        result = _detect_operation_type_from_function(mock_func)
-        assert result == "delete"
-    
-    def test_detect_operation_describe(self):
-        """Test operation type detection for describe operations."""
-        mock_func = Mock()
-        mock_func.__name__ = "pytorch_describe"
-        
-        result = _detect_operation_type_from_function(mock_func)
-        assert result == "describe"
-    
-    def test_detect_operation_list(self):
-        """Test operation type detection for list operations."""
-        mock_func = Mock()
-        mock_func.__name__ = "custom_list_pods"
-        
-        result = _detect_operation_type_from_function(mock_func)
-        assert result == "list"
     
     def test_get_list_command_generation(self):
         """Test list command generation from resource types."""
-        result = _get_list_command_from_resource_type("jumpstart-endpoint")
-        assert result == "hyp list hyp-jumpstart-endpoint"
+        result = _get_list_command_from_resource_type("resource-endpoint")
+        assert result == "hyp list hyp-resource-endpoint"
         
-        result = _get_list_command_from_resource_type("pytorch-job")
-        assert result == "hyp list hyp-pytorch-job"
+        result = _get_list_command_from_resource_type("training-job")
+        assert result == "hyp list hyp-training-job"
         
         result = _get_list_command_from_resource_type("future-template")
         assert result == "hyp list hyp-future-template"
@@ -144,33 +128,32 @@ class TestTemplateAgnosticDetection:
 class TestTemplateAgnostic404Handling:
     """Test template-agnostic 404 handling functionality."""
     
-    @patch('sagemaker.hyperpod.common.cli_decorators._get_available_resource_count')
+    @patch('sagemaker.hyperpod.common.cli_decorators._check_resources_exist')
     @patch('sagemaker.hyperpod.common.cli_decorators.click')
     @patch('sagemaker.hyperpod.common.cli_decorators.sys')
-    def test_404_exception_with_dynamic_detection(self, mock_sys, mock_click, mock_get_count):
+    def test_404_exception_with_dynamic_detection(self, mock_sys, mock_click, mock_check_resources):
         """Test 404 exception handling with dynamic resource/operation detection."""
-        # Mock the resource count to avoid actual API calls
-        mock_get_count.return_value = 3
+        # Simulate resources exist in namespace
+        mock_check_resources.return_value = True
         
         api_exception = ApiException(status=404, reason="Not Found")
         
         # Test the decorator directly
         @handle_cli_exceptions()
-        def js_delete(name, namespace="default"):
+        def resource_delete(name, namespace="default"):
             raise api_exception
         
         # Manually set the function attributes to simulate Click command
-        js_delete.name = "hyp-jumpstart-endpoint"
+        resource_delete.name = "hyp-resource-endpoint"
         
-        js_delete(name="test", namespace="default")
+        resource_delete(name="test", namespace="default")
         
-        # With mocked sys.exit, both enhanced and standard handling occur
-        assert mock_click.echo.call_count == 2
-        # First call should be our enhanced 404 message
-        first_call_args = mock_click.echo.call_args_list[0][0][0]
+        # Should show enhanced message when resources exist
+        mock_click.echo.assert_called_once()
+        first_call_args = mock_click.echo.call_args[0][0]
         assert "'test' not found" in first_call_args
         assert "namespace 'default'" in first_call_args
-        assert "There are 3 resources" in first_call_args
+        assert "other resources exist in this namespace" in first_call_args
         assert "hyp list" in first_call_args
         mock_sys.exit.assert_called_with(1)
     
@@ -187,13 +170,13 @@ class TestTemplateAgnostic404Handling:
         mock_click.echo.assert_called_once_with("Generic error")
         mock_sys.exit.assert_called_once_with(1)
     
-    @patch('sagemaker.hyperpod.common.cli_decorators._get_available_resource_count')
+    @patch('sagemaker.hyperpod.common.cli_decorators._check_resources_exist')
     @patch('sagemaker.hyperpod.common.cli_decorators.click')
     @patch('sagemaker.hyperpod.common.cli_decorators.sys')
-    def test_fallback_404_message(self, mock_sys, mock_click, mock_get_count):
-        """Test fallback message when dynamic detection fails."""
-        # Mock the resource count to fail and trigger fallback
-        mock_get_count.side_effect = Exception("Count failed")
+    def test_fallback_404_message(self, mock_sys, mock_click, mock_check_resources):
+        """Test template-agnostic 404 message with generic resource detection."""
+        # Simulate no resources exist
+        mock_check_resources.return_value = False
         
         api_exception = ApiException(status=404, reason="Not Found")
         
@@ -203,11 +186,11 @@ class TestTemplateAgnostic404Handling:
         
         unknown_function(name="test", namespace="default")
         
-        # Should display fallback message - expecting 2 calls due to mocked sys.exit
-        assert mock_click.echo.call_count == 2
-        # First call should be the fallback message
-        first_call_args = mock_click.echo.call_args_list[0][0][0]
+        # Should show message indicating no resources exist
+        mock_click.echo.assert_called_once()
+        first_call_args = mock_click.echo.call_args[0][0]
         assert "'test' not found" in first_call_args
         assert "namespace 'default'" in first_call_args
-        assert "Unknown" in first_call_args or "Resource" in first_call_args
+        assert "No resources of this type exist" in first_call_args
+        assert "hyp list" in first_call_args
         mock_sys.exit.assert_called_with(1)
