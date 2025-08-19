@@ -31,12 +31,12 @@ from sagemaker.hyperpod.common.telemetry.constants import Feature
     registry=JS_REG,
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "create_js_endpoint_cli")
-def js_create(namespace, version, js_endpoint):
+def js_create(name, namespace, version, js_endpoint):
     """
     Create a jumpstart model endpoint.
     """
 
-    js_endpoint.create(namespace=namespace)
+    js_endpoint.create(name=name, namespace=namespace)
 
 
 @click.command("hyp-custom-endpoint")
@@ -53,12 +53,12 @@ def js_create(namespace, version, js_endpoint):
     registry=C_REG,
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "create_custom_endpoint_cli")
-def custom_create(namespace, version, custom_endpoint):
+def custom_create(name, namespace, version, custom_endpoint):
     """
     Create a custom model endpoint.
     """
 
-    custom_endpoint.create(namespace=namespace)
+    custom_endpoint.create(name=name, namespace=namespace)
 
 
 # INVOKE

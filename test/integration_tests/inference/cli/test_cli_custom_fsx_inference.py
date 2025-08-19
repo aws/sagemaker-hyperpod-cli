@@ -51,7 +51,6 @@ def test_custom_create(runner, custom_endpoint_name):
         "--model-source-type", "fsx",
         "--model-location", "hf-eqa",
         "--fsx-file-system-id", FSX_LOCATION,
-        "--s3-region", REGION,
         "--image-uri", "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:2.3.0-transformers4.48.0-cpu-py311-ubuntu22.04",
         "--container-port", "8080",
         "--model-volume-mount-name", "model-weights",

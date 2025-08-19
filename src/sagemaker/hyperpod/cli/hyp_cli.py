@@ -5,6 +5,7 @@ import os
 import subprocess
 from pydantic import BaseModel, ValidationError, Field
 from typing import Optional
+from importlib.metadata import version, PackageNotFoundError
 
 from sagemaker.hyperpod.cli.commands.cluster import list_cluster, set_cluster_context, get_cluster_context, \
     get_monitoring
@@ -36,7 +37,29 @@ from sagemaker.hyperpod.cli.commands.inference import (
 )
 
 
+def get_package_version(package_name):
+    try:
+        return version(package_name)
+    except PackageNotFoundError:
+        return "Not installed"
+
+def print_version(ctx, param, value):
+    if not value or ctx.resilient_parsing:
+        return
+
+    hyp_version = get_package_version("sagemaker-hyperpod")
+    pytorch_template_version = get_package_version("hyperpod-pytorch-job-template")
+    custom_inference_version = get_package_version("hyperpod-custom-inference-template")
+    jumpstart_inference_version = get_package_version("hyperpod-jumpstart-inference-template")
+
+    click.echo(f"hyp version: {hyp_version}")
+    click.echo(f"hyperpod-pytorch-job-template version: {pytorch_template_version}")
+    click.echo(f"hyperpod-custom-inference-template version: {custom_inference_version}")
+    click.echo(f"hyperpod-jumpstart-inference-template version: {jumpstart_inference_version}")
+    ctx.exit()
+
 @click.group()
+@click.option('--version', is_flag=True, callback=print_version, expose_value=False, is_eager=True, help='Show version information')
 def cli():
     pass
 
