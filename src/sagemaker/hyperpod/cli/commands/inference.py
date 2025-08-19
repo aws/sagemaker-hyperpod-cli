@@ -33,11 +33,11 @@ from sagemaker.hyperpod.common.utils import display_formatted_logs
     registry=JS_REG,
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "create_js_endpoint_cli")
+@handle_cli_exceptions()
 def js_create(namespace, version, js_endpoint):
     """
     Create a jumpstart model endpoint.
     """
-
     js_endpoint.create(namespace=namespace)
 
 
@@ -55,11 +55,11 @@ def js_create(namespace, version, js_endpoint):
     registry=C_REG,
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "create_custom_endpoint_cli")
+@handle_cli_exceptions()
 def custom_create(namespace, version, custom_endpoint):
     """
     Create a custom model endpoint.
     """
-
     custom_endpoint.create(namespace=namespace)
 
 
@@ -85,6 +85,7 @@ def custom_create(namespace, version, custom_endpoint):
     help="Optional. The content type of the request to invoke. Default set to 'application/json'",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "invoke_custom_endpoint_cli")
+@handle_cli_exceptions()
 def custom_invoke(
     endpoint_name: str,
     body: str,
@@ -138,13 +139,13 @@ def custom_invoke(
     help="Optional. The namespace of the jumpstart model endpoint to list. Default set to 'default'",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_js_endpoints_cli")
+@handle_cli_exceptions()
 def js_list(
     namespace: Optional[str],
 ):
     """
     List all Hyperpod Jumpstart model endpoints.
     """
-
     endpoints = HPJumpStartEndpoint.model_construct().list(namespace)
     data = [ep.model_dump() for ep in endpoints]
 
@@ -181,13 +182,13 @@ def js_list(
     help="Optional. The namespace of the custom model endpoint to list. Default set to 'default'",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_custom_endpoints_cli")
+@handle_cli_exceptions()
 def custom_list(
     namespace: Optional[str],
 ):
     """
     List all Hyperpod custom model endpoints.
     """
-
     endpoints = HPEndpoint.model_construct().list(namespace)
     data = [ep.model_dump() for ep in endpoints]
 
@@ -729,6 +730,7 @@ def custom_get_logs(
     help="Required. The time frame to get logs for.",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_js_operator_logs")
+@handle_cli_exceptions()
 def js_get_operator_logs(
     since_hours: float,
 ):
@@ -748,6 +750,7 @@ def js_get_operator_logs(
     help="Required. The time frame get logs for.",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_custom_operator_logs")
+@handle_cli_exceptions()
 def custom_get_operator_logs(
     since_hours: float,
 ):

@@ -19,45 +19,42 @@ from sagemaker.hyperpod.common.utils import display_formatted_logs
     registry=SCHEMA_REGISTRY,
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "create_pytorchjob_cli")
+@handle_cli_exceptions()
 def pytorch_create(version, debug, config):
     """Create a PyTorch job."""
-    try:
-        click.echo(f"Using version: {version}")
-        job_name = config.get("name")
-        namespace = config.get("namespace")
-        spec = config.get("spec")
-        metadata_labels = config.get("labels")
-        annotations = config.get("annotations")
+    click.echo(f"Using version: {version}")
+    job_name = config.get("name")
+    namespace = config.get("namespace")
+    spec = config.get("spec")
+    metadata_labels = config.get("labels")
+    annotations = config.get("annotations")
 
-        # Prepare metadata
-        metadata_kwargs = {"name": job_name}
-        if namespace:
-            metadata_kwargs["namespace"] = namespace
-        if metadata_labels:
-            metadata_kwargs["labels"] = metadata_labels
-        if annotations:
-            metadata_kwargs["annotations"] = annotations
+    # Prepare metadata
+    metadata_kwargs = {"name": job_name}
+    if namespace:
+        metadata_kwargs["namespace"] = namespace
+    if metadata_labels:
+        metadata_kwargs["labels"] = metadata_labels
+    if annotations:
+        metadata_kwargs["annotations"] = annotations
 
-        # Prepare job kwargs
-        job_kwargs = {
-            "metadata": Metadata(**metadata_kwargs),
-            "replica_specs": spec.get("replica_specs"),
-        }
+    # Prepare job kwargs
+    job_kwargs = {
+        "metadata": Metadata(**metadata_kwargs),
+        "replica_specs": spec.get("replica_specs"),
+    }
 
-        # Add nproc_per_node if present
-        if "nproc_per_node" in spec:
-            job_kwargs["nproc_per_node"] = spec.get("nproc_per_node")
+    # Add nproc_per_node if present
+    if "nproc_per_node" in spec:
+        job_kwargs["nproc_per_node"] = spec.get("nproc_per_node")
 
-        # Add run_policy if present
-        if "run_policy" in spec:
-            job_kwargs["run_policy"] = spec.get("run_policy")
+    # Add run_policy if present
+    if "run_policy" in spec:
+        job_kwargs["run_policy"] = spec.get("run_policy")
 
-        # Create job
-        job = HyperPodPytorchJob(**job_kwargs)
-        job.create(debug=debug)
-
-    except Exception as e:
-        raise click.UsageError(f"Failed to create job: {str(e)}")
+    # Create job
+    job = HyperPodPytorchJob(**job_kwargs)
+    job.create(debug=debug)
 
 
 @click.command("hyp-pytorch-job")
@@ -68,74 +65,71 @@ def pytorch_create(version, debug, config):
     help="Optional. The namespace to list jobs from. Defaults to 'default' namespace.",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_pytorchjobs_cli")
+@handle_cli_exceptions()
 def list_jobs(namespace: str):
     """List all HyperPod PyTorch jobs."""
-    try:
-        jobs = HyperPodPytorchJob.list(namespace=namespace)
+    jobs = HyperPodPytorchJob.list(namespace=namespace)
 
-        if not jobs:
-            click.echo("No jobs found.")
-            return
+    if not jobs:
+        click.echo("No jobs found.")
+        return
 
-        # Define headers and widths
-        headers = ["NAME", "NAMESPACE", "STATUS", "AGE"]
-        widths = [30, 20, 15, 15]
+    # Define headers and widths
+    headers = ["NAME", "NAMESPACE", "STATUS", "AGE"]
+    widths = [30, 20, 15, 15]
 
-        # Print header
-        header = "".join(f"{h:<{w}}" for h, w in zip(headers, widths))
-        click.echo("\n" + header)
-        click.echo("-" * sum(widths))
+    # Print header
+    header = "".join(f"{h:<{w}}" for h, w in zip(headers, widths))
+    click.echo("\n" + header)
+    click.echo("-" * sum(widths))
 
-        # Print each job
-        for job in jobs:
-            # Get status from conditions
-            status = "Unknown"
-            age = "N/A"
+    # Print each job
+    for job in jobs:
+        # Get status from conditions
+        status = "Unknown"
+        age = "N/A"
+        if job.status and job.status.conditions:
+            for condition in reversed(job.status.conditions):
+                if condition.status == "True":
+                    status = condition.type
+                    break
+
+            # Calculate age
             if job.status and job.status.conditions:
-                for condition in reversed(job.status.conditions):
-                    if condition.status == "True":
-                        status = condition.type
-                        break
+                # Find the 'Created' condition to get the start time
+                created_condition = next(
+                    (c for c in job.status.conditions if c.type == "Created"), None
+                )
+                if created_condition and created_condition.lastTransitionTime:
+                    from datetime import datetime, timezone
 
-                # Calculate age
-                if job.status and job.status.conditions:
-                    # Find the 'Created' condition to get the start time
-                    created_condition = next(
-                        (c for c in job.status.conditions if c.type == "Created"), None
+                    start_time = datetime.fromisoformat(
+                        created_condition.lastTransitionTime.replace("Z", "+00:00")
                     )
-                    if created_condition and created_condition.lastTransitionTime:
-                        from datetime import datetime, timezone
-
-                        start_time = datetime.fromisoformat(
-                            created_condition.lastTransitionTime.replace("Z", "+00:00")
-                        )
-                        now = datetime.now(timezone.utc)
-                        delta = now - start_time
-                        if delta.days > 0:
-                            age = f"{delta.days}d"
+                    now = datetime.now(timezone.utc)
+                    delta = now - start_time
+                    if delta.days > 0:
+                        age = f"{delta.days}d"
+                    else:
+                        hours = delta.seconds // 3600
+                        if hours > 0:
+                            age = f"{hours}h"
                         else:
-                            hours = delta.seconds // 3600
-                            if hours > 0:
-                                age = f"{hours}h"
-                            else:
-                                minutes = (delta.seconds % 3600) // 60
-                                age = f"{minutes}m"
+                            minutes = (delta.seconds % 3600) // 60
+                            age = f"{minutes}m"
 
-            # Format row
-            row = "".join(
-                [
-                    f"{job.metadata.name:<{widths[0]}}",
-                    f"{job.metadata.namespace:<{widths[1]}}",
-                    f"{status:<{widths[2]}}",
-                    f"{age:<{widths[3]}}",
-                ]
-            )
-            click.echo(row)
+        # Format row
+        row = "".join(
+            [
+                f"{job.metadata.name:<{widths[0]}}",
+                f"{job.metadata.namespace:<{widths[1]}}",
+                f"{status:<{widths[2]}}",
+                f"{age:<{widths[3]}}",
+            ]
+        )
+        click.echo(row)
 
-            click.echo()  # Add empty line at the end
-
-    except Exception as e:
-        raise click.UsageError(f"Failed to list jobs: {str(e)}")
+        click.echo()  # Add empty line at the end
 
 
 @click.command("hyp-pytorch-job")
