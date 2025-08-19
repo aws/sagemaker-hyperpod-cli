@@ -205,7 +205,8 @@ class TestTrainingCommands(unittest.TestCase):
         # Call the function and expect an exception
         result = self.runner.invoke(list_jobs)
         self.assertNotEqual(result.exit_code, 0)
-        self.assertIn("Failed to list jobs", result.output)
+        # Updated to match the new @handle_cli_exceptions() decorator behavior
+        self.assertIn("Test error", result.output)
 
     @patch("sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob")
     def test_pytorch_describe(self, mock_hyperpod_pytorch_job):
