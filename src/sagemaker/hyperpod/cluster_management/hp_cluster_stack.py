@@ -2,7 +2,7 @@ import importlib.resources
 import json
 import logging
 import uuid
-from pydantic import Field
+from pydantic import Field, field_validator
 from typing import Optional, List, Dict, Any, Union
 
 import boto3
@@ -30,11 +30,29 @@ class HpClusterStack(ClusterStackBase):
     )
     
     def __init__(self, **data):
-        # Convert array values to JSON strings
-        for key, value in data.items():
-            if isinstance(value, list):
-                data[key] = json.dumps(value)
         super().__init__(**data)
+    
+    @field_validator('kubernetes_version', mode='before')
+    @classmethod
+    def validate_kubernetes_version(cls, v):
+        if v is not None:
+            return str(v)
+        return v
+    
+    @field_validator('availability_zone_ids', 'nat_gateway_ids', 'eks_private_subnet_ids', 'security_group_ids', 'private_route_table_ids', 'private_subnet_ids', 'instance_group_settings', 'rig_settings', 'tags', mode='before')
+    @classmethod
+    def validate_list_fields(cls, v):
+        # Convert JSON string to list if needed
+        if isinstance(v, str) and v.startswith('['):
+            try:
+                import json
+                v = json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                pass  # Keep original value if parsing fails
+        
+        if isinstance(v, list) and len(v) == 0:
+            raise ValueError('Empty lists [] are not allowed. Use proper YAML array format or leave field empty.')
+        return v
 
     @staticmethod
     def get_template() -> str:
@@ -65,7 +83,7 @@ class HpClusterStack(ClusterStackBase):
         try:
             # Use TemplateURL for large templates (>51KB)
             template_url = f"https://{bucket_name}.s3.amazonaws.com/{template_key}"
-            
+            click.secho(f"Calling with tags { self._parse_tags()}")
             response = cf.create_stack(
                 StackName=stack_name,
                 TemplateURL=template_url,
@@ -129,8 +147,27 @@ class HpClusterStack(ClusterStackBase):
                             'ParameterValue': json.dumps(formatted_setting) if isinstance(formatted_setting, (dict, list)) else str(formatted_setting)
                         })
                 else:
+                    # Convert array fields to comma-separated strings
+                    if field_name in ['availability_zone_ids', 'nat_gateway_ids', 'eks_private_subnet_ids', 
+                                    'security_group_ids', 'private_route_table_ids', 'private_subnet_ids']:
+                        if isinstance(value, list):
+                            value = ','.join(str(item) for item in value)
+                        elif isinstance(value, str) and value.startswith('['):
+                            # Handle JSON string format from CLI
+                            try:
+                                parsed_list = json.loads(value)
+                                value = ','.join(str(item) for item in parsed_list)
+                            except (json.JSONDecodeError, TypeError):
+                                pass  # Keep original string value
+                    # Convert tags array to JSON string
+                    elif field_name == 'tags':
+                        if isinstance(value, list):
+                            value = json.dumps(value)
+                        elif isinstance(value, str) and not value.startswith('['):
+                            # If it's already a JSON string, keep it as is
+                            pass
                     # Convert boolean values to strings for CloudFormation
-                    if isinstance(value, bool):
+                    elif isinstance(value, bool):
                         value = str(value).lower()
 
                     parameters.append({
@@ -141,10 +178,25 @@ class HpClusterStack(ClusterStackBase):
 
     def _parse_tags(self) -> List[Dict[str, str]]:
         """Parse tags field and return proper CloudFormation tags format."""
-        try:
-            return json.loads(self.tags) if self.tags else []
-        except (json.JSONDecodeError, TypeError):
+        if not self.tags:
             return []
+        
+        tags_list = self.tags
+        if isinstance(self.tags, str):
+            try:
+                tags_list = json.loads(self.tags)
+            except (json.JSONDecodeError, TypeError):
+                return []
+        
+        # Convert array of strings to Key-Value format
+        if isinstance(tags_list, list) and tags_list:
+            # Check if already in Key-Value format
+            if isinstance(tags_list[0], dict) and 'Key' in tags_list[0]:
+                return tags_list
+            # Convert string array to Key-Value format
+            return [{'Key': tag, 'Value': ''} for tag in tags_list if isinstance(tag, str)]
+        
+        return []
 
     def _convert_nested_keys(self, obj: Any) -> Any:
         """Convert nested JSON keys from snake_case to PascalCase."""

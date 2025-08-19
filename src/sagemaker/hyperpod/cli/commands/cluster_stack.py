@@ -40,15 +40,11 @@ def create_cluster_stack_helper(config_file: str, region: Optional[str] = None, 
         with open(config_file, 'r') as f:
             config_data = yaml.safe_load(f)
 
-        # Filter out template and namespace fields and convert to strings
+        # Filter out template and namespace fields
         filtered_config = {}
         for k, v in config_data.items():
             if k not in ('template', 'namespace') and v is not None:
-                # Convert lists to JSON strings, everything else to string
-                if isinstance(v, list):
-                    filtered_config[k] = json.dumps(v)
-                else:
-                    filtered_config[k] = str(v)
+                filtered_config[k] = v
 
         # Create the HpClusterStack object
         cluster_stack = HpClusterStack(**filtered_config)

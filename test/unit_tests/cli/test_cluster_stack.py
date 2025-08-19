@@ -1,5 +1,6 @@
 import pytest
-from unittest.mock import Mock, patch
+import unittest
+from unittest.mock import Mock, patch, mock_open
 from click.testing import CliRunner
 from datetime import datetime
 from sagemaker.hyperpod.cli.commands.cluster_stack import update_cluster, list_cluster_stacks
@@ -180,3 +181,138 @@ class TestListClusterStacks:
         # Assert
         assert result.exit_code == 1
         assert 'Error listing stacks: AWS error' in result.output
+
+@patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.importlib.resources.read_text')
+@patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack.get_template')
+class TestCreateClusterStackHelper(unittest.TestCase):
+    """Test create_cluster_stack_helper function"""
+    
+    @patch('sagemaker.hyperpod.cli.commands.cluster_stack.HpClusterStack')
+    @patch('yaml.safe_load')
+    @patch('os.path.exists')
+    @patch('builtins.open', new_callable=mock_open)
+    def test_create_cluster_stack_helper_success(self, mock_file, mock_exists, mock_yaml_load, mock_cluster_stack, mock_get_template, mock_read_text):
+        """Test successful cluster stack creation"""
+        # Mock template methods
+        mock_get_template.return_value = '{"Parameters": {}}'
+        mock_read_text.return_value = 'Parameters: {}'
+        
+        with patch('sagemaker.hyperpod.cli.commands.cluster_stack.logger') as mock_logger:
+            from sagemaker.hyperpod.cli.commands.cluster_stack import create_cluster_stack_helper
+            
+            # Setup mocks
+            mock_exists.return_value = True
+            mock_yaml_load.return_value = {
+                'template': 'hyp-cluster',
+                'version': '1.0',
+                'eks_cluster_name': 'test-cluster',
+                'namespace': 'test-namespace'
+            }
+            
+            mock_stack_instance = Mock()
+            mock_stack_instance.create.return_value = {'StackId': 'test-stack-id'}
+            mock_cluster_stack.return_value = mock_stack_instance
+            
+            # Execute
+            create_cluster_stack_helper('config.yaml', 'us-west-2', False)
+            
+            # Verify
+            mock_exists.assert_called_once_with('config.yaml')
+            mock_yaml_load.assert_called_once()
+            mock_cluster_stack.assert_called_once_with(
+                eks_cluster_name='test-cluster',
+                version='1.0'
+            )
+            mock_stack_instance.create.assert_called_once_with('us-west-2')
+    
+    @patch('sagemaker.hyperpod.cli.commands.cluster_stack.logger')
+    @patch('os.path.exists')
+    def test_create_cluster_stack_helper_file_not_found(self,
+                                                        mock_exists,
+                                                        mock_logger,
+                                                        mock_get_template,
+                                                        mock_read_text):
+        """Test handling of missing config file"""
+        from sagemaker.hyperpod.cli.commands.cluster_stack import create_cluster_stack_helper
+        
+        mock_exists.return_value = False
+        
+        create_cluster_stack_helper('nonexistent.yaml', 'us-west-2', False)
+        from sagemaker.hyperpod.cli.commands.cluster_stack import create_cluster_stack_helper
+        
+        mock_exists.return_value = False
+        
+        create_cluster_stack_helper('nonexistent.yaml', 'us-west-2', False)
+
+    
+    @patch('sagemaker.hyperpod.cli.commands.cluster_stack.HpClusterStack')
+    @patch('yaml.safe_load')
+    @patch('os.path.exists')
+    @patch('builtins.open', new_callable=mock_open)
+    def test_create_cluster_stack_helper_filters_template_fields(self, mock_file, mock_exists, mock_yaml_load, mock_cluster_stack, mock_get_template, mock_read_text):
+        """Test that template and namespace fields are filtered out"""
+        # Mock template methods
+        mock_get_template.return_value = '{"Parameters": {}}'
+        mock_read_text.return_value = 'Parameters: {}'
+        
+        with patch('sagemaker.hyperpod.cli.commands.cluster_stack.logger') as mock_logger:
+            from sagemaker.hyperpod.cli.commands.cluster_stack import create_cluster_stack_helper
+            
+            # Setup mocks
+            mock_exists.return_value = True
+            mock_yaml_load.return_value = {
+                'template': 'hyp-cluster',
+                'namespace': 'test-namespace',
+                'version': '1.0',
+                'eks_cluster_name': 'test-cluster',
+                'stage': 'gamma'
+            }
+            
+            mock_stack_instance = Mock()
+            mock_stack_instance.create.return_value = {'StackId': 'test-stack-id'}
+            mock_cluster_stack.return_value = mock_stack_instance
+            
+            # Execute
+            create_cluster_stack_helper('config.yaml', 'us-west-2', False)
+            
+            # Verify template and namespace were filtered out
+            call_args = mock_cluster_stack.call_args[1]
+            assert 'template' not in call_args
+            assert 'namespace' not in call_args
+            assert 'eks_cluster_name' in call_args
+            assert 'stage' in call_args
+    
+    @patch('sagemaker.hyperpod.cli.commands.cluster_stack.HpClusterStack')
+    @patch('yaml.safe_load')
+    @patch('os.path.exists')
+    @patch('builtins.open', new_callable=mock_open)
+    def test_create_cluster_stack_helper_filters_none_values(self, mock_file, mock_exists, mock_yaml_load, mock_cluster_stack, mock_get_template, mock_read_text):
+        """Test that None values are filtered out"""
+        # Mock template methods
+        mock_get_template.return_value = '{"Parameters": {}}'
+        mock_read_text.return_value = 'Parameters: {}'
+        
+        # Setup mocks
+        mock_exists.return_value = True
+        mock_yaml_load.return_value = {
+            'template': 'hyp-cluster',
+            'eks_cluster_name': 'test-cluster',
+            'optional_field': None,
+            'required_field': 'value'
+        }
+        
+        # Mock the stack instance and its create method to avoid AWS calls
+        mock_stack_instance = Mock()
+        mock_stack_instance.create.return_value = {'StackId': 'test-stack-id'}
+        mock_cluster_stack.return_value = mock_stack_instance
+        
+        with patch('sagemaker.hyperpod.cli.commands.cluster_stack.logger') as mock_logger:
+            from sagemaker.hyperpod.cli.commands.cluster_stack import create_cluster_stack_helper
+            
+            # Execute
+            create_cluster_stack_helper('config.yaml', 'us-west-2', False)
+            
+            # Verify None values were filtered out
+            call_args = mock_cluster_stack.call_args[1]
+            assert 'optional_field' not in call_args
+            assert 'required_field' in call_args

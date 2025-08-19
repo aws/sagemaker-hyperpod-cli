@@ -342,7 +342,7 @@ class TestHpClusterStackArrayConversion(unittest.TestCase):
     
     def test_create_parameters_handles_json_string_instance_group_settings(self):
         """Test conversion of instance_group_settings from JSON string to numbered parameters"""
-        settings_json = '[{"instance_type": "ml.g5.xlarge", "instance_count": 1}]'
+        settings_json = [{"instance_type": "ml.g5.xlarge", "instance_count": 1}]
         
         stack = HpClusterStack(instance_group_settings=settings_json)
         parameters = stack._create_parameters()
@@ -353,17 +353,6 @@ class TestHpClusterStackArrayConversion(unittest.TestCase):
         self.assertEqual(len(ig_params), 1)
         self.assertEqual(ig_params[0]['ParameterKey'], 'InstanceGroupSettings1')
         self.assertEqual(json.loads(ig_params[0]['ParameterValue']), {"InstanceType": "ml.g5.xlarge", "InstanceCount": 1})
-    
-    def test_create_parameters_handles_malformed_json_gracefully(self):
-        """Test that malformed JSON strings are handled gracefully"""
-        malformed_json = 'invalid json string'
-        
-        stack = HpClusterStack(instance_group_settings=malformed_json)
-        parameters = stack._create_parameters()
-        
-        # Should not create any InstanceGroupSettings parameters for malformed JSON
-        ig_params = [p for p in parameters if p['ParameterKey'].startswith('InstanceGroupSettings')]
-        self.assertEqual(len(ig_params), 0)
     
     def test_create_parameters_handles_empty_arrays(self):
         """Test that empty arrays don't create parameters"""
@@ -413,21 +402,13 @@ class TestHpClusterStackInit(unittest.TestCase):
         stack = HpClusterStack(**data)
         
         # Arrays should be converted to JSON strings
-        self.assertEqual(stack.tags, '[{"Key": "Environment", "Value": "Test"}]')
-        self.assertEqual(stack.availability_zone_ids, '["us-east-1a", "us-east-1b"]')
+        self.assertEqual(stack.tags, [{"Key": "Environment", "Value": "Test"}])
+        self.assertEqual(stack.availability_zone_ids, ["us-east-1a", "us-east-1b"])
         
         # Other types should remain unchanged
         self.assertEqual(stack.hyperpod_cluster_name, 'test-cluster')
         self.assertEqual(stack.storage_capacity, 1200)
-    
-    def test_init_handles_empty_arrays(self):
-        """Test that empty arrays are converted to empty JSON arrays"""
-        data = {'tags': []}
-        
-        stack = HpClusterStack(**data)
-        
-        self.assertEqual(stack.tags, '[]')
-    
+
     def test_init_handles_no_arrays(self):
         """Test that __init__ works normally when no arrays are present"""
         data = {
@@ -446,8 +427,8 @@ class TestHpClusterStackParseTags(unittest.TestCase):
     
     def test_parse_tags_valid_json_array(self):
         """Test parsing valid JSON array of tags"""
-        tags_json = '[{"Key": "Environment", "Value": "Test"}, {"Key": "Project", "Value": "HyperPod"}]'
-        stack = HpClusterStack(tags=tags_json)
+        stack = HpClusterStack()
+        stack.tags = [{"Key": "Environment", "Value": "Test"}, {"Key": "Project", "Value": "HyperPod"}]
         
         result = stack._parse_tags()
         
@@ -457,33 +438,10 @@ class TestHpClusterStackParseTags(unittest.TestCase):
         ]
         self.assertEqual(result, expected)
     
-    def test_parse_tags_empty_string(self):
-        """Test parsing empty tags string returns empty list"""
-        stack = HpClusterStack(tags="")
-        
-        result = stack._parse_tags()
-        
-        self.assertEqual(result, [])
-    
     def test_parse_tags_none_value(self):
         """Test parsing None tags returns empty list"""
-        stack = HpClusterStack(tags=None)
-        
-        result = stack._parse_tags()
-        
-        self.assertEqual(result, [])
-    
-    def test_parse_tags_invalid_json(self):
-        """Test parsing invalid JSON returns empty list"""
-        stack = HpClusterStack(tags="invalid json")
-        
-        result = stack._parse_tags()
-        
-        self.assertEqual(result, [])
-    
-    def test_parse_tags_empty_json_array(self):
-        """Test parsing empty JSON array returns empty list"""
-        stack = HpClusterStack(tags="[]")
+        stack = HpClusterStack()
+        stack.tags = None
         
         result = stack._parse_tags()
         
@@ -522,3 +480,60 @@ class TestHpClusterStackGetTemplate(unittest.TestCase):
             HpClusterStack.get_template()
         
         self.assertIn("Failed to load template from package", str(context.exception))
+
+
+class TestHpClusterStackValidators(unittest.TestCase):
+    """Test HpClusterStack field validators"""
+    
+    def test_validate_kubernetes_version_float_to_string(self):
+        """Test kubernetes_version validator converts float to string"""
+        stack = HpClusterStack(kubernetes_version=1.31)
+        self.assertEqual(stack.kubernetes_version, "1.31")
+    
+    def test_validate_kubernetes_version_string_unchanged(self):
+        """Test kubernetes_version validator keeps string unchanged"""
+        stack = HpClusterStack(kubernetes_version="1.31")
+        self.assertEqual(stack.kubernetes_version, "1.31")
+    
+    def test_validate_kubernetes_version_none_unchanged(self):
+        """Test kubernetes_version validator keeps None unchanged"""
+        stack = HpClusterStack(kubernetes_version=None)
+        self.assertIsNone(stack.kubernetes_version)
+    
+    def test_validate_list_fields_rejects_empty_list(self):
+        """Test list field validators reject empty lists"""
+        with self.assertRaises(ValueError) as context:
+            HpClusterStack(eks_private_subnet_ids=[])
+        
+        self.assertIn("Empty lists [] are not allowed", str(context.exception))
+    
+    def test_validate_list_fields_accepts_populated_list(self):
+        """Test list field validators accept populated lists"""
+        stack = HpClusterStack(eks_private_subnet_ids=["subnet-123", "subnet-456"])
+        self.assertEqual(stack.eks_private_subnet_ids, ["subnet-123", "subnet-456"])
+    
+    def test_validate_list_fields_accepts_none(self):
+        """Test list field validators accept None values"""
+        stack = HpClusterStack(eks_private_subnet_ids=None)
+        self.assertIsNone(stack.eks_private_subnet_ids)
+    
+    def test_validate_availability_zone_ids_empty_list(self):
+        """Test availability_zone_ids validator rejects empty list"""
+        with self.assertRaises(ValueError) as context:
+            HpClusterStack(availability_zone_ids=[])
+        
+        self.assertIn("Empty lists [] are not allowed", str(context.exception))
+    
+    def test_validate_tags_empty_list(self):
+        """Test tags validator rejects empty list"""
+        with self.assertRaises(ValueError) as context:
+            HpClusterStack(tags=[])
+        
+        self.assertIn("Empty lists [] are not allowed", str(context.exception))
+    
+    def test_validate_instance_group_settings_empty_list(self):
+        """Test instance_group_settings validator rejects empty list"""
+        with self.assertRaises(ValueError) as context:
+            HpClusterStack(instance_group_settings=[])
+        
+        self.assertIn("Empty lists [] are not allowed", str(context.exception))

@@ -569,15 +569,11 @@ def validate_config_against_model(config_data: dict, template: str, version: str
     validation_errors = []
     
     try:
-        # For CFN templates, convert values to strings as expected
-        filtered_config = {}
-        for k, v in config_data.items():
-            if k not in ('template', 'version') and v is not None:
-                # Convert lists to JSON strings, everything else to string
-                if isinstance(v, list):
-                    filtered_config[k] = json.dumps(v)
-                else:
-                    filtered_config[k] = str(v)
+        # For CFN templates, filter config but keep original types for validation
+        filtered_config = {
+            k: v for k, v in config_data.items() 
+            if k not in ('template', 'version') and v is not None
+        }
         if template_info["schema_type"] == CFN:
             HpClusterStack(**filtered_config)
         else:

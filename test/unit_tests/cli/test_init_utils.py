@@ -1,3 +1,5 @@
+import unittest
+
 import pytest
 import json
 import click
@@ -342,7 +344,7 @@ class TestValidateConfigAgainstModel:
             
             # Verify tags were converted to JSON string
             call_args = mock_cluster_stack.call_args[1]
-            assert call_args['tags'] == '["tag1", "tag2"]'
+            assert call_args['tags'] == ["tag1", "tag2"]
 
 
 class TestFilterValidationErrorsForUserInput:
@@ -970,3 +972,165 @@ class TestProcessCfnTemplateContentUpdated:
         assert "CloudFormation Template:" in result
         assert original_content in result
         assert result.count("CloudFormation Template:") == 1
+
+
+class TestValidateConfigAgainstModelUpdated(unittest.TestCase):
+    """Test updated validate_config_against_model function"""
+    
+    def test_validate_config_cfn_preserves_list_types(self):
+        """Test that CFN validation preserves list types instead of converting to JSON strings"""
+        config_data = {
+            'template': 'hyp-cluster',
+            'version': '1.0',
+            'eks_private_subnet_ids': ['subnet-123', 'subnet-456'],
+            'tags': [{'Key': 'Environment', 'Value': 'Test'}]
+        }
+        mock_templates = {
+            'hyp-cluster': {'schema_type': CFN}
+        }
+        
+        with patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack, \
+             patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates):
+            
+            # Mock successful validation
+            mock_cluster_stack.return_value = Mock()
+            
+            errors = validate_config_against_model(config_data, 'hyp-cluster', '1.0')
+            
+            assert errors == []
+            # Verify HpClusterStack was called with original list types
+            call_args = mock_cluster_stack.call_args[1]
+            assert call_args['eks_private_subnet_ids'] == ['subnet-123', 'subnet-456']
+            assert call_args['tags'] == [{'Key': 'Environment', 'Value': 'Test'}]
+    
+    def test_validate_config_cfn_filters_template_version(self):
+        """Test that template and version fields are filtered out"""
+        config_data = {
+            'template': 'hyp-cluster',
+            'version': '1.0',
+            'namespace': 'test-namespace',
+            'eks_cluster_name': 'test-cluster'
+        }
+        mock_templates = {
+            'hyp-cluster': {'schema_type': CFN}
+        }
+        
+        with patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack, \
+             patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates):
+            
+            mock_cluster_stack.return_value = Mock()
+            
+            validate_config_against_model(config_data, 'hyp-cluster', '1.0')
+            
+            # Verify template and version were filtered out
+            call_args = mock_cluster_stack.call_args[1]
+            assert 'template' not in call_args
+            assert 'version' not in call_args
+            assert 'namespace' in call_args
+            assert 'eks_cluster_name' in call_args
+    
+    def test_validate_config_cfn_filters_none_values(self):
+        """Test that None values are filtered out"""
+        config_data = {
+            'template': 'hyp-cluster',
+            'version': '1.0',
+            'namespace': 'test-namespace',
+            'optional_field': None,
+            'empty_string': ''
+        }
+        mock_templates = {
+            'hyp-cluster': {'schema_type': CFN}
+        }
+        
+        with patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack, \
+             patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates):
+            
+            mock_cluster_stack.return_value = Mock()
+            
+            validate_config_against_model(config_data, 'hyp-cluster', '1.0')
+            
+            # Verify None values were filtered out but empty strings kept
+            call_args = mock_cluster_stack.call_args[1]
+            assert 'optional_field' not in call_args
+            assert 'empty_string' in call_args
+            assert call_args['empty_string'] == ''
+
+
+class TestValidateConfigYamlArrayFormat(unittest.TestCase):
+    """Test validation of YAML array format requirements"""
+    
+    def test_validate_config_with_empty_array_fails(self):
+        """Test that empty arrays [] in config cause validation failure"""
+        config_data = {
+            'template': 'hyp-cluster',
+            'version': '1.0',
+            'eks_private_subnet_ids': []  # This should fail validation
+        }
+        mock_templates = {
+            'hyp-cluster': {'schema_type': CFN}
+        }
+        
+        with patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack, \
+             patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates):
+            
+            # Mock validation error for empty list
+            mock_error = ValidationError.from_exception_data('HpClusterStack', [
+                {
+                    'type': 'value_error',
+                    'loc': ('eks_private_subnet_ids',),
+                    'msg': 'Empty lists [] are not allowed. Use proper YAML array format or leave field empty.',
+                    'input': [],
+                    'ctx': {'error': 'Empty lists [] are not allowed. Use proper YAML array format or leave field empty.'}
+                }
+            ])
+            mock_cluster_stack.side_effect = mock_error
+            
+            errors = validate_config_against_model(config_data, 'hyp-cluster', '1.0')
+            
+            assert len(errors) == 1
+            assert 'Empty lists [] are not allowed' in errors[0]
+    
+    def test_validate_config_with_proper_yaml_array_succeeds(self):
+        """Test that proper YAML arrays pass validation"""
+        config_data = {
+            'template': 'hyp-cluster',
+            'version': '1.0',
+            'eks_private_subnet_ids': ['subnet-123', 'subnet-456']
+        }
+        mock_templates = {
+            'hyp-cluster': {'schema_type': CFN}
+        }
+        
+        with patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack, \
+             patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates):
+            
+            # Mock successful validation
+            mock_cluster_stack.return_value = Mock()
+            
+            errors = validate_config_against_model(config_data, 'hyp-cluster', '1.0')
+            
+            assert errors == []
+    
+    def test_validate_config_with_none_list_field_succeeds(self):
+        """Test that None values for list fields pass validation"""
+        config_data = {
+            'template': 'hyp-cluster',
+            'version': '1.0',
+            'eks_private_subnet_ids': None
+        }
+        mock_templates = {
+            'hyp-cluster': {'schema_type': CFN}
+        }
+        
+        with patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack, \
+             patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates):
+            
+            # Mock successful validation (None should be filtered out)
+            mock_cluster_stack.return_value = Mock()
+            
+            errors = validate_config_against_model(config_data, 'hyp-cluster', '1.0')
+            
+            assert errors == []
+            # Verify None value was filtered out
+            call_args = mock_cluster_stack.call_args[1]
+            assert 'eks_private_subnet_ids' not in call_args
