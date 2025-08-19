@@ -1,49 +1,91 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "FlatHPJumpStartEndpointV1",
-  "type": "object",
   "additionalProperties": false,
+  "properties": {
+    "accept_eula": {
+      "default": false,
+      "description": "Whether model terms of use have been accepted",
+      "title": "Accept Eula",
+      "type": "boolean"
+    },
+    "metadata_name": {
+      "anyOf": [
+        {
+          "maxLength": 63,
+          "pattern": "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Name of the jumpstart endpoint object",
+      "title": "Metadata Name"
+    },
+    "model_id": {
+      "description": "Unique identifier of the model within the hub",
+      "maxLength": 63,
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$",
+      "title": "Model Id",
+      "type": "string"
+    },
+    "model_version": {
+      "anyOf": [
+        {
+          "maxLength": 14,
+          "minLength": 5,
+          "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,4}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Semantic version of the model to deploy (e.g. 1.0.0)",
+      "title": "Model Version"
+    },
+    "instance_type": {
+      "description": "EC2 instance type for the inference server",
+      "pattern": "^ml\\..*",
+      "title": "Instance Type",
+      "type": "string"
+    },
+    "endpoint_name": {
+      "anyOf": [
+        {
+          "maxLength": 63,
+          "pattern": "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Name of SageMaker endpoint; empty string means no creation",
+      "title": "Endpoint Name"
+    },
+    "tls_certificate_output_s3_uri": {
+      "anyOf": [
+        {
+          "pattern": "^s3://([^/]+)/?(.*)$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "S3 URI to write the TLS certificate (optional)",
+      "title": "Tls Certificate Output S3 Uri"
+    }
+  },
   "required": [
     "model_id",
     "instance_type"
   ],
-  "properties": {
-    "accept_eula": {
-      "type": "boolean",
-      "description": "Whether model terms of use have been accepted",
-      "default": false
-    },
-    "model_id": {
-      "type": "string",
-      "description": "Unique identifier of the model within the hub",
-      "minLength": 1,
-      "maxLength": 63,
-      "pattern": "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$"
-    },
-    "model_version": {
-      "type": ["string", "null"],
-      "description": "Semantic version of the model to deploy (e.g. 1.0.0)",
-      "minLength": 5,
-      "maxLength": 14,
-      "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,4}$",
-      "default": null
-    },
-    "instance_type": {
-      "type": "string",
-      "description": "EC2 instance type for the inference server",
-      "pattern": "^ml\\..*"
-    },
-    "endpoint_name": {
-      "type": "string",
-      "description": "Name of SageMaker endpoint; empty string means no creation",
-      "default": "",
-      "maxLength": 63,
-      "pattern": "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$"
-    },
-    "tls_certificate_output_s3_uri": {
-      "type": ["string", "null"],
-      "description": "S3 URI to write the TLS certificate (optional)",
-      "pattern": "^s3://([^/]+)/?(.*)$"
-    }
-  }
+  "title": "FlatHPJumpStartEndpoint",
+  "type": "object"
 }

@@ -38,7 +38,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         spec = _HPEndpoint(**self.model_dump(by_alias=True, exclude_none=True))
 
         if not spec.endpointName and not name:
-            raise Exception('Input "name" is required if endpoint name is not provided')
+            raise Exception('Either metadata name or endpoint name must be provided')
 
         if not namespace:
             namespace = get_default_namespace()
