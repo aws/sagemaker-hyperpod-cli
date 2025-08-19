@@ -286,12 +286,14 @@ class TestHyperPodPytorchJob(unittest.TestCase):
     @patch("kubernetes.client.CoreV1Api")
     @patch.object(HyperPodPytorchJob, "verify_kube_config")
     def test_get_operator_logs(self, mock_verify_config, mock_core_api):
-        # Mock multiple pods, including the training operator pod
+        # Mock multiple pods, including the training operator pod with correct label
         mock_other_pod = MagicMock()
         mock_other_pod.metadata.name = "other-pod-123"
+        mock_other_pod.metadata.labels = {"app": "other"}
         
         mock_operator_pod = MagicMock()
-        mock_operator_pod.metadata.name = "hp-training-operator-hp-training-controller-manager-abc123"
+        mock_operator_pod.metadata.name = "training-operator-pod-abc123"
+        mock_operator_pod.metadata.labels = {"hp-training-control-plane": "true"}
         
         mock_core_api.return_value.list_namespaced_pod.return_value.items = [mock_other_pod, mock_operator_pod]
         mock_core_api.return_value.read_namespaced_pod_log.return_value = "training operator logs"
@@ -300,7 +302,7 @@ class TestHyperPodPytorchJob(unittest.TestCase):
 
         self.assertEqual(result, "training operator logs")
         mock_core_api.return_value.read_namespaced_pod_log.assert_called_once_with(
-            name="hp-training-operator-hp-training-controller-manager-abc123",
+            name="training-operator-pod-abc123",
             namespace="aws-hyperpod",
             timestamps=True,
             since_seconds=9000,
