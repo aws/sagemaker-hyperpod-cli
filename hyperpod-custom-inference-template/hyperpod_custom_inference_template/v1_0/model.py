@@ -251,8 +251,8 @@ class FlatHPEndpoint(BaseModel):
             if not self.s3_bucket_name or not self.s3_region:
                 raise ValueError("s3_bucket_name and s3_region are required when model_source_type is 's3'")
         elif self.model_source_type == "fsx":
-            if not self.fsx_dns_name or not self.fsx_file_system_id or not self.fsx_mount_name:
-                raise ValueError("fsx_dns_name, fsx_file_system_id and fsx_mount_name are required when model_source_type is 'fsx'")
+            if not self.fsx_file_system_id:
+                raise ValueError("fsx_file_system_id is required when model_source_type is 'fsx'")
         return self
     
     def to_domain(self) -> HPEndpoint:
