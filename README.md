@@ -54,24 +54,13 @@ SageMaker HyperPod CLI currently supports start training job with:
 
 1. Make sure that your local python version is 3.8, 3.9, 3.10 or 3.11.
 
-1. Install ```helm```.
-
-    The SageMaker Hyperpod CLI uses Helm to start training jobs. See also the [Helm installation guide](https://helm.sh/docs/intro/install/).
-
-    ```
-    curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
-    chmod 700 get_helm.sh
-    ./get_helm.sh
-    rm -f ./get_helm.sh  
-    ```
-
-1. Clone and install the sagemaker-hyperpod-cli package.
+2. Install the sagemaker-hyperpod-cli package.
 
     ```
     pip install sagemaker-hyperpod
     ```
 
-1. Verify if the installation succeeded by running the following command.
+3. Verify if the installation succeeded by running the following command.
 
     ```
     hyp --help
@@ -207,7 +196,7 @@ hyp invoke hyp-jumpstart-endpoint \
 
 ```
 hyp list hyp-jumpstart-endpoint
-hyp get hyp-jumpstart-endpoint --name endpoint-jumpstart
+hyp describe hyp-jumpstart-endpoint --name endpoint-jumpstart
 ```
 
 #### Creating a Custom Inference Endpoint 
