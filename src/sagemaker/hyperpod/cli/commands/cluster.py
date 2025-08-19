@@ -25,6 +25,16 @@ from ratelimit import limits, sleep_and_retry
 RATE_LIMIT = 4
 RATE_LIMIT_PERIOD = 1
 
+# Import lightweight constants at module level for test compatibility
+from sagemaker.hyperpod.cli.constants.command_constants import (
+    DEEP_HEALTH_CHECK_STATUS_LABEL,
+    HP_HEALTH_STATUS_LABEL,
+    INSTANCE_TYPE_LABEL,
+)
+
+# Import lightweight ClusterValidator for test compatibility
+from sagemaker.hyperpod.cli.validators.cluster_validator import ClusterValidator
+
 def _ensure_cluster_deps():
     """Lazy load heavy dependencies for cluster commands"""
     global logging, subprocess, json, sys, botocore, defaultdict
@@ -36,7 +46,7 @@ def _ensure_cluster_deps():
     global TOTAL_ACCELERATOR_DEVICES_KEY, TEMP_KUBE_CONFIG_FILE, OutputFormat
     global get_user_agent_extra_suffix, ListPods, get_name_from_arn
     global get_sagemaker_client, setup_logger, set_logging_level
-    global store_current_hyperpod_context, ClusterValidator, get_eks_cluster_name
+    global store_current_hyperpod_context, get_eks_cluster_name
     global get_cluster_context_util, get_monitoring_config, is_observability_addon_enabled
     global _hyperpod_telemetry_emitter, Feature, RATE_LIMIT, RATE_LIMIT_PERIOD, logger
     
@@ -66,7 +76,7 @@ def _ensure_cluster_deps():
         get_name_from_arn, get_sagemaker_client, setup_logger, set_logging_level,
         store_current_hyperpod_context, get_eks_cluster_name,
     )
-    from sagemaker.hyperpod.cli.validators.cluster_validator import ClusterValidator
+    # ClusterValidator already imported at module level, no need to reimport
     from sagemaker.hyperpod.common.utils import get_cluster_context as get_cluster_context_util
     from sagemaker.hyperpod.observability.utils import get_monitoring_config, is_observability_addon_enabled
     from sagemaker.hyperpod.common.telemetry.telemetry_logging import _hyperpod_telemetry_emitter

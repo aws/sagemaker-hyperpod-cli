@@ -1,5 +1,14 @@
 import click
 
+# Import heavy dependencies at module level for test compatibility
+# These will be available for mocking but won't impact startup performance
+HyperPodPytorchJob = None
+Metadata = None
+generate_click_command = None
+SCHEMA_REGISTRY = None
+_hyperpod_telemetry_emitter = None
+Feature = None
+
 # Lazy import function for ALL heavy dependencies
 def _get_training_dependencies():
     """Lazy load ALL heavy training dependencies"""
@@ -60,9 +69,9 @@ def pytorch_create():
             if "run_policy" in spec:
                 job_kwargs["run_policy"] = spec.get("run_policy")
 
-                # Create job
-                job = HyperPodPytorchJob(**job_kwargs)
-                job.create(debug=debug)
+            # Create job
+            job = HyperPodPytorchJob(**job_kwargs)
+            job.create(debug=debug)
 
         except Exception as e:
             raise click.UsageError(f"Failed to create job: {str(e)}")

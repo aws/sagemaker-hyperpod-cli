@@ -640,8 +640,12 @@ class ClusterTest(unittest.TestCase):
 
         result = self.runner.invoke(list_cluster)
         self.assertEqual(result.exit_code, 0)
-        self.assertNotIn("cluster-1", result.output)
-        self.assertNotIn("cluster-2", result.output)
+        # Clusters should be mentioned in error messages but not in successful results
+        self.assertIn("Error processing cluster cluster-1", result.output)
+        self.assertIn("Error processing cluster cluster-2", result.output)
+        self.assertIn("Unexpected node health status", result.output)
+        # Results should be empty array since all clusters had errors
+        self.assertIn("[]", result.output)
 
     @mock.patch("kubernetes.config.load_kube_config")
     @mock.patch("boto3.Session")
@@ -887,8 +891,12 @@ class ClusterTest(unittest.TestCase):
         result = self.runner.invoke(list_cluster)
         self.assertEqual(result.exit_code, 0)
         # clusters got skipped because exception encounter during processing clusters
-        self.assertNotIn("cluster-1", result.output)
-        self.assertNotIn("cluster-2", result.output)
+        # Clusters should be mentioned in error messages
+        self.assertIn("Error processing cluster cluster-1", result.output)
+        self.assertIn("Error processing cluster cluster-2", result.output)
+        self.assertIn("Unexpected error", result.output)
+        # Results should be empty array since all clusters had errors
+        self.assertIn("[]", result.output)
 
     @mock.patch("kubernetes.config.load_kube_config")
     @mock.patch("boto3.Session")

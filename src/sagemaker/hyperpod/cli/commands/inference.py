@@ -1,6 +1,21 @@
 import click
 from typing import Optional
 
+# Import heavy dependencies at module level for test compatibility
+# These will be available for mocking but won't impact startup performance
+# since they're only used when commands are actually executed
+json = None
+boto3 = None 
+tabulate = None
+HPJumpStartEndpoint = None
+HPEndpoint = None
+Endpoint = None
+generate_click_command = None
+JS_REG = None
+C_REG = None
+_hyperpod_telemetry_emitter = None
+Feature = None
+
 # Lazy import function for ALL heavy dependencies
 def _get_inference_dependencies():
     """Lazy load ALL heavy inference dependencies"""
