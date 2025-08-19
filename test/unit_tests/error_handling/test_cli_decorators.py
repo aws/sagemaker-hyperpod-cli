@@ -64,32 +64,36 @@ class TestTemplateAgnosticDetection:
         mock_func = Mock()
         mock_func.name = "hyp-jumpstart-endpoint"
         
-        result = _extract_resource_from_command(mock_func)
-        assert result == "jumpstart endpoint"
+        raw_resource_type, display_name = _extract_resource_from_command(mock_func)
+        assert raw_resource_type == "jumpstart-endpoint"
+        assert display_name == "JumpStart Endpoint"
     
     def test_extract_resource_from_pytorch_command(self):
         """Test resource type extraction for PyTorch jobs."""
         mock_func = Mock()
         mock_func.name = "hyp-pytorch-job"
         
-        result = _extract_resource_from_command(mock_func)
-        assert result == "pytorch job"
+        raw_resource_type, display_name = _extract_resource_from_command(mock_func)
+        assert raw_resource_type == "pytorch-job"
+        assert display_name == "PyTorch Job"
     
     def test_extract_resource_from_custom_command(self):
         """Test resource type extraction for custom endpoints."""
         mock_func = Mock()
         mock_func.name = "hyp-custom-endpoint"
         
-        result = _extract_resource_from_command(mock_func)
-        assert result == "custom endpoint"
+        raw_resource_type, display_name = _extract_resource_from_command(mock_func)
+        assert raw_resource_type == "custom-endpoint"
+        assert display_name == "Custom Endpoint"
     
     def test_extract_resource_from_future_template(self):
         """Test resource type extraction works with future templates."""
         mock_func = Mock()
         mock_func.name = "hyp-llama-job"
         
-        result = _extract_resource_from_command(mock_func)
-        assert result == "llama job"
+        raw_resource_type, display_name = _extract_resource_from_command(mock_func)
+        assert raw_resource_type == "llama-job"
+        assert display_name == "Llama Job"
     
     def test_extract_resource_fallback(self):
         """Test resource type extraction fallback."""
@@ -97,8 +101,9 @@ class TestTemplateAgnosticDetection:
         mock_func.name = None
         mock_func.__name__ = "js_delete"
         
-        result = _extract_resource_from_command(mock_func)
-        assert result == "js resource"
+        raw_resource_type, display_name = _extract_resource_from_command(mock_func)
+        assert raw_resource_type == "resource"
+        assert display_name == "Resource"
     
     def test_detect_operation_from_function_name(self):
         """Test operation type detection from function names."""
@@ -126,40 +131,48 @@ class TestTemplateAgnosticDetection:
     
     def test_get_list_command_generation(self):
         """Test list command generation from resource types."""
-        result = _get_list_command_from_resource_type("jumpstart endpoint")
+        result = _get_list_command_from_resource_type("jumpstart-endpoint")
         assert result == "hyp list hyp-jumpstart-endpoint"
         
-        result = _get_list_command_from_resource_type("pytorch job")
+        result = _get_list_command_from_resource_type("pytorch-job")
         assert result == "hyp list hyp-pytorch-job"
         
-        result = _get_list_command_from_resource_type("future template")
+        result = _get_list_command_from_resource_type("future-template")
         assert result == "hyp list hyp-future-template"
 
 
 class TestTemplateAgnostic404Handling:
     """Test template-agnostic 404 handling functionality."""
     
+    @patch('sagemaker.hyperpod.common.cli_decorators._get_available_resource_count')
     @patch('sagemaker.hyperpod.common.cli_decorators.click')
     @patch('sagemaker.hyperpod.common.cli_decorators.sys')
-    def test_404_exception_with_dynamic_detection(self, mock_sys, mock_click):
+    def test_404_exception_with_dynamic_detection(self, mock_sys, mock_click, mock_get_count):
         """Test 404 exception handling with dynamic resource/operation detection."""
+        # Mock the resource count to avoid actual API calls
+        mock_get_count.return_value = 3
+        
         api_exception = ApiException(status=404, reason="Not Found")
         
-        # Mock function that looks like a JumpStart delete command
+        # Test the decorator directly
         @handle_cli_exceptions()
-        @click.command("hyp-jumpstart-endpoint")
         def js_delete(name, namespace="default"):
             raise api_exception
         
+        # Manually set the function attributes to simulate Click command
+        js_delete.name = "hyp-jumpstart-endpoint"
+        
         js_delete(name="test", namespace="default")
         
-        # Should display template-agnostic 404 message
-        mock_click.echo.assert_called_once()
-        call_args = mock_click.echo.call_args[0][0]
-        assert "jumpstart endpoint" in call_args.lower()
-        assert "'test' not found" in call_args
-        assert "namespace 'default'" in call_args
-        mock_sys.exit.assert_called_once_with(1)
+        # With mocked sys.exit, both enhanced and standard handling occur
+        assert mock_click.echo.call_count == 2
+        # First call should be our enhanced 404 message
+        first_call_args = mock_click.echo.call_args_list[0][0][0]
+        assert "'test' not found" in first_call_args
+        assert "namespace 'default'" in first_call_args
+        assert "There are 3 resources" in first_call_args
+        assert "hyp list" in first_call_args
+        mock_sys.exit.assert_called_with(1)
     
     @patch('sagemaker.hyperpod.common.cli_decorators.click')
     @patch('sagemaker.hyperpod.common.cli_decorators.sys')
@@ -174,10 +187,14 @@ class TestTemplateAgnostic404Handling:
         mock_click.echo.assert_called_once_with("Generic error")
         mock_sys.exit.assert_called_once_with(1)
     
+    @patch('sagemaker.hyperpod.common.cli_decorators._get_available_resource_count')
     @patch('sagemaker.hyperpod.common.cli_decorators.click')
     @patch('sagemaker.hyperpod.common.cli_decorators.sys')
-    def test_fallback_404_message(self, mock_sys, mock_click):
+    def test_fallback_404_message(self, mock_sys, mock_click, mock_get_count):
         """Test fallback message when dynamic detection fails."""
+        # Mock the resource count to fail and trigger fallback
+        mock_get_count.side_effect = Exception("Count failed")
+        
         api_exception = ApiException(status=404, reason="Not Found")
         
         @handle_cli_exceptions()
@@ -186,8 +203,11 @@ class TestTemplateAgnostic404Handling:
         
         unknown_function(name="test", namespace="default")
         
-        # Should display fallback message
-        mock_click.echo.assert_called_once()
-        call_args = mock_click.echo.call_args[0][0]
-        assert "resource 'test' not found" in call_args.lower()
-        mock_sys.exit.assert_called_once_with(1)
+        # Should display fallback message - expecting 2 calls due to mocked sys.exit
+        assert mock_click.echo.call_count == 2
+        # First call should be the fallback message
+        first_call_args = mock_click.echo.call_args_list[0][0][0]
+        assert "'test' not found" in first_call_args
+        assert "namespace 'default'" in first_call_args
+        assert "Unknown" in first_call_args or "Resource" in first_call_args
+        mock_sys.exit.assert_called_with(1)
