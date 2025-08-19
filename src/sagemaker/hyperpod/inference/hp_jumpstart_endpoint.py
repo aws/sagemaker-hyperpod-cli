@@ -43,7 +43,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
             endpoint_name = spec.sageMakerEndpoint.name
 
         if not endpoint_name and not name:
-            raise Exception('Input "name" is required if endpoint name is not provided')
+            raise Exception('Either metadata name or endpoint name must be provided')
 
         if not name:
             name = endpoint_name

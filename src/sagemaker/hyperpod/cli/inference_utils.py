@@ -30,6 +30,7 @@ def generate_click_command(
         # 1) the wrapper click actually invokes
         def wrapped_func(*args, **kwargs):
             namespace = kwargs.pop("namespace", None)
+            name = kwargs.pop("metadata_name", None)
             pop_version = kwargs.pop("version", "1.0")
 
             Model = registry.get(version)
@@ -38,7 +39,7 @@ def generate_click_command(
 
             flat = Model(**kwargs)
             domain = flat.to_domain()
-            return func(namespace, version, domain)
+            return func(name, namespace, version, domain)
 
         # 2) inject JSON flags only if they exist in the schema
         schema = load_schema_for_version(version, schema_pkg)
