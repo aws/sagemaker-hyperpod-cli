@@ -15,7 +15,7 @@ from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
 )
 from sagemaker.hyperpod.common.telemetry.constants import Feature
 from sagemaker.hyperpod.common.cli_decorators import handle_cli_exceptions
-from sagemaker.hyperpod.common.exceptions.error_constants import ResourceType, OperationType
+from sagemaker.hyperpod.common.utils import display_formatted_logs
 
 
 # CREATE
@@ -238,10 +238,7 @@ def custom_list(
     help="Optional. If set to `True`, the full json will be displayed",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_js_endpoint_cli")
-@handle_cli_exceptions(
-    resource_type=ResourceType.HYP_JUMPSTART_ENDPOINT,
-    operation_type=OperationType.DESCRIBE
-)
+@handle_cli_exceptions()
 def js_describe(
     name: str,
     namespace: Optional[str],
@@ -390,10 +387,7 @@ def js_describe(
     help="Optional. If set to `True`, the full json will be displayed",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_custom_endpoint_cli")
-@handle_cli_exceptions(
-    resource_type=ResourceType.HYP_CUSTOM_ENDPOINT,
-    operation_type=OperationType.DESCRIBE
-)
+@handle_cli_exceptions()
 def custom_describe(
     name: str,
     namespace: Optional[str],
@@ -568,10 +562,7 @@ def custom_describe(
     help="Optional. The namespace of the jumpstart model endpoint to delete. Default set to 'default'.",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "delete_js_endpoint_cli")
-@handle_cli_exceptions(
-    resource_type=ResourceType.HYP_JUMPSTART_ENDPOINT,
-    operation_type=OperationType.DELETE
-)
+@handle_cli_exceptions()
 def js_delete(
     name: str,
     namespace: Optional[str],
@@ -600,10 +591,7 @@ def js_delete(
     help="Optional. The namespace of the custom model endpoint to delete. Default set to 'default'.",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "delete_custom_endpoint_cli")
-@handle_cli_exceptions(
-    resource_type=ResourceType.HYP_CUSTOM_ENDPOINT,
-    operation_type=OperationType.DELETE
-)
+@handle_cli_exceptions()
 def custom_delete(
     name: str,
     namespace: Optional[str],
@@ -624,10 +612,7 @@ def custom_delete(
     help="Optional. The namespace of the jumpstart model to list pods for. Default set to 'default'.",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_pods_js_endpoint_cli")
-@handle_cli_exceptions(
-    resource_type=ResourceType.HYP_JUMPSTART_ENDPOINT,
-    operation_type=OperationType.LIST
-)
+@handle_cli_exceptions()
 def js_list_pods(
     namespace: Optional[str],
 ):
@@ -648,10 +633,7 @@ def js_list_pods(
     help="Optional. The namespace of the custom model to list pods for. Default set to 'default'.",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_pods_custom_endpoint_cli")
-@handle_cli_exceptions(
-    resource_type=ResourceType.HYP_CUSTOM_ENDPOINT,
-    operation_type=OperationType.LIST
-)
+@handle_cli_exceptions()
 def custom_list_pods(
     namespace: Optional[str],
 ):
@@ -684,10 +666,7 @@ def custom_list_pods(
     help="Optional. The namespace of the jumpstart model to get logs for. Default set to 'default'.",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_logs_js_endpoint")
-@handle_cli_exceptions(
-    resource_type=ResourceType.HYP_JUMPSTART_ENDPOINT,
-    operation_type=OperationType.GET
-)
+@handle_cli_exceptions()
 def js_get_logs(
     pod_name: str,
     container: Optional[str],
@@ -698,7 +677,10 @@ def js_get_logs(
     """
     my_endpoint = HPJumpStartEndpoint.model_construct()
     logs = my_endpoint.get_logs(pod=pod_name, container=container, namespace=namespace)
-    click.echo(logs)
+    
+    # Use common log display utility for consistent formatting across all job types
+    container_info = f" (container: {container})" if container else ""
+    display_formatted_logs(logs, title=f"JumpStart Endpoint Logs for {pod_name}{container_info}")
 
 
 @click.command("hyp-custom-endpoint")
@@ -722,10 +704,7 @@ def js_get_logs(
     help="Optional. The namespace of the custom model to get logs for. Default set to 'default'.",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_logs_custom_endpoint")
-@handle_cli_exceptions(
-    resource_type=ResourceType.HYP_CUSTOM_ENDPOINT,
-    operation_type=OperationType.GET
-)
+@handle_cli_exceptions()
 def custom_get_logs(
     pod_name: str,
     container: Optional[str],
@@ -736,7 +715,10 @@ def custom_get_logs(
     """
     my_endpoint = HPEndpoint.model_construct()
     logs = my_endpoint.get_logs(pod=pod_name, container=container, namespace=namespace)
-    click.echo(logs)
+    
+    # Use common log display utility for consistent formatting across all job types
+    container_info = f" (container: {container})" if container else ""
+    display_formatted_logs(logs, title=f"Custom Endpoint Logs for {pod_name}{container_info}")
 
 
 @click.command("hyp-jumpstart-endpoint")

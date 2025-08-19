@@ -1,26 +1,28 @@
 """
 Unit tests for cli_decorators module.
-Tests all CLI exception handling decorators and auto-detection functionality.
+Tests template-agnostic CLI exception handling decorators and auto-detection functionality.
 """
 
 import pytest
 import sys
+import click
 from unittest.mock import Mock, patch, MagicMock, PropertyMock
 from kubernetes.client.exceptions import ApiException
 
-from sagemaker.hyperpod.common.cli_decorators import handle_cli_exceptions
-from sagemaker.hyperpod.common.exceptions.error_constants import ResourceType, OperationType
+from sagemaker.hyperpod.common.cli_decorators import (
+    handle_cli_exceptions,
+    _extract_resource_from_command,
+    _detect_operation_type_from_function,
+    _get_list_command_from_resource_type
+)
 
 
 class TestHandleCliExceptions:
-    """Test handle_cli_exceptions decorator."""
+    """Test template-agnostic handle_cli_exceptions decorator."""
     
     def test_successful_function_execution(self):
         """Test decorator allows successful function execution."""
-        @handle_cli_exceptions(
-            resource_type=ResourceType.HYP_JUMPSTART_ENDPOINT,
-            operation_type=OperationType.DELETE
-        )
+        @handle_cli_exceptions()
         def test_function():
             return "success"
         
@@ -31,10 +33,7 @@ class TestHandleCliExceptions:
     @patch('sagemaker.hyperpod.common.cli_decorators.sys')
     def test_exception_handling(self, mock_sys, mock_click):
         """Test decorator handles exceptions correctly."""
-        @handle_cli_exceptions(
-            resource_type=ResourceType.HYP_JUMPSTART_ENDPOINT,
-            operation_type=OperationType.DELETE
-        )
+        @handle_cli_exceptions()
         def failing_function():
             raise Exception("Test error")
         
@@ -47,10 +46,7 @@ class TestHandleCliExceptions:
     @patch('sagemaker.hyperpod.common.cli_decorators.sys')
     def test_preserves_function_metadata(self, mock_sys, mock_click):
         """Test decorator preserves original function metadata."""
-        @handle_cli_exceptions(
-            resource_type=ResourceType.HYP_JUMPSTART_ENDPOINT,
-            operation_type=OperationType.DELETE
-        )
+        @handle_cli_exceptions()
         def documented_function():
             """This is a test function."""
             pass
@@ -59,59 +55,117 @@ class TestHandleCliExceptions:
         assert documented_function.__doc__ == "This is a test function."
 
 
-class TestHandleCliExceptions404Handling:
-    """Test handle_cli_exceptions decorator 404 handling functionality."""
+class TestTemplateAgnosticDetection:
+    """Test template-agnostic resource and operation detection."""
     
-    def test_successful_function_execution(self):
-        """Test decorator allows successful function execution."""
-        @handle_cli_exceptions(
-            resource_type=ResourceType.HYP_JUMPSTART_ENDPOINT,
-            operation_type=OperationType.DELETE
-        )
-        def test_function():
-            return "success"
+    def test_extract_resource_from_command(self):
+        """Test resource type extraction from Click command names."""
+        # Mock function with Click command name
+        mock_func = Mock()
+        mock_func.name = "hyp-jumpstart-endpoint"
         
-        result = test_function()
-        assert result == "success"
+        result = _extract_resource_from_command(mock_func)
+        assert result == "jumpstart endpoint"
     
-    @patch('sagemaker.hyperpod.common.cli_decorators.handle_404')
+    def test_extract_resource_from_pytorch_command(self):
+        """Test resource type extraction for PyTorch jobs."""
+        mock_func = Mock()
+        mock_func.name = "hyp-pytorch-job"
+        
+        result = _extract_resource_from_command(mock_func)
+        assert result == "pytorch job"
+    
+    def test_extract_resource_from_custom_command(self):
+        """Test resource type extraction for custom endpoints."""
+        mock_func = Mock()
+        mock_func.name = "hyp-custom-endpoint"
+        
+        result = _extract_resource_from_command(mock_func)
+        assert result == "custom endpoint"
+    
+    def test_extract_resource_from_future_template(self):
+        """Test resource type extraction works with future templates."""
+        mock_func = Mock()
+        mock_func.name = "hyp-llama-job"
+        
+        result = _extract_resource_from_command(mock_func)
+        assert result == "llama job"
+    
+    def test_extract_resource_fallback(self):
+        """Test resource type extraction fallback."""
+        mock_func = Mock()
+        mock_func.name = None
+        mock_func.__name__ = "js_delete"
+        
+        result = _extract_resource_from_command(mock_func)
+        assert result == "js resource"
+    
+    def test_detect_operation_from_function_name(self):
+        """Test operation type detection from function names."""
+        mock_func = Mock()
+        mock_func.__name__ = "js_delete"
+        
+        result = _detect_operation_type_from_function(mock_func)
+        assert result == "delete"
+    
+    def test_detect_operation_describe(self):
+        """Test operation type detection for describe operations."""
+        mock_func = Mock()
+        mock_func.__name__ = "pytorch_describe"
+        
+        result = _detect_operation_type_from_function(mock_func)
+        assert result == "describe"
+    
+    def test_detect_operation_list(self):
+        """Test operation type detection for list operations."""
+        mock_func = Mock()
+        mock_func.__name__ = "custom_list_pods"
+        
+        result = _detect_operation_type_from_function(mock_func)
+        assert result == "list"
+    
+    def test_get_list_command_generation(self):
+        """Test list command generation from resource types."""
+        result = _get_list_command_from_resource_type("jumpstart endpoint")
+        assert result == "hyp list hyp-jumpstart-endpoint"
+        
+        result = _get_list_command_from_resource_type("pytorch job")
+        assert result == "hyp list hyp-pytorch-job"
+        
+        result = _get_list_command_from_resource_type("future template")
+        assert result == "hyp list hyp-future-template"
+
+
+class TestTemplateAgnostic404Handling:
+    """Test template-agnostic 404 handling functionality."""
+    
     @patch('sagemaker.hyperpod.common.cli_decorators.click')
     @patch('sagemaker.hyperpod.common.cli_decorators.sys')
-    def test_404_exception_handling(self, mock_sys, mock_click, mock_handle_404):
-        """Test decorator handles 404 exceptions with enhanced messaging."""
-        # Create 404 ApiException
+    def test_404_exception_with_dynamic_detection(self, mock_sys, mock_click):
+        """Test 404 exception handling with dynamic resource/operation detection."""
         api_exception = ApiException(status=404, reason="Not Found")
         
-        @handle_cli_exceptions(
-            resource_type=ResourceType.HYP_JUMPSTART_ENDPOINT,
-            operation_type=OperationType.DELETE
-        )
-        def js_delete(name, namespace):
+        # Mock function that looks like a JumpStart delete command
+        @handle_cli_exceptions()
+        @click.command("hyp-jumpstart-endpoint")
+        def js_delete(name, namespace="default"):
             raise api_exception
-        
-        # Mock handle_404 to raise Exception with enhanced message
-        mock_handle_404.side_effect = Exception("❓ JumpStart endpoint 'test' not found...")
         
         js_delete(name="test", namespace="default")
         
-        # Should call handle_404 with explicit parameters
-        mock_handle_404.assert_called_once_with(
-            "test", "default", ResourceType.HYP_JUMPSTART_ENDPOINT, OperationType.DELETE
-        )
-        # Should call click.echo with the enhanced message (may be called multiple times)
-        mock_click.echo.assert_any_call("❓ JumpStart endpoint 'test' not found...")
-        # sys.exit may be called multiple times due to exception re-handling
-        assert mock_sys.exit.call_count >= 1
-        mock_sys.exit.assert_called_with(1)
+        # Should display template-agnostic 404 message
+        mock_click.echo.assert_called_once()
+        call_args = mock_click.echo.call_args[0][0]
+        assert "jumpstart endpoint" in call_args.lower()
+        assert "'test' not found" in call_args
+        assert "namespace 'default'" in call_args
+        mock_sys.exit.assert_called_once_with(1)
     
     @patch('sagemaker.hyperpod.common.cli_decorators.click')
     @patch('sagemaker.hyperpod.common.cli_decorators.sys')
     def test_non_404_exception_handling(self, mock_sys, mock_click):
-        """Test decorator handles non-404 exceptions normally."""
-        @handle_cli_exceptions(
-            resource_type=ResourceType.HYP_JUMPSTART_ENDPOINT,
-            operation_type=OperationType.DELETE
-        )
+        """Test non-404 exceptions are handled normally."""
+        @handle_cli_exceptions()
         def failing_function():
             raise Exception("Generic error")
         
@@ -122,160 +176,18 @@ class TestHandleCliExceptions404Handling:
     
     @patch('sagemaker.hyperpod.common.cli_decorators.click')
     @patch('sagemaker.hyperpod.common.cli_decorators.sys')
-    def test_non_api_exception_handling(self, mock_sys, mock_click):
-        """Test decorator handles non-ApiException errors normally."""
-        @handle_cli_exceptions(
-            resource_type=ResourceType.HYP_JUMPSTART_ENDPOINT,
-            operation_type=OperationType.DELETE
-        )
-        def failing_function():
-            raise ValueError("Value error")
-        
-        failing_function()
-        
-        mock_click.echo.assert_called_once_with("Value error")
-        mock_sys.exit.assert_called_once_with(1)
-    
-    @patch('sagemaker.hyperpod.common.cli_decorators.handle_404')
-    @patch('sagemaker.hyperpod.common.cli_decorators.click')
-    @patch('sagemaker.hyperpod.common.cli_decorators.sys')
-    def test_404_detection_failure_fallback(self, mock_sys, mock_click, mock_handle_404):
-        """Test decorator falls back when resource/operation detection fails."""
+    def test_fallback_404_message(self, mock_sys, mock_click):
+        """Test fallback message when dynamic detection fails."""
         api_exception = ApiException(status=404, reason="Not Found")
         
-        @handle_cli_exceptions()  # No parameters provided
+        @handle_cli_exceptions()
         def unknown_function(name, namespace):
             raise api_exception
         
         unknown_function(name="test", namespace="default")
         
-        # Should not call handle_404 since no parameters provided
-        mock_handle_404.assert_not_called()
-        mock_click.echo.assert_called_once_with("(404)\nReason: Not Found\n")
+        # Should display fallback message
+        mock_click.echo.assert_called_once()
+        call_args = mock_click.echo.call_args[0][0]
+        assert "resource 'test' not found" in call_args.lower()
         mock_sys.exit.assert_called_once_with(1)
-    
-    def test_preserves_function_metadata(self):
-        """Test decorator preserves original function metadata."""
-        @handle_cli_exceptions(
-            resource_type=ResourceType.HYP_JUMPSTART_ENDPOINT,
-            operation_type=OperationType.DELETE
-        )
-        def documented_function():
-            """This is a smart test function."""
-            pass
-        
-        assert documented_function.__name__ == "documented_function"
-        assert documented_function.__doc__ == "This is a smart test function."
-
-
-class TestIntegrationSmartHandler:
-    """Integration tests for smart CLI exception handler."""
-    
-    @patch('sagemaker.hyperpod.common.cli_decorators.handle_404')
-    @patch('sagemaker.hyperpod.common.cli_decorators.click')
-    @patch('sagemaker.hyperpod.common.cli_decorators.sys')
-    def test_complete_jumpstart_delete_flow(self, mock_sys, mock_click, mock_handle_404):
-        """Test complete flow for JumpStart endpoint delete."""
-        api_exception = ApiException(status=404, reason="Not Found")
-        mock_handle_404.side_effect = Exception("Enhanced 404 message")
-        
-        @handle_cli_exceptions(
-            resource_type=ResourceType.HYP_JUMPSTART_ENDPOINT,
-            operation_type=OperationType.DELETE
-        )
-        def js_delete(name, namespace="default"):
-            raise api_exception
-        
-        js_delete(name="missing-endpoint", namespace="production")
-        
-        mock_handle_404.assert_called_once_with(
-            "missing-endpoint", "production", 
-            ResourceType.HYP_JUMPSTART_ENDPOINT, OperationType.DELETE
-        )
-        # Should call click.echo with the enhanced message (may be called multiple times due to error re-handling)
-        mock_click.echo.assert_any_call("Enhanced 404 message")
-        # sys.exit may be called multiple times due to exception re-handling
-        assert mock_sys.exit.call_count >= 1
-        mock_sys.exit.assert_called_with(1)
-    
-    @patch('sagemaker.hyperpod.common.cli_decorators.handle_404')
-    @patch('sagemaker.hyperpod.common.cli_decorators.click')
-    @patch('sagemaker.hyperpod.common.cli_decorators.sys')
-    def test_complete_custom_describe_flow(self, mock_sys, mock_click, mock_handle_404):
-        """Test complete flow for custom endpoint describe."""
-        api_exception = ApiException(status=404, reason="Not Found")
-        mock_handle_404.side_effect = Exception("Custom endpoint not found message")
-        
-        @handle_cli_exceptions(
-            resource_type=ResourceType.HYP_CUSTOM_ENDPOINT,
-            operation_type=OperationType.DESCRIBE
-        )
-        def custom_describe(name, namespace="default"):
-            raise api_exception
-        
-        custom_describe(name="missing-custom", namespace="staging")
-        
-        mock_handle_404.assert_called_once_with(
-            "missing-custom", "staging",
-            ResourceType.HYP_CUSTOM_ENDPOINT, OperationType.DESCRIBE
-        )
-        # Should call click.echo with the enhanced message (may be called multiple times due to error re-handling)
-        mock_click.echo.assert_any_call("Custom endpoint not found message")
-        # sys.exit may be called multiple times due to exception re-handling
-        assert mock_sys.exit.call_count >= 1
-        mock_sys.exit.assert_called_with(1)
-    
-    @patch('sagemaker.hyperpod.common.cli_decorators.handle_404')
-    @patch('sagemaker.hyperpod.common.cli_decorators.click')
-    @patch('sagemaker.hyperpod.common.cli_decorators.sys')
-    def test_complete_training_list_flow(self, mock_sys, mock_click, mock_handle_404):
-        """Test complete flow for training job list."""
-        api_exception = ApiException(status=404, reason="Not Found")
-        mock_handle_404.side_effect = Exception("Training job not found message")
-        
-        @handle_cli_exceptions(
-            resource_type=ResourceType.HYP_PYTORCH_JOB,
-            operation_type=OperationType.LIST
-        )
-        def training_list(name, namespace="default"):
-            raise api_exception
-        
-        training_list(name="missing-job")  # Uses default namespace
-        
-        mock_handle_404.assert_called_once_with(
-            "missing-job", "default",
-            ResourceType.HYP_PYTORCH_JOB, OperationType.LIST
-        )
-        # Should call click.echo with the enhanced message (may be called multiple times due to error re-handling)
-        mock_click.echo.assert_any_call("Training job not found message")
-        # sys.exit may be called multiple times due to exception re-handling
-        assert mock_sys.exit.call_count >= 1
-        mock_sys.exit.assert_called_with(1)
-    
-    @patch('sagemaker.hyperpod.common.cli_decorators.click')
-    @patch('sagemaker.hyperpod.common.cli_decorators.sys')
-    def test_non_404_exception_passthrough(self, mock_sys, mock_click):
-        """Test non-404 exceptions are handled normally."""
-        @handle_cli_exceptions(
-            resource_type=ResourceType.HYP_JUMPSTART_ENDPOINT,
-            operation_type=OperationType.DELETE
-        )
-        def js_delete(name, namespace="default"):
-            raise ValueError("Invalid configuration")
-        
-        js_delete(name="test-endpoint")
-        
-        mock_click.echo.assert_called_once_with("Invalid configuration")
-        mock_sys.exit.assert_called_once_with(1)
-    
-    def test_function_with_no_exceptions(self):
-        """Test function that completes successfully."""
-        @handle_cli_exceptions(
-            resource_type=ResourceType.HYP_JUMPSTART_ENDPOINT,
-            operation_type=OperationType.DELETE
-        )
-        def successful_function(name, namespace="default"):
-            return f"Success: {name} in {namespace}"
-        
-        result = successful_function(name="test", namespace="production")
-        assert result == "Success: test in production"

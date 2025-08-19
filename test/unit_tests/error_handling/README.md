@@ -1,159 +1,148 @@
 # SageMaker HyperPod CLI - Error Handling Unit Tests
 
-This directory contains comprehensive unit tests for the SageMaker HyperPod CLI's enhanced 404 error handling system.
+This directory contains unit tests for the **template-agnostic** 404 error handling system.
 
 ## Overview
 
-The error handling system provides user-friendly, contextual error messages when resources are not found, helping users understand what went wrong and how to fix it.
+The error handling system has been redesigned to be **template-agnostic**, eliminating hardcoded enums and enabling true CLI/SDK decoupling. The system now dynamically detects resource and operation types from command context.
 
-## Test Structure
+## Current Test Files
 
-### Core Test Files
+### `test_cli_decorators.py` - Template-Agnostic CLI Decorators
+- **TestHandleCliExceptions**: Tests the core decorator functionality
+- **TestTemplateAgnosticDetection**: Tests dynamic resource/operation detection
+- **TestTemplateAgnostic404Handling**: Tests 404 handling without hardcoded types
 
-1. **`test_error_constants.py`** - Tests error constants and enums
-   - ResourceType enum values and consistency
-   - OperationType enum values and consistency  
-   - RESOURCE_LIST_COMMANDS mapping completeness
-   - RESOURCE_DISPLAY_NAMES mapping completeness
-   - Cross-mapping consistency validation
+#### Key Features Tested:
+- `_extract_resource_from_command()` - Extracts resource type from Click command names
+- `_detect_operation_type_from_function()` - Detects operation from function names  
+- `_get_list_command_from_resource_type()` - Generates appropriate list commands
+- Template-agnostic 404 message generation
+- Fallback handling when detection fails
 
-2. **`test_error_context.py`** - Tests error context gathering
-   - ErrorContext dataclass functionality
-   - ContextGatherer initialization and configuration
-   - Resource availability checking (with timeout protection)
-   - Context gathering for different resource types
-   - Integration with real SageMaker SDK calls
+## Template-Agnostic Design Benefits
 
-3. **`test_not_found_handler.py`** - Tests 404 message generation
-   - NotFoundMessageGenerator template rendering
-   - Message generation for all resource/operation combinations
-   - NotFoundHandler main coordination logic
-   - Integration scenarios combining context + message generation
-   - Fallback handling for edge cases
-
-4. **`test_cli_decorators.py`** - Tests CLI integration decorators
-   - Smart CLI exception handler with auto-detection
-   - Resource/operation type detection from CLI context
-   - Integration with existing CLI exception handling
-   - Legacy compatibility support
-
-5. **`test_utils_404_handling.py`** - Tests utility functions
-   - handle_404() function with various input combinations
-   - handle_exception() function for different exception types
-   - ApiException status code handling (401, 403, 404, 409, 500, etc.)
-   - Integration scenarios combining all components
-
-## Test Coverage
-
-The test suite provides comprehensive coverage of:
-
-- **104 individual test cases** covering all components
-- **All resource types**: HyperPod PyTorch Jobs, Custom Endpoints, JumpStart Endpoints
-- **All operation types**: DELETE, GET, DESCRIBE, LIST
-- **All error scenarios**: 404 Not Found, 401 Unauthorized, 403 Forbidden, etc.
-- **Integration scenarios**: End-to-end error handling workflows
-- **Edge cases**: Unknown types, timeouts, fallback handling
-
-## Running the Tests
-
-### Run All Error Handling Tests
-```bash
-# From project root
-python test/unit_tests/error_handling/run_comprehensive_404_unit_tests.py
-
-# Or from the error_handling directory
-cd test/unit_tests/error_handling
-python run_comprehensive_404_unit_tests.py
+### ✅ **Future-Proof**
+```python
+# New templates work automatically without code changes:
+# hyp-llama-job → "llama job" 
+# hyp-future-template → "future template"
 ```
 
-### Run Individual Test Files
+### ✅ **Zero Maintenance Overhead**
+- No hardcoded enums to maintain
+- No resource type mappings 
+- No constant updates for new templates
+
+### ✅ **True Decoupling**
+- Template packages are completely independent of CLI core
+- Follows `hyp <verb> <noun>` pattern exactly
+- CLI core never needs modification for new templates
+
+## Running Tests
+
 ```bash
-# Run specific test category
-pytest test/unit_tests/error_handling/test_error_constants.py -v
-pytest test/unit_tests/error_handling/test_error_context.py -v
-pytest test/unit_tests/error_handling/test_not_found_handler.py -v
+# Run template-agnostic error handling tests
 pytest test/unit_tests/error_handling/test_cli_decorators.py -v
-pytest test/unit_tests/error_handling/test_utils_404_handling.py -v
-```
 
-### Run All Tests in Directory
-```bash
 # Run all error handling tests
 pytest test/unit_tests/error_handling/ -v
 ```
 
-## Components Tested
+## How It Works
 
-### Error Constants (`src/sagemaker/hyperpod/common/error_constants.py`)
-- ResourceType enum (HYP_PYTORCH_JOB, HYP_CUSTOM_ENDPOINT, HYP_JUMPSTART_ENDPOINT)
-- OperationType enum (DELETE, GET, DESCRIBE, LIST)
-- RESOURCE_LIST_COMMANDS mapping
-- RESOURCE_DISPLAY_NAMES mapping
-
-### Error Context (`src/sagemaker/hyperpod/common/error_context.py`)
-- ErrorContext dataclass for structured error information
-- ContextGatherer for collecting available resources
-- Timeout protection for external API calls
-- Integration with SageMaker SDK
-
-### Not Found Handler (`src/sagemaker/hyperpod/common/not_found_handler.py`)
-- NotFoundMessageGenerator for template-based message creation
-- NotFoundHandler for coordinating context gathering and message generation
-- Support for all resource/operation combinations
-
-### CLI Decorators (`src/sagemaker/hyperpod/common/cli_decorators.py`)
-- Smart exception handler with automatic resource/operation detection
-- Integration with Click CLI framework
-- Legacy compatibility support
-
-### Utils 404 Handling (`src/sagemaker/hyperpod/common/utils.py`)
-- handle_404() for standardized 404 error handling
-- handle_exception() for comprehensive exception handling
-- Support for all Kubernetes ApiException status codes
-
-## Test Philosophy
-
-1. **Comprehensive Coverage**: Every function, class, and code path is tested
-2. **Real Integration**: Tests use actual SageMaker SDK calls where appropriate
-3. **Mocking Strategy**: Strategic mocking to isolate components while maintaining realism
-4. **Edge Case Handling**: Extensive testing of error conditions and fallbacks
-5. **Documentation**: Each test is clearly documented with purpose and expected behavior
-
-## Example Error Messages Generated
-
-### PyTorch Job Not Found
+### 1. Dynamic Resource Detection
+```python
+# From Click command: "hyp-jumpstart-endpoint" → "jumpstart endpoint"
+# From Click command: "hyp-pytorch-job" → "pytorch job"
+# From Click command: "hyp-any-future-template" → "any future template"
 ```
-❓ Job 'my-training-job' not found in namespace 'production'. 
-There are 3 resources in this namespace. 
+
+### 2. Dynamic Operation Detection  
+```python
+# From function name: "js_delete" → "delete"
+# From function name: "pytorch_describe" → "describe"
+# From function name: "custom_list_pods" → "list"
+```
+
+### 3. Dynamic List Command Generation
+```python
+# "jumpstart endpoint" → "hyp list hyp-jumpstart-endpoint"
+# "pytorch job" → "hyp list hyp-pytorch-job" 
+# "future template" → "hyp list hyp-future-template"
+```
+
+## Example Error Messages
+
+### Template-Agnostic 404 Messages
+```bash
+# JumpStart endpoint
+❓ jumpstart endpoint 'missing-name' not found in namespace 'default'. 
+Please check the resource name and try again. 
+Use 'hyp list hyp-jumpstart-endpoint' to see available resources.
+
+# PyTorch job  
+❓ pytorch job 'missing-job' not found in namespace 'production'.
+Please check the resource name and try again.
 Use 'hyp list hyp-pytorch-job --namespace production' to see available resources.
+
+# Future template (zero code changes needed!)
+❓ llama job 'missing-llama-job' not found in namespace 'default'.
+Please check the resource name and try again. 
+Use 'hyp list hyp-llama-job' to see available resources.
 ```
 
-### JumpStart Endpoint Not Found
+## Removed Files (Now Obsolete)
+
+The following files were removed as part of the template-agnostic redesign:
+
+- `test_error_constants.py` - Hardcoded enums no longer needed
+- `test_error_context.py` - Complex context gathering replaced with simple approach
+- `test_not_found_handler.py` - Enum-based message generation replaced
+- `test_utils_404_handling.py` - Enum dependencies removed
+
+- `src/sagemaker/hyperpod/common/exceptions/error_constants.py` - Hardcoded enums removed
+- `src/sagemaker/hyperpod/common/exceptions/error_context.py` - Complex context system removed  
+- `src/sagemaker/hyperpod/common/exceptions/not_found_handler.py` - Enum-based handler removed
+
+## Implementation Location
+
+The template-agnostic 404 error handling is now implemented in:
+- `src/sagemaker/hyperpod/common/cli_decorators.py` - Main implementation
+- `src/sagemaker/hyperpod/common/utils.py` - Common log display utility
+
+## Usage in CLI Commands
+
+```python
+# Old approach (removed):
+@handle_cli_exceptions(
+    resource_type=ResourceType.HYP_JUMPSTART_ENDPOINT,  # ❌ Hardcoded
+    operation_type=OperationType.DELETE                  # ❌ Hardcoded  
+)
+
+# New approach (template-agnostic):
+@handle_cli_exceptions()  # ✅ Auto-detects everything dynamically
+@click.command("hyp-jumpstart-endpoint")
+def js_delete(name, namespace):
+    # Automatically detects:
+    # - Resource: "jumpstart endpoint" (from command name)
+    # - Operation: "delete" (from function name)
+    # - List command: "hyp list hyp-jumpstart-endpoint"
 ```
-❓ JumpStart endpoint 'my-endpoint' not found in namespace 'default'. 
-No resources of this type exist in the namespace. 
-Use 'hyp list hyp-jumpstart-endpoint' to check for available resources.
-```
 
-### Custom Endpoint Not Found
-```
-❓ Custom endpoint 'missing-endpoint' not found in namespace 'inference'. 
-There are 5 resources in this namespace. 
-Use 'hyp list hyp-custom-endpoint --namespace inference' to see available resources.
-```
+## Future Template Support
 
-## Future Maintenance
+When new templates are added (e.g., `hyperpod-llama-job-template/`):
 
-When adding new resource types or operations:
+1. **No CLI core changes needed** ✅
+2. **No enum updates required** ✅ 
+3. **No mapping maintenance** ✅
+4. **Automatic 404 handling** ✅
 
-1. Update the enums in `error_constants.py`
-2. Add corresponding mappings in `RESOURCE_LIST_COMMANDS` and `RESOURCE_DISPLAY_NAMES`
-3. Add test cases in the appropriate test files
-4. Update this README with new examples
+The system will automatically:
+- Detect resource type from command name
+- Generate appropriate error messages
+- Provide correct list commands
+- Work seamlessly with telemetry
 
-## Integration Testing
-
-For integration testing with real endpoints, see:
-- `test_cli_404_integration_real_endpoints.py` (in project root)
-- `test_real_404_error_messages_comprehensive.py` (in project root)
-- `test404cmds.ipynb` (Jupyter notebook with real endpoint examples)
+This achieves the vision of making CLI/SDK code truly template-agnostic while maintaining excellent user experience.
