@@ -19,10 +19,9 @@ import boto3
 
 from sagemaker.hyperpod import create_boto3_client
 from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack
-from test.integration_tests.abstract_integration_tests import AbstractIntegrationTests
 
 
-class TestHpClusterStackIntegration(AbstractIntegrationTests):
+class TestHpClusterStackIntegration():
     """Integration tests for HpClusterStack class."""
 
     @pytest.fixture(scope="class")
