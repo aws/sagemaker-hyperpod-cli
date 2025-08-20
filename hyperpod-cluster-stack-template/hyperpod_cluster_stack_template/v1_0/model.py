@@ -5,7 +5,7 @@ class ClusterStackBase(BaseModel):
     stage: Optional[str] = Field("gamma", description="Deployment stage (gamma, prod)")
     enable_hp_inference_feature: Optional[str] = Field(None, description="Feature flag for enabling HP inference")
     custom_bucket_name: Optional[str] = Field(None, description="Custom S3 bucket name for templates")
-    resource_name_prefix: Optional[str] = Field("sagemaker-hyperpod-eks", description="Prefix to be used for all resources")
+    resource_name_prefix: Optional[str] = Field("sagemaker-hyperpod-eks", description="Unique prefix for all resources (must be different for each deployment)")
     vpc_cidr: Optional[str] = Field(None, description="The IP range (CIDR notation) for the VPC")
     availability_zone_ids: Union[List[str], None] = Field(None, description="List of AZs to deploy subnets in")
     vpc_id: Optional[str] = Field(None, description="The ID of the VPC")
