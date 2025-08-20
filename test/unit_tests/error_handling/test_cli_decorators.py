@@ -148,9 +148,11 @@ class TestNamespaceValidation:
             mock_get_context.return_value = mock_context
             message = _generate_namespace_error_message("test-ns", mock_func)
             
-        # Test should match actual working behavior - basic namespace error without list command
+        # Test should match actual enhanced behavior - includes helpful list command suggestion
         assert "Namespace 'test-ns' does not exist on this cluster" in message
-        assert message == "❌ Namespace 'test-ns' does not exist on this cluster."
+        assert "Use 'hyp list hyp-jumpstart-endpoint' to check for available resources" in message
+        expected_message = "❌ Namespace 'test-ns' does not exist on this cluster. Use 'hyp list hyp-jumpstart-endpoint' to check for available resources."
+        assert message == expected_message
 
     @patch('sagemaker.hyperpod.common.cli_decorators.click.get_current_context')
     @patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
@@ -184,9 +186,11 @@ class TestNamespaceValidation:
         # Should show namespace error message before function execution
         mock_click_echo.assert_called_once()
         first_call_args = mock_click_echo.call_args[0][0]
-        # Test should match actual working behavior - basic namespace error
+        # Test should match actual enhanced behavior - includes helpful list command suggestion
         assert "Namespace 'missing-ns' does not exist on this cluster" in first_call_args
-        assert first_call_args == "❌ Namespace 'missing-ns' does not exist on this cluster."
+        assert "Use 'hyp list hyp-jumpstart-endpoint' to check for available resources" in first_call_args
+        expected_message = "❌ Namespace 'missing-ns' does not exist on this cluster. Use 'hyp list hyp-jumpstart-endpoint' to check for available resources."
+        assert first_call_args == expected_message
         mock_sys_exit.assert_called_with(1)
         
         # Verify function never executed (result should be None due to early return)
