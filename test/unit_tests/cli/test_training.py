@@ -6,6 +6,7 @@ from sagemaker.hyperpod.cli.commands.training import (
     pytorch_create,
     list_jobs,
     pytorch_describe,
+    pytorch_get_operator_logs,
 )
 from hyperpod_pytorch_job_template.v1_1.model import ALLOWED_TOPOLOGY_LABELS
 import sys
@@ -832,3 +833,12 @@ class TestValidationPatterns(unittest.TestCase):
         )
         self.assertIsNone(config.preferred_topology)
         self.assertIsNone(config.required_topology)
+
+@patch('sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob')
+def test_pytorch_get_operator_logs(mock_hp):
+    mock_hp.get_operator_logs.return_value = "operator logs"
+    runner = CliRunner()
+    result = runner.invoke(pytorch_get_operator_logs, ['--since-hours', '2'])
+    assert result.exit_code == 0
+    assert 'operator logs' in result.output
+    mock_hp.get_operator_logs.assert_called_once_with(since_hours=2.0)

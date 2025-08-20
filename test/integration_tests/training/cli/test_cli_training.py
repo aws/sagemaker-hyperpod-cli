@@ -240,3 +240,8 @@ class TestHypCLICommands:
 
         # The job name should no longer be in the output
         assert test_job_name not in list_result.stdout
+
+def test_pytorch_get_operator_logs():
+    """Test getting operator logs via CLI"""
+    result = execute_command(["hyp", "get-operator-logs", "hyp-pytorch-job", "--since-hours", "1"])
+    assert result.returncode == 0

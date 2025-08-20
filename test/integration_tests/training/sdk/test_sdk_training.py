@@ -112,3 +112,8 @@ class TestHyperPodTrainingSDK:
         jobs = HyperPodPytorchJob.list()
         job_names = [job.metadata.name for job in jobs]
         assert pytorch_job.metadata.name not in job_names
+
+def test_get_operator_logs():
+    """Test getting operator logs"""
+    logs = HyperPodPytorchJob.get_operator_logs(since_hours=1)
+    assert logs
