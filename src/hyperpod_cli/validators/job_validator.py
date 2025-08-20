@@ -316,7 +316,7 @@ def validate_recipe_file(recipe: str):
                 elif "nova" in model_type:
                     NovaRecipeSchema(**recipe_data)
                 else:
-                    raise Exception("Invalid model_type {model_type}")
+                    raise Exception("Unsupported model_type {model_type}. Make sure the recipe exists in src/hyperpod_cli/sagemaker_hyperpod_recipes/recipes_collection/recipes")
                 return True
             else:
                 # there are 3 yaml without model_type
@@ -335,7 +335,7 @@ def validate_recipe_file(recipe: str):
                 except Exception as e:
                     pass
 
-                logger.error("Cannot validate recipe with existing templates. Make sure you are using correct recipe.yaml file.")
+                logger.error("Cannot validate recipe with existing templates. Make sure you are using correct recipe file in src/hyperpod_cli/sagemaker_hyperpod_recipes/recipes_collection/recipes.")
                 return False
     except yaml.YAMLError as e:
         logger.error(f"Invalid YAML in recipe file: {e}")
