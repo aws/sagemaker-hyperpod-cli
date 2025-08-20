@@ -133,7 +133,7 @@ class PyTorchJobConfig(BaseModel):
     scheduler_type: Optional[str] = Field(
         default=None, 
         alias="scheduler_type", 
-        description="Scheduler type",
+        description="If specified, training job pod will be dispatched by specified scheduler. If not specified, the pod will be dispatched by default scheduler.",
         min_length=1
     )
     queue_name: Optional[str] = Field(

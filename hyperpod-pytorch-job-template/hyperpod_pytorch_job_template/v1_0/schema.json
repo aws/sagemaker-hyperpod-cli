@@ -252,7 +252,7 @@
         }
       ],
       "default": null,
-      "description": "Scheduler type",
+      "description": "If specified, training job pod will be dispatched by specified scheduler. If not specified, the pod will be dispatched by default scheduler.",
       "title": "Scheduler Type"
     },
     "queue_name": {

@@ -40,7 +40,7 @@ hyp create hyp-pytorch-job [OPTIONS]
 - `--tasks-per-node INTEGER`: Number of tasks per node (minimum: 1)
 - `--label-selector OBJECT`: Node label selector as key-value pairs
 - `--deep-health-check-passed-nodes-only BOOLEAN`: Schedule pods only on nodes that passed deep health check (default: false)
-- `--scheduler-type TEXT`: Scheduler type
+- `--scheduler-type TEXT`: If specified, training job pod will be dispatched by specified scheduler. If not specified, the pod will be dispatched by default scheduler.
 - `--queue-name TEXT`: Queue name for job scheduling (1-63 characters, alphanumeric with hyphens)
 - `--priority TEXT`: Priority class for job scheduling
 - `--max-retry INTEGER`: Maximum number of job retries (minimum: 0)
