@@ -242,25 +242,19 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
 
         v1 = client.CoreV1Api()
 
-        pods = v1.list_namespaced_pod(namespace=TRAINING_OPERATOR_NAMESPACE)
+        # Get pods with the training operator label directly
+        pods = v1.list_namespaced_pod(
+            namespace=TRAINING_OPERATOR_NAMESPACE,
+            label_selector=TRAINING_OPERATOR_LABEL
+        )
 
         if not pods.items:
-            raise Exception(
-                f"No pod found in namespace {TRAINING_OPERATOR_NAMESPACE}"
-            )
-
-        # Find the training operator pod by label
-        operator_pod = None
-        for pod in pods.items:
-            if pod.metadata.labels and TRAINING_OPERATOR_LABEL in pod.metadata.labels:
-                operator_pod = pod
-                break
-
-        if not operator_pod:
             raise Exception(
                 f"No training operator pod found with label {TRAINING_OPERATOR_LABEL}"
             )
 
+        # Use the first pod found
+        operator_pod = pods.items[0]
         pod_name = operator_pod.metadata.name
 
         try:

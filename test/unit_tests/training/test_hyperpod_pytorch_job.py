@@ -286,21 +286,21 @@ class TestHyperPodPytorchJob(unittest.TestCase):
     @patch("kubernetes.client.CoreV1Api")
     @patch.object(HyperPodPytorchJob, "verify_kube_config")
     def test_get_operator_logs(self, mock_verify_config, mock_core_api):
-        # Mock multiple pods, including the training operator pod with correct label
-        mock_other_pod = MagicMock()
-        mock_other_pod.metadata.name = "other-pod-123"
-        mock_other_pod.metadata.labels = {"app": "other"}
-        
+        # Mock only the training operator pod (since we're using label selector)
         mock_operator_pod = MagicMock()
         mock_operator_pod.metadata.name = "training-operator-pod-abc123"
-        mock_operator_pod.metadata.labels = {"hp-training-control-plane": "true"}
         
-        mock_core_api.return_value.list_namespaced_pod.return_value.items = [mock_other_pod, mock_operator_pod]
+        mock_core_api.return_value.list_namespaced_pod.return_value.items = [mock_operator_pod]
         mock_core_api.return_value.read_namespaced_pod_log.return_value = "training operator logs"
 
         result = HyperPodPytorchJob.get_operator_logs(2.5)
 
         self.assertEqual(result, "training operator logs")
+        # Verify label selector is used
+        mock_core_api.return_value.list_namespaced_pod.assert_called_once_with(
+            namespace="aws-hyperpod",
+            label_selector="hp-training-control-plane"
+        )
         mock_core_api.return_value.read_namespaced_pod_log.assert_called_once_with(
             name="training-operator-pod-abc123",
             namespace="aws-hyperpod",
