@@ -4,7 +4,7 @@ import json
 import os
 import subprocess
 from pydantic import BaseModel, ValidationError, Field
-from typing import Optional
+from typing import Optional, Union
 from importlib.metadata import version, PackageNotFoundError
 
 from sagemaker.hyperpod.cli.commands.cluster import list_cluster, set_cluster_context, get_cluster_context, \
@@ -43,18 +43,11 @@ from sagemaker.hyperpod.cli.commands.init import (
     reset,
     configure,
     validate,
-    submit
-)
-
-from sagemaker.hyperpod.cli.commands.init import (
-    init,
-    reset,
-    configure,
-    validate,
-    submit
+    _default_create
 )
 
 
+@click.group(context_settings={'max_content_width': 200})
 def get_package_version(package_name):
     try:
         return version(package_name)
@@ -76,19 +69,45 @@ def print_version(ctx, param, value):
     click.echo(f"hyperpod-jumpstart-inference-template version: {jumpstart_inference_version}")
     ctx.exit()
 
-@click.group()
+
+@click.group(context_settings={'max_content_width': 200})
 @click.option('--version', is_flag=True, callback=print_version, expose_value=False, is_eager=True, help='Show version information')
 def cli():
     pass
 
 
 class CLICommand(click.Group):
-    pass
+    def __init__(self, *args, default_cmd: Union[str, None] = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.default_cmd = default_cmd
+
+    def parse_args(self, ctx, args):
+        # Only inject default subcommand when:
+        #  - user didn't name a subcommand, and
+        #  - user didn't ask for help
+        if self.default_cmd:
+            # any non-flag token that is a known subcommand?
+            has_subcmd = any((not a.startswith("-")) and (a in self.commands) for a in args)
+            asked_for_help = any(a in ("-h", "--help") for a in args)
+            if (not has_subcmd) and (not asked_for_help):
+                args = [self.default_cmd] + args
+        return super().parse_args(ctx, args)
 
 
-@cli.group(cls=CLICommand)
+@cli.group(cls=CLICommand, default_cmd='_default_create')
 def create():
-    """Create endpoints or pytorch jobs."""
+    """
+    Create endpoints, pytorch jobs or cluster stacks.
+
+    If only used as 'hyp create' without [OPTIONS] COMMAND [ARGS] during init experience,
+    then it will validate configuration and render template files for deployment.
+    The generated files in the run directory can be used for actual deployment
+    to SageMaker HyperPod clusters or CloudFormation stacks.
+
+    Prerequisites for directly calling 'hyp create':
+    - Must be run in a directory initialized with 'hyp init'
+    - config.yaml and the appropriate template file must exist
+    """
     pass
 
 
@@ -138,11 +157,12 @@ cli.add_command(init)
 cli.add_command(reset)
 cli.add_command(configure)
 cli.add_command(validate)
-cli.add_command(submit)
 
 create.add_command(pytorch_create)
 create.add_command(js_create)
 create.add_command(custom_create)
+_default_create.hidden = True
+create.add_command(_default_create)
 
 list.add_command(list_jobs)
 list.add_command(js_list)

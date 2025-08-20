@@ -264,9 +264,9 @@ def validate():
     load_config_and_validate(dir_path)
 
 
-@click.command("submit")
+@click.command(name="_default_create")
 @click.option("--region", "-r", default=None, help="Region, default to your region in aws configure")
-def submit(region):
+def _default_create(region):
     """
     Validate configuration and render template files for deployment.
     

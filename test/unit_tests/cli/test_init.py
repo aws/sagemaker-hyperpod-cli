@@ -20,7 +20,7 @@ with patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.HpClusterStac
             }
         }
     })
-    from sagemaker.hyperpod.cli.commands.init import init, reset, configure, validate, submit
+    from sagemaker.hyperpod.cli.commands.init import init, reset, configure, validate, _default_create
     from sagemaker.hyperpod.cli.constants.init_constants import CFN, CRD
 
 
@@ -371,24 +371,24 @@ class TestUserInputValidation:
                 assert result.exit_code in [0, 1]
 
 
-class TestSubmit:
-    """Test cases for the submit command"""
+class TestDefaultCreate:
+    """Test cases for the default_create command"""
     
-    def test_submit_help(self):
-        """Test that submit command shows help"""
+    def test_default_create_help(self):
+        """Test that default_create command shows help"""
         runner = CliRunner()
-        result = runner.invoke(submit, ['--help'])
+        result = runner.invoke(_default_create, ['--help'])
         assert result.exit_code == 0
         assert "Validate configuration and render template files" in result.output
 
-    def test_submit_no_config_file(self):
-        """Test submit command when no config file exists"""
+    def test_default_create_no_config_file(self):
+        """Test default_create command when no config file exists"""
         runner = CliRunner()
         
         # Execute in a temporary directory with no config file
         with tempfile.TemporaryDirectory() as temp_dir:
             with runner.isolated_filesystem(temp_dir):
-                result = runner.invoke(submit)
+                result = runner.invoke(_default_create)
                 
                 # Should fail because no config.yaml exists
                 assert result.exit_code != 0
@@ -396,8 +396,8 @@ class TestSubmit:
     @patch('sagemaker.hyperpod.cli.commands.init.click.secho')
     @patch('sagemaker.hyperpod.cli.commands.init.load_config_and_validate')
     @patch('sagemaker.hyperpod.cli.commands.init.TEMPLATES')
-    def test_submit_with_mocked_dependencies(self, mock_templates, mock_load_config, mock_secho):
-        """Test submit command with mocked dependencies"""
+    def test_default_create_with_mocked_dependencies(self, mock_templates, mock_load_config, mock_secho):
+        """Test default_create command with mocked dependencies"""
         # Setup mocks
         mock_load_config.return_value = (
             {"test": "config"}, "hyp-cluster", "1.0"
@@ -407,19 +407,19 @@ class TestSubmit:
         runner = CliRunner()
         
         # Execute
-        result = runner.invoke(submit, ['--region', 'us-east-1'])
+        result = runner.invoke(_default_create, ['--region', 'us-east-1'])
         
         # Verify mocks were called
         assert mock_load_config.called
 
     @patch('sagemaker.hyperpod.common.utils.get_aws_default_region')
-    def test_submit_default_region_parameter(self, mock_get_default_region):
+    def test_default_create_default_region_parameter(self, mock_get_default_region):
         mock_get_default_region.return_value = 'us-west-2'
         
         runner = CliRunner()
         
         # Test that help shows the default region function is used
-        result = runner.invoke(submit, ['--help'])
+        result = runner.invoke(_default_create, ['--help'])
         assert result.exit_code == 0
         assert '--region' in result.output
 
@@ -430,7 +430,7 @@ class TestCommandIntegration:
     def test_all_commands_have_help(self):
         """Test that all commands have help text"""
         runner = CliRunner()
-        commands = [init, reset, configure, validate, submit]
+        commands = [init, reset, configure, validate, _default_create]
         
         for command in commands:
             result = runner.invoke(command, ['--help'])
@@ -440,7 +440,7 @@ class TestCommandIntegration:
     def test_commands_fail_gracefully_without_config(self):
         """Test that commands that require config fail gracefully"""
         runner = CliRunner()
-        commands_requiring_config = [reset, configure, validate, submit]
+        commands_requiring_config = [reset, configure, validate, _default_create]
         
         with tempfile.TemporaryDirectory() as temp_dir:
             with runner.isolated_filesystem(temp_dir):
