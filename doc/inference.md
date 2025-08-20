@@ -130,18 +130,24 @@ custom_endpoint.create()
 When creating an inference endpoint, you'll need to specify:
 
 1. **Parameters required for Jumpstart Endpoint**
-   - **endpoint-name**: Unique identifier for your endpoint
-   - **instance-type**: The EC2 instance type to use
-   - **model-id**: ID of the pre-trained JumpStart model
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| **endpoint-name** | TEXT | Yes | Unique identifier for your endpoint |
+| **instance-type** | TEXT | Yes | The EC2 instance type to use |
+| **model-id** | TEXT | Yes | ID of the pre-trained JumpStart model |
 
 2. **Parameters required for Custom Endpoint**
-   - **endpoint-name**: Unique identifier for your endpoint
-   - **instance-type**: The EC2 instance type to use
-   - **image-uri**: Docker image containing your inference code
-   - **model-name**: Name of model to create on SageMaker
-   - **model-source-type**: Source type: fsx or s3
-   - **model-volume-mount-name**: Name of the model volume mount
-   - **container-port**: Port on which the model server listens
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| **endpoint-name** | TEXT | Yes | Unique identifier for your endpoint |
+| **instance-type** | TEXT | Yes | The EC2 instance type to use |
+| **image-uri** | TEXT | Yes | Docker image containing your inference code |
+| **model-name** | TEXT | Yes | Name of model to create on SageMaker |
+| **model-source-type** | TEXT | Yes | Source type: fsx or s3 |
+| **model-volume-mount-name** | TEXT | Yes | Name of the model volume mount |
+| **container-port** | INTEGER | Yes | Port on which the model server listens |
 
 ## Managing Inference Endpoints
 

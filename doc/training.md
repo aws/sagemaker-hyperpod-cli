@@ -90,8 +90,10 @@ pytorch_job.create()
 
 When creating a training job, you'll need to specify:
 
-- **job-name**: Unique identifier for your training job
-- **image**: Docker image containing your training environment
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| **job-name** | TEXT | Yes | Unique identifier for your training job |
+| **image** | TEXT | Yes | Docker image containing your training environment |
 
 
 ## Managing Training Jobs

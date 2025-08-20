@@ -5,7 +5,7 @@ import json
 import click
 from unittest.mock import Mock, patch, mock_open
 from pathlib import Path
-from sagemaker.hyperpod.cli.init_utils import load_schema_for_version, save_template, generate_click_command, save_cfn_jinja, _process_cfn_template_content
+from sagemaker.hyperpod.cli.init_utils import load_schema_for_version, save_template, generate_click_command, save_cfn_jinja
 from sagemaker.hyperpod.cli.constants.init_constants import CFN
 from unittest.mock import Mock, patch, mock_open
 from pathlib import Path

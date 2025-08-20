@@ -3,7 +3,7 @@ import json
 from unittest.mock import patch, MagicMock, mock_open
 from botocore.exceptions import ClientError
 import boto3
-
+import pytest
 from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack
 
 class TestHpClusterStack(unittest.TestCase):

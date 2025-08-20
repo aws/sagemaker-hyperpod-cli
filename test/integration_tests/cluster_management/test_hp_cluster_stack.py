@@ -16,7 +16,6 @@ import uuid
 import time
 import pytest
 import boto3
-
 from sagemaker.hyperpod import create_boto3_client
 from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack
 
@@ -53,8 +52,8 @@ class TestHpClusterStackIntegration():
         stack_exists = False
         
         try:
-            # Create the stack
-            cluster_stack.create("stack-009", region ="us-west-2")
+            # Create the stack (Did not need the name of the stack so fixed this.)
+            cluster_stack.create(region ="us-west-2")
             
             # Wait for stack to be created (with timeout)
             # max_attempts = 10

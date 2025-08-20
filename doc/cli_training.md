@@ -23,29 +23,28 @@ Create distributed PyTorch training jobs on SageMaker HyperPod clusters.
 hyp create hyp-pytorch-job [OPTIONS]
 ```
 
-### Required Parameters
+### Parameters
 
-- `--job-name TEXT`: Unique name for the training job (1-63 characters, alphanumeric with hyphens)
-- `--image TEXT`: Docker image URI containing your training code
-
-### Optional Parameters
-
-- `--namespace TEXT`: Kubernetes namespace
-- `--command ARRAY`: Command to run in the container (array of strings)
-- `--args ARRAY`: Arguments for the entry script (array of strings)
-- `--environment OBJECT`: Environment variables as key-value pairs
-- `--pull-policy TEXT`: Image pull policy (Always, Never, IfNotPresent)
-- `--instance-type TEXT`: Instance type for training
-- `--node-count INTEGER`: Number of nodes (minimum: 1)
-- `--tasks-per-node INTEGER`: Number of tasks per node (minimum: 1)
-- `--label-selector OBJECT`: Node label selector as key-value pairs
-- `--deep-health-check-passed-nodes-only BOOLEAN`: Schedule pods only on nodes that passed deep health check (default: false)
-- `--scheduler-type TEXT`: If specified, training job pod will be dispatched by specified scheduler. If not specified, the pod will be dispatched by default scheduler.
-- `--queue-name TEXT`: Queue name for job scheduling (1-63 characters, alphanumeric with hyphens)
-- `--priority TEXT`: Priority class for job scheduling
-- `--max-retry INTEGER`: Maximum number of job retries (minimum: 0)
-- `--volume ARRAY`: List of volume configurations (Refer [Volume Configuration](#volume-configuration) for detailed parameter info)
-- `--service-account-name TEXT`: Service account name
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `--job-name` | TEXT | Yes | Unique name for the training job (1-63 characters, alphanumeric with hyphens) |
+| `--image` | TEXT | Yes | Docker image URI containing your training code |
+| `--namespace` | TEXT | No | Kubernetes namespace |
+| `--command` | ARRAY | No | Command to run in the container (array of strings) |
+| `--args` | ARRAY | No | Arguments for the entry script (array of strings) |
+| `--environment` | OBJECT | No | Environment variables as key-value pairs |
+| `--pull-policy` | TEXT | No | Image pull policy (Always, Never, IfNotPresent) |
+| `--instance-type` | TEXT | No | Instance type for training |
+| `--node-count` | INTEGER | No | Number of nodes (minimum: 1) |
+| `--tasks-per-node` | INTEGER | No | Number of tasks per node (minimum: 1) |
+| `--label-selector` | OBJECT | No | Node label selector as key-value pairs |
+| `--deep-health-check-passed-nodes-only` | BOOLEAN | No | Schedule pods only on nodes that passed deep health check (default: false) |
+| `--scheduler-type` | TEXT | No | Scheduler type |
+| `--queue-name` | TEXT | No | Queue name for job scheduling (1-63 characters, alphanumeric with hyphens) |
+| `--priority` | TEXT | No | Priority class for job scheduling |
+| `--max-retry` | INTEGER | No | Maximum number of job retries (minimum: 0) |
+| `--volume` | ARRAY | No | List of volume configurations (Refer [Volume Configuration](#volume-configuration) for detailed parameter info) |
+| `--service-account-name` | TEXT | No | Service account name |
 
 ### Volume Configuration
 
@@ -94,9 +93,11 @@ List all HyperPod PyTorch jobs in a namespace.
 hyp list hyp-pytorch-job [OPTIONS]
 ```
 
-#### Optional Parameters
+#### Parameters
 
-- `--namespace, -n TEXT`: Namespace to list jobs from (default: "default")
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `--namespace, -n` | TEXT | No | Namespace to list jobs from (default: "default") |
 
 ### hyp describe hyp-pytorch-job
 
@@ -108,13 +109,12 @@ Describe a specific HyperPod PyTorch job.
 hyp describe hyp-pytorch-job [OPTIONS]
 ```
 
-#### Required Parameters
+#### Parameters
 
-- `--job-name TEXT`: Name of the job to describe
-
-#### Optional Parameters
-
-- `--namespace, -n TEXT`: Namespace of the job (default: "default")
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `--job-name` | TEXT | Yes | Name of the job to describe |
+| `--namespace, -n` | TEXT | No | Namespace of the job (default: "default") |
 
 ### hyp delete hyp-pytorch-job
 
@@ -126,13 +126,12 @@ Delete a HyperPod PyTorch job.
 hyp delete hyp-pytorch-job [OPTIONS]
 ```
 
-#### Required Parameters
+#### Parameters
 
-- `--job-name TEXT`: Name of the job to delete
-
-#### Optional Parameters
-
-- `--namespace, -n TEXT`: Namespace of the job (default: "default")
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `--job-name` | TEXT | Yes | Name of the job to delete |
+| `--namespace, -n` | TEXT | No | Namespace of the job (default: "default") |
 
 ### hyp list-pods hyp-pytorch-job
 
@@ -144,13 +143,12 @@ List all pods associated with a PyTorch job.
 hyp list-pods hyp-pytorch-job [OPTIONS]
 ```
 
-#### Required Parameters
+#### Parameters
 
-- `--job-name TEXT`: Name of the job to list pods for
-
-#### Optional Parameters
-
-- `--namespace, -n TEXT`: Namespace of the job (default: "default")
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `--job-name` | TEXT | Yes | Name of the job to list pods for |
+| `--namespace, -n` | TEXT | No | Namespace of the job (default: "default") |
 
 ### hyp get-logs hyp-pytorch-job
 
@@ -162,11 +160,10 @@ Get logs from a specific pod in a PyTorch job.
 hyp get-logs hyp-pytorch-job [OPTIONS]
 ```
 
-#### Required Parameters
+#### Parameters
 
-- `--job-name TEXT`: Name of the job
-- `--pod-name TEXT`: Name of the pod to get logs from
-
-#### Optional Parameters
-
-- `--namespace, -n TEXT`: Namespace of the job (default: "default")
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `--job-name` | TEXT | Yes | Name of the job |
+| `--pod-name` | TEXT | Yes | Name of the pod to get logs from |
+| `--namespace, -n` | TEXT | No | Namespace of the job (default: "default") |
