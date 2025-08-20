@@ -39,34 +39,10 @@ def save_cfn_jinja(directory: str, content: str):
     Path(directory).mkdir(parents=True, exist_ok=True)
     path = os.path.join(directory, "cfn_params.jinja")
     
-    # Process content to handle array conversion
-    processed_content = _process_cfn_template_content(content)
-    
     with open(path, "w", encoding="utf-8") as f:
-        f.write(processed_content)
+        f.write(content)
     click.secho(f"Cloudformation Parameters Jinja template saved to: {path}")
     return path
-
-def _process_cfn_template_content(content: str) -> str:
-    """
-    Process CFN template content to include the full CloudFormation template.
-    """
-    try:
-        # Get the full CloudFormation template
-        full_template = HpClusterStack.get_template()
-    except Exception as e:
-        # Output the error and format as JSON in the file
-        click.secho(f"⚠️ Failed to generate CloudFormation template: {str(e)}", fg="red")        
-        full_template = ""
-    
-    # Add the complete template
-    template_content = f"""
-# CloudFormation Template:
-{full_template}
-"""
-    
-    # Insert the template at the beginning
-    return template_content + "\n" + content
 
 def save_k8s_jinja(directory: str, content: str):
     Path(directory).mkdir(parents=True, exist_ok=True)
@@ -527,28 +503,6 @@ def load_config_and_validate(dir_path: Path = None) -> Tuple[dict, str, str]:
     if not is_valid:
         sys.exit(1)
 
-    return data, template, version
-
-
-def load_config_and_validate(dir_path: Path = None) -> Tuple[dict, str, str]:
-    """
-    Load config.yaml, validate it exists, and extract template and version.
-    Returns (config_data, template, version)
-    Exits on validation errors - use for commands that require valid config.
-    """
-    data, template, version = load_config(dir_path)
-    validation_errors = validate_config_against_model(data, template, version)
-    
-    is_valid = display_validation_results(
-        validation_errors, 
-        success_message="config.yaml is valid!",
-        error_prefix="Config validation errors:"
-    )
-    
-    if not is_valid:
-        sys.exit(1)
-
-        
     return data, template, version
 
 
