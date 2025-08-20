@@ -14,8 +14,7 @@ import json
 import os
 import yaml
 from yaml.loader import SafeLoader
-from typing import Optional, List
-
+from typing import Optional
 from hyperpod_cli.clients.kubernetes_client import KubernetesClient
 from hyperpod_cli.constants.command_constants import (
     KUEUE_WORKLOAD_PRIORITY_CLASS_LABEL_KEY,
@@ -34,6 +33,7 @@ from hyperpod_cli.utils import setup_logger
 from hyperpod_cli.validators.validator import (
     Validator,
 )
+from hyperpod_cli.validators.recipe_models import HfRecipeSchema, NovaRecipeSchema, NeuronHfRecipeSchema, NovaEvaluationRecipeSchema
 
 logger = setup_logger(__name__)
 
@@ -293,14 +293,56 @@ def validate_scheduler_related_fields(
     return True
 
 def validate_recipe_file(recipe: str):
-    full_recipe_path = os.path.join(RECIPES_DIR, f"{recipe}.yaml")
-    
-    if os.path.exists(full_recipe_path) and os.path.isfile(full_recipe_path):
-        logger.info(f"Recipe file found: {full_recipe_path}")
-        return True
-    
-    logger.error(f"Recipe file '{recipe}.yaml' not found in {RECIPES_DIR}")
-    return False
+    recipe_path = os.path.join(RECIPES_DIR, f"{recipe}.yaml")
+
+    if not os.path.exists(recipe_path):
+        logger.error(f"Recipe file not found: {recipe_path}")
+        return False
+
+    # validate yaml field names
+    try:
+        with open(recipe_path, "r") as f:
+            recipe_data = yaml.safe_load(f)
+
+            if "run" in recipe_data and "model_type" in recipe_data["run"]:
+                model_type = recipe_data["run"]["model_type"]
+
+                if model_type == "hf":
+                    HfRecipeSchema(**recipe_data)
+                elif model_type == "neuron-hf":
+                    NeuronHfRecipeSchema(**recipe_data)
+                elif "nova" in model_type and "evaluation" in recipe_data:
+                    NovaEvaluationRecipeSchema(**recipe_data)
+                elif "nova" in model_type:
+                    NovaRecipeSchema(**recipe_data)
+                else:
+                    raise Exception("Invalid model_type {model_type}")
+                return True
+            else:
+                # there are 3 yaml without model_type
+                try:
+                    # recipes/training/llama/megatron_llama3_1_8b_nemo.yaml
+                    HfRecipeSchema(**recipe_data)
+                    return True
+                except Exception as e:
+                    pass
+
+                try:
+                    # recipes/fine-tuning/nova/nova_premier_r5_cpu_distill.yaml
+                    # recipes/fine-tuning/nova/nova_pro_r5_cpu_distill.yaml
+                    NovaRecipeSchema(**recipe_data)
+                    return True
+                except Exception as e:
+                    pass
+
+                logger.error("Cannot validate recipe with existing templates. Make sure you are using correct recipe.yaml file.")
+                return False
+    except yaml.YAMLError as e:
+        logger.error(f"Invalid YAML in recipe file: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"Error validating recipe: {e}")
+        return False
 
 def is_dict_str_list_str(data: dict) -> bool:
     """
