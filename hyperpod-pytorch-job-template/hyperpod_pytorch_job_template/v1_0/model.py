@@ -233,7 +233,7 @@ class PyTorchJobConfig(BaseModel):
         
         # Create container with required fields
         container_kwargs = {
-            "name": "container-name",
+            "name": "pytorch-job-container",
             "image": self.image,
             "resources": Resources(
                 requests={"nvidia.com/gpu": "0"},
