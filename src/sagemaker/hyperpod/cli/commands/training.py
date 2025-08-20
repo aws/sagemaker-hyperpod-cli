@@ -149,7 +149,7 @@ def pytorch_describe(job_name: str, namespace: str):
     job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
 
     if job is None:
-        raise click.UsageError(f"Job {job_name} not found in namespace {namespace}")
+        raise Exception(f"Job {job_name} not found in namespace {namespace}")
 
     # Print basic info
     click.echo("\nJob Details:")
@@ -317,3 +317,20 @@ def pytorch_get_logs(job_name: str, pod_name: str, namespace: str):
 
     # Use common log display utility for consistent formatting across all job types
     display_formatted_logs(logs, title=f"Pod Logs for {pod_name}")
+
+
+@click.command("hyp-pytorch-job")
+@click.option(
+    "--since-hours",
+    type=click.FLOAT,
+    required=True,
+    help="Required. The time frame to get logs for.",
+)
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_pytorch_operator_logs")
+@handle_cli_exceptions()
+def pytorch_get_operator_logs(since_hours: float):
+    """Get operator logs for pytorch training jobs."""
+    logs = HyperPodPytorchJob.get_operator_logs(since_hours=since_hours)
+    
+    # Use common log display utility for consistent formatting across all job types
+    display_formatted_logs(logs, title="PyTorch Operator Logs")
