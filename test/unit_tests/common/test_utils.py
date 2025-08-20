@@ -287,6 +287,34 @@ class TestUtilityFunctions(unittest.TestCase):
         result = is_eks_orchestrator(mock_client, "my-cluster")
         
         self.assertFalse(result)
+        mock_client.describe_cluster.assert_called_once_with(ClusterName="my-cluster")
+
+    @patch('sagemaker.hyperpod.common.utils.boto3.client')
+    def test_region_to_first_az_id(self, mock_boto_client):
+        """Test region_to_first_az_id function"""
+        from sagemaker.hyperpod.common.utils import region_to_first_az_id
+        
+        mock_response = {
+            'AvailabilityZones': [
+                {'ZoneId': 'use1-az1', 'ZoneName': 'us-east-1a'},
+                {'ZoneId': 'use1-az2', 'ZoneName': 'us-east-1b'}
+            ]
+        }
+        
+        mock_ec2 = MagicMock()
+        mock_ec2.describe_availability_zones.return_value = mock_response
+        mock_boto_client.return_value = mock_ec2
+        
+        result = region_to_first_az_id('us-east-1')
+        
+        self.assertEqual(result, 'use1-az1')
+        mock_boto_client.assert_called_once_with('ec2', region_name='us-east-1')
+        mock_ec2.describe_availability_zones.assert_called_once_with(
+            Filters=[
+                {'Name': 'region-name', 'Values': ['us-east-1']},
+                {'Name': 'zone-type', 'Values': ['availability-zone']}
+            ]
+        )
 
     @patch("subprocess.run")
     def test_update_kube_config_success(self, mock_run):

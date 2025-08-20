@@ -450,6 +450,20 @@ def save_config_yaml(prefill: dict, comment_map: dict, directory: str):
 
     print(f"Configuration saved to: {path}")
 
+def update_config_field(dir_path: str, field_name: str, value):
+    """Update specific field in config.yaml file while preserving format."""
+    config_path = os.path.join(dir_path, "config.yaml")
+    
+    with open(config_path, 'r') as f:
+        lines = f.readlines()
+    
+    for i, line in enumerate(lines):
+        if line.strip().startswith(f"{field_name}:"):
+            lines[i] = f"{field_name}: {value}\n"
+            break
+    
+    with open(config_path, 'w') as f:
+        f.writelines(lines)
 
 def load_config(dir_path: Path = None) -> Tuple[dict, str, str]:
     """

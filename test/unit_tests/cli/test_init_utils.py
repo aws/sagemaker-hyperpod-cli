@@ -3,18 +3,11 @@ import unittest
 import pytest
 import json
 import click
-from click.testing import CliRunner
 from unittest.mock import Mock, patch, mock_open
 from pathlib import Path
-
-from sagemaker.hyperpod.cli.init_utils import load_schema_for_version, save_template, generate_click_command, save_cfn_jinja
+from sagemaker.hyperpod.cli.init_utils import load_schema_for_version, save_template, generate_click_command, save_cfn_jinja, _process_cfn_template_content
 from sagemaker.hyperpod.cli.constants.init_constants import CFN
-
-
-import yaml
-import tempfile
-from click.testing import CliRunner
-from unittest.mock import Mock, patch, mock_open, MagicMock
+from unittest.mock import Mock, patch, mock_open
 from pathlib import Path
 from pydantic import ValidationError
 
@@ -22,7 +15,6 @@ from sagemaker.hyperpod.cli.init_utils import (
     load_schema_for_version, 
     save_template, 
     generate_click_command, 
-    save_cfn_jinja, 
     save_k8s_jinja,
     save_config_yaml,
     load_config_and_validate,
@@ -33,7 +25,9 @@ from sagemaker.hyperpod.cli.init_utils import (
     pascal_to_kebab
 )
 from sagemaker.hyperpod.cli.constants.init_constants import CFN, CRD
-
+import tempfile
+import os
+from sagemaker.hyperpod.cli.init_utils import update_config_field
 
 
 class TestSaveK8sJinja:
@@ -840,3 +834,37 @@ def test_generate_click_command_cfn_case():
         # Assert that the decorator was created successfully
         assert callable(dummy_func)
 
+def test_update_config_field():
+    """Test update_config_field preserves format and updates value."""    
+    with tempfile.TemporaryDirectory() as temp_dir:
+        config_path = os.path.join(temp_dir, "config.yaml")
+        
+        # Create test config file
+        original_content = """
+        # Template type
+        template: hyp-cluster
+
+        # Schema version
+        version: 1.0
+
+        # List of AZs to deploy subnets in
+        availability_zone_ids: 
+
+        # Name of SageMaker HyperPod Cluster
+        hyperpod_cluster_name: test-cluster
+
+        """
+        with open(config_path, 'w') as f:
+            f.write(original_content)
+        
+        # Update field
+        update_config_field(temp_dir, 'availability_zone_ids', 'use1-az1')
+        
+        # Read updated content
+        with open(config_path, 'r') as f:
+            updated_content = f.read()
+        
+        # Verify field was updated and format preserved
+        assert 'availability_zone_ids: use1-az1' in updated_content
+        assert '# List of AZs to deploy subnets in' in updated_content
+        assert 'template: hyp-cluster' in updated_content

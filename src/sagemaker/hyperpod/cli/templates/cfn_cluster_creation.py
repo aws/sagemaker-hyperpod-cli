@@ -217,7 +217,7 @@ Parameters:
     Description: The IP range (CIDR notation) for the VPC.
   AvailabilityZoneIds:
     Type: String
-    Default: {{ availability_zone_ids | default('use2-az1,use2-az2') }}
+    Default: {{ availability_zone_ids | default('') }}
     Description: List of AZs to deploy subnets in (up to 5, comma separated)
   VpcId:
     Type: String
