@@ -33,6 +33,7 @@ from sagemaker.hyperpod.common.utils import display_formatted_logs
     registry=JS_REG,
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "create_js_endpoint_cli")
+@handle_cli_exceptions()
 def js_create(name, namespace, version, js_endpoint):
     """
     Create a jumpstart model endpoint.
@@ -55,6 +56,7 @@ def js_create(name, namespace, version, js_endpoint):
     registry=C_REG,
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "create_custom_endpoint_cli")
+@handle_cli_exceptions()
 def custom_create(name, namespace, version, custom_endpoint):
     """
     Create a custom model endpoint.
