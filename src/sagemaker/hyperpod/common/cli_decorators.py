@@ -326,14 +326,22 @@ def _generate_context_aware_error_message(target_type: str, target_name: str, di
             )
 
 def _generate_namespace_error_message(namespace: str, func) -> str:
-    """Generate helpful error message for non-existent namespace with list command."""
-    raw_resource_type, display_name = _extract_resource_from_command(func)
-    list_command = _get_list_command_from_resource_type(raw_resource_type)
-    
-    return (
-        f"❌ Namespace '{namespace}' does not exist on this cluster. "
-        f"Use '{list_command}' to check for available resources."
-    )
+    """Generate helpful error message for non-existent namespace - context-aware for create vs other operations."""
+    # Check if this is a create operation
+    if _is_create_operation(func):
+        return (
+            f"❌ Namespace '{namespace}' does not exist on this cluster. "
+            f"Please create the namespace first or use an existing namespace."
+        )
+    else:
+        # For describe/delete/list operations, suggest checking for resources
+        raw_resource_type, display_name = _extract_resource_from_command(func)
+        list_command = _get_list_command_from_resource_type(raw_resource_type)
+        
+        return (
+            f"❌ Namespace '{namespace}' does not exist on this cluster. "
+            f"Use '{list_command}' to check for available resources."
+        )
 
 def _extract_resource_from_command(func) -> tuple[str, str]:
     """
