@@ -253,6 +253,37 @@ def rate_limited_operation(
     namespace: Optional[List[str]],
 ) -> Optional[List[List[str]]]:
     try:
+        # Get cluster details to check instance count
+        cluster_response = sm_client.describe_cluster(ClusterName=cluster_name)
+        cluster_status = cluster_response.get('ClusterStatus', 'Unknown')
+        
+        # Check if cluster has zero instances
+        instance_groups = cluster_response.get('InstanceGroups', [])
+        total_instances = sum(
+            group.get('CurrentCount', 0) for group in instance_groups
+        )
+        
+        # If cluster has 0 instances, add it with 0 nodes
+        if total_instances == 0:
+            logger.info(f"Adding cluster {cluster_name} with 0 instances (status: {cluster_status})")
+            zero_instance_row = [
+                cluster_name,
+                "N/A",  # InstanceType
+                0,      # TotalNodes
+                0,      # AcceleratorDevicesAvailable
+                0,      # NodeHealthStatus=Schedulable
+                "N/A",  # DeepHealthCheckStatus=Passed
+            ]
+            
+            # Add namespace columns with 0 values
+            if namespace:
+                for ns in namespace:
+                    zero_instance_row.extend([0, 0])  # Total and Available accelerator devices
+            
+            cluster_capacities.append(zero_instance_row)
+            return
+        
+        # Proceed with EKS validation for clusters with instances
         eks_cluster_arn = validator.validate_cluster_and_get_eks_arn(
             cluster_name, sm_client
         )
