@@ -19,6 +19,7 @@ from sagemaker.hyperpod.inference.hp_endpoint_base import HPEndpointBase
 from typing import Dict, List, Optional
 from sagemaker_core.main.resources import Endpoint
 from pydantic import Field, ValidationError
+from kubernetes import client
 
 
 class HPEndpoint(_HPEndpoint, HPEndpointBase):
@@ -211,3 +212,31 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
             raise Exception(
                 f"Current HyperPod cluster does not have instance type {instance_type}. Supported instance types are {cluster_instance_types}"
             )
+
+    @classmethod
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_pods_endpoint")
+    def list_pods(cls, namespace=None):
+        cls.verify_kube_config()
+
+        if not namespace:
+            namespace = get_default_namespace()
+
+        v1 = client.CoreV1Api()
+        response = v1.list_namespaced_pod(namespace=namespace)
+
+        pods = []
+        for item in response.items:
+            app_name = item.metadata.labels.get("app", None)
+            try:
+                # list_namespaced_pod will return all pods in the namespace, so we need to filter
+                # out the pods that are created by custom endpoint
+                cls.call_get_api(
+                    name=app_name,
+                    kind=INFERENCE_ENDPOINT_CONFIG_KIND,
+                    namespace=namespace,
+                )
+                pods.append(item.metadata.name)
+            except Exception:
+                continue
+
+        return pods

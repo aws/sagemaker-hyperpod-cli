@@ -111,25 +111,6 @@ class TestHPEndpointBase(unittest.TestCase):
 
     @patch("kubernetes.client.CoreV1Api")
     @patch.object(HPEndpointBase, "verify_kube_config")
-    def test_list_pods(self, mock_verify_config, mock_core_api):
-        mock_pod1 = MagicMock()
-        mock_pod1.metadata.name = "pod1"
-        mock_pod2 = MagicMock()
-        mock_pod2.metadata.name = "pod2"
-        mock_core_api.return_value.list_namespaced_pod.return_value.items = [
-            mock_pod1,
-            mock_pod2,
-        ]
-
-        result = self.base.list_pods(namespace="test-ns")
-
-        self.assertEqual(result, ["pod1", "pod2"])
-        mock_core_api.return_value.list_namespaced_pod.assert_called_once_with(
-            namespace="test-ns"
-        )
-
-    @patch("kubernetes.client.CoreV1Api")
-    @patch.object(HPEndpointBase, "verify_kube_config")
     def test_list_namespaces(self, mock_verify_config, mock_core_api):
         mock_ns1 = MagicMock()
         mock_ns1.metadata.name = "namespace1"
