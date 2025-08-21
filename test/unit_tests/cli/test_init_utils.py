@@ -566,7 +566,14 @@ class TestGenerateClickCommandEnhanced:
         """Test that CFN templates override CRD templates in union building"""
         # Use context managers to ensure proper cleanup
         with patch('sagemaker.hyperpod.cli.init_utils.load_schema_for_version') as mock_load_schema, \
-             patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack:
+             patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack, \
+             patch('sys.argv', ['hyp', 'configure']), \
+             patch('sagemaker.hyperpod.cli.init_utils.load_config') as mock_load_config, \
+             patch('sagemaker.hyperpod.cli.init_utils.Path') as mock_path:
+            
+            # Mock config.yaml exists and load_config
+            mock_path.return_value.resolve.return_value.__truediv__.return_value.is_file.return_value = True
+            mock_load_config.return_value = ({}, 'crd-template', '1.0')  # Use crd-template to trigger schema loading
             
             # Mock CRD schema
             crd_schema = {

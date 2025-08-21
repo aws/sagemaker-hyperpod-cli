@@ -42,7 +42,7 @@ class TestGenerateClickCommand:
                 'dimensions': {'type': 'object'},
                 'resources_limits': {'type': 'object'},
                 'resources_requests': {'type': 'object'}
-            }, 
+            },
             'required': []
         }
         # Domain receives flags as attributes env, dimensions, resources_limits, resources_requests

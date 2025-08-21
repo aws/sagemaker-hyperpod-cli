@@ -106,7 +106,7 @@ def get_latest_version_from_registry(template: str) -> str:
             return (0, 0)
     
     latest_version = max(available_versions, key=version_key)
-    return latest_version
+    return str(latest_version)
 
 
 def get_default_version_for_template(template: str) -> str:
@@ -130,7 +130,7 @@ def get_default_version_for_template(template: str) -> str:
 
 
 def load_schema_for_version(version: str, schema_pkg: str) -> dict:
-    ver_pkg = f"{schema_pkg}.v{version.replace('.', '_')}"
+    ver_pkg = f"{schema_pkg}.v{str(version).replace('.', '_')}"
     raw = pkgutil.get_data(ver_pkg, "schema.json")
     if raw is None:
         raise click.ClickException(f"Could not load schema.json for version {version}")
@@ -144,52 +144,67 @@ def generate_click_command(
 ) -> Callable:
     """
     Decorator that:
-      - injects --env, --dimensions, etc
-      - injects --<prop> for every property in the UNION of all templates' schemas
-      - at runtime, either reads the 'template' argument (init) or auto-loads from config.yaml (configure)
+      - injects --<prop> for every property in the current template's schema (detected from config.yaml)
+      - only works for configure command, returns minimal decorator for others
     """
 
-    # build the UNION of all schema props + required flags
-    union_props = {}
-    union_reqs = set()
-    for template_name, template_info in TEMPLATES.items():
-        if template_info["schema_type"] == CRD:
-            # Use latest version for building union schema
-            latest_version = get_default_version_for_template(template_name)
-            schema = load_schema_for_version(latest_version, template_info["schema_pkg"])
-            for k, spec in schema.get("properties", {}).items():
-                # Ensure description is always a string
-                if 'description' in spec:
-                    desc = spec['description']
-                    if isinstance(desc, list):
-                        spec = spec.copy()  # Don't modify the original
-                        spec['description'] = ', '.join(str(item) for item in desc)
-                union_props.setdefault(k, spec)
+    # Only execute full decorator logic for configure command
+    is_configure_command = len(sys.argv) > 1 and sys.argv[1] == "configure"
     
-    # Process CFN templates second and allow them to override CRD fields
-    for template, template_info in TEMPLATES.items():
+    if not is_configure_command:
+        # Return a minimal decorator that doesn't add any options
+        def decorator(func: Callable) -> Callable:
+            return func
+        return decorator
+        
+    config_file = Path(".").resolve() / "config.yaml"
+    if not config_file.is_file():
+        click.secho("❌  No config.yaml found. Run 'hyp init <template>' first.", fg="red")
+        sys.exit(1)
+    
+    _, current_template, current_version = load_config()
+    
+    # Build schema props for current template only
+    union_props = {}
+    template_info = TEMPLATES[current_template]
+    
+    if template_info["schema_type"] == CRD:
+        schema = load_schema_for_version(str(current_version), template_info["schema_pkg"])
+        for k, spec in schema.get("properties", {}).items():
+            # Ensure description is always a string
+            if 'description' in spec:
+                desc = spec['description']
+                if isinstance(desc, list):
+                    spec = spec.copy()  # Don't modify the original
+                    spec['description'] = ', '.join(str(item) for item in desc)
+            union_props[k] = spec
+    elif template_info["schema_type"] == CFN:
+        json_schema = HpClusterStack.model_json_schema()
+        schema_properties = json_schema.get('properties', {})
+        
+        for field, field_info in HpClusterStack.model_fields.items():
+            prop_info = {"description": field_info.description or ""}
+            
+            # Get examples from JSON schema if available
+            if field in schema_properties and 'examples' in schema_properties[field]:
+                prop_info["examples"] = schema_properties[field]['examples']
+            
+            union_props[field] = prop_info
+
+    # build required flags for current template
+    union_reqs = set()
+
+    def decorator(func: Callable) -> Callable:
+        # Initialize cluster_parameters only if current template is CFN
+        cluster_parameters = {}
         if template_info["schema_type"] == CFN:
             try:
                 cluster_template = json.loads(HpClusterStack.get_template())
-                cluster_parameters = cluster_template.get("Parameters")
+                cluster_parameters = cluster_template.get("Parameters", {})
             except Exception:
-                # If template can't be fetched, skip parameter processing
-                cluster_parameters = {}
-            # Add CFN fields to union, potentially overriding CRD fields
-            json_schema = HpClusterStack.model_json_schema()
-            schema_properties = json_schema.get('properties', {})
+                # If template can't be fetched, use empty dict
+                pass
             
-            for field, field_info in HpClusterStack.model_fields.items():
-                prop_info = {"description": field_info.description or ""}
-                
-                # Get examples from JSON schema if available
-                if field in schema_properties and 'examples' in schema_properties[field]:
-                    prop_info["examples"] = schema_properties[field]['examples']
-                
-                # For CFN templates, override any existing union entry (don't use setdefault)
-                union_props[field] = prop_info
-
-    def decorator(func: Callable) -> Callable:
         # JSON flag parser
         def _parse_json_flag(ctx, param, value):
             if value is None:
@@ -245,22 +260,6 @@ def generate_click_command(
 
         @functools.wraps(func)
         def wrapped(*args, **kwargs):
-            # Template-aware field mapping for --env flag
-            if 'env' in kwargs and kwargs['env'] is not None:
-                # Read template from existing config to determine correct field mapping
-                directory = kwargs.get('directory', '.')
-                config_path = os.path.join(directory, 'config.yaml')
-                if os.path.exists(config_path):
-                    try:
-                        with open(config_path, 'r') as f:
-                            existing_config = yaml.safe_load(f)
-                        template = existing_config.get('template')
-                        if template == 'hyp-pytorch-job':
-                            kwargs['environment'] = kwargs.pop('env')
-                        # For other templates (like hyp-custom-endpoint), keep as 'env'
-                    except:
-                        pass  # If config reading fails, keep original field name
-            
 
             # configure path: load from existing config.yaml
             dir_path = Path('.').resolve()
@@ -311,14 +310,16 @@ def generate_click_command(
             # call underlying function
             return func(model_config=model_obj)
 
-        # inject JSON flags with proper field names
+        # inject JSON flags with proper field names - only if they exist in template properties
         for flag in ('env', 'args', 'command', 'label-selector', 'dimensions', 'resources-limits', 'resources-requests', 'tags'):
-            wrapped = click.option(
-                f"--{flag}",
-                callback=_parse_json_flag,
-                metavar="JSON",
-                help=f"JSON object for {flag.replace('-', ' ')}",
-            )(wrapped)
+            flag_name = flag.replace('-', '_')
+            if flag_name in union_props:
+                wrapped = click.option(
+                    f"--{flag}",
+                    callback=_parse_json_flag,
+                    metavar="JSON",
+                    help=f"JSON object for {flag.replace('-', ' ')}",
+                )(wrapped)
 
 
         # inject every union schema property
@@ -546,13 +547,8 @@ def validate_config_against_model(config_data: dict, template: str, version: str
             HpClusterStack(**filtered_config)
         else:
             registry = template_info["registry"]
-            model = registry.get(version)
+            model = registry.get(str(version))  # Convert to string for lookup
             if model:
-                # For validation, include all values (including None) so model_validator can check required fields
-                filtered_config = {
-                    k: v for k, v in config_data.items() 
-                    if k not in ('template', 'version')
-                }
                 
                 # Special handling for JSON fields that might be passed as strings
                 for key in ('args', 'environment'):
