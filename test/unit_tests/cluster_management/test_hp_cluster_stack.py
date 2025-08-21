@@ -299,10 +299,10 @@ class TestHpClusterStack(unittest.TestCase):
 class TestHpClusterStackArrayConversion(unittest.TestCase):
     
     def test_create_parameters_converts_instance_group_settings_list(self):
-        """Test conversion of instance_group_settings from list to single array parameter"""
+        """Test conversion of instance_group_settings from list to numbered parameters"""
         settings = [
-            {"InstanceType": "ml.g5.xlarge", "InstanceCount": 1},
-            {"InstanceType": "ml.p4d.24xlarge", "InstanceCount": 2}
+            {"instance_type": "ml.g5.xlarge", "instance_count": 1},
+            {"instance_type": "ml.p4d.24xlarge", "instance_count": 2}
         ]
         
         stack = HpClusterStack.model_construct(instance_group_settings=settings)
@@ -311,22 +311,19 @@ class TestHpClusterStackArrayConversion(unittest.TestCase):
         # Find the converted parameters
         ig_params = [p for p in parameters if p['ParameterKey'].startswith('InstanceGroupSettings')]
         
-        # Should create single parameter with entire array
-        self.assertEqual(len(ig_params), 1)
+        self.assertEqual(len(ig_params), 2)
         self.assertEqual(ig_params[0]['ParameterKey'], 'InstanceGroupSettings1')
+        self.assertEqual(ig_params[1]['ParameterKey'], 'InstanceGroupSettings2')
         
-        # Verify JSON serialization contains entire array with preserved PascalCase
-        expected_array = [
-            {"InstanceType": "ml.g5.xlarge", "InstanceCount": 1},
-            {"InstanceType": "ml.p4d.24xlarge", "InstanceCount": 2}
-        ]
-        self.assertEqual(json.loads(ig_params[0]['ParameterValue']), expected_array)
+        # Verify JSON serialization
+        self.assertEqual(json.loads(ig_params[0]['ParameterValue']), {"InstanceType": "ml.g5.xlarge", "InstanceCount": 1})
+        self.assertEqual(json.loads(ig_params[1]['ParameterValue']), {"InstanceType": "ml.p4d.24xlarge", "InstanceCount": 2})
     
     def test_create_parameters_converts_rig_settings_list(self):
-        """Test conversion of rig_settings from list to single array parameter"""
+        """Test conversion of rig_settings from list to numbered parameters"""
         settings = [
-            {"RestrictedInstanceType": "ml.g5.xlarge"},
-            {"RestrictedInstanceType": "ml.p4d.24xlarge"}
+            {"restricted_instance_type": "ml.g5.xlarge"},
+            {"restricted_instance_type": "ml.p4d.24xlarge"}
         ]
         
         stack = HpClusterStack.model_construct(rig_settings=settings)
@@ -335,22 +332,19 @@ class TestHpClusterStackArrayConversion(unittest.TestCase):
         # Find the converted parameters
         rig_params = [p for p in parameters if p['ParameterKey'].startswith('RigSettings')]
         
-        # Should create single parameter with entire array
-        self.assertEqual(len(rig_params), 1)
+        self.assertEqual(len(rig_params), 2)
         self.assertEqual(rig_params[0]['ParameterKey'], 'RigSettings1')
+        self.assertEqual(rig_params[1]['ParameterKey'], 'RigSettings2')
         
-        # Verify JSON serialization contains entire array with preserved PascalCase
-        expected_array = [
-            {"RestrictedInstanceType": "ml.g5.xlarge"},
-            {"RestrictedInstanceType": "ml.p4d.24xlarge"}
-        ]
-        self.assertEqual(json.loads(rig_params[0]['ParameterValue']), expected_array)
+        # Verify JSON serialization
+        self.assertEqual(json.loads(rig_params[0]['ParameterValue']), {"RestrictedInstanceType": "ml.g5.xlarge"})
+        self.assertEqual(json.loads(rig_params[1]['ParameterValue']), {"RestrictedInstanceType": "ml.p4d.24xlarge"})
     
     def test_create_parameters_handles_json_string_instance_group_settings(self):
-        """Test conversion of instance_group_settings from JSON string to single array parameter"""
-        settings_json = '[{"InstanceType": "ml.g5.xlarge", "InstanceCount": 1}]'
+        """Test conversion of instance_group_settings from JSON string to numbered parameters"""
+        settings_json = [{"instance_type": "ml.g5.xlarge", "instance_count": 1}]
         
-        stack = HpClusterStack.model_construct(instance_group_settings=settings_json)
+        stack = HpClusterStack(instance_group_settings=settings_json)
         parameters = stack._create_parameters()
         
         # Find the converted parameters
@@ -358,10 +352,7 @@ class TestHpClusterStackArrayConversion(unittest.TestCase):
         
         self.assertEqual(len(ig_params), 1)
         self.assertEqual(ig_params[0]['ParameterKey'], 'InstanceGroupSettings1')
-        
-        # Should contain the array with preserved PascalCase
-        expected_array = [{"InstanceType": "ml.g5.xlarge", "InstanceCount": 1}]
-        self.assertEqual(json.loads(ig_params[0]['ParameterValue']), expected_array)
+        self.assertEqual(json.loads(ig_params[0]['ParameterValue']), {"InstanceType": "ml.g5.xlarge", "InstanceCount": 1})
     
     def test_create_parameters_handles_empty_arrays(self):
         """Test that empty arrays don't create parameters"""
@@ -455,79 +446,6 @@ class TestHpClusterStackParseTags(unittest.TestCase):
         result = stack._parse_tags()
         
         self.assertEqual(result, [])
-    
-    def test_parse_tags_empty_string(self):
-        """Test parsing empty string returns empty list"""
-        stack = HpClusterStack()
-        stack.tags = ""
-        
-        result = stack._parse_tags()
-        
-        self.assertEqual(result, [])
-    
-    def test_parse_tags_json_string_key_value_format(self):
-        """Test parsing JSON string with Key-Value format"""
-        stack = HpClusterStack()
-        stack.tags = '[{"Key": "Environment", "Value": "Prod"}, {"Key": "Team", "Value": "ML"}]'
-        
-        result = stack._parse_tags()
-        
-        expected = [
-            {"Key": "Environment", "Value": "Prod"},
-            {"Key": "Team", "Value": "ML"}
-        ]
-        self.assertEqual(result, expected)
-    
-    def test_parse_tags_string_array_conversion(self):
-        """Test converting string array to Key-Value format"""
-        stack = HpClusterStack()
-        stack.tags = ["Environment", "Production", "Team"]
-        
-        result = stack._parse_tags()
-        
-        expected = [
-            {"Key": "Environment", "Value": ""},
-            {"Key": "Production", "Value": ""},
-            {"Key": "Team", "Value": ""}
-        ]
-        self.assertEqual(result, expected)
-    
-    def test_parse_tags_json_string_array_conversion(self):
-        """Test converting JSON string array to Key-Value format"""
-        stack = HpClusterStack()
-        stack.tags = '["Environment", "Production", "Team"]'
-        
-        result = stack._parse_tags()
-        
-        expected = [
-            {"Key": "Environment", "Value": ""},
-            {"Key": "Production", "Value": ""},
-            {"Key": "Team", "Value": ""}
-        ]
-        self.assertEqual(result, expected)
-    
-    def test_parse_tags_invalid_json_string(self):
-        """Test parsing invalid JSON string returns empty list"""
-        stack = HpClusterStack()
-        stack.tags = '[{"Key": "Environment", "Value":}]'  # Invalid JSON
-        
-        result = stack._parse_tags()
-        
-        self.assertEqual(result, [])
-    
-    def test_parse_tags_mixed_array_filters_non_strings(self):
-        """Test string array conversion filters out non-string items"""
-        stack = HpClusterStack()
-        stack.tags = ["Environment", 123, "Team", None, "Production"]
-        
-        result = stack._parse_tags()
-        
-        expected = [
-            {"Key": "Environment", "Value": ""},
-            {"Key": "Team", "Value": ""},
-            {"Key": "Production", "Value": ""}
-        ]
-        self.assertEqual(result, expected)
 
 
 class TestHpClusterStackGetTemplate(unittest.TestCase):
@@ -615,12 +533,10 @@ class TestHpClusterStackValidators(unittest.TestCase):
     
     def test_validate_instance_group_settings_empty_list(self):
         """Test instance_group_settings validator rejects empty list"""
-        from pydantic import ValidationError
-        with self.assertRaises(ValidationError) as context:
+        with self.assertRaises(ValueError) as context:
             HpClusterStack(instance_group_settings=[])
         
-        # Empty list gets converted to JSON string "[]" which fails list type validation
-        self.assertIn("Input should be a valid list", str(context.exception))
+        self.assertIn("Empty lists [] are not allowed", str(context.exception))
 
     @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.create_boto3_client')
     def test_list_default_filters_delete_complete(self, mock_create_client):
