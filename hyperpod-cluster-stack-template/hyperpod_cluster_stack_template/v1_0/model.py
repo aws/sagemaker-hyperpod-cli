@@ -3,7 +3,7 @@ from typing import Optional, Literal, List, Any, Union
 
 class ClusterStackBase(BaseModel):
     stage: Optional[str] = Field("prod", description="Deployment stage (gamma, prod)")
-    enable_hp_inference_feature: Optional[str] = Field("false", description="Feature flag for enabling HP inference")
+    enable_hp_inference_feature: Optional[bool] = Field(False, description="Feature flag for enabling HP inference")
     custom_bucket_name: Optional[str] = Field(None, description="Custom S3 bucket name for templates")
     resource_name_prefix: Optional[str] = Field("hyperpod-cli-integ-test", description="Unique prefix for all resources (must be different for each deployment)")
     vpc_cidr: Optional[str] = Field("10.192.0.0/16", description="The IP range (CIDR notation) for the VPC")
