@@ -3,7 +3,8 @@ import unittest
 from unittest.mock import Mock, patch, mock_open
 from click.testing import CliRunner
 from datetime import datetime
-from sagemaker.hyperpod.cli.commands.cluster_stack import update_cluster, list_cluster_stacks
+import click
+from sagemaker.hyperpod.cli.commands.cluster_stack import update_cluster, list_cluster_stacks, parse_status_list
 
 
 class TestUpdateCluster:
@@ -90,7 +91,7 @@ class TestListClusterStacks:
         assert 'HyperPod Cluster Stacks (1 found)' in result.output
         assert 'test-stack' in result.output
         assert 'CREATE_COMPLETE' in result.output
-        mock_hp_cluster_list.assert_called_once_with(region=None)
+        mock_hp_cluster_list.assert_called_once_with(region=None, stack_status_filter=None)
 
     @patch('sagemaker.hyperpod.cli.commands.cluster_stack.HpClusterStack.list')
     @patch('sagemaker.hyperpod.cli.commands.cluster_stack.setup_logging')
@@ -109,7 +110,7 @@ class TestListClusterStacks:
         
         # Assert
         assert result.exit_code == 0
-        mock_hp_cluster_list.assert_called_once_with(region='us-east-1')
+        mock_hp_cluster_list.assert_called_once_with(region='us-east-1', stack_status_filter=None)
 
     @patch('sagemaker.hyperpod.cli.commands.cluster_stack.HpClusterStack.list')
     @patch('sagemaker.hyperpod.cli.commands.cluster_stack.setup_logging')
@@ -181,6 +182,121 @@ class TestListClusterStacks:
         # Assert
         assert result.exit_code == 1
         assert 'Error listing stacks: AWS error' in result.output
+
+    @patch('sagemaker.hyperpod.cli.commands.cluster_stack.HpClusterStack.list')
+    @patch('sagemaker.hyperpod.cli.commands.cluster_stack.setup_logging')
+    def test_list_cluster_stacks_with_status_filter(self, mock_setup_logging, mock_hp_cluster_list):
+        """Test that status filter parameter is passed correctly to SDK."""
+        # Arrange
+        mock_logger = Mock()
+        mock_setup_logging.return_value = mock_logger
+        
+        mock_stacks_response = {
+            'StackSummaries': [
+                {
+                    'StackId': 'arn:aws:cloudformation:us-west-2:123456789012:stack/create-complete-stack/12345',
+                    'StackName': 'create-complete-stack',
+                    'CreationTime': datetime(2024, 1, 1, 12, 0, 0),
+                    'StackStatus': 'CREATE_COMPLETE',
+                    'DriftInformation': {'StackDriftStatus': 'NOT_CHECKED'}
+                }
+            ]
+        }
+        mock_hp_cluster_list.return_value = mock_stacks_response
+        
+        runner = CliRunner()
+        
+        # Act
+        result = runner.invoke(list_cluster_stacks, ['--status', "['CREATE_COMPLETE', 'UPDATE_COMPLETE']"])
+        
+        # Assert
+        assert result.exit_code == 0
+        assert 'create-complete-stack' in result.output
+        mock_hp_cluster_list.assert_called_once_with(region=None, stack_status_filter=['CREATE_COMPLETE', 'UPDATE_COMPLETE'])
+
+    @patch('sagemaker.hyperpod.cli.commands.cluster_stack.HpClusterStack.list')
+    @patch('sagemaker.hyperpod.cli.commands.cluster_stack.setup_logging')
+    def test_list_cluster_stacks_invalid_status_format(self, mock_setup_logging, mock_hp_cluster_list):
+        """Test that invalid status format raises appropriate error."""
+        # Arrange
+        mock_logger = Mock()
+        mock_setup_logging.return_value = mock_logger
+        
+        runner = CliRunner()
+        
+        # Act
+        result = runner.invoke(list_cluster_stacks, ['--status', 'invalid-format'])
+        
+        # Assert
+        assert result.exit_code != 0
+        assert 'Invalid list format' in result.output
+        mock_hp_cluster_list.assert_not_called()
+
+    @patch('sagemaker.hyperpod.cli.commands.cluster_stack.HpClusterStack.list')
+    @patch('sagemaker.hyperpod.cli.commands.cluster_stack.setup_logging')
+    def test_list_cluster_stacks_single_status(self, mock_setup_logging, mock_hp_cluster_list):
+        """Test filtering with single status."""
+        # Arrange
+        mock_logger = Mock()
+        mock_setup_logging.return_value = mock_logger
+        
+        mock_stacks_response = {
+            'StackSummaries': [
+                {
+                    'StackId': 'arn:aws:cloudformation:us-west-2:123456789012:stack/in-progress-stack/12345',
+                    'StackName': 'in-progress-stack',
+                    'CreationTime': datetime(2024, 1, 1, 12, 0, 0),
+                    'StackStatus': 'CREATE_IN_PROGRESS',
+                    'DriftInformation': {'StackDriftStatus': 'NOT_CHECKED'}
+                }
+            ]
+        }
+        mock_hp_cluster_list.return_value = mock_stacks_response
+        
+        runner = CliRunner()
+        
+        # Act
+        result = runner.invoke(list_cluster_stacks, ['--status', "['CREATE_IN_PROGRESS']"])
+        
+        # Assert
+        assert result.exit_code == 0
+        assert 'in-progress-stack' in result.output
+        mock_hp_cluster_list.assert_called_once_with(region=None, stack_status_filter=['CREATE_IN_PROGRESS'])
+
+
+class TestParseStatusList:
+    """Test cases for parse_status_list function"""
+
+    def test_parse_status_list_valid_format(self):
+        """Test parsing valid list format."""
+        result = parse_status_list(None, None, "['CREATE_COMPLETE', 'UPDATE_COMPLETE']")
+        assert result == ['CREATE_COMPLETE', 'UPDATE_COMPLETE']
+
+    def test_parse_status_list_single_item(self):
+        """Test parsing single item list."""
+        result = parse_status_list(None, None, "['CREATE_COMPLETE']")
+        assert result == ['CREATE_COMPLETE']
+
+    def test_parse_status_list_empty_input(self):
+        """Test parsing empty/None input."""
+        result = parse_status_list(None, None, None)
+        assert result is None
+        
+        result = parse_status_list(None, None, "")
+        assert result is None
+
+    def test_parse_status_list_invalid_format(self):
+        """Test parsing invalid format raises BadParameter."""
+        with pytest.raises(click.BadParameter) as exc_info:
+            parse_status_list(None, None, "invalid-format")
+        assert "Invalid list format" in str(exc_info.value)
+
+    def test_parse_status_list_non_list_format(self):
+        """Test parsing valid syntax but non-list raises BadParameter."""
+        with pytest.raises(click.BadParameter) as exc_info:
+            parse_status_list(None, None, "'not-a-list'")
+        assert "Expected list format" in str(exc_info.value)
+
 
 @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.importlib.resources.read_text')
 @patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack.get_template')

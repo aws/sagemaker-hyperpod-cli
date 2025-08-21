@@ -537,3 +537,89 @@ class TestHpClusterStackValidators(unittest.TestCase):
             HpClusterStack(instance_group_settings=[])
         
         self.assertIn("Empty lists [] are not allowed", str(context.exception))
+
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.create_boto3_client')
+    def test_list_default_filters_delete_complete(self, mock_create_client):
+        """Test that list() filters out DELETE_COMPLETE stacks by default."""
+        # Arrange
+        mock_cf_client = MagicMock()
+        mock_create_client.return_value = mock_cf_client
+        
+        mock_response = {
+            'StackSummaries': [
+                {'StackName': 'active-stack', 'StackStatus': 'CREATE_COMPLETE'},
+                {'StackName': 'deleted-stack', 'StackStatus': 'DELETE_COMPLETE'},
+                {'StackName': 'updating-stack', 'StackStatus': 'UPDATE_IN_PROGRESS'}
+            ]
+        }
+        mock_cf_client.list_stacks.return_value = mock_response
+        
+        # Act
+        result = HpClusterStack.list()
+        
+        # Assert
+        assert len(result['StackSummaries']) == 2
+        stack_names = [stack['StackName'] for stack in result['StackSummaries']]
+        assert 'active-stack' in stack_names
+        assert 'updating-stack' in stack_names
+        assert 'deleted-stack' not in stack_names
+
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.create_boto3_client')
+    def test_list_with_status_filter(self, mock_create_client):
+        """Test that list() uses API filter and returns only matching stacks."""
+        # Arrange
+        mock_cf_client = MagicMock()
+        mock_create_client.return_value = mock_cf_client
+        
+        # CloudFormation API would only return stacks matching the filter
+        mock_response = {
+            'StackSummaries': [
+                {'StackName': 'active-stack', 'StackStatus': 'CREATE_COMPLETE'},
+                {'StackName': 'deleted-stack', 'StackStatus': 'DELETE_COMPLETE'}
+            ]
+        }
+        mock_cf_client.list_stacks.return_value = mock_response
+        
+        # Act
+        result = HpClusterStack.list(stack_status_filter=['CREATE_COMPLETE', 'DELETE_COMPLETE'])
+        
+        # Assert
+        mock_cf_client.list_stacks.assert_called_once_with(StackStatusFilter=['CREATE_COMPLETE', 'DELETE_COMPLETE'])
+        # Should return exactly what CloudFormation API returned (no additional filtering)
+        assert len(result['StackSummaries']) == 2
+        stack_names = [stack['StackName'] for stack in result['StackSummaries']]
+        assert 'active-stack' in stack_names
+        assert 'deleted-stack' in stack_names
+        assert 'updating-stack' not in stack_names
+
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.create_boto3_client')
+    def test_list_empty_response(self, mock_create_client):
+        """Test that list() handles empty response correctly."""
+        # Arrange
+        mock_cf_client = MagicMock()
+        mock_create_client.return_value = mock_cf_client
+        
+        mock_response = {}
+        mock_cf_client.list_stacks.return_value = mock_response
+        
+        # Act
+        result = HpClusterStack.list()
+        
+        # Assert
+        assert result == {}
+
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.create_boto3_client')
+    def test_list_with_region(self, mock_create_client):
+        """Test that list() passes region correctly."""
+        # Arrange
+        mock_cf_client = MagicMock()
+        mock_create_client.return_value = mock_cf_client
+        
+        mock_response = {'StackSummaries': []}
+        mock_cf_client.list_stacks.return_value = mock_response
+        
+        # Act
+        HpClusterStack.list(region='us-east-1')
+        
+        # Assert
+        mock_create_client.assert_called_once_with('cloudformation', region_name='us-east-1')

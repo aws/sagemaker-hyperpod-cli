@@ -2,6 +2,7 @@
 Command module for HyperPod cluster stack operations.
 """
 
+import ast
 import logging
 import click
 import json
@@ -17,6 +18,25 @@ from sagemaker.hyperpod.common.utils import setup_logging
 from sagemaker.hyperpod.cli.utils import convert_datetimes
 
 logger = logging.getLogger(__name__)
+
+
+def parse_status_list(ctx, param, value):
+    """Parse status list from string format like "['CREATE_COMPLETE', 'UPDATE_COMPLETE']" """
+    if not value:
+        return None
+    
+    try:
+        # Handle both string representation and direct list
+        if isinstance(value, str):
+            # Parse string like "['item1', 'item2']" 
+            parsed = ast.literal_eval(value)
+            if isinstance(parsed, list):
+                return parsed
+            else:
+                raise click.BadParameter(f"Expected list format, got: {type(parsed).__name__}")
+        return value
+    except (ValueError, SyntaxError) as e:
+        raise click.BadParameter(f"Invalid list format. Use: \"['STATUS1', 'STATUS2']\". Error: {e}")
 
 
 @click.command("hyp-cluster")
@@ -130,12 +150,15 @@ def describe_cluster_stack(stack_name: str, debug: bool, region: str) -> None:
 @click.command("hyp-cluster")
 @click.option("--region", help="AWS region")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
-def list_cluster_stacks(region, debug):
+@click.option("--status", 
+              callback=parse_status_list,
+              help="Filter by stack status. Format: \"['CREATE_COMPLETE', 'UPDATE_COMPLETE']\"")
+def list_cluster_stacks(region, debug, status):
     """List all HyperPod cluster stacks."""
     logger = setup_logging(logging.getLogger(__name__), debug)
 
     try:
-        stacks_info = HpClusterStack.list(region=region)
+        stacks_info = HpClusterStack.list(region=region, stack_status_filter=status)
 
         if not stacks_info or 'StackSummaries' not in stacks_info:
             click.secho("No stacks found", fg='yellow')
@@ -143,6 +166,7 @@ def list_cluster_stacks(region, debug):
 
         stack_summaries = stacks_info['StackSummaries']
 
+        # Convert datetimes for display
         stack_summaries = [convert_datetimes(stack) for stack in stack_summaries]
 
         logger.debug(f"Listing stacks in region: {region or 'default'}")

@@ -263,11 +263,25 @@ class HpClusterStack(ClusterStackBase):
             raise RuntimeError("Stack operation failed")
 
     @staticmethod
-    def list(region: Optional[str] = None):
+    def list(region: Optional[str] = None, stack_status_filter: Optional[List[str]] = None):
         cf = create_boto3_client('cloudformation', region_name=region)
 
         try:
-            response = cf.list_stacks()
+            # Prepare API call parameters
+            list_params = {}
+            
+            if stack_status_filter is not None:
+                list_params['StackStatusFilter'] = stack_status_filter
+            
+            response = cf.list_stacks(**list_params)
+            
+            # Only filter DELETE_COMPLETE when no explicit filter is provided
+            if stack_status_filter is None and 'StackSummaries' in response:
+                response['StackSummaries'] = [
+                    stack for stack in response['StackSummaries'] 
+                    if stack.get('StackStatus') != 'DELETE_COMPLETE'
+                ]
+            
             return response
         except cf.exceptions.ClientError as e:
             error_code = e.response['Error']['Code']
