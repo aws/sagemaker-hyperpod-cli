@@ -316,8 +316,8 @@ class TestHpClusterStackArrayConversion(unittest.TestCase):
         self.assertEqual(ig_params[1]['ParameterKey'], 'InstanceGroupSettings2')
         
         # Verify JSON serialization
-        self.assertEqual(json.loads(ig_params[0]['ParameterValue']), {"InstanceType": "ml.g5.xlarge", "InstanceCount": 1})
-        self.assertEqual(json.loads(ig_params[1]['ParameterValue']), {"InstanceType": "ml.p4d.24xlarge", "InstanceCount": 2})
+        self.assertEqual(json.loads(ig_params[0]['ParameterValue']), [{"InstanceType": "ml.g5.xlarge", "InstanceCount": 1}])
+        self.assertEqual(json.loads(ig_params[1]['ParameterValue']), [{"InstanceType": "ml.p4d.24xlarge", "InstanceCount": 2}])
     
     def test_create_parameters_converts_rig_settings_list(self):
         """Test conversion of rig_settings from list to numbered parameters"""
@@ -337,8 +337,8 @@ class TestHpClusterStackArrayConversion(unittest.TestCase):
         self.assertEqual(rig_params[1]['ParameterKey'], 'RigSettings2')
         
         # Verify JSON serialization
-        self.assertEqual(json.loads(rig_params[0]['ParameterValue']), {"RestrictedInstanceType": "ml.g5.xlarge"})
-        self.assertEqual(json.loads(rig_params[1]['ParameterValue']), {"RestrictedInstanceType": "ml.p4d.24xlarge"})
+        self.assertEqual(json.loads(rig_params[0]['ParameterValue']), [{"RestrictedInstanceType": "ml.g5.xlarge"}])
+        self.assertEqual(json.loads(rig_params[1]['ParameterValue']), [{"RestrictedInstanceType": "ml.p4d.24xlarge"}])
     
     def test_create_parameters_handles_json_string_instance_group_settings(self):
         """Test conversion of instance_group_settings from JSON string to numbered parameters"""
@@ -352,7 +352,7 @@ class TestHpClusterStackArrayConversion(unittest.TestCase):
         
         self.assertEqual(len(ig_params), 1)
         self.assertEqual(ig_params[0]['ParameterKey'], 'InstanceGroupSettings1')
-        self.assertEqual(json.loads(ig_params[0]['ParameterValue']), {"InstanceType": "ml.g5.xlarge", "InstanceCount": 1})
+        self.assertEqual(json.loads(ig_params[0]['ParameterValue']), [{"InstanceType": "ml.g5.xlarge", "InstanceCount": 1}])
     
     def test_create_parameters_handles_empty_arrays(self):
         """Test that empty arrays don't create parameters"""

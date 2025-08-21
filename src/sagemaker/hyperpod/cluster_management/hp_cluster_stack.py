@@ -131,12 +131,11 @@ class HpClusterStack(ClusterStackBase):
         stack_name = f"HyperpodClusterStack-{str(uuid.uuid4())[:5]}"
         # Get account ID and create bucket name
         bucket_name = f"sagemaker-hyperpod-cluster-stack-bucket"
-        template_key = f"1.0/main-stack-eks-based-cfn-template.yaml"
+        template_key = f"1.1/main-stack-eks-based-template.yaml"
 
         try:
             # Use TemplateURL for large templates (>51KB)
             template_url = f"https://{bucket_name}.s3.amazonaws.com/{template_key}"
-            click.secho(f"Calling with tags { self._parse_tags()}")
             response = cf.create_stack(
                 StackName=stack_name,
                 TemplateURL=template_url,
@@ -180,7 +179,7 @@ class HpClusterStack(ClusterStackBase):
                         formatted_setting = self._convert_nested_keys(setting)
                         parameters.append({
                             'ParameterKey': f'InstanceGroupSettings{i}',
-                            'ParameterValue': json.dumps(formatted_setting) if isinstance(formatted_setting, (dict, list)) else str(formatted_setting)
+                            'ParameterValue': "[" + json.dumps(formatted_setting) + "]" if isinstance(formatted_setting, (dict, list)) else str(formatted_setting) 
                         })
                 elif field_name == 'rig_settings':
                     # Handle both list and JSON string formats
@@ -197,7 +196,7 @@ class HpClusterStack(ClusterStackBase):
                         formatted_setting = self._convert_nested_keys(setting)
                         parameters.append({
                             'ParameterKey': f'RigSettings{i}',
-                            'ParameterValue': json.dumps(formatted_setting) if isinstance(formatted_setting, (dict, list)) else str(formatted_setting)
+                            'ParameterValue': "[" + json.dumps(formatted_setting) + "]" if isinstance(formatted_setting, (dict, list)) else str(formatted_setting)
                         })
                 else:
                     # Convert array fields to comma-separated strings
@@ -276,7 +275,15 @@ class HpClusterStack(ClusterStackBase):
             "vpc_cidr": "VpcCIDR",
             "enable_hp_inference_feature": "EnableHPInferenceFeature",
             "fsx_availability_zone_id": "FsxAvailabilityZoneId",
-            "hyperpod_cluster_name": "HyperPodClusterName"
+            "hyperpod_cluster_name": "HyperPodClusterName",
+            "InstanceCount": "InstanceCount",
+            "InstanceGroupName": "InstanceGroupName",
+            "InstanceType": "InstanceType",
+            "TargetAvailabilityZoneId": "TargetAvailabilityZoneId",
+            "ThreadsPerCore": "ThreadsPerCore",
+            "InstanceStorageConfigs": "InstanceStorageConfigs",
+            "EbsVolumeConfig": "EbsVolumeConfig",
+            "VolumeSizeInGB": "VolumeSizeInGB"
         }
         
         if snake_str in mappings:
