@@ -25,6 +25,317 @@ def _namespace_exists(namespace: str) -> bool:
         # If we can't check, assume it exists to avoid false negatives
         return True
 
+def _check_training_operator_exists() -> bool:
+    """
+    Check if Training Operator CRD exists using KubernetesClient.
+    Uses lazy initialization to avoid import-time failures.
+    """
+    try:
+        from sagemaker.hyperpod.cli.clients.kubernetes_client import KubernetesClient
+        from kubernetes import client
+        from sagemaker.hyperpod.cli.constants.pytorch_constants import HYPERPOD_PYTORCH_CRD_NAME
+        
+        k8s_client = KubernetesClient()
+        
+        # Ensure kube client is initialized
+        if not k8s_client._kube_client:
+            logger.debug("Kubernetes client not initialized")
+            return True  # Don't block if client unavailable
+            
+        # Use ApiextensionsV1Api to check for CRDs
+        extensions_api = client.ApiextensionsV1Api(k8s_client._kube_client)
+        
+        # Check if the Training Operator CRD exists
+        extensions_api.read_custom_resource_definition(name=HYPERPOD_PYTORCH_CRD_NAME)
+        return True
+        
+    except ImportError as e:
+        logger.debug(f"Failed to import kubernetes client: {e}")
+        return True  # Don't block if kubernetes package unavailable
+    except client.rest.ApiException as e:
+        if e.status == 404:
+            return False  # CRD doesn't exist
+        else:
+            logger.debug(f"Error checking Training Operator CRD: {e}")
+            return True  # Don't block on API errors
+    except Exception as e:
+        logger.debug(f"Failed to check Training Operator existence: {e}")
+        return True  # Don't block on validation failures
+    
+def _is_pytorch_job_operation(func, **kwargs) -> bool:
+    """
+    Detect if this is a Pytorch job operation
+    """
+    try:
+        # Check function name for PyTorch patterns
+        func_name = func.__name__.lower()
+        if 'pytorch' in func_name:
+            return True
+
+        # Check if wrapped function has PyTorch in name
+        if hasattr(func, '__wrapped__'):
+            wrapped_name = getattr(func.__wrapped__, '__name__', '').lower()
+            if 'pytorch' in wrapped_name:
+                return True
+
+        # Check Click command info for PyTorch patterns
+        try:
+            click_ctx = click.get_current_context(silent=True)
+            if click_ctx and hasattr(click_ctx, 'info_name'):
+                # This would catch commands like "hyp pytorch create pytorch-job"
+                command_path = str(click_ctx.info_name).lower()
+                if 'pytorch' in command_path:
+                    return True
+        except Exception:
+            pass
+
+    except Exception as e:
+        logger.debug(f"Failed to detect PyTorch operation: {e}")
+
+    return False
+
+def _is_get_logs_operation(func, **kwargs) -> bool:
+    """
+    Detect if this is a get-logs operation
+    """
+    try:
+        # Check function name for logs patterns
+        func_name = func.__name__.lower()
+        if 'logs' in func_name:
+            return True
+
+        # Check if wrapped function has logs in name
+        if hasattr(func, '__wrapped__'):
+            wrapped_name = getattr(func.__wrapped__, '__name__', '').lower()
+            if 'logs' in wrapped_name:
+                return True
+
+        # Check Click command info for logs patterns
+        try:
+            click_ctx = click.get_current_context(silent=True)
+            if click_ctx and hasattr(click_ctx, 'info_name'):
+                # This would catch commands like "hyp get-logs hyp-pytorch-job"
+                command_path = str(click_ctx.info_name).lower()
+                if 'logs' in command_path:
+                    return True
+        except Exception:
+            pass
+
+    except Exception as e:
+        logger.debug(f"Failed to detect get-logs operation: {e}")
+
+    return False
+
+def _check_pod_readiness_and_generate_message(pod_name: str, namespace: str) -> str:
+    """
+    Check pod readiness and generate appropriate error message for get-logs operations.
+    Uses lazy initialization to avoid import-time failures.
+    """
+    try:
+        from sagemaker.hyperpod.cli.clients.kubernetes_client import KubernetesClient
+        
+        k8s_client = KubernetesClient()
+        
+        # Ensure kube client is initialized
+        if not k8s_client._kube_client:
+            logger.debug("Kubernetes client not initialized")
+            return f"❌ Cannot get logs for pod '{pod_name}' - pod is not ready yet."
+            
+        # Get pod details
+        pod_details = k8s_client.get_pod_details(pod_name, namespace)
+        
+        # Extract pod phase
+        pod_phase = getattr(pod_details.status, 'phase', 'Unknown') if pod_details.status else 'Unknown'
+        
+        # Extract container statuses and reasons
+        container_reason = None
+        if pod_details.status and hasattr(pod_details.status, 'container_statuses') and pod_details.status.container_statuses:
+            for container_status in pod_details.status.container_statuses:
+                if hasattr(container_status, 'state') and container_status.state:
+                    if hasattr(container_status.state, 'waiting') and container_status.state.waiting:
+                        container_reason = getattr(container_status.state.waiting, 'reason', None)
+                        break
+                    elif hasattr(container_status.state, 'terminated') and container_status.state.terminated:
+                        container_reason = getattr(container_status.state.terminated, 'reason', None)
+                        break
+        
+        # Check init container statuses
+        init_container_reason = None
+        if pod_details.status and hasattr(pod_details.status, 'init_container_statuses') and pod_details.status.init_container_statuses:
+            for init_container_status in pod_details.status.init_container_statuses:
+                if hasattr(init_container_status, 'state') and init_container_status.state:
+                    if hasattr(init_container_status.state, 'waiting') and init_container_status.state.waiting:
+                        init_container_reason = getattr(init_container_status.state.waiting, 'reason', None)
+                        break
+        
+        # Generate appropriate message based on pod state
+        if pod_phase == 'Failed':
+            reason_text = container_reason or 'Container exited with non-zero status'
+            return (f"❌ Cannot get logs for pod '{pod_name}' - pod has failed.\n"
+                   f"Pod Status: Failed ({reason_text})\n"
+                   f"Reason: {_get_human_readable_reason(reason_text)}")
+        
+        elif pod_phase == 'Pending':
+            if init_container_reason:
+                if 'Init:' in str(init_container_reason):
+                    reason_text = init_container_reason
+                    return (f"❌ Cannot get logs for pod '{pod_name}' - pod is not ready yet.\n"
+                           f"Pod Status: Pending ({reason_text})\n"
+                           f"Reason: Init containers are still running")
+                else:
+                    reason_text = init_container_reason
+                    return (f"❌ Cannot get logs for pod '{pod_name}' - pod is not ready yet.\n"
+                           f"Pod Status: Pending ({reason_text})\n"
+                           f"Reason: {_get_human_readable_reason(reason_text)}")
+            elif container_reason:
+                reason_text = container_reason
+                return (f"❌ Cannot get logs for pod '{pod_name}' - pod is not ready yet.\n"
+                       f"Pod Status: Pending ({reason_text})\n"
+                       f"Reason: {_get_human_readable_reason(reason_text)}")
+            else:
+                return (f"❌ Cannot get logs for pod '{pod_name}' - pod is not ready yet.\n"
+                       f"Pod Status: Pending\n"
+                       f"Reason: Pod is still being scheduled or initialized")
+        
+        elif pod_phase == 'Running' and container_reason:
+            # Running but with issues like CrashLoopBackOff
+            return (f"❌ Cannot get logs for pod '{pod_name}' - pod is not ready yet.\n"
+                   f"Pod Status: Running ({container_reason})\n"
+                   f"Reason: {_get_human_readable_reason(container_reason)}")
+        
+        else:
+            # Check if pod is being terminated
+            if (pod_details.metadata and hasattr(pod_details.metadata, 'deletion_timestamp') 
+                and pod_details.metadata.deletion_timestamp):
+                return (f"❌ Cannot get logs for pod '{pod_name}' - pod is being terminated.\n"
+                       f"Pod Status: Terminating\n"
+                       f"Reason: Pod is shutting down")
+            else:
+                # Fallback for unknown states
+                return (f"❌ Cannot get logs for pod '{pod_name}' - pod is not ready yet.\n"
+                       f"Pod Status: {pod_phase}\n"
+                       f"Reason: Pod may not be fully initialized")
+        
+    except ImportError as e:
+        logger.debug(f"Failed to import kubernetes client: {e}")
+        return f"❌ Cannot get logs for pod '{pod_name}' - pod is not ready yet."
+    except Exception as e:
+        logger.debug(f"Failed to check pod readiness for pod {pod_name}: {e}")
+        return f"❌ Cannot get logs for pod '{pod_name}' - pod is not ready yet."
+
+def _get_human_readable_reason(reason: str) -> str:
+    """
+    Convert Kubernetes container reasons to human-readable explanations.
+    """
+    reason_map = {
+        'ContainerCreating': 'Containers are still being created',
+        'ImagePullBackOff': 'Cannot pull container image',
+        'ErrImagePull': 'Cannot pull container image',
+        'CrashLoopBackOff': 'Container keeps crashing and restarting',
+        'Error': 'Container exited with non-zero status',
+        'Completed': 'Container has completed execution',
+        'OOMKilled': 'Container was killed due to out of memory',
+        'CreateContainerConfigError': 'Container configuration is invalid',
+        'InvalidImageName': 'Container image name is invalid',
+        'CreateContainerError': 'Cannot create container',
+        'RunContainerError': 'Cannot run container',
+    }
+    
+    return reason_map.get(reason, f'Container state: {reason}')
+
+def _check_job_exists_for_pod_validation(job_name: str, namespace: str, raw_resource_type: str) -> bool:
+    """
+    Check if a job/resource exists independently of pod validation.
+    Uses template-agnostic CLI commands to verify job existence.
+    """
+    try:
+        import subprocess
+        
+        # Construct the describe command for the resource type
+        # Use appropriate parameter name based on resource type
+        if raw_resource_type == "pytorch-job":
+            cmd = ["hyp", "describe", f"hyp-{raw_resource_type}", "--job-name", job_name]
+        else:
+            cmd = ["hyp", "describe", f"hyp-{raw_resource_type}", "--name", job_name]
+            
+        if namespace != "default":
+            cmd.extend(["--namespace", namespace])
+        
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False
+        )
+        
+        # If describe command succeeds, job exists
+        return result.returncode == 0
+        
+    except Exception as e:
+        logger.debug(f"Failed to check job existence for {job_name}: {e}")
+        return False  # Conservative: assume job doesn't exist if we can't verify
+
+def _is_pod_not_found_in_job_scenario(error_message: str, func=None, **kwargs) -> bool:
+    """
+    Detect if this is a scenario where job exists but pod name is wrong.
+    This happens when get-logs is called with invalid pod name for existing job.
+    """
+    try:
+        # Check if this is a get-logs operation
+        is_logs_op = _is_get_logs_operation(func, **kwargs)
+        if not is_logs_op:
+            return False
+            
+        # Check if error message indicates job not found
+        error_lower = error_message.lower()
+        has_not_found = "not found" in error_lower
+        if not has_not_found:
+            return False
+            
+        # Extract job name and namespace from context
+        job_name = None
+        namespace = _extract_namespace_from_kwargs(**kwargs)
+        
+        # Try to get job name from kwargs or click context
+        try:
+            click_ctx = click.get_current_context(silent=True)
+            if click_ctx and click_ctx.params:
+                # Common parameter names for job/resource names
+                for param_name in ['job_name', 'name', 'job']:
+                    if param_name in click_ctx.params:
+                        job_name = click_ctx.params[param_name]
+                        break
+        except Exception:
+            pass
+        
+        # Also check kwargs
+        if not job_name:
+            for param_name in ['job_name', 'name', 'job']:
+                if param_name in kwargs:
+                    job_name = kwargs[param_name]
+                    break
+        
+        if not job_name:
+            return False
+            
+        # Check if job actually exists
+        raw_resource_type, _ = _extract_resource_from_command(None)  # Will use context
+        job_exists = _check_job_exists_for_pod_validation(job_name, namespace, raw_resource_type)
+        
+        result = job_exists  # If job exists but we got "not found", it's likely a pod issue
+        return result
+        
+    except Exception as e:
+        logger.debug(f"Failed to detect pod not found scenario: {e}")
+        return False
+
+def _generate_pod_not_found_message(pod_name: str, job_name: str) -> str:
+    """
+    Generate enhanced error message for pod not found in job scenario.
+    """
+    return f"❌ Pod '{pod_name}' not found for job '{job_name}'."
+
 def _extract_namespace_from_kwargs(**kwargs) -> str:
     """Extract namespace from function kwargs and Click context."""
     # First try kwargs (works for most commands)
@@ -494,6 +805,16 @@ def handle_cli_exceptions():
                 sys.exit(1)
                 return
             
+            # Check Training Operator CRD for PyTorch job creation
+            if is_create_operation and _is_pytorch_job_operation(func, **kwargs):
+                if not _check_training_operator_exists():
+                    from sagemaker.hyperpod.cli.constants.pytorch_constants import HYPERPOD_PYTORCH_CRD_NAME
+                    click.echo("❌ Training Operator not found in cluster.")
+                    click.echo(f"Missing Custom Resource Definition: {HYPERPOD_PYTORCH_CRD_NAME}")
+                    click.echo("The Training Operator is required to submit PyTorch jobs. Please install the Training Operator in your cluster.")
+                    sys.exit(1)
+                    return
+            
             # Execute the command
             try:
                 return func(*args, **kwargs)
@@ -547,6 +868,33 @@ def handle_cli_exceptions():
                 
                 # Check if this might be a wrapped 404 in a regular Exception
                 elif "404" in str(e) or "not found" in str(e).lower():
+                    # First check if this is a "pod not found in job" scenario
+                    if _is_pod_not_found_in_job_scenario(str(e), func=func, **kwargs):
+                        try:
+                            # Extract pod name and job name from context
+                            pod_name = None
+                            job_name = None
+                            
+                            click_ctx = click.get_current_context(silent=True)
+                            if click_ctx and click_ctx.params:
+                                pod_name = click_ctx.params.get('pod_name')
+                                job_name = click_ctx.params.get('job_name') or click_ctx.params.get('name')
+                            
+                            # Fallback to kwargs
+                            if not pod_name:
+                                pod_name = kwargs.get('pod_name')
+                            if not job_name:
+                                job_name = kwargs.get('job_name') or kwargs.get('name')
+                            
+                            if pod_name and job_name:
+                                enhanced_message = _generate_pod_not_found_message(pod_name, job_name)
+                                click.echo(enhanced_message)
+                                sys.exit(1)
+                                return
+                        except Exception:
+                            # Fall through to normal 404 handling if pod validation fails
+                            pass
+                    
                     # Use dynamic target detection for wrapped 404s as well
                     target_type, target_name = _extract_primary_target_dynamically(**kwargs)
                     namespace = kwargs.get('namespace', 'default')
@@ -576,8 +924,8 @@ def handle_cli_exceptions():
                         # Fall through to standard handling
                         pass
                 
-                # 4: Enhanced Container Error Handling for 400 Bad Request
-                # Check if this is a 400 Bad Request with invalid container parameter
+                # 4: Container Error Handling for 400 Bad Request
+                # Check if this is a 400 Bad Request with invalid container parameter (check this FIRST)
                 elif "400" in str(e) and "Bad Request" in str(e) and _has_container_parameter(**kwargs):
                     try:
                         pod_name = _extract_primary_target_dynamically(**kwargs)[1]  # Get pod name
@@ -600,6 +948,22 @@ def handle_cli_exceptions():
                         
                     except Exception:
                         # Fall through to standard handling if container validation fails
+                        pass
+                
+                # 5: Enhanced Pod Readiness Error Handling for get-logs 400 Bad Request
+                # Check if this is a 400 Bad Request from get-logs on pod that's not ready
+                elif "400" in str(e) and "Bad Request" in str(e) and _is_get_logs_operation(func, **kwargs):
+                    try:
+                        pod_name = _extract_primary_target_dynamically(**kwargs)[1]  # Get pod name
+                        namespace = _extract_namespace_from_kwargs(**kwargs)
+                        
+                        enhanced_message = _check_pod_readiness_and_generate_message(pod_name, namespace)
+                        click.echo(enhanced_message)
+                        sys.exit(1)
+                        return
+                        
+                    except Exception:
+                        # Fall through to standard handling if pod readiness check fails
                         pass
                 
                 # For all other errors, use standard handling 

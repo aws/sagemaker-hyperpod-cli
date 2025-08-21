@@ -13,3 +13,4 @@
 PYTORCH_CUSTOM_OBJECT_GROUP = "kubeflow.org"
 PYTORCH_CUSTOM_OBJECT_PLURAL = "pytorchjobs"
 PYTORCH_CUSTOM_OBJECT_VERSION = "v1"
+HYPERPOD_PYTORCH_CRD_NAME = "hyperpodpytorchjobs.sagemaker.amazonaws.com"
