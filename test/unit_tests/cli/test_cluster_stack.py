@@ -317,7 +317,7 @@ class TestCreateClusterStackHelper(unittest.TestCase):
             # Setup mocks
             mock_exists.return_value = True
             mock_yaml_load.return_value = {
-                'template': 'hyp-cluster',
+                'template': 'hyp-cluster-stack',
                 'version': '1.0',
                 'eks_cluster_name': 'test-cluster',
                 'namespace': 'test-namespace'
@@ -409,7 +409,7 @@ class TestCreateClusterStackHelper(unittest.TestCase):
         # Setup mocks
         mock_exists.return_value = True
         mock_yaml_load.return_value = {
-            'template': 'hyp-cluster',
+            'template': 'hyp-cluster-stack',
             'eks_cluster_name': 'test-cluster',
             'optional_field': None,
             'required_field': 'value'

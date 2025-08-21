@@ -34,7 +34,7 @@ TEMPLATES = {
     #     'template': KUBERNETES_PYTORCH_JOB_TEMPLATE,
     #     'type': "jinja"
     # },
-    "hyp-cluster": {
+    "hyp-cluster-stack": {
         "schema_pkg": "hyperpod_cluster_stack_template",
         "schema_type": CFN,
         'template': CLOUDFORMATION_CLUSTER_CREATION_TEMPLATE,
@@ -66,7 +66,7 @@ hyp init <template-type>
 
 Example:
 ```bash
-hyp init hyp-cluster
+hyp init hyp-cluster-stack
 ```
 
 This creates the following files in your current directory:
@@ -81,7 +81,7 @@ This creates the following files in your current directory:
 You can specify a target directory for initialization:
 
 ```bash
-hyp init hyp-cluster <directory>
+hyp init hyp-cluster-stack <directory>
 cd <directory>
 ```
 
@@ -89,15 +89,15 @@ cd <directory>
 
 **Re-initializing the same template:**
 ```
-hyp init hyp-cluster
-⚠️ config.yaml already initialized as 'hyp-cluster'.
+hyp init hyp-cluster-stack
+⚠️ config.yaml already initialized as 'hyp-cluster-stack'.
 Overwrite? [y/N]:
 ```
 
 **Initializing with a different template:**
 ```
 hyp init hyp-custom-endpoint
-⚠️ Directory already initialized as 'hyp-cluster'.
+⚠️ Directory already initialized as 'hyp-cluster-stack'.
 ⚠️ It is highly unrecommended to initiate this directory with a different template.
 ⚠️ Recommended path is create a new folder and then init with 'hyp-custom-endpoint'.
 If you insist, re-init as 'hyp-custom-endpoint' instead? [y/N]:
@@ -154,7 +154,7 @@ A typical workflow might look like:
 
 1. Initialize a new endpoint configuration:
    ```bash
-   hyp init hyp-cluster
+   hyp init hyp-cluster-stack
    ```
 
 2. Configure required parameters:
@@ -176,7 +176,7 @@ A typical workflow might look like:
 
 5. Check the status of your cluster stack:
    ```bash
-   hyp list hyp-cluster
+   hyp list hyp-cluster-stack
    ```
 """
 

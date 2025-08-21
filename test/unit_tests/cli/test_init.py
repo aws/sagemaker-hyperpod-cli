@@ -78,7 +78,7 @@ class TestInit:
         assert "Initialize a TEMPLATE scaffold in DIRECTORY" in result.output
 
     def test_init_hyp_cluster_with_mocked_dependencies(self):
-        """Test init command with hyp-cluster template"""
+        """Test init command with hyp-cluster-stack template"""
         runner = CliRunner()
         
         # Use a temporary directory for testing
@@ -86,7 +86,7 @@ class TestInit:
             test_dir = Path(temp_dir) / "test-init-cluster"
             
             # Execute
-            result = runner.invoke(init, ['hyp-cluster', str(test_dir), '--version', '1.0'])
+            result = runner.invoke(init, ['hyp-cluster-stack', str(test_dir), '--version', '1.0'])
             
             # The command should attempt to run (may fail due to missing dependencies)
             # but should not crash completely
@@ -190,7 +190,7 @@ class TestConfigure:
                 assert result.exit_code == 0
     
     def test_configure_hyp_cluster_with_mocked_dependencies(self):
-        """Test configure command with hyp-cluster template - simplified test"""
+        """Test configure command with hyp-cluster-stack template - simplified test"""
         runner = CliRunner()
         result = runner.invoke(configure, ['--help'])
         assert result.exit_code == 0
@@ -280,7 +280,7 @@ class TestUserInputValidation:
             with runner.isolated_filesystem(temp_dir):
                 # Create a minimal config file
                 config_data = {
-                    'template': 'hyp-cluster',
+                    'template': 'hyp-cluster-stack',
                     'version': '1.0',
                     'hyperpod_cluster_name': 'existing-cluster'
                 }
@@ -422,7 +422,7 @@ class TestDefaultCreate:
         """Test default_create command with mocked dependencies"""
         # Setup mocks
         mock_load_config.return_value = (
-            {"test": "config"}, "hyp-cluster", "1.0"
+            {"test": "config"}, "hyp-cluster-stack", "1.0"
         )
         mock_templates.__getitem__.return_value = {"schema_type": CFN}
         
@@ -727,7 +727,7 @@ class TestTemplateComparison:
         # we'll test the basic command functionality instead of the full configure flow
         
         runner = CliRunner()
-        templates_to_test = ['hyp-cluster', 'hyp-jumpstart-endpoint', 'hyp-custom-endpoint']
+        templates_to_test = ['hyp-cluster-stack', 'hyp-jumpstart-endpoint', 'hyp-custom-endpoint']
         
         for template in templates_to_test:
             with tempfile.TemporaryDirectory() as temp_dir:
@@ -762,7 +762,7 @@ class TestUserInputValidation:
             with runner.isolated_filesystem(temp_dir):
                 # Create a minimal config file
                 config_data = {
-                    'template': 'hyp-cluster',
+                    'template': 'hyp-cluster-stack',
                     'version': '1.0',
                     'hyperpod_cluster_name': 'existing-cluster'
                 }
@@ -907,7 +907,7 @@ class TestUserInputValidation:
         
         test_cases = [
             {
-                'template': 'hyp-cluster',
+                'template': 'hyp-cluster-stack',
                 'config': {'hyperpod_cluster_name': 'test-cluster'},
                 'update_args': ['--hyperpod-cluster-name', 'updated-cluster']
             },
@@ -946,8 +946,8 @@ class TestUserInputValidation:
         """Test that configure shows warning when no arguments provided"""
         runner = CliRunner()
         
-        # templates = ['hyp-cluster', 'hyp-jumpstart-endpoint', 'hyp-custom-endpoint']
-        templates = ['hyp-cluster']
+        # templates = ['hyp-cluster-stack', 'hyp-jumpstart-endpoint', 'hyp-custom-endpoint']
+        templates = ['hyp-cluster-stack']
 
         for template in templates:
             with tempfile.TemporaryDirectory() as temp_dir:

@@ -135,7 +135,7 @@ class TestSaveConfigYaml:
     def test_save_config_yaml_success(self, mock_print, mock_join, mock_makedirs, mock_file):
         """Test successful saving of config.yaml"""
         prefill = {
-            'template': 'hyp-cluster',
+            'template': 'hyp-cluster-stack',
             'version': '1.0',
             'namespace': 'test-namespace'
         }
@@ -160,7 +160,7 @@ class TestSaveConfigYaml:
         written_content = ''.join(call[0][0] for call in written_calls)
         
         assert '# Template type' in written_content
-        assert 'template: hyp-cluster' in written_content
+        assert 'template: hyp-cluster-stack' in written_content
         assert '# [Required] Kubernetes namespace' in written_content
         assert 'namespace: test-namespace' in written_content
         
@@ -170,7 +170,7 @@ class TestSaveConfigYaml:
     def test_save_config_yaml_handles_none_values(self):
         """Test that None values are converted to empty strings"""
         prefill = {
-            'template': 'hyp-cluster',
+            'template': 'hyp-cluster-stack',
             'optional_field': None
         }
         comment_map = {
@@ -197,12 +197,12 @@ class TestLoadConfig:
     def test_load_config_success(self):
         """Test successful loading of config.yaml"""
         config_content = """
-template: hyp-cluster
+template: hyp-cluster-stack
 version: 1.0
 namespace: test-namespace
 """
         mock_templates = {
-            'hyp-cluster': {'schema_type': CFN}
+            'hyp-cluster-stack': {'schema_type': CFN}
         }
         
         with patch('pathlib.Path.is_file', return_value=True), \
@@ -211,20 +211,20 @@ namespace: test-namespace
             
             data, template, version = load_config_and_validate()
             
-            assert data['template'] == 'hyp-cluster'
+            assert data['template'] == 'hyp-cluster-stack'
             assert data['version'] == 1.0  # YAML loads this as float
             assert data['namespace'] == 'test-namespace'
-            assert template == 'hyp-cluster'
+            assert template == 'hyp-cluster-stack'
             assert str(version) == '1.0'
     
     def test_load_config_default_version(self):
         """Test loading config with default version when not specified"""
         config_content = """
-template: hyp-cluster
+template: hyp-cluster-stack
 namespace: test-namespace
 """
         mock_templates = {
-            'hyp-cluster': {'schema_type': CFN}
+            'hyp-cluster-stack': {'schema_type': CFN}
         }
         
         with patch('pathlib.Path.is_file', return_value=True), \
@@ -243,7 +243,7 @@ template: unknown-template
 version: 1.0
 """
         mock_templates = {
-            'hyp-cluster': {'schema_type': CFN}
+            'hyp-cluster-stack': {'schema_type': CFN}
         }
         
         with patch('pathlib.Path.is_file', return_value=True), \
@@ -269,12 +269,12 @@ class TestValidateConfigAgainstModel:
     def test_validate_config_cfn_success(self):
         """Test successful validation for CFN template"""
         config_data = {
-            'template': 'hyp-cluster',
+            'template': 'hyp-cluster-stack',
             'version': '1.0',
             'namespace': 'test-namespace'
         }
         mock_templates = {
-            'hyp-cluster': {'schema_type': CFN}
+            'hyp-cluster-stack': {'schema_type': CFN}
         }
         
         with patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack, \
@@ -283,7 +283,7 @@ class TestValidateConfigAgainstModel:
             # Mock successful validation
             mock_cluster_stack.return_value = Mock()
             
-            errors = validate_config_against_model(config_data, 'hyp-cluster', '1.0')
+            errors = validate_config_against_model(config_data, 'hyp-cluster-stack', '1.0')
             
             assert errors == []
             # Verify HpClusterStack.model_construct was called with filtered config (no template/version)
@@ -292,12 +292,12 @@ class TestValidateConfigAgainstModel:
     def test_validate_config_cfn_validation_error(self):
         """Test validation error handling for CFN template"""
         config_data = {
-            'template': 'hyp-cluster',
+            'template': 'hyp-cluster-stack',
             'version': '1.0',
             'invalid_field': 'invalid_value'
         }
         mock_templates = {
-            'hyp-cluster': {'schema_type': CFN}
+            'hyp-cluster-stack': {'schema_type': CFN}
         }
         
         with patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack, \
@@ -314,7 +314,7 @@ class TestValidateConfigAgainstModel:
             ])
             mock_cluster_stack.model_construct.side_effect = mock_error
             
-            errors = validate_config_against_model(config_data, 'hyp-cluster', '1.0')
+            errors = validate_config_against_model(config_data, 'hyp-cluster-stack', '1.0')
             
             assert len(errors) == 1
             assert 'required_field: Field required' in errors[0]
@@ -322,18 +322,18 @@ class TestValidateConfigAgainstModel:
     def test_validate_config_handles_list_values(self):
         """Test that list values are converted to JSON strings"""
         config_data = {
-            'template': 'hyp-cluster',
+            'template': 'hyp-cluster-stack',
             'version': '1.0',
             'tags': ['tag1', 'tag2']
         }
         mock_templates = {
-            'hyp-cluster': {'schema_type': CFN}
+            'hyp-cluster-stack': {'schema_type': CFN}
         }
         
         with patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack, \
              patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates):
             
-            validate_config_against_model(config_data, 'hyp-cluster', '1.0')
+            validate_config_against_model(config_data, 'hyp-cluster-stack', '1.0')
             
             # Verify tags were passed as list to model_construct
             call_args = mock_cluster_stack.model_construct.call_args[1]
@@ -443,7 +443,7 @@ class TestBuildConfigFromSchema:
     def test_build_config_cfn_template(self):
         """Test building config for CFN template"""
         mock_templates = {
-            'hyp-cluster': {'schema_type': CFN}
+            'hyp-cluster-stack': {'schema_type': CFN}
         }
         
         with patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack, \
@@ -463,9 +463,9 @@ class TestBuildConfigFromSchema:
                 }
             }
             
-            config, comment_map = build_config_from_schema('hyp-cluster', '1.0')
+            config, comment_map = build_config_from_schema('hyp-cluster-stack', '1.0')
             
-            assert config['template'] == 'hyp-cluster'
+            assert config['template'] == 'hyp-cluster-stack'
             assert 'namespace' in config
             assert 'instance_type' in config
             assert comment_map['namespace'] == "Test field description"
@@ -473,7 +473,7 @@ class TestBuildConfigFromSchema:
     def test_build_config_with_model_config(self):
         """Test building config with user-provided model config"""
         mock_templates = {
-            'hyp-cluster': {'schema_type': CFN}
+            'hyp-cluster-stack': {'schema_type': CFN}
         }
         
         # Mock model config
@@ -504,7 +504,7 @@ class TestBuildConfigFromSchema:
             mock_cluster_stack.model_json_schema.return_value = {'properties': {}}
             
             config, comment_map = build_config_from_schema(
-                'hyp-cluster', '1.0', model_config=mock_model
+                'hyp-cluster-stack', '1.0', model_config=mock_model
             )
             
             assert config['namespace'] == 'user-namespace'
@@ -513,10 +513,10 @@ class TestBuildConfigFromSchema:
     def test_build_config_with_existing_config(self):
         """Test building config with existing configuration"""
         mock_templates = {
-            'hyp-cluster': {'schema_type': CFN}
+            'hyp-cluster-stack': {'schema_type': CFN}
         }
         existing_config = {
-            'template': 'hyp-cluster',
+            'template': 'hyp-cluster-stack',
             'namespace': 'existing-namespace',
             'version': '1.0'
         }
@@ -534,12 +534,12 @@ class TestBuildConfigFromSchema:
             mock_cluster_stack.model_json_schema.return_value = {'properties': {}}
             
             config, comment_map = build_config_from_schema(
-                'hyp-cluster', '1.0', existing_config=existing_config
+                'hyp-cluster-stack', '1.0', existing_config=existing_config
             )
             
             assert config['namespace'] == 'existing-namespace'
             # Template should not be duplicated from existing_config
-            assert config['template'] == 'hyp-cluster'
+            assert config['template'] == 'hyp-cluster-stack'
 
 
 class TestPascalToKebab:
@@ -673,13 +673,13 @@ class TestGenerateClickCommandEnhanced:
     def test_generate_click_command_path(self):
         """Test generate_click_command"""
         mock_templates = {
-            'hyp-cluster': {
+            'hyp-cluster-stack': {
                 'schema_type': CFN
             }
         }
         
         config_content = """
-template: hyp-cluster
+template: hyp-cluster-stack
 version: 1.0
 namespace: test-namespace
 """
@@ -710,12 +710,12 @@ class TestLoadConfigAndValidate:
     def test_load_config_and_validate_success(self):
         """Test successful config loading and validation"""
         config_content = """
-template: hyp-cluster
+template: hyp-cluster-stack
 version: 1.0
 namespace: test-namespace
 """
         mock_templates = {
-            'hyp-cluster': {'schema_type': CFN}
+            'hyp-cluster-stack': {'schema_type': CFN}
         }
         
         with patch('pathlib.Path.is_file', return_value=True), \
@@ -728,21 +728,21 @@ namespace: test-namespace
             
             data, template, version = load_config_and_validate()
             
-            assert data['template'] == 'hyp-cluster'
+            assert data['template'] == 'hyp-cluster-stack'
             assert data['version'] == 1.0  # YAML loads this as float
             assert data['namespace'] == 'test-namespace'
-            assert template == 'hyp-cluster'
+            assert template == 'hyp-cluster-stack'
             assert str(version) == '1.0'  # YAML loads this as float
 
     def test_load_config_and_validate_failure(self):
         """Test config loading with validation failure"""
         config_content = """
-template: hyp-cluster
+template: hyp-cluster-stack
 version: 1.0
 namespace: test-namespace
 """
         mock_templates = {
-            'hyp-cluster': {'schema_type': CFN}
+            'hyp-cluster-stack': {'schema_type': CFN}
         }
         
         with patch('pathlib.Path.is_file', return_value=True), \
@@ -849,7 +849,7 @@ def test_update_config_field():
         # Create test config file
         original_content = """
         # Template type
-        template: hyp-cluster
+        template: hyp-cluster-stack
 
         # Schema version
         version: 1.0
@@ -874,4 +874,4 @@ def test_update_config_field():
         # Verify field was updated and format preserved
         assert 'availability_zone_ids: use1-az1' in updated_content
         assert '# List of AZs to deploy subnets in' in updated_content
-        assert 'template: hyp-cluster' in updated_content
+        assert 'template: hyp-cluster-stack' in updated_content
