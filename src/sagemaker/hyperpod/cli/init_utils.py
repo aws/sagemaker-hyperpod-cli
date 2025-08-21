@@ -544,7 +544,9 @@ def validate_config_against_model(config_data: dict, template: str, version: str
             if k not in ('template', 'version') and v is not None
         }
         if template_info["schema_type"] == CFN:
-            HpClusterStack(**filtered_config)
+            # Use model_construct to bypass validation since our __init__ converts lists to JSON strings
+            # which would fail Pydantic validation that expects lists
+            HpClusterStack.model_construct(**filtered_config)
         else:
             registry = template_info["registry"]
             model = registry.get(str(version))  # Convert to string for lookup

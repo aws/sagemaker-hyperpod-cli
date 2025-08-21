@@ -30,6 +30,10 @@ class HpClusterStack(ClusterStackBase):
     )
     
     def __init__(self, **data):
+        # Convert array values to JSON strings
+        for key, value in data.items():
+            if isinstance(value, list):
+                data[key] = json.dumps(value)
         super().__init__(**data)
     
     @field_validator('kubernetes_version', mode='before')
@@ -39,7 +43,7 @@ class HpClusterStack(ClusterStackBase):
             return str(v)
         return v
     
-    @field_validator('availability_zone_ids', 'nat_gateway_ids', 'eks_private_subnet_ids', 'security_group_ids', 'private_route_table_ids', 'private_subnet_ids', 'instance_group_settings', 'rig_settings', 'tags', mode='before')
+    @field_validator('availability_zone_ids', 'nat_gateway_ids', 'eks_private_subnet_ids', 'security_group_ids', 'private_route_table_ids', 'private_subnet_ids', 'tags', mode='before')
     @classmethod
     def validate_list_fields(cls, v):
         # Convert JSON string to list if needed
@@ -53,6 +57,26 @@ class HpClusterStack(ClusterStackBase):
         if isinstance(v, list) and len(v) == 0:
             raise ValueError('Empty lists [] are not allowed. Use proper YAML array format or leave field empty.')
         return v
+    
+    @field_validator('instance_group_settings', 'rig_settings', mode='before')
+    @classmethod
+    def validate_json_string_fields(cls, v):
+        # Check for empty lists first
+        if isinstance(v, list) and len(v) == 0:
+            raise ValueError('Empty lists [] are not allowed. Use proper YAML array format or leave field empty.')
+        
+        # For instance_group_settings and rig_settings, keep as JSON strings
+        # Just validate that they're valid JSON if they're strings
+        if isinstance(v, str) and v.strip():
+            if v.startswith('['):
+                try:
+                    import json
+                    json.loads(v)  # Validate JSON but don't convert
+                except (json.JSONDecodeError, TypeError):
+                    raise ValueError('Must be valid JSON array string')
+        return v  # Return original string
+    
+
 
     @staticmethod
     def get_template() -> str:
@@ -78,12 +102,14 @@ class HpClusterStack(ClusterStackBase):
         stack_name = f"HyperpodClusterStack-{str(uuid.uuid4())[:5]}"
         # Get account ID and create bucket name
         bucket_name = f"sagemaker-hyperpod-cluster-stack-bucket"
-        template_key = f"1.0/main-stack-eks-based-cfn-template.yaml"
+        template_key = f"1.1/main-stack-eks-based-template.yaml"
 
         try:
             # Use TemplateURL for large templates (>51KB)
             template_url = f"https://{bucket_name}.s3.amazonaws.com/{template_key}"
-            click.secho(f"Calling with tags { self._parse_tags()}")
+            
+
+            
             response = cf.create_stack(
                 StackName=stack_name,
                 TemplateURL=template_url,
@@ -123,11 +149,11 @@ class HpClusterStack(ClusterStackBase):
                         except (json.JSONDecodeError, TypeError):
                             settings_list = []
                     
-                    for i, setting in enumerate(settings_list, 1):
-                        formatted_setting = self._convert_nested_keys(setting)
+                    # Send the entire array as InstanceGroupSettings1 (not individual objects)
+                    if settings_list:
                         parameters.append({
-                            'ParameterKey': f'InstanceGroupSettings{i}',
-                            'ParameterValue': json.dumps(formatted_setting) if isinstance(formatted_setting, (dict, list)) else str(formatted_setting)
+                            'ParameterKey': 'InstanceGroupSettings1',
+                            'ParameterValue': json.dumps(settings_list)
                         })
                 elif field_name == 'rig_settings':
                     # Handle both list and JSON string formats
@@ -140,11 +166,11 @@ class HpClusterStack(ClusterStackBase):
                         except (json.JSONDecodeError, TypeError):
                             settings_list = []
                     
-                    for i, setting in enumerate(settings_list, 1):
-                        formatted_setting = self._convert_nested_keys(setting)
+                    # Send the entire array as RigSettings1 (not individual objects)
+                    if settings_list:
                         parameters.append({
-                            'ParameterKey': f'RigSettings{i}',
-                            'ParameterValue': json.dumps(formatted_setting) if isinstance(formatted_setting, (dict, list)) else str(formatted_setting)
+                            'ParameterKey': 'RigSettings1',
+                            'ParameterValue': json.dumps(settings_list)
                         })
                 else:
                     # Convert array fields to comma-separated strings
@@ -180,14 +206,14 @@ class HpClusterStack(ClusterStackBase):
         """Parse tags field and return proper CloudFormation tags format."""
         if not self.tags:
             return []
-        
+
         tags_list = self.tags
         if isinstance(self.tags, str):
             try:
                 tags_list = json.loads(self.tags)
             except (json.JSONDecodeError, TypeError):
                 return []
-        
+
         # Convert array of strings to Key-Value format
         if isinstance(tags_list, list) and tags_list:
             # Check if already in Key-Value format
@@ -195,7 +221,7 @@ class HpClusterStack(ClusterStackBase):
                 return tags_list
             # Convert string array to Key-Value format
             return [{'Key': tag, 'Value': ''} for tag in tags_list if isinstance(tag, str)]
-        
+
         return []
 
     def _convert_nested_keys(self, obj: Any) -> Any:

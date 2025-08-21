@@ -286,8 +286,8 @@ class TestValidateConfigAgainstModel:
             errors = validate_config_against_model(config_data, 'hyp-cluster', '1.0')
             
             assert errors == []
-            # Verify HpClusterStack was called with filtered config (no template/version)
-            mock_cluster_stack.assert_called_once_with(namespace='test-namespace')
+            # Verify HpClusterStack.model_construct was called with filtered config (no template/version)
+            mock_cluster_stack.model_construct.assert_called_once_with(namespace='test-namespace')
     
     def test_validate_config_cfn_validation_error(self):
         """Test validation error handling for CFN template"""
@@ -312,7 +312,7 @@ class TestValidateConfigAgainstModel:
                     'input': {}
                 }
             ])
-            mock_cluster_stack.side_effect = mock_error
+            mock_cluster_stack.model_construct.side_effect = mock_error
             
             errors = validate_config_against_model(config_data, 'hyp-cluster', '1.0')
             
@@ -335,8 +335,8 @@ class TestValidateConfigAgainstModel:
             
             validate_config_against_model(config_data, 'hyp-cluster', '1.0')
             
-            # Verify tags were converted to JSON string
-            call_args = mock_cluster_stack.call_args[1]
+            # Verify tags were passed as list to model_construct
+            call_args = mock_cluster_stack.model_construct.call_args[1]
             assert call_args['tags'] == ["tag1", "tag2"]
 
 
@@ -759,7 +759,7 @@ namespace: test-namespace
                     'input': {}
                 }
             ])
-            mock_cluster_stack.side_effect = mock_error
+            mock_cluster_stack.model_construct.side_effect = mock_error
             
             # This should raise SystemExit due to validation failure
             with pytest.raises(SystemExit) as exc_info:
