@@ -39,7 +39,7 @@ def parse_status_list(ctx, param, value):
         raise click.BadParameter(f"Invalid list format. Use: \"['STATUS1', 'STATUS2']\". Error: {e}")
 
 
-@click.command("hyp-cluster")
+@click.command("hyp-cluster-stack")
 @click.argument("config-file", required=True)
 @click.argument("stack-name", required=True)
 @click.option("--region", help="AWS region")
@@ -57,6 +57,7 @@ def create_cluster_stack_helper(config_file: str, region: Optional[str] = None, 
 
         # Load the configuration from the YAML file
         import yaml
+        import uuid
         with open(config_file, 'r') as f:
             config_data = yaml.safe_load(f)
 
@@ -64,6 +65,9 @@ def create_cluster_stack_helper(config_file: str, region: Optional[str] = None, 
         filtered_config = {}
         for k, v in config_data.items():
             if k not in ('template', 'namespace') and v is not None:
+                # Append 4-digit UUID to resource_name_prefix
+                if k == 'resource_name_prefix' and v:
+                    v = f"{v}-{str(uuid.uuid4())[:4]}"
                 filtered_config[k] = v
 
         # Create the HpClusterStack object
@@ -87,7 +91,7 @@ def create_cluster_stack_helper(config_file: str, region: Optional[str] = None, 
             logger.exception("Detailed error information:")
         raise click.ClickException(str(e))
 
-@click.command("hyp-cluster")
+@click.command("hyp-cluster-stack")
 @click.argument("stack-name", required=True)
 @click.option("--region", help="AWS region")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
@@ -147,7 +151,7 @@ def describe_cluster_stack(stack_name: str, debug: bool, region: str) -> None:
 
         raise click.ClickException(str(e))
 
-@click.command("hyp-cluster")
+@click.command("hyp-cluster-stack")
 @click.option("--region", help="AWS region")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 @click.option("--status", 
@@ -202,7 +206,7 @@ def list_cluster_stacks(region, debug, status):
 
         raise click.ClickException(str(e))
     
-@click.command("hyp-cluster")
+@click.command("hyp-cluster-stack")
 @click.argument("stack-name", required=True)
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 def delete(stack_name: str, debug: bool) -> None:
