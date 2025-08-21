@@ -14,6 +14,7 @@ import logging
 import subprocess
 import json
 import sys
+import signal
 import botocore.config
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -526,16 +527,26 @@ def set_cluster_context(
     """
     if debug:
         set_logging_level(logger, logging.DEBUG)
-    validator = ClusterValidator()
-    botocore_config = botocore.config.Config(
-        user_agent_extra=get_user_agent_extra_suffix()
-    )
-    session = boto3.Session(region_name=region) if region else boto3.Session()
-    if not validator.validate_aws_credential(session):
-        logger.error("Cannot connect to HyperPod cluster due to aws credentials error")
-        sys.exit(1)
-
+    
+    timeout = 60  # 1 minute
+    
+    def timeout_handler(signum, frame):
+        raise TimeoutError(f"Operation timed out after {timeout} seconds")
+    
+    # Set up timeout
+    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(timeout)
+    
     try:
+        validator = ClusterValidator()
+        botocore_config = botocore.config.Config(
+            user_agent_extra=get_user_agent_extra_suffix()
+        )
+        session = boto3.Session(region_name=region) if region else boto3.Session()
+        if not validator.validate_aws_credential(session):
+            logger.error("Cannot connect to HyperPod cluster due to aws credentials error")
+            sys.exit(1)
+
         sm_client = get_sagemaker_client(session, botocore_config)
         hp_cluster_details = sm_client.describe_cluster(ClusterName=cluster_name)
         logger.debug("Fetched hyperpod cluster details")
@@ -549,6 +560,14 @@ def set_cluster_context(
         _update_kube_config(eks_name, region, None)
         k8s_client = KubernetesClient()
         k8s_client.set_context(eks_cluster_arn, namespace)
+        
+        # Cancel the alarm if operation completes successfully
+        signal.alarm(0)
+        logger.info(f"Successfully connected to cluster {cluster_name}")
+        
+    except TimeoutError as e:
+        logger.error("Timed out - Please check credentials, setup configurations  and try again")
+        sys.exit(1)
     except botocore.exceptions.NoRegionError:
         logger.error(
             f"Please ensure you configured AWS default region or use '--region' argument to specify the region"
@@ -559,6 +578,9 @@ def set_cluster_context(
             f"Unexpected error happens when try to connect to cluster {cluster_name}. Error: {e}"
         )
         sys.exit(1)
+    finally:
+        # Ensure alarm is cancelled in all cases
+        signal.alarm(0)
 
 
 @click.command()
