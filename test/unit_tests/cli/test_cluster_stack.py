@@ -22,7 +22,6 @@ class TestUpdateCluster:
         
         # Act
         result = runner.invoke(update_cluster, [
-            'hyp-cluster',  # template argument
             '--cluster-name', 'test-cluster',
             '--instance-groups', '[{"instance_type": "ml.t3.medium", "instance_count": 1, "instance_group_name": "test-group", "life_cycle_config": {"source_s3_uri": "s3://bucket/path", "on_create": "script.sh"}, "execution_role": "arn:aws:iam::123456789012:role/test-role"}]',
             '--node-recovery', 'Automatic'
@@ -48,7 +47,6 @@ class TestUpdateCluster:
         
         # Act
         result = runner.invoke(update_cluster, [
-            'hyp-cluster',  # template argument
             '--cluster-name', 'test-cluster',
             '--node-recovery', 'Automatic'
         ])

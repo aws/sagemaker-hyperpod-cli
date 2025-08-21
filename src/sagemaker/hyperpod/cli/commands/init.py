@@ -6,7 +6,8 @@ from datetime import datetime
 from jinja2 import Template
 import shutil
 from sagemaker.hyperpod.cli.constants.init_constants import (
-    USAGE_GUIDE_TEXT,
+    USAGE_GUIDE_TEXT_CFN,
+    USAGE_GUIDE_TEXT_CRD,
     CFN,
     CRD
 )
@@ -50,7 +51,7 @@ def init(
     1. Checks if the directory already contains a config.yaml and handles existing configurations
     2. Creates the target directory if it doesn't exist
     3. Generates a config.yaml file with schema-based default values and user-provided inputs
-    4. Creates a Kubernetes template file (k8s.jinja) for the specified template type
+    4. Creates a template file (.jinja) for the specified template type
     5. Adds a README.md with usage instructions
     
     The generated files provide a starting point for configuring and submitting
@@ -85,7 +86,6 @@ def init(
                     click.echo("Aborting init.")
                     return
                 click.echo(f"Re-initializing {existing_template} → {template}…")
-                skip_readme = True
 
         else:
             click.echo(f"Initializing new scaffold for '{template}'…")
@@ -128,7 +128,10 @@ def init(
         try:
             readme_path = dir_path / "README.md"
             with open(readme_path, "w") as f:
-                f.write(USAGE_GUIDE_TEXT)
+                if TEMPLATES[template]["schema_type"] == CFN:
+                    f.write(USAGE_GUIDE_TEXT_CFN)
+                else:
+                    f.write(USAGE_GUIDE_TEXT_CRD)
         except Exception as e:
             click.secho("⚠️  README.md generation failed: %s", e, fg="yellow")
 
@@ -193,10 +196,10 @@ def configure(ctx, model_config):
         hyp configure --hyperpod-cluster-name my-new-cluster
         
         # Update multiple fields at once
-        hyp configure --instance-type ml.g5.xlarge --endpoint-name my-endpoint
+        hyp configure --stack-name my-stack  --create-fsx-stack: False
         
-        # Update complex fields with list and JSON
-        hyp configure --args '[--epochs, 10]' --env '{"KEY": "value"}'
+        # Update complex fields with JSON object
+        hyp configure --availability-zone-ids '["id1", "id2"]'
     
     """
     # 1) Load existing config without validation

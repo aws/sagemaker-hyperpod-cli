@@ -212,21 +212,21 @@ def delete(stack_name: str, debug: bool) -> None:
     logger.info(f"Deleting stack: {stack_name}")
     logger.info("This feature is not yet implemented.")
 
-@click.command("update-cluster")
-@click.argument("template", required=True)
+@click.command("hyp-cluster")
 @click.option("--cluster-name", required=True, help="The name of the cluster to update")
 @click.option("--instance-groups", help="Instance Groups JSON string")
 @click.option("--instance-groups-to-delete", help="Instance Groups to delete JSON string")
 @click.option("--region", help="Region")
 @click.option("--node-recovery", help="Node Recovery (Automatic or None)")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
-def update_cluster(template: str,
-                   cluster_name: str,
-                   instance_groups: Optional[str],
-                   instance_groups_to_delete: Optional[str],
-                   region: Optional[str],
-                   node_recovery: Optional[str],
-                   debug: bool) -> None:
+def update_cluster(
+            cluster_name: str,
+            instance_groups: Optional[str],
+            instance_groups_to_delete: Optional[str],
+            region: Optional[str],
+            node_recovery: Optional[str],
+            debug: bool) -> None:
+    """Update an existing HyperPod cluster configuration."""
     logger = setup_logging(logging.getLogger(__name__), debug)
     
     # Validate that at least one parameter is provided

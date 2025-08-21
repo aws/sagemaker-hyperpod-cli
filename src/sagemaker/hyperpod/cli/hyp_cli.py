@@ -113,15 +113,19 @@ def create():
 
 @cli.group(cls=CLICommand)
 def list():
-    """List endpoints or pytorch jobs."""
+    """List endpoints, pytorch jobs or cluster stacks."""
     pass
 
 
 @cli.group(cls=CLICommand)
 def describe():
-    """Describe endpoints or pytorch jobs."""
+    """Describe endpoints, pytorch jobs or cluster stacks."""
     pass
 
+@cli.group(cls=CLICommand)
+def update():
+    """Update an existing HyperPod cluster configuration."""
+    pass
 
 @cli.group(cls=CLICommand)
 def delete():
@@ -174,6 +178,8 @@ describe.add_command(js_describe)
 describe.add_command(custom_describe)
 describe.add_command(describe_cluster_stack)
 
+update.add_command(update_cluster)
+
 delete.add_command(pytorch_delete)
 delete.add_command(js_delete)
 delete.add_command(custom_delete)
@@ -197,9 +203,7 @@ cli.add_command(list_cluster)
 cli.add_command(set_cluster_context)
 cli.add_command(get_cluster_context)
 cli.add_command(get_monitoring)
-cli.add_command(create_cluster_stack)
-cli.add_command(update_cluster)
-cli.add_command(describe)
+# cli.add_command(create_cluster_stack) # Not supported yet
 
 if __name__ == "__main__":
     cli()
