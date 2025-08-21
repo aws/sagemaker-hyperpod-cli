@@ -20,6 +20,24 @@ log = logging.getLogger()
 
 
 class HpClusterStack(ClusterStackBase):
+    """Manages SageMaker HyperPod cluster CloudFormation stacks.
+
+    This class provides functionality to create, manage, and monitor CloudFormation stacks
+    for SageMaker HyperPod clusters. It extends ClusterStackBase with stack lifecycle operations.
+
+    .. dropdown:: Usage Examples
+       :open:
+
+       .. code-block:: python
+
+          >>> # Create a cluster stack instance
+          >>> stack = HpClusterStack()
+          >>> response = stack.create(region="us-west-2")
+          >>> 
+          >>> # Check stack status
+          >>> status = stack.get_status()
+          >>> print(status)
+    """
     stack_id: Optional[str] = Field(
         None,
         description="CloudFormation stack ID set after stack creation"
@@ -92,6 +110,41 @@ class HpClusterStack(ClusterStackBase):
 
     def create(self,
                region: Optional[str] = None) -> str:
+        """Creates a new HyperPod cluster CloudFormation stack.
+
+        **Parameters:**
+
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - region
+             - str, optional
+             - AWS region for stack creation. Uses current session region if not specified
+
+        **Returns:**
+
+        dict: CloudFormation describe_stacks response containing stack details
+
+        **Raises:**
+
+        Exception: When CloudFormation stack creation fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # Create stack in default region
+              >>> stack = HpClusterStack()
+              >>> response = stack.create()
+              >>> 
+              >>> # Create stack in specific region
+              >>> response = stack.create(region="us-east-1")
+        """
         # Get the region from the boto3 session or use the provided region
         region = region or boto3.session.Session().region_name
         cf = create_boto3_client('cloudformation', region_name=region)
@@ -268,6 +321,47 @@ class HpClusterStack(ClusterStackBase):
 
     @staticmethod
     def describe(stack_name, region: Optional[str] = None):
+        """Describes a CloudFormation stack by name.
+
+        .. note::
+           Stack descriptions are region-specific. You must use the correct region where the stack was created to retrieve its description.
+
+        **Parameters:**
+
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - stack_name
+             - str
+             - Name of the CloudFormation stack to describe. For ARN format arn:aws:cloudformation:region:account:stack/stack-name/stack-id, use the stack-name part
+           * - region
+             - str, optional
+             - AWS region where the stack exists
+
+        **Returns:**
+
+        dict: CloudFormation describe_stacks response
+
+        **Raises:**
+
+        ValueError: When stack is not accessible or doesn't exist
+        RuntimeError: When CloudFormation operation fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # Describe a stack by name
+              >>> response = HpClusterStack.describe("my-stack-name")
+              >>> 
+              >>> # Describe stack in specific region
+              >>> response = HpClusterStack.describe("my-stack", region="us-west-2")
+        """
         cf = create_boto3_client('cloudformation', region_name=region)
 
         try:
@@ -290,6 +384,44 @@ class HpClusterStack(ClusterStackBase):
 
     @staticmethod
     def list(region: Optional[str] = None, stack_status_filter: Optional[List[str]] = None):
+        """Lists all CloudFormation stacks in the specified region.
+
+        .. note::
+           Stack listings are region-specific. If no region is provided, uses the default region from your AWS configuration.
+
+        **Parameters:**
+
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - region
+             - str, optional
+             - AWS region to list stacks from. Uses default region if not specified
+
+        **Returns:**
+
+        dict: CloudFormation list_stacks response containing stack summaries
+
+        **Raises:**
+
+        ValueError: When insufficient permissions to list stacks
+        RuntimeError: When CloudFormation list operation fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # List stacks in current region
+              >>> stacks = HpClusterStack.list()
+              >>> 
+              >>> # List stacks in specific region
+              >>> stacks = HpClusterStack.list(region="us-east-1")
+        """
         cf = create_boto3_client('cloudformation', region_name=region)
 
         try:
@@ -340,14 +472,79 @@ class HpClusterStack(ClusterStackBase):
         return None
 
     def get_status(self, region: Optional[str] = None):
-        """Get stack status using stored stack_id from create method."""
+        """Gets the status of the current stack instance.
+
+        **Parameters:**
+
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - region
+             - str, optional
+             - AWS region where the stack exists
+
+        **Returns:**
+
+        str: CloudFormation stack status (e.g., 'CREATE_COMPLETE', 'UPDATE_IN_PROGRESS')
+
+        **Raises:**
+
+        ValueError: When stack hasn't been created yet (call create() first)
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # Create stack first, then check status
+              >>> stack = HpClusterStack()
+              >>> stack.create()
+              >>> status = stack.get_status()
+              >>> print(f"Stack status: {status}")
+        """
         if not self.stack_name:
             raise ValueError("Stack must be created first. Call create() before checking status.")
         return self._get_stack_status_helper(self.stack_name, region)
 
     @staticmethod
     def check_status(stack_name: str, region: Optional[str] = None):
-        """Check stack status without instance. Static method for SDK usage."""
+        """Checks the status of any CloudFormation stack by name.
+
+        **Parameters:**
+
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - stack_name
+             - str
+             - Name of the CloudFormation stack
+           * - region
+             - str, optional
+             - AWS region where the stack exists
+
+        **Returns:**
+
+        str: CloudFormation stack status or None if stack not found
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # Check status of any stack
+              >>> status = HpClusterStack.check_status("my-stack-name")
+              >>> 
+              >>> # Check status in specific region
+              >>> status = HpClusterStack.check_status("my-stack", region="us-west-2")
+        """
         return HpClusterStack._get_stack_status_helper(stack_name, region)
 
 

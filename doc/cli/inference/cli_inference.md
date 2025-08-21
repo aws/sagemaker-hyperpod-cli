@@ -4,6 +4,10 @@
 
 Complete reference for SageMaker HyperPod inference parameters and configuration options.
 
+```{note}
+**Region Configuration**: For commands that accept the `--region` option, if no region is explicitly provided, the command will use the default region from your AWS credentials configuration.
+```
+
 * [Create JumpStart Endpoint](#hyp-create-hyp-jumpstart-endpoint)
 * [Create Custom Endpoint](#hyp-create-hyp-custom-endpoint)
 

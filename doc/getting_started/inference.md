@@ -15,6 +15,10 @@ SageMaker HyperPod inference endpoints allow you to:
 - Invoke endpoints for real-time predictions
 - Monitor endpoint performance
 
+```{note}
+**Region Configuration**: For commands that accept the `--region` option, if no region is explicitly provided, the command will use the default region from your AWS credentials configuration.
+```
+
 ## Creating Inference Endpoints
 
 You can create inference endpoints using either JumpStart models or custom models:

@@ -45,10 +45,50 @@ def parse_status_list(ctx, param, value):
 @click.option("--region", help="AWS region")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 def create_cluster_stack(config_file, region, debug):
-    """Create a new HyperPod cluster stack using the provided configuration."""
+    """Create a new HyperPod cluster stack using the provided configuration.
+    
+    Creates a CloudFormation stack for a HyperPod cluster using settings from a YAML configuration file.
+    The stack will provision all necessary AWS resources for the cluster.
+    
+    .. dropdown:: Usage Examples
+       :open:
+
+       .. code-block:: bash
+
+          # Create cluster stack with config file
+          hyp create hyp-cluster cluster-config.yaml my-stack-name --region us-west-2
+          
+          # Create with debug logging
+          hyp create hyp-cluster cluster-config.yaml my-stack-name --debug
+    """
     create_cluster_stack_helper(config_file, region, debug)
 
 def create_cluster_stack_helper(config_file: str, region: Optional[str] = None, debug: bool = False) -> None:
+    """Helper function to create a HyperPod cluster stack.
+
+    **Parameters:**
+
+    .. list-table::
+       :header-rows: 1
+       :widths: 20 20 60
+
+       * - Parameter
+         - Type
+         - Description
+       * - config_file
+         - str
+         - Path to the YAML configuration file containing cluster stack settings
+       * - region
+         - str, optional
+         - AWS region where the cluster stack will be created
+       * - debug
+         - bool
+         - Enable debug logging for detailed error information
+
+    **Raises:**
+
+    ClickException: When cluster stack creation fails or configuration is invalid
+    """
     try:
         # Validate the config file path
         if not os.path.exists(config_file):
@@ -96,7 +136,22 @@ def create_cluster_stack_helper(config_file: str, region: Optional[str] = None, 
 @click.option("--region", help="AWS region")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 def describe_cluster_stack(stack_name: str, debug: bool, region: str) -> None:
-    """Describe the status of a HyperPod cluster stack."""
+    """Describe the status of a HyperPod cluster stack.
+    
+    Shows detailed information about a CloudFormation stack including its current status,
+    resources, and configuration parameters.
+    
+    .. dropdown:: Usage Examples
+       :open:
+
+       .. code-block:: bash
+
+          # Describe a cluster stack
+          hyp describe hyp-cluster my-stack-name
+          
+          # Describe with specific region
+          hyp describe hyp-cluster my-stack-name --region us-west-2
+    """
     logger = setup_logging(logging.getLogger(__name__), debug)
     
     try:
@@ -158,7 +213,22 @@ def describe_cluster_stack(stack_name: str, debug: bool, region: str) -> None:
               callback=parse_status_list,
               help="Filter by stack status. Format: \"['CREATE_COMPLETE', 'UPDATE_COMPLETE']\"")
 def list_cluster_stacks(region, debug, status):
-    """List all HyperPod cluster stacks."""
+    """List all HyperPod cluster stacks.
+    
+    Displays a summary of all CloudFormation stacks related to HyperPod clusters
+    in the specified region or default region.
+    
+    .. dropdown:: Usage Examples
+       :open:
+
+       .. code-block:: bash
+
+          # List all cluster stacks
+          hyp list hyp-cluster
+          
+          # List stacks in specific region
+          hyp list hyp-cluster --region us-east-1
+    """
     logger = setup_logging(logging.getLogger(__name__), debug)
 
     try:
@@ -210,7 +280,19 @@ def list_cluster_stacks(region, debug, status):
 @click.argument("stack-name", required=True)
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 def delete(stack_name: str, debug: bool) -> None:
-    """Delete a HyperPod cluster stack."""
+    """Delete a HyperPod cluster stack.
+    
+    Removes the specified CloudFormation stack and all associated AWS resources.
+    This operation cannot be undone.
+    
+    .. dropdown:: Usage Examples
+       :open:
+
+       .. code-block:: bash
+
+          # Delete a cluster stack
+          hyp delete hyp-cluster my-stack-name
+    """
     logger = setup_logging(logging.getLogger(__name__), debug)
     
     logger.info(f"Deleting stack: {stack_name}")
@@ -230,6 +312,22 @@ def update_cluster(
             region: Optional[str],
             node_recovery: Optional[str],
             debug: bool) -> None:
+    """Update an existing HyperPod cluster configuration.
+    
+    Modifies cluster settings such as instance groups and node recovery policies.
+    At least one update parameter must be provided.
+    
+    .. dropdown:: Usage Examples
+       :open:
+
+       .. code-block:: bash
+
+          # Update cluster with new instance groups
+          hyp update hyp-cluster --cluster-name my-cluster --instance-groups '{"group1": {...}}'
+          
+          # Update node recovery setting
+          hyp update hyp-cluster --cluster-name my-cluster --node-recovery Automatic
+    """
     """Update an existing HyperPod cluster configuration."""
     logger = setup_logging(logging.getLogger(__name__), debug)
     

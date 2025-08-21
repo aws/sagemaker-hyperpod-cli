@@ -5,6 +5,10 @@
 
 Complete reference for SageMaker HyperPod PyTorch training job parameters and configuration options.
 
+```{note}
+**Region Configuration**: For commands that accept the `--region` option, if no region is explicitly provided, the command will use the default region from your AWS credentials configuration.
+```
+
 * [Create PyTorch Job](#hyp-create-hyp-pytorch-job)
 * [List Jobs](#hyp-list-hyp-pytorch-job)
 * [Describe Job](#hyp-describe-hyp-pytorch-job)

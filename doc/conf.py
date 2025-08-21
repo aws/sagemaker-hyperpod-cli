@@ -76,7 +76,8 @@ extensions = [
     "sphinx_copybutton",
     "sphinx.ext.autosummary",
     "sphinx.ext.autosectionlabel",
-    "sphinx_design"
+    "sphinx_design",
+    "sphinx_click"
 ]
 
 
