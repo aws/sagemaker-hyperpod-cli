@@ -10,9 +10,11 @@ import logging
 import os
 import subprocess
 import yaml
+import click
 from kubernetes.config import (
     KUBE_CONFIG_DEFAULT_LOCATION,
 )
+# Remove enum-based imports - now using template-agnostic approach
 
 EKS_ARN_PATTERN = r"arn:aws:eks:([\w-]+):\d+:cluster/([\w-]+)"
 CLIENT_VERSION_PATTERN = r'^\d+\.\d+\.\d+$'
@@ -36,7 +38,21 @@ def get_default_namespace():
             "No active context. Please use set_cluster_context() method to set current context."
         )
 
-def handle_exception(e: Exception, name: str, namespace: str):
+def handle_exception(e: Exception, name: str, namespace: str, 
+                    operation_type: str = 'unknown', resource_type: str = 'unknown'):
+    """
+    Handle various Kubernetes API exceptions for SDK usage (non-CLI).
+    
+    Note: CLI commands should use the @handle_cli_exceptions() decorator instead.
+    This function is for SDK classes and provides basic exception handling.
+    
+    Args:
+        e: The exception to handle
+        name: Resource name
+        namespace: Kubernetes namespace
+        operation_type: Operation type (legacy parameter, kept for backward compatibility)
+        resource_type: Resource type (legacy parameter, kept for backward compatibility)
+    """
     if isinstance(e, ApiException):
         if e.status == 401:
             raise Exception(f"Credentials unauthorized.") from e
@@ -44,9 +60,11 @@ def handle_exception(e: Exception, name: str, namespace: str):
             raise Exception(
                 f"Access denied to resource '{name}' in namespace '{namespace}'."
             ) from e
-        if e.status == 404:
+        elif e.status == 404:
+            # Basic 404 for SDK usage - CLI commands get enhanced 404 via decorator
             raise Exception(
-                f"Resource '{name}' not found in namespace '{namespace}'."
+                f"Resource '{name}' not found in namespace '{namespace}'. "
+                f"Please check the resource name and namespace."
             ) from e
         elif e.status == 409:
             raise Exception(
@@ -385,6 +403,42 @@ def is_kubernetes_version_compatible(client_version: Tuple[int, int], server_ver
         return False
         
     return True
+
+
+def display_formatted_logs(logs: str, title: str = "Logs") -> None:
+    """
+    Display logs with consistent formatting and color coding across all job types.
+    
+    Args:
+        logs: Raw log content as string
+        title: Title to display before logs (default: "Logs")
+    """
+    if not logs:
+        click.echo("No logs available.")
+        return
+
+    click.echo(f"\n{title}:")
+    click.echo("=" * 80)
+    
+    # Split logs into lines and display them with color coding
+    log_lines = logs.split("\n")
+    for line in log_lines:
+        if line.strip():  # Skip empty lines
+            # Color coding based on log level keywords
+            line_upper = line.upper()
+            if any(keyword in line_upper for keyword in ["ERROR", "FATAL", "EXCEPTION"]):
+                click.secho(line, fg="red")
+            elif any(keyword in line_upper for keyword in ["WARNING", "WARN"]):
+                click.secho(line, fg="yellow")
+            elif any(keyword in line_upper for keyword in ["INFO", "SUCCESS"]):
+                click.secho(line, fg="green")
+            elif any(keyword in line_upper for keyword in ["DEBUG", "TRACE"]):
+                click.secho(line, fg="blue")
+            else:
+                click.echo(line)
+
+    click.echo("\nEnd of logs")
+    click.echo("=" * 80)
 
 
 def verify_kubernetes_version_compatibility(logger) -> bool:

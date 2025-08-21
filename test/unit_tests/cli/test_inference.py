@@ -31,7 +31,13 @@ def test_js_create_with_required_args():
     from sagemaker.hyperpod.cli.commands.inference import js_create
     
     with patch('sagemaker.hyperpod.cli.inference_utils.load_schema_for_version') as mock_load_schema, \
-         patch('sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint') as mock_endpoint_class:
+         patch('sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint') as mock_endpoint_class, \
+         patch('sagemaker.hyperpod.common.cli_decorators._is_valid_jumpstart_model_id') as mock_model_validation, \
+         patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists') as mock_namespace_exists:
+        
+        # Mock enhanced error handling
+        mock_model_validation.return_value = True  # Allow test model-id
+        mock_namespace_exists.return_value = True  # Allow test namespace
         
         # Mock schema loading
         mock_load_schema.return_value = {
@@ -73,8 +79,10 @@ def test_js_create_missing_required_args():
     assert 'Missing option' in result.output
 
 
+@patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
 @patch('sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint')
-def test_js_list(mock_hp):
+def test_js_list(mock_hp, mock_namespace_exists):
+    mock_namespace_exists.return_value = True
     inst = Mock()
     inst.list.return_value = [Mock(metadata=Mock(model_dump=lambda: {"name": "e"}))]
     mock_hp.model_construct.return_value = inst
@@ -84,8 +92,10 @@ def test_js_list(mock_hp):
     inst.list.assert_called_once_with('ns')
 
 
+@patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
 @patch('sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint')
-def test_js_describe(mock_hp):
+def test_js_describe(mock_hp, mock_namespace_exists):
+    mock_namespace_exists.return_value = True
     inst = Mock()
     inst.get.return_value = Mock(model_dump=lambda: {"name": "e"})
     mock_hp.model_construct.return_value = inst
@@ -95,8 +105,10 @@ def test_js_describe(mock_hp):
     inst.get.assert_called_once_with('n', 'ns')
 
 
+@patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
 @patch('sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint')
-def test_js_delete(mock_hp):
+def test_js_delete(mock_hp, mock_namespace_exists):
+    mock_namespace_exists.return_value = True
     inst = Mock()
     ep = Mock()
     ep.delete = Mock()
@@ -219,8 +231,10 @@ def test_custom_invoke_invalid_json(mock_boto3):
     assert 'must be valid JSON' in result.output
 
 
+@patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
 @patch('sagemaker.hyperpod.cli.commands.inference.HPEndpoint')
-def test_custom_list(mock_hp):
+def test_custom_list(mock_hp, mock_namespace_exists):
+    mock_namespace_exists.return_value = True
     inst = Mock()
     inst.list.return_value = [Mock(metadata=Mock(model_dump=lambda: {"name": "e"}))]
     mock_hp.model_construct.return_value = inst
@@ -230,8 +244,10 @@ def test_custom_list(mock_hp):
     inst.list.assert_called_once_with('ns')
 
 
+@patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
 @patch('sagemaker.hyperpod.cli.commands.inference.HPEndpoint')
-def test_custom_describe(mock_hp):
+def test_custom_describe(mock_hp, mock_namespace_exists):
+    mock_namespace_exists.return_value = True
     inst = Mock()
     inst.get.return_value = Mock(model_dump=lambda: {"name": "e"})
     mock_hp.model_construct.return_value = inst
@@ -241,8 +257,10 @@ def test_custom_describe(mock_hp):
     inst.get.assert_called_once_with('n', 'ns')
 
 
+@patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
 @patch('sagemaker.hyperpod.cli.commands.inference.HPEndpoint')
-def test_custom_delete(mock_hp):
+def test_custom_delete(mock_hp, mock_namespace_exists):
+    mock_namespace_exists.return_value = True
     inst = Mock()
     ep = Mock()
     ep.delete = Mock()
@@ -284,8 +302,10 @@ def test_custom_list_default_namespace(mock_hp):
     assert result.exit_code == 0
     inst.list.assert_called_once_with('default')
 
+@patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
 @patch('sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint')
-def test_js_list_pods(mock_hp):
+def test_js_list_pods(mock_hp, mock_namespace_exists):
+    mock_namespace_exists.return_value = True
     inst = Mock(list_pods=Mock(return_value="pods"))
     mock_hp.model_construct.return_value = inst
     runner = CliRunner()
@@ -293,8 +313,10 @@ def test_js_list_pods(mock_hp):
     assert result.exit_code == 0
     assert 'pods' in result.output
 
+@patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
 @patch('sagemaker.hyperpod.cli.commands.inference.HPEndpoint')
-def test_custom_list_pods(mock_hp):
+def test_custom_list_pods(mock_hp, mock_namespace_exists):
+    mock_namespace_exists.return_value = True
     inst = Mock(list_pods=Mock(return_value="pods"))
     mock_hp.model_construct.return_value = inst
     runner = CliRunner()
@@ -302,8 +324,10 @@ def test_custom_list_pods(mock_hp):
     assert result.exit_code == 0
     assert 'pods' in result.output
 
+@patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
 @patch('sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint')
-def test_js_get_logs(mock_hp):
+def test_js_get_logs(mock_hp, mock_namespace_exists):
+    mock_namespace_exists.return_value = True
     inst = Mock(get_logs=Mock(return_value="logs"))
     mock_hp.model_construct.return_value = inst
     runner = CliRunner()
@@ -311,8 +335,10 @@ def test_js_get_logs(mock_hp):
     assert result.exit_code == 0
     assert 'logs' in result.output
 
+@patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
 @patch('sagemaker.hyperpod.cli.commands.inference.HPEndpoint')
-def test_custom_get_logs(mock_hp):
+def test_custom_get_logs(mock_hp, mock_namespace_exists):
+    mock_namespace_exists.return_value = True
     inst = Mock(get_logs=Mock(return_value='l'))
     mock_hp.model_construct.return_value = inst
     runner = CliRunner()

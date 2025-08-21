@@ -155,9 +155,11 @@ class TestTrainingCommands(unittest.TestCase):
             self.assertEqual(call_args["metadata"].labels["kueue.x-k8s.io/queue-name"], "localqueue")
             self.assertEqual(call_args["metadata"].annotations["kueue.x-k8s.io/podset-required-topology"], "topology.k8s.aws/ultraserver-id")
 
+    @patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
     @patch("sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob")
-    def test_list_jobs(self, mock_hyperpod_pytorch_job):
+    def test_list_jobs(self, mock_hyperpod_pytorch_job, mock_namespace_exists):
         """Test the list_jobs function"""
+        mock_namespace_exists.return_value = True
         mock_job1 = Mock()
         mock_job1.metadata.name = "job1"
         mock_job1.metadata.namespace = "test-namespace"
@@ -206,11 +208,14 @@ class TestTrainingCommands(unittest.TestCase):
         # Call the function and expect an exception
         result = self.runner.invoke(list_jobs)
         self.assertNotEqual(result.exit_code, 0)
-        self.assertIn("Failed to list jobs", result.output)
+        # Updated to match the new @handle_cli_exceptions() decorator behavior
+        self.assertIn("Test error", result.output)
 
+    @patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
     @patch("sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob")
-    def test_pytorch_describe(self, mock_hyperpod_pytorch_job):
+    def test_pytorch_describe(self, mock_hyperpod_pytorch_job, mock_namespace_exists):
         """Test the pytorch_describe function"""
+        mock_namespace_exists.return_value = True
         # Mock the HyperPodPytorchJob.get method
         mock_job = MagicMock()
         mock_job.model_dump = {"name": "test-job", "status": "Running"}
@@ -254,7 +259,7 @@ class TestTrainingCommands(unittest.TestCase):
         # Call the function and expect an exception
         result = self.runner.invoke(pytorch_describe, ["--job-name", "test-job"])
         self.assertNotEqual(result.exit_code, 0)
-        self.assertIn("Failed to describe job", result.output)
+        self.assertIn("Test error", result.output)
 
     def test_valid_topology_label_cli(self):
         """Test CLI accepts valid topology labels."""
@@ -776,7 +781,7 @@ class TestValidationPatterns(unittest.TestCase):
         self.assertEqual(config.max_retry, 3)
         self.assertEqual(len(config.volume), 1)
         self.assertEqual(config.service_account_name, "training-sa")
-
+        
     def test_valid_topology_labels(self):
         """Test that valid topology labels are accepted."""
 
