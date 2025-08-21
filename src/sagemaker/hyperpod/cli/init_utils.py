@@ -666,7 +666,16 @@ def build_config_from_schema(template: str, version: str, model_config=None, exi
             
             # Add default from model field if available
             if hasattr(field_info, 'default') and field_info.default is not None:
-                prop_info["default"] = field_info.default
+                # Handle different types of defaults
+                if hasattr(field_info.default, '__call__'):
+                    # For callable defaults, call them to get the actual value
+                    try:
+                        prop_info["default"] = field_info.default()
+                    except:
+                        # If calling fails, use the raw default
+                        prop_info["default"] = field_info.default
+                else:
+                    prop_info["default"] = field_info.default
             
             # Get examples from JSON schema if available
             if field in schema_properties and 'examples' in schema_properties[field]:

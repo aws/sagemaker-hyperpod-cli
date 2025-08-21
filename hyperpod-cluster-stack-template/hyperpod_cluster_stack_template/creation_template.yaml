@@ -202,14 +202,22 @@ Metadata:
 Parameters:
   Stage:
     Type: String
-    Default: gamma
+    Default: prod
     AllowedValues:
       - gamma
       - prod
     Description: Deployment stage (gamma, prod)
+  EnableHPInferenceFeature:
+    Type: String
+    Default: 'false'
+    Description: Feature flag for enabling HP inference
+  CustomBucketName:
+    Type: String
+    Default: ''
+    Description: Custom S3 bucket name for templates
   ResourceNamePrefix:
     Type: String
-    Default: sagemaker-hyperpod-eks
+    Default: hyperpod-cli-integ-test
     Description: Prefix to be used for all resources created by this template.
   VpcCIDR:
     Type: String
@@ -217,15 +225,19 @@ Parameters:
     Description: The IP range (CIDR notation) for the VPC.
   AvailabilityZoneIds:
     Type: String
-    Default: ''
+    Default: use2-az1,use2-az2,use2-az3
     Description: List of AZs to deploy subnets in (up to 5, comma separated)
+  NodeProvisioningMode:
+    Type: String
+    Default: Continuous
+    Description: The node provisioning mode
   VpcId:
     Type: String
-    Default: vpc-1234567890abcdef0
+    Default: ''
     Description: The ID of the VPC you wish to use if you do not want to create a new VPC.
   NatGatewayIds:
     Type: String
-    Default: nat-1234567890abcdef0
+    Default: ''
     Description: Comma-separated list of NAT Gateway IDs to route internet bound traffic to from the newly created private subnets.
   SecurityGroupId:
     Type: String
@@ -241,15 +253,15 @@ Parameters:
     Description: The name of the newly created of preexisting EKS cluster you wish to use.
   EksPrivateSubnetIds:
     Type: String
-    Default: subnet-1234567890abcdef0,subnet-1234567890abcdef0
+    Default: ''
     Description: Comma-delimited list of private subnet IDs for the EKS cluster
   SecurityGroupIds:
     Type: String
-    Default: sg-1234567890abcdef0
+    Default: ''
     Description: The Id of your cluster security group.
   PrivateRouteTableIds:
     Type: String
-    Default: rtb-1234567890abcdef0
+    Default: ''
     Description: Comma-separated list of private route table IDs.
   S3BucketName:
     Type: String
@@ -270,7 +282,7 @@ Parameters:
     Description: The path to the HyperPod Helm chart in the Helm repo.
   HelmOperators:
     Type: String
-    Default: ''
+    Default: 'mlflow.enabled=true,trainingOperators.enabled=true,storage.enabled=true,cluster-role-and-bindings.enabled=true,namespaced-role-and-bindings.enable=true,nvidia-device-plugin.devicePlugin.enabled=true,neuron-device-plugin.devicePlugin.enabled=true,aws-efa-k8s-device-plugin.devicePlugin.enabled=true,mpi-operator.enabled=true,health-monitoring-agent.enabled=true,deep-health-check.enabled=true,job-auto-restart.enabled=true,hyperpod-patching.enabled=true'
     Description: The configuration of HyperPod Helm chart
   Namespace:
     Type: String
@@ -278,11 +290,11 @@ Parameters:
     Description: The namespace to deploy the HyperPod Helm chart into.
   HelmRelease:
     Type: String
-    Default: hyperpod-dependencies
+    Default: dependencies
     Description: The name of the Helm release.
   HyperPodClusterName:
     Type: String
-    Default: hp-cluster
+    Default: hyperpod-cluster-integ-test
     Description: Name of SageMaker HyperPod Cluster.
   NodeRecovery:
     Type: String
@@ -297,7 +309,7 @@ Parameters:
     Description: The name of the IAM role that SageMaker will use to access the AWS resources on your behalf.
   PrivateSubnetIds:
     Type: String
-    Default: subnet-1234567890abcdef0,subnet-1234567890abcdef0
+    Default: ''
     Description: Comma-separated list of private subnet IDs for EKS cluster.
   OnCreatePath:
     Type: String
@@ -308,8 +320,12 @@ Parameters:
   InstanceGroupSettings1:
     Type: String
     Default: >-
-      [{"InstanceCount":1,"InstanceGroupName":"ig-1","InstanceStorageConfigs":[],"InstanceType":"ml.t3.medium","ThreadsPerCore":1},{"InstanceCount":1,"InstanceGroupName":"ig-2","InstanceStorageConfigs":[],"InstanceType":"ml.t3.medium","ThreadsPerCore":1}]
+      [{"InstanceCount":1,"InstanceGroupName":"controller-group","InstanceType":"ml.t3.medium","TargetAvailabilityZoneId":"use2-az2","ThreadsPerCore":1,"InstanceStorageConfigs":[{"EbsVolumeConfig":{"VolumeSizeInGB":500}}]}]
     Description: JSON array string containing instance group configurations.
+  RigS3BucketName:
+    Type: String
+    Default: ''
+    Description: The name of the S3 bucket for RIG resources
   RigSettings1:
     Type: String
     Default: '[]'
@@ -476,7 +492,7 @@ Parameters:
     Description: The subnet id that will be used to create FSx
   FsxAvailabilityZone:
     Type: String
-    Default: use2-az1
+    Default: use2-az2
     Description: The availability zone to get subnet id that will be used to create FSx
   PerUnitStorageThroughput:
     Type: Number
