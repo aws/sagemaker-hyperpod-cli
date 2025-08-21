@@ -98,6 +98,14 @@ When creating a training job, you'll need to specify:
 |-----------|------|----------|-------------|
 | **job-name** | TEXT | Yes | Unique identifier for your training job |
 | **image** | TEXT | Yes | Docker image containing your training environment |
+| **accelerators** | INTEGER | No | Number of accelerators a.k.a GPUs or Trainium Chips |
+| **vcpu** | FLOAT | No | Number of vCPUs |
+| **memory** | FLOAT | No | Amount of memory in GiB |
+| **accelerators-limit** | INTEGER | No | Limit for the number of accelerators a.k.a GPUs or Trainium Chips |
+| **vcpu-limit** | FLOAT | No | Limit for the number of vCPUs |
+| **memory-limit** | FLOAT | No | Limit for the amount of memory in GiB |
+| **preferred-topology** | TEXT | No | Preferred topology annotation for scheduling |
+| **required-topology** | TEXT | No | Required topology annotation for scheduling |
 
 
 ## Managing Training Jobs

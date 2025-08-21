@@ -49,6 +49,14 @@ hyp create hyp-pytorch-job [OPTIONS]
 | `--max-retry` | INTEGER | No | Maximum number of job retries (minimum: 0) |
 | `--volume` | ARRAY | No | List of volume configurations (Refer [Volume Configuration](#volume-configuration) for detailed parameter info) |
 | `--service-account-name` | TEXT | No | Service account name |
+| `--accelerators` | INTEGER | No | Number of accelerators a.k.a GPUs or Trainium Chips |
+| `--vcpu` | FLOAT | No | Number of vCPUs |
+| `--memory` | FLOAT | No | Amount of memory in GiB |
+| `--accelerators-limit` | INTEGER | No | Limit for the number of accelerators a.k.a GPUs or Trainium Chips |
+| `--vcpu-limit` | FLOAT | No | Limit for the number of vCPUs |
+| `--memory-limit` | FLOAT | No | Limit for the amount of memory in GiB |
+| `--preferred-topology` | TEXT | No | Preferred topology annotation for scheduling |
+| `--required-topology` | TEXT | No | Required topology annotation for scheduling |
 
 ### Volume Configuration
 
