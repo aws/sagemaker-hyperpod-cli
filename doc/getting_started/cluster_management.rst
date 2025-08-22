@@ -45,6 +45,9 @@ This creates three files:
 - ``cfn_params.jinja``: A reference template for CloudFormation parameters
 - ``README.md``: Usage guide with instructions and examples
 
+.. important::
+   The ``resource_name_prefix`` parameter in the generated ``config.yaml`` file serves as the primary identifier for all AWS resources created during deployment. Each deployment must use a unique resource name prefix to avoid conflicts. This prefix is automatically appended with a unique identifier during cluster creation to ensure resource uniqueness.
+
 3. Configure Your Cluster
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -176,6 +179,16 @@ Best Practices
         .. code-block:: bash
 
            hyp validate
+
+  .. note::
+     This command performs **syntactic validation only** of the ``config.yaml`` file against the appropriate schema. It checks:
+
+     - **YAML syntax**: Ensures file is valid YAML
+     - **Required fields**: Verifies all mandatory fields are present
+     - **Data types**: Confirms field values match expected types (string, number, boolean, array)
+     - **Schema structure**: Validates against the template's defined structure
+
+     This command performs syntactic validation only and does **not** verify the actual validity of values (e.g., whether AWS regions exist, instance types are available, or resources can be created).
      
 - Use meaningful resource prefixes to easily identify your clusters
 - Monitor cluster status regularly after creation

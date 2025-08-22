@@ -40,6 +40,10 @@ hyp init TEMPLATE [DIRECTORY] [OPTIONS]
 | `DIRECTORY` | PATH | No | Target directory (default: current directory) |
 | `--version` | TEXT | No | Schema version to use |
 
+```{important}
+The `resource_name_prefix` parameter in the generated `config.yaml` file serves as the primary identifier for all AWS resources created during deployment. Each deployment must use a unique resource name prefix to avoid conflicts. This prefix is automatically appended with a unique identifier during cluster creation to ensure resource uniqueness.
+```
+
 ## hyp create
 
 Create a new HyperPod cluster stack using the provided configuration.
@@ -217,7 +221,7 @@ This command dynamically supports all configuration parameters available in the 
 
 ## hyp validate
 
-Validate the current cluster configuration.
+Validate the current directory's configuration file syntax and structure.
 
 #### Syntax
 
@@ -227,7 +231,44 @@ hyp validate
 
 #### Parameters
 
-No parameters required. This command validates the `config.yaml` file in the current directory against the appropriate schema.
+No parameters required.
+
+```{note}
+This command performs **syntactic validation only** of the `config.yaml` file against the appropriate schema. It checks:
+
+- **YAML syntax**: Ensures file is valid YAML
+- **Required fields**: Verifies all mandatory fields are present
+- **Data types**: Confirms field values match expected types (string, number, boolean, array)
+- **Schema structure**: Validates against the template's defined structure
+
+This command performs syntactic validation only and does **not** verify the actual validity of values (e.g., whether AWS regions exist, instance types are available, or resources can be created).
+
+**Prerequisites**
+
+- Must be run in a directory where `hyp init` has created configuration files
+- A `config.yaml` file must exist in the current directory
+
+**Output**
+
+- **Success**: Displays confirmation message if syntax is valid
+- **Errors**: Lists specific syntax errors with field names and descriptions
+```
+
+
+#### Syntax
+
+```bash
+# Validate current configuration syntax
+hyp validate
+
+# Example output on success
+✔️ config.yaml is valid!
+
+# Example output with syntax errors
+❌ Config validation errors:
+  – kubernetes_version: Field is required
+  – vpc_cidr: Expected string, got number
+```
 
 ## hyp reset
 
