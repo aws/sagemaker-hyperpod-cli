@@ -317,7 +317,7 @@ class TestCreateClusterStackHelper(unittest.TestCase):
             # Setup mocks
             mock_exists.return_value = True
             mock_yaml_load.return_value = {
-                'template': 'hyp-cluster-stack',
+                'template': 'cluster-stack',
                 'version': '1.0',
                 'eks_cluster_name': 'test-cluster',
                 'namespace': 'test-namespace'
@@ -375,7 +375,7 @@ class TestCreateClusterStackHelper(unittest.TestCase):
             # Setup mocks
             mock_exists.return_value = True
             mock_yaml_load.return_value = {
-                'template': 'hyp-cluster-stack',
+                'template': 'cluster-stack',
                 'namespace': 'test-namespace',
                 'version': '1.0',
                 'eks_cluster_name': 'test-cluster',
@@ -409,7 +409,7 @@ class TestCreateClusterStackHelper(unittest.TestCase):
         # Setup mocks
         mock_exists.return_value = True
         mock_yaml_load.return_value = {
-            'template': 'hyp-cluster-stack',
+            'template': 'cluster-stack',
             'eks_cluster_name': 'test-cluster',
             'optional_field': None,
             'required_field': 'value'
@@ -430,7 +430,7 @@ class TestCreateClusterStackHelper(unittest.TestCase):
             call_args = mock_cluster_stack.call_args[1]
             assert 'optional_field' not in call_args
             assert 'required_field' in call_args
-    
+
     @patch('sagemaker.hyperpod.cli.commands.cluster_stack.HpClusterStack')
     @patch('yaml.safe_load')
     @patch('os.path.exists')
@@ -440,42 +440,42 @@ class TestCreateClusterStackHelper(unittest.TestCase):
         # Mock template methods
         mock_get_template.return_value = '{"Parameters": {}}'
         mock_read_text.return_value = 'Parameters: {}'
-        
+
         # Setup mocks
         mock_exists.return_value = True
         original_prefix = 'hyperpod-cli-integ-test'
         mock_yaml_load.return_value = {
-            'template': 'hyp-cluster-stack',
+            'template': 'cluster-stack',
             'resource_name_prefix': original_prefix,
             'version': '1.0'
         }
-        
+
         # Mock the stack instance and its create method to avoid AWS calls
         mock_stack_instance = Mock()
         mock_stack_instance.create.return_value = {'StackId': 'test-stack-id'}
         mock_cluster_stack.return_value = mock_stack_instance
-        
+
         with patch('sagemaker.hyperpod.cli.commands.cluster_stack.logger') as mock_logger:
             from sagemaker.hyperpod.cli.commands.cluster_stack import create_cluster_stack_helper
-            
+
             # Execute
             create_cluster_stack_helper('config.yaml', 'us-west-2', False)
-            
+
             # Verify UUID was appended to resource_name_prefix
             call_args = mock_cluster_stack.call_args[1]
             modified_prefix = call_args['resource_name_prefix']
-            
+
             # Check that the prefix starts with the original value
             assert modified_prefix.startswith(original_prefix + '-'), f"Expected prefix to start with '{original_prefix}-', got '{modified_prefix}'"
-            
+
             # Check that exactly 4 characters were appended (plus the dash)
             assert len(modified_prefix) == len(original_prefix) + 5, f"Expected length {len(original_prefix) + 5}, got {len(modified_prefix)}"
-            
+
             # Check that the appended part is alphanumeric (UUID format)
             uuid_part = modified_prefix[len(original_prefix) + 1:]
             assert len(uuid_part) == 4, f"UUID part should be 4 characters, got {len(uuid_part)}"
             assert uuid_part.replace('-', '').isalnum(), f"UUID part should be alphanumeric, got '{uuid_part}'"
-    
+
     @patch('sagemaker.hyperpod.cli.commands.cluster_stack.HpClusterStack')
     @patch('yaml.safe_load')
     @patch('os.path.exists')
@@ -485,26 +485,26 @@ class TestCreateClusterStackHelper(unittest.TestCase):
         # Mock template methods
         mock_get_template.return_value = '{"Parameters": {}}'
         mock_read_text.return_value = 'Parameters: {}'
-        
+
         # Setup mocks
         mock_exists.return_value = True
         mock_yaml_load.return_value = {
-            'template': 'hyp-cluster-stack',
+            'template': 'cluster-stack',
             'resource_name_prefix': '',
             'version': '1.0'
         }
-        
+
         # Mock the stack instance and its create method to avoid AWS calls
         mock_stack_instance = Mock()
         mock_stack_instance.create.return_value = {'StackId': 'test-stack-id'}
         mock_cluster_stack.return_value = mock_stack_instance
-        
+
         with patch('sagemaker.hyperpod.cli.commands.cluster_stack.logger') as mock_logger:
             from sagemaker.hyperpod.cli.commands.cluster_stack import create_cluster_stack_helper
-            
+
             # Execute
             create_cluster_stack_helper('config.yaml', 'us-west-2', False)
-            
+
             # Verify empty prefix is not modified
             call_args = mock_cluster_stack.call_args[1]
             assert call_args['resource_name_prefix'] == ''
