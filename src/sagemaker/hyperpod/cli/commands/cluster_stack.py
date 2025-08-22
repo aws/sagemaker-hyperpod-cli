@@ -14,6 +14,8 @@ from sagemaker_core.main.shapes import ClusterInstanceGroupSpecification
 
 from tabulate import tabulate
 from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack
+from sagemaker.hyperpod.common.telemetry import _hyperpod_telemetry_emitter
+from sagemaker.hyperpod.common.telemetry.constants import Feature
 from sagemaker.hyperpod.common.utils import setup_logging
 from sagemaker.hyperpod.cli.utils import convert_datetimes
 
@@ -135,6 +137,7 @@ def create_cluster_stack_helper(config_file: str, region: Optional[str] = None, 
 @click.argument("stack-name", required=True)
 @click.option("--region", help="AWS region")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "describe_cluster_stack_cli")
 def describe_cluster_stack(stack_name: str, debug: bool, region: str) -> None:
     """Describe the status of a HyperPod cluster stack.
 
@@ -212,6 +215,7 @@ def describe_cluster_stack(stack_name: str, debug: bool, region: str) -> None:
 @click.option("--status", 
               callback=parse_status_list,
               help="Filter by stack status. Format: \"['CREATE_COMPLETE', 'UPDATE_COMPLETE']\"")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_cluster_stack_cli")
 def list_cluster_stacks(region, debug, status):
     """List all HyperPod cluster stacks.
 
@@ -305,6 +309,7 @@ def delete(stack_name: str, debug: bool) -> None:
 @click.option("--region", help="Region")
 @click.option("--node-recovery", help="Node Recovery (Automatic or None)")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "update_cluster_cli")
 def update_cluster(
             cluster_name: str,
             instance_groups: Optional[str],

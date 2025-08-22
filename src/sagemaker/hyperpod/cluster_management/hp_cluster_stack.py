@@ -11,6 +11,8 @@ import yaml
 from hyperpod_cluster_stack_template.v1_0.model import ClusterStackBase
 
 from sagemaker.hyperpod import create_boto3_client
+from sagemaker.hyperpod.common.telemetry import _hyperpod_telemetry_emitter
+from sagemaker.hyperpod.common.telemetry.constants import Feature
 
 CAPABILITIES_FOR_STACK_CREATION = [
 'CAPABILITY_IAM',
@@ -33,7 +35,7 @@ class HpClusterStack(ClusterStackBase):
           >>> # Create a cluster stack instance
           >>> stack = HpClusterStack()
           >>> response = stack.create(region="us-west-2")
-          >>> 
+          >>>
           >>> # Check stack status
           >>> status = stack.get_status()
           >>> print(status)
@@ -46,17 +48,17 @@ class HpClusterStack(ClusterStackBase):
         None,
         description="CloudFormation stack name set after stack creation"
     )
-    
+
     def __init__(self, **data):
         super().__init__(**data)
-    
+
     @field_validator('kubernetes_version', mode='before')
     @classmethod
     def validate_kubernetes_version(cls, v):
         if v is not None:
             return str(v)
         return v
-    
+
     @field_validator('availability_zone_ids', 'nat_gateway_ids', 'eks_private_subnet_ids', 'security_group_ids', 'private_route_table_ids', 'private_subnet_ids', 'instance_group_settings', 'rig_settings', 'tags', mode='before')
     @classmethod
     def validate_list_fields(cls, v):
@@ -71,7 +73,7 @@ class HpClusterStack(ClusterStackBase):
                     v = ast.literal_eval(v)
                 except:
                     pass  # Keep original value if parsing fails
-        
+
         if isinstance(v, list) and len(v) == 0:
             raise ValueError('Empty lists [] are not allowed. Use proper YAML array format or leave field empty.')
         return v
@@ -80,7 +82,7 @@ class HpClusterStack(ClusterStackBase):
     def get_template() -> str:
         try:
             template_content = importlib.resources.read_text(
-                'hyperpod_cluster_stack_template', 
+                'hyperpod_cluster_stack_template',
                 'creation_template.yaml'
             )
             yaml_data = yaml.safe_load(template_content)
@@ -88,6 +90,7 @@ class HpClusterStack(ClusterStackBase):
         except Exception as e:
             raise RuntimeError(f"Failed to load template from package: {e}")
 
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_cluster_stack")
     def create(self,
                region: Optional[str] = None) -> str:
         """Creates a new HyperPod cluster CloudFormation stack.
@@ -121,7 +124,7 @@ class HpClusterStack(ClusterStackBase):
               >>> # Create stack in default region
               >>> stack = HpClusterStack()
               >>> response = stack.create()
-              >>> 
+              >>>
               >>> # Create stack in specific region
               >>> response = stack.create(region="us-east-1")
         """
@@ -178,12 +181,12 @@ class HpClusterStack(ClusterStackBase):
                             settings_list = json.loads(str(value))
                         except (json.JSONDecodeError, TypeError):
                             settings_list = []
-                    
+
                     for i, setting in enumerate(settings_list, 1):
                         formatted_setting = self._convert_nested_keys(setting)
                         parameters.append({
                             'ParameterKey': f'InstanceGroupSettings{i}',
-                            'ParameterValue': "[" + json.dumps(formatted_setting) + "]" if isinstance(formatted_setting, (dict, list)) else str(formatted_setting) 
+                            'ParameterValue': "[" + json.dumps(formatted_setting) + "]" if isinstance(formatted_setting, (dict, list)) else str(formatted_setting)
                         })
                 elif field_name == 'rig_settings':
                     # Handle both list and JSON string formats
@@ -195,7 +198,7 @@ class HpClusterStack(ClusterStackBase):
                             settings_list = json.loads(str(value))
                         except (json.JSONDecodeError, TypeError):
                             settings_list = []
-                    
+
                     for i, setting in enumerate(settings_list, 1):
                         formatted_setting = self._convert_nested_keys(setting)
                         parameters.append({
@@ -204,7 +207,7 @@ class HpClusterStack(ClusterStackBase):
                         })
                 else:
                     # Convert array fields to comma-separated strings
-                    if field_name in ['availability_zone_ids', 'nat_gateway_ids', 'eks_private_subnet_ids', 
+                    if field_name in ['availability_zone_ids', 'nat_gateway_ids', 'eks_private_subnet_ids',
                                     'security_group_ids', 'private_route_table_ids', 'private_subnet_ids']:
                         if isinstance(value, list):
                             value = ','.join(str(item) for item in value)
@@ -236,14 +239,14 @@ class HpClusterStack(ClusterStackBase):
         """Parse tags field and return proper CloudFormation tags format."""
         if not self.tags:
             return []
-        
+
         tags_list = self.tags
         if isinstance(self.tags, str):
             try:
                 tags_list = json.loads(self.tags)
             except (json.JSONDecodeError, TypeError):
                 return []
-        
+
         # Convert array of strings to Key-Value format
         if isinstance(tags_list, list) and tags_list:
             # Check if already in Key-Value format
@@ -251,7 +254,7 @@ class HpClusterStack(ClusterStackBase):
                 return tags_list
             # Convert string array to Key-Value format
             return [{'Key': tag, 'Value': ''} for tag in tags_list if isinstance(tag, str)]
-        
+
         return []
 
     def _convert_nested_keys(self, obj: Any) -> Any:
@@ -267,7 +270,7 @@ class HpClusterStack(ClusterStackBase):
         """Convert snake_case string to PascalCase."""
         if not snake_str:
             return snake_str
-            
+
         # Handle specific cases
         mappings = {
             "eks_cluster_name": "EKSClusterName",
@@ -289,14 +292,14 @@ class HpClusterStack(ClusterStackBase):
             "EbsVolumeConfig": "EbsVolumeConfig",
             "VolumeSizeInGB": "VolumeSizeInGB"
         }
-        
+
         if snake_str in mappings:
             return mappings[snake_str]
 
 
         # Default case: capitalize each word
         return ''.join(word.capitalize() for word in snake_str.split('_'))
-    
+
     def _snake_to_camel(self, snake_str: str) -> str:
         """Convert snake_case string to camelCase for nested JSON keys."""
         if not snake_str:
@@ -305,6 +308,7 @@ class HpClusterStack(ClusterStackBase):
         return words[0] + ''.join(word.capitalize() for word in words[1:])
 
     @staticmethod
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "describe_cluster_stack")
     def describe(stack_name, region: Optional[str] = None):
         """Describes a CloudFormation stack by name.
 
@@ -343,7 +347,7 @@ class HpClusterStack(ClusterStackBase):
 
               >>> # Describe a stack by name
               >>> response = HpClusterStack.describe("my-stack-name")
-              >>> 
+              >>>
               >>> # Describe stack in specific region
               >>> response = HpClusterStack.describe("my-stack", region="us-west-2")
         """
@@ -368,6 +372,7 @@ class HpClusterStack(ClusterStackBase):
             raise RuntimeError("Stack operation failed")
 
     @staticmethod
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_cluster_stack")
     def list(region: Optional[str] = None, stack_status_filter: Optional[List[str]] = None):
         """Lists all CloudFormation stacks in the specified region.
 
@@ -403,7 +408,7 @@ class HpClusterStack(ClusterStackBase):
 
               >>> # List stacks in current region
               >>> stacks = HpClusterStack.list()
-              >>> 
+              >>>
               >>> # List stacks in specific region
               >>> stacks = HpClusterStack.list(region="us-east-1")
         """
@@ -412,19 +417,19 @@ class HpClusterStack(ClusterStackBase):
         try:
             # Prepare API call parameters
             list_params = {}
-            
+
             if stack_status_filter is not None:
                 list_params['StackStatusFilter'] = stack_status_filter
-            
+
             response = cf.list_stacks(**list_params)
-            
+
             # Only filter DELETE_COMPLETE when no explicit filter is provided
             if stack_status_filter is None and 'StackSummaries' in response:
                 response['StackSummaries'] = [
-                    stack for stack in response['StackSummaries'] 
+                    stack for stack in response['StackSummaries']
                     if stack.get('StackStatus') != 'DELETE_COMPLETE'
                 ]
-            
+
             return response
         except cf.exceptions.ClientError as e:
             error_code = e.response['Error']['Code']
