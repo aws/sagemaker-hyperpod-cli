@@ -106,6 +106,7 @@ When creating a training job, you'll need to specify:
 | **memory-limit** | FLOAT | No | Limit for the amount of memory in GiB |
 | **preferred-topology** | TEXT | No | Preferred topology annotation for scheduling |
 | **required-topology** | TEXT | No | Required topology annotation for scheduling |
+| **debug** | FLAG | No | Enable debug mode |
 
 
 ## Managing Training Jobs

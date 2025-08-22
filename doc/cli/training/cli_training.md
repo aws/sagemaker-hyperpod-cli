@@ -57,6 +57,7 @@ hyp create hyp-pytorch-job [OPTIONS]
 | `--memory-limit` | FLOAT | No | Limit for the amount of memory in GiB |
 | `--preferred-topology` | TEXT | No | Preferred topology annotation for scheduling |
 | `--required-topology` | TEXT | No | Required topology annotation for scheduling |
+| `--debug` | FLAG | No | Enable debug mode (default: false) |
 
 ### Volume Configuration
 
