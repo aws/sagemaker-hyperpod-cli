@@ -4,7 +4,7 @@ import logging
 import uuid
 from pydantic import Field, field_validator
 from typing import Optional, List, Dict, Any, Union
-
+import ast
 import boto3
 import click
 import yaml
@@ -66,7 +66,11 @@ class HpClusterStack(ClusterStackBase):
                 import json
                 v = json.loads(v)
             except (json.JSONDecodeError, TypeError):
-                pass  # Keep original value if parsing fails
+                try:
+                    # Try Python literal eval (single quotes)
+                    v = ast.literal_eval(v)
+                except:
+                    pass  # Keep original value if parsing fails
         
         if isinstance(v, list) and len(v) == 0:
             raise ValueError('Empty lists [] are not allowed. Use proper YAML array format or leave field empty.')
