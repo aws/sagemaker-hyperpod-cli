@@ -222,21 +222,24 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
             namespace = get_default_namespace()
 
         v1 = client.CoreV1Api()
-        response = v1.list_namespaced_pod(namespace=namespace)
+        list_pods_response = v1.list_namespaced_pod(namespace=namespace)
+
+        list_response = cls.call_list_api(
+            kind=INFERENCE_ENDPOINT_CONFIG_KIND,
+            namespace=namespace,
+        )
+
+        endpoints = set()
+        if list_response and list_response["items"]:
+            for item in list_response["items"]:
+                endpoints.add(item["metadata"]["name"])
 
         pods = []
-        for item in response.items:
+        for item in list_pods_response.items:
             app_name = item.metadata.labels.get("app", None)
-            try:
+            if app_name in endpoints:
                 # list_namespaced_pod will return all pods in the namespace, so we need to filter
                 # out the pods that are created by custom endpoint
-                cls.call_get_api(
-                    name=app_name,
-                    kind=INFERENCE_ENDPOINT_CONFIG_KIND,
-                    namespace=namespace,
-                )
                 pods.append(item.metadata.name)
-            except Exception:
-                continue
 
         return pods

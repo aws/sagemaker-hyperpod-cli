@@ -195,10 +195,10 @@ class TestHPEndpoint(unittest.TestCase):
         )
         self.assertEqual(result, "response")
 
-    @patch.object(HPEndpoint, "call_get_api")
+    @patch.object(HPEndpoint, "call_list_api")
     @patch("kubernetes.client.CoreV1Api")
     @patch.object(HPEndpoint, "verify_kube_config")
-    def test_list_pods(self, mock_verify_config, mock_core_api, mock_get_api):
+    def test_list_pods(self, mock_verify_config, mock_core_api, mock_list_api):
         mock_pod1 = MagicMock()
         mock_pod1.metadata.name = "custom-endpoint-pod1"
         mock_pod1.metadata.labels = {"app": "custom-endpoint"}
@@ -214,12 +214,13 @@ class TestHPEndpoint(unittest.TestCase):
             mock_pod3,
         ]
 
-        def mock_behavior(name, kind, namespace):
-            if name.startswith("custom-endpoint"):
-                return
-            else:
-                raise Exception("Endpoint not found")
-        mock_get_api.side_effect = mock_behavior
+        mock_list_api.return_value = {
+            "items": [
+                {
+                    "metadata": {"name": "custom-endpoint"}
+                }
+            ]
+        }
 
         result = self.endpoint.list_pods(namespace="test-ns")
 

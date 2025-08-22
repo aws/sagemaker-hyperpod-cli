@@ -141,10 +141,10 @@ class TestHPJumpStartEndpoint(unittest.TestCase):
         )
         self.assertEqual(result, "response")
 
-    @patch.object(HPJumpStartEndpoint, "call_get_api")
+    @patch.object(HPJumpStartEndpoint, "call_list_api")
     @patch("kubernetes.client.CoreV1Api")
     @patch.object(HPJumpStartEndpoint, "verify_kube_config")
-    def test_list_pods(self, mock_verify_config, mock_core_api, mock_get_api):
+    def test_list_pods(self, mock_verify_config, mock_core_api, mock_list_api):
         mock_pod1 = MagicMock()
         mock_pod1.metadata.name = "js-endpoint-pod1"
         mock_pod1.metadata.labels = {"app": "js-endpoint"}
@@ -160,12 +160,13 @@ class TestHPJumpStartEndpoint(unittest.TestCase):
             mock_pod3,
         ]
 
-        def mock_behavior(name, kind, namespace):
-            if name.startswith("js-endpoint"):
-                return
-            else:
-                raise Exception("Endpoint not found")
-        mock_get_api.side_effect = mock_behavior
+        mock_list_api.return_value = {
+            "items": [
+                {
+                    "metadata": {"name": "js-endpoint"}
+                }
+            ]
+        }
 
         result = self.endpoint.list_pods(namespace="test-ns")
 
