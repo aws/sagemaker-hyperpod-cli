@@ -182,6 +182,95 @@ class TestUtilityFunctions(unittest.TestCase):
         self.assertTrue(is_kubernetes_version_compatible((1, 24), (0, 0)))
         self.assertTrue(is_kubernetes_version_compatible((0, 0), (0, 0)))
 
+    @patch('click.secho')
+    @patch('kubernetes.client.VersionApi')
+    @patch('sagemaker.hyperpod.common.utils.kubernetes_client_version', '12.0.0')
+    def test_verify_kubernetes_version_compatibility_incompatible_min_version(self, mock_version_api, mock_secho):
+        """Test verify_kubernetes_version_compatibility with incompatible minimum version"""
+        # Mock server version info with minimum compatibility requirements
+        mock_server_info = MagicMock()
+        mock_server_info.major = '1'
+        mock_server_info.minor = '28'
+        mock_server_info.min_compatibility_major = '1'
+        mock_server_info.min_compatibility_minor = '25'
+        
+        mock_version_api_instance = MagicMock()
+        mock_version_api_instance.get_code.return_value = mock_server_info
+        mock_version_api.return_value = mock_version_api_instance
+        
+        mock_logger = MagicMock()
+        
+        from sagemaker.hyperpod.common.utils import verify_kubernetes_version_compatibility
+        result = verify_kubernetes_version_compatibility(mock_logger)
+        
+        # Should return False for incompatible versions
+        self.assertFalse(result)
+        
+        # Should call click.secho with yellow color for warning
+        mock_secho.assert_called_once()
+        call_args = mock_secho.call_args
+        self.assertIn('WARNING:', call_args[0][0])
+        self.assertIn('1.16 is incompatible with server 1.28', call_args[0][0])
+        self.assertEqual(call_args[1]['fg'], 'yellow')
+
+    @patch('click.secho')
+    @patch('kubernetes.client.VersionApi')
+    @patch('sagemaker.hyperpod.common.utils.kubernetes_client_version', '12.0.0')
+    def test_verify_kubernetes_version_compatibility_incompatible_standard_policy(self, mock_version_api, mock_secho):
+        """Test verify_kubernetes_version_compatibility with standard policy incompatibility"""
+        # Mock server version info without minimum compatibility requirements
+        mock_server_info = MagicMock()
+        mock_server_info.major = '1'
+        mock_server_info.minor = '28'
+        mock_server_info.min_compatibility_major = None
+        mock_server_info.min_compatibility_minor = None
+        
+        mock_version_api_instance = MagicMock()
+        mock_version_api_instance.get_code.return_value = mock_server_info
+        mock_version_api.return_value = mock_version_api_instance
+        
+        mock_logger = MagicMock()
+        
+        from sagemaker.hyperpod.common.utils import verify_kubernetes_version_compatibility
+        result = verify_kubernetes_version_compatibility(mock_logger)
+        
+        # Should return False for incompatible versions
+        self.assertFalse(result)
+        
+        # Should call click.secho with yellow color for warning
+        mock_secho.assert_called_once()
+        call_args = mock_secho.call_args
+        self.assertIn('WARNING:', call_args[0][0])
+        self.assertIn('1.16 is incompatible with server 1.28', call_args[0][0])
+        self.assertEqual(call_args[1]['fg'], 'yellow')
+
+    @patch('click.secho')
+    @patch('kubernetes.client.VersionApi')
+    @patch('sagemaker.hyperpod.common.utils.kubernetes_client_version', '24.0.0')
+    def test_verify_kubernetes_version_compatibility_compatible_no_warning(self, mock_version_api, mock_secho):
+        """Test verify_kubernetes_version_compatibility with compatible versions - no warning should show"""
+        # Mock server version info with compatible version
+        mock_server_info = MagicMock()
+        mock_server_info.major = '1'
+        mock_server_info.minor = '24'
+        mock_server_info.min_compatibility_major = None
+        mock_server_info.min_compatibility_minor = None
+        
+        mock_version_api_instance = MagicMock()
+        mock_version_api_instance.get_code.return_value = mock_server_info
+        mock_version_api.return_value = mock_version_api_instance
+        
+        mock_logger = MagicMock()
+        
+        from sagemaker.hyperpod.common.utils import verify_kubernetes_version_compatibility
+        result = verify_kubernetes_version_compatibility(mock_logger)
+        
+        # Should return True for compatible versions
+        self.assertTrue(result)
+        
+        # Should NOT call click.secho since no warning needed
+        mock_secho.assert_not_called()
+
     def test_is_eks_orchestrator_true(self):
         mock_client = MagicMock()
         mock_client.describe_cluster.return_value = {"Orchestrator": {"Eks": {}}}
