@@ -10,8 +10,10 @@ import sys
 from pathlib import Path
 import functools
 from pydantic import ValidationError
-import inspect
-
+from sagemaker.hyperpod.common.utils import (
+    region_to_az_ids
+)
+from typing import List, Any
 from sagemaker.hyperpod.cli.constants.init_constants import (
     TEMPLATES,
     CRD,
@@ -451,7 +453,7 @@ def save_config_yaml(prefill: dict, comment_map: dict, directory: str):
 
     print(f"Configuration saved to: {path}")
 
-def update_config_field(dir_path: str, field_name: str, value):
+def update_field_in_config(dir_path: str, field_name: str, value):
     """Update specific field in config.yaml file while preserving format."""
     config_path = os.path.join(dir_path, "config.yaml")
     
@@ -465,6 +467,64 @@ def update_config_field(dir_path: str, field_name: str, value):
     
     with open(config_path, 'w') as f:
         f.writelines(lines)
+
+def update_list_field_in_config(dir_path: str, field_name: str, values: List[Any]):
+    """Update specific field in config.yaml file if the field is a list"""
+    config_path = os.path.join(dir_path, "config.yaml")
+    
+    with open(config_path, 'r') as f:
+        lines = f.readlines()
+    
+    for i, line in enumerate(lines):
+        if line.strip().startswith(f"{field_name}:"):
+            # Replace the field line and any subsequent list items
+            lines[i] = f"{field_name}:\n"
+            # Remove any existing list items for this field
+            j = i + 1
+            while j < len(lines) and (lines[j].startswith('  - ') or lines[j].strip() == ''):
+                j += 1
+
+            # Remove the old list items
+            del lines[i+1:j]
+
+            # Insert new list items
+            for k, value in enumerate(values):
+                lines.insert(i + 1 + k, f"  - {value}\n")
+
+            # Add a newline after the list
+            lines.insert(i + 1 + len(values), "\n")
+            break
+    
+    with open(config_path, 'w') as f:
+        f.writelines(lines)
+
+def add_default_az_ids_to_config(dir_path: str, region: str):
+    # update availability zone id
+    config_path = dir_path / 'config.yaml'
+    with open(config_path, 'r') as f:
+        config_data = yaml.safe_load(f) or {}
+
+    # populdate availability_zone_ids
+    if not config_data.get('availability_zone_ids'):
+        try:
+            all_az_ids = region_to_az_ids(region)
+
+            # default to first two AZ IDs in the region
+            az_ids = all_az_ids[:2]
+
+            update_list_field_in_config(dir_path, 'availability_zone_ids', az_ids)
+            click.secho(f"No availability_zone_ids provided. Using default AZ Id: az_ids.", fg="yellow")
+        except Exception as e:
+            raise Exception(f"Failed to find default availability_zone_ids for region {region}. Please provide one in config.yaml. Error details: {e}")
+
+    # populate fsx_availability_zone_id
+    if not config_data.get('fsx_availability_zone_id'):
+        try:
+            # default to first az_id
+            update_field_in_config(dir_path, 'fsx_availability_zone_id', all_az_ids[0])
+            click.secho(f"No fsx_availability_zone_id provided. Using default AZ Id: {all_az_ids[0]}.", fg="yellow")
+        except Exception as e:
+            raise Exception(f"Failed to find default fsx_availability_zone_id for region {region}. Please provide one in config.yaml. Error details: {e}")
 
 def load_config(dir_path: Path = None) -> Tuple[dict, str, str]:
     """

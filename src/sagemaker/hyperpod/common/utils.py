@@ -334,9 +334,9 @@ def create_boto3_client(service_name: str, region_name: Optional[str] = None, **
     """
     return boto3.client(service_name, region_name=region_name or boto3.session.Session().region_name, **kwargs)
 
-def region_to_first_az_id(region_code):
+def region_to_az_ids(region_code: str):
     """
-    Map AWS region code to first availability zone ID.
+    Map AWS region code to all availability zone IDs.
     Reference: https://docs.aws.amazon.com/global-infrastructure/latest/regions/aws-availability-zones.html
     """
     ec2_client = create_boto3_client('ec2', region_name=region_code)
@@ -356,12 +356,17 @@ def region_to_first_az_id(region_code):
     if len(response['AvailabilityZones']) == 0:
         raise Exception(f"No Availability Zones found for region: {region_code}")
 
-    if 'ZoneId' not in response['AvailabilityZones'][0]:
-        raise Exception(f"No Zone ID for region: {region_code}")
+    zone_ids = []
+    for az in response['AvailabilityZones']:
+        if 'ZoneId' in az:
+            zone_ids.append(az['ZoneId'])
 
-    return response['AvailabilityZones'][0]['ZoneId']
+    if not zone_ids:
+        raise Exception(f"No Zone IDs found for region: {region_code}")
 
-
+    return zone_ids
+    
+  
 def parse_client_kubernetes_version(version_str: str) -> Tuple[int, int]:
     """Parse major and minor version from client library version string.
 

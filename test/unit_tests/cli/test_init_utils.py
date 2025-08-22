@@ -27,7 +27,7 @@ from sagemaker.hyperpod.cli.init_utils import (
 from sagemaker.hyperpod.cli.constants.init_constants import CFN, CRD
 import tempfile
 import os
-from sagemaker.hyperpod.cli.init_utils import update_config_field
+from sagemaker.hyperpod.cli.init_utils import update_field_in_config, update_list_field_in_config
 
 
 class TestSaveK8sJinja:
@@ -841,37 +841,142 @@ def test_generate_click_command_cfn_case():
         # Assert that the decorator was created successfully
         assert callable(dummy_func)
 
-def test_update_config_field():
-    """Test update_config_field preserves format and updates value."""    
-    with tempfile.TemporaryDirectory() as temp_dir:
-        config_path = os.path.join(temp_dir, "config.yaml")
-        
-        # Create test config file
-        original_content = """
-        # Template type
-        template: hyp-cluster-stack
 
-        # Schema version
-        version: 1.0
 
-        # List of AZs to deploy subnets in
-        availability_zone_ids: 
+class TestUpdateConfig:
+    """Test cases for update config functions"""
+    
+    def test_update_field_in_config(self):
+        """Test update_field_in_config preserves format and updates value."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_path = os.path.join(temp_dir, "config.yaml")
+            
+            # Create test config file
+            original_content = """# Template type
+template: hyp-cluster-stack
 
-        # Name of SageMaker HyperPod Cluster
-        hyperpod_cluster_name: test-cluster
+# Schema version
+version: 1.0
 
-        """
-        with open(config_path, 'w') as f:
-            f.write(original_content)
+# List of AZs to deploy subnets in
+availability_zone_ids: 
+
+# Name of SageMaker HyperPod Cluster
+hyperpod_cluster_name: test-cluster
+"""
+            with open(config_path, 'w') as f:
+                f.write(original_content)
+            
+            # Update field
+            update_field_in_config(temp_dir, 'availability_zone_ids', 'use1-az1')
+            
+            # Read updated content
+            with open(config_path, 'r') as f:
+                updated_content = f.read()
+            
+            # Verify field was updated and format preserved
+            assert 'availability_zone_ids: use1-az1' in updated_content
+            assert '# List of AZs to deploy subnets in' in updated_content
+            assert 'template: hyp-cluster-stack' in updated_content
+
+    def test_update_list_field_in_config_success(self):
+        """Test successful update of list field in config.yaml"""
+        initial_content = """# Test config
+field1: value1
+
+# List field comment
+availability_zone_ids:
+  - old-az-1
+  - old-az-2
+
+# Another field
+field2: value2
+"""
         
-        # Update field
-        update_config_field(temp_dir, 'availability_zone_ids', 'use1-az1')
+        expected_content = """# Test config
+field1: value1
+
+# List field comment
+availability_zone_ids:
+  - use2-az1
+  - use2-az2
+  - use2-az3
+
+# Another field
+field2: value2
+"""
         
-        # Read updated content
-        with open(config_path, 'r') as f:
-            updated_content = f.read()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_path = os.path.join(temp_dir, "config.yaml")
+            
+            # Write initial content
+            with open(config_path, 'w') as f:
+                f.write(initial_content)
+            
+            # Update the list field
+            update_list_field_in_config(temp_dir, "availability_zone_ids", ["use2-az1", "use2-az2", "use2-az3"])
+            
+            # Read and verify the updated content
+            with open(config_path, 'r') as f:
+                updated_content = f.read()
+            
+            assert updated_content == expected_content
+    
+    def test_update_list_field_in_config_empty_list(self):
+        """Test update with empty list"""
+        initial_content = """# Test config
+availability_zone_ids:
+  - old-az-1
+
+field2: value2
+"""
         
-        # Verify field was updated and format preserved
-        assert 'availability_zone_ids: use1-az1' in updated_content
-        assert '# List of AZs to deploy subnets in' in updated_content
-        assert 'template: hyp-cluster-stack' in updated_content
+        expected_content = """# Test config
+availability_zone_ids:
+
+field2: value2
+"""
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_path = os.path.join(temp_dir, "config.yaml")
+            
+            # Write initial content
+            with open(config_path, 'w') as f:
+                f.write(initial_content)
+            
+            # Update with empty list
+            update_list_field_in_config(temp_dir, "availability_zone_ids", [])
+            
+            # Read and verify the updated content
+            with open(config_path, 'r') as f:
+                updated_content = f.read()
+            
+            assert updated_content == expected_content
+    
+    def test_update_list_field_in_config_single_item(self):
+        """Test update with single item list"""
+        initial_content = """availability_zone_ids:
+  - old-az-1
+  - old-az-2
+"""
+        
+        expected_content = """availability_zone_ids:
+  - use2-az1
+
+"""
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_path = os.path.join(temp_dir, "config.yaml")
+            
+            # Write initial content
+            with open(config_path, 'w') as f:
+                f.write(initial_content)
+            
+            # Update with single item
+            update_list_field_in_config(temp_dir, "availability_zone_ids", ["use2-az1"])
+            
+            # Read and verify the updated content
+            with open(config_path, 'r') as f:
+                updated_content = f.read()
+            
+            assert updated_content == expected_content

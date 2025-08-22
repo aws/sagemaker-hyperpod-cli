@@ -26,12 +26,9 @@ from sagemaker.hyperpod.cli.init_utils import (
     build_config_from_schema,
     save_template,
     get_default_version_for_template,
-    update_config_field
+    add_default_az_ids_to_config,
 )
-from sagemaker.hyperpod.common.utils import (
-    get_aws_default_region,
-    region_to_first_az_id
-)
+from sagemaker.hyperpod.common.utils import get_aws_default_region
 
 @click.command("init")
 @click.argument("template", type=click.Choice(list(TEMPLATES.keys())))
@@ -379,19 +376,7 @@ def _default_create(region):
             click.secho(f"Submitting to default region: {region}.", fg="yellow")
 
         if schema_type == CFN:
-            # update availability zone id
-            config_path = out_dir / 'config.yaml'
-            with open(config_path, 'r') as f:
-                config_data = yaml.safe_load(f) or {}
-            
-            if not config_data.get('availability_zone_ids'):
-                # default to first az id in region if user does not provide one
-                try:
-                    az_id = region_to_first_az_id(region)
-                    update_config_field(out_dir, 'availability_zone_ids', az_id)
-                    click.secho(f"No availability_zone_ids provided. Using default AZ Id: {az_id}.", fg="yellow")
-                except Exception as e:
-                    raise Exception(f"Failed to find default availability zone id for region {region}. Please provide one in config.yaml. Error details: {e}")
+            add_default_az_ids_to_config(out_dir, region)
 
             from sagemaker.hyperpod.cli.commands.cluster_stack import create_cluster_stack_helper
             create_cluster_stack_helper(config_file=f"{out_dir}/config.yaml",

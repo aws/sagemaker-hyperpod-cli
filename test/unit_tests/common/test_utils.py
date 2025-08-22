@@ -289,26 +289,27 @@ class TestUtilityFunctions(unittest.TestCase):
         self.assertFalse(result)
         mock_client.describe_cluster.assert_called_once_with(ClusterName="my-cluster")
 
-    @patch('sagemaker.hyperpod.common.utils.boto3.client')
-    def test_region_to_first_az_id(self, mock_boto_client):
-        """Test region_to_first_az_id function"""
-        from sagemaker.hyperpod.common.utils import region_to_first_az_id
+    @patch('sagemaker.hyperpod.common.utils.create_boto3_client')
+    def test_region_to_az_ids(self, mock_create_client):
+        """Test region_to_az_ids function"""
+        from sagemaker.hyperpod.common.utils import region_to_az_ids
         
         mock_response = {
             'AvailabilityZones': [
                 {'ZoneId': 'use1-az1', 'ZoneName': 'us-east-1a'},
-                {'ZoneId': 'use1-az2', 'ZoneName': 'us-east-1b'}
+                {'ZoneId': 'use1-az2', 'ZoneName': 'us-east-1b'},
+                {'ZoneId': 'use1-az3', 'ZoneName': 'us-east-1c'}
             ]
         }
         
         mock_ec2 = MagicMock()
         mock_ec2.describe_availability_zones.return_value = mock_response
-        mock_boto_client.return_value = mock_ec2
+        mock_create_client.return_value = mock_ec2
         
-        result = region_to_first_az_id('us-east-1')
+        result = region_to_az_ids('us-east-1')
         
-        self.assertEqual(result, 'use1-az1')
-        mock_boto_client.assert_called_once_with('ec2', region_name='us-east-1')
+        self.assertEqual(result, ['use1-az1', 'use1-az2', 'use1-az3'])
+        mock_create_client.assert_called_once_with('ec2', region_name='us-east-1')
         mock_ec2.describe_availability_zones.assert_called_once_with(
             Filters=[
                 {'Name': 'region-name', 'Values': ['us-east-1']},
