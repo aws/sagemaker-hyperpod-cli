@@ -441,9 +441,9 @@ class TestValidationPatterns(unittest.TestCase):
         config = PyTorchJobConfig(
             job_name="test-job", 
             image="pytorch:latest", 
-            tasks_per_node=8
+            tasks_per_node="auto"
         )
-        self.assertEqual(config.tasks_per_node, 8)
+        self.assertEqual(config.tasks_per_node, "auto")
         
         # Test max_retry
         config = PyTorchJobConfig(
@@ -755,7 +755,7 @@ class TestValidationPatterns(unittest.TestCase):
             pull_policy="Always",
             instance_type="ml.p4d.24xlarge",
             node_count=2,
-            tasks_per_node=8,
+            tasks_per_node="auto",
             label_selector={"accelerator": "nvidia"},
             queue_name="training-queue",
             priority="high",
@@ -774,7 +774,7 @@ class TestValidationPatterns(unittest.TestCase):
         self.assertEqual(config.pull_policy, "Always")
         self.assertEqual(config.instance_type, "ml.p4d.24xlarge")
         self.assertEqual(config.node_count, 2)
-        self.assertEqual(config.tasks_per_node, 8)
+        self.assertEqual(config.tasks_per_node, "auto")
         self.assertEqual(config.label_selector, {"accelerator": "nvidia"})
         self.assertEqual(config.queue_name, "training-queue")
         self.assertEqual(config.priority, "high")
