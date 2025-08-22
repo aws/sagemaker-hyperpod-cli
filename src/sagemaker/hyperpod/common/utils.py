@@ -487,7 +487,7 @@ def verify_kubernetes_version_compatibility(logger) -> bool:
                     click.secho(
                         f"\nWARNING: Kubernetes client version {client_version_str} is incompatible with server {server_version_str}. "
                         f"Server requires minimum client version {min_major}.{min_minor}. "
-                        f"\nPlease update kubernetes Python client: pip install --upgrade kubernetes>={min_major}.{min_minor}.0",
+                        f"\nPlease update Kubernetes Python Client: pip install --upgrade kubernetes>={min_major}.{min_minor}.0",
                         fg="yellow"
                     )
                     is_compatible = False
