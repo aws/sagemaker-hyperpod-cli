@@ -1,10 +1,22 @@
 # Changelog
 
-## v3.1.0 (2025-08-13)
+## v3.2.0 (2025-08-22)
 
 ### Features
 
+ * Cluster management 
+   * Creation of cluster stack 
+   * Describing and listing a cluster stack 
+   * Updating a cluster 
+ * Init Experience 
+   * Init, Validate, Create with local configurations
+ 
+
+## v3.1.0 (2025-08-13)
+
+### Features
  * Task Governance feature for training jobs.
+
 
 ## v3.0.2 (2025-07-31)
 
