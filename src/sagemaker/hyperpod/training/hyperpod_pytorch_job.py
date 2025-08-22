@@ -1,4 +1,6 @@
 from pydantic import ConfigDict, Field
+
+from sagemaker.hyperpod.cli.constants.command_constants import INSTANCE_TYPE_LABEL
 from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config import (
     _HyperPodPytorchJob, HyperPodPytorchJobStatus
 )
@@ -17,6 +19,9 @@ from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
 from sagemaker.hyperpod.common.telemetry.constants import Feature
 import yaml
 import logging
+
+from sagemaker.hyperpod.training.quota_allocation_util import _is_valid, _get_resources_from_compute_quotas, _get_resources_from_instance, _get_limits
+
 
 
 TRAINING_GROUP = "sagemaker.amazonaws.com"
@@ -52,6 +57,88 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             
             # Verify Kubernetes version compatibility
             verify_kubernetes_version_compatibility(cls.get_logger())
+    @classmethod
+    def _extract_numeric_value(cls, value):
+        """Extract numeric value from strings like '1.5Gi' -> 1.5"""
+        if not value:
+            return None
+        import re
+        match = re.match(r'^([0-9]*\.?[0-9]+)', str(value))
+        return float(match.group(1)) if match else None
+
+    @classmethod
+    def _process_replica_resources(cls, data):
+        """Process and validate replica resource configuration."""
+        try:
+            node_count = data.get('replicas', None)
+
+            # Extract nested configuration with validation
+            template = data.get('template', {})
+            spec = template.get('spec', {})
+            node_selector = spec.get('nodeSelector', {})
+            instance_type = node_selector.get(INSTANCE_TYPE_LABEL) if node_selector else None
+            if not instance_type:
+                return None
+
+            containers = spec.get('containers', [])
+
+            if not containers:
+                raise ValueError("No containers found in template spec")
+
+            container = containers[0]
+            resources = container.get('resources', {})
+            requests = resources.get('requests', {})
+            limits = resources.get('limits', {})
+
+            # Extract resource values
+            vcpu = float(requests.get('vcpu')) if requests.get('vcpu') else None
+            memory = cls._extract_numeric_value(requests.get('memory'))
+            accelerators = int(requests.get('accelerators'))  if requests.get('accelerators') else None
+            memory_limit = cls._extract_numeric_value(limits.get('memory'))
+            vcpu_limit = float(limits.get('vcpu')) if limits.get('vcpu') else None
+            accelerators_limit = int(limits.get('accelerators'))  if limits.get('accelerators') else None
+
+            # Validate configuration
+            valid, error = _is_valid(vcpu, memory, accelerators, node_count, instance_type)
+            if not valid:
+                raise ValueError(error)
+
+            # Calculate resource values
+            requests_value = (_get_resources_from_compute_quotas(instance_type, vcpu, memory, accelerators)
+                              or _get_resources_from_instance(instance_type, node_count=1))
+            limits_value = _get_limits(instance_type, vcpu_limit, memory_limit, accelerators_limit)
+
+            # Update data with calculated values
+            data['template']['spec']['containers'][0]['resources']['requests'] = requests_value
+            data['template']['spec']['containers'][0]['resources']['limits'] = limits_value
+            return data
+        except KeyError as e:
+            raise ValueError(f"Missing required configuration key: {str(e)}")
+
+    @classmethod
+    def _get_container_resources(cls, replica_spec):
+        """Extract container resources from replica spec."""
+        container_resources = replica_spec['template']['spec']['containers'][0]['resources']
+        return container_resources['requests'], container_resources['limits']
+
+    @classmethod
+    def allocate_quotas_if_applicable(cls, spec):
+        try:
+            spec_dict = spec.model_dump()
+            replica_spec = spec_dict['replicaSpecs'][0]
+            cls._process_replica_resources(replica_spec)
+
+            # Update the original spec object directly
+            requests, limits = cls._get_container_resources(replica_spec)
+            spec.replicaSpecs[0].template.spec.containers[0].resources.requests = requests
+            spec.replicaSpecs[0].template.spec.containers[0].resources.limits = limits
+
+            return spec
+        except ValueError as e:
+            raise ValueError(e)
+        except Exception as e:
+            # In case of any other exception, return original spec
+            return spec
 
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_pytorchjob")
     def create(self, debug=False):
@@ -64,6 +151,10 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
 
         if not self.metadata.namespace:
             self.metadata.namespace = get_default_namespace()
+
+        spec = self.allocate_quotas_if_applicable(spec)
+        if spec.replicaSpecs[0].replicas is None or spec.replicaSpecs[0].replicas == 0:
+            spec.replicaSpecs[0].replicas = 1 # default value
 
         config = {
             "apiVersion": f"{TRAINING_GROUP}/{API_VERSION}",
@@ -90,6 +181,8 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
         except Exception as e:
             logger.error(f"Failed to create HyperPodPytorchJob {self.metadata.name}!")
             handle_exception(e, self.metadata.name, self.metadata.namespace)
+
+
 
     @classmethod
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_pytorchjobs")

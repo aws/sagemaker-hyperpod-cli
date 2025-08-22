@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-
+from sagemaker.hyperpod.cli.constants.command_constants import NVIDIA_GPU_RESOURCE_LIMIT_KEY, NEURON_RESOURCE_LIMIT_KEY
 from sagemaker.hyperpod.cli.utils import (
     setup_logger
 )
@@ -247,9 +247,6 @@ def _is_valid(vcpu: Optional[float], memory_in_gib: Optional[float], accelerator
         return False, f"Invalid instance-type {instance_type}. Please re-check the instance type and contact AWS for support."
 
     if instance_type is not None:
-        #neither specified
-        if (not has_gpu_quota_allocation and not node_specified):
-            return False, f"Either node-count or a combination of accelerators, vcpu, memory-in-gib must be specified for instance-type {instance_type}"
         #both resources and node count specified
         if (has_gpu_quota_allocation and node_specified):
             return False, f"Either node-count or a combination of accelerators, vcpu, memory-in-gib must be specified for instance-type {instance_type}"
@@ -268,10 +265,10 @@ def _get_accelerator_type_and_count(instance_type: str) -> Tuple[Optional[str], 
     
     # Determine the appropriate key based on instance type
     if trainium_count > 0:
-        accelerator_key = "aws.amazon.com/neurondevice"
+        accelerator_key = NEURON_RESOURCE_LIMIT_KEY
         instance_accelerator_count = trainium_count
     elif gpu_count > 0:
-        accelerator_key = "nvidia.com/gpu"
+        accelerator_key = NVIDIA_GPU_RESOURCE_LIMIT_KEY
         instance_accelerator_count = gpu_count
     
     if instance_accelerator_count is not None:
