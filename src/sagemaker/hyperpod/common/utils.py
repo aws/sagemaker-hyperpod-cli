@@ -483,14 +483,12 @@ def verify_kubernetes_version_compatibility(logger) -> bool:
                 has_min_compatibility = True
                 
                 # Check if client version is below minimum compatibility
-                if client_version[0] < min_major or (client_version[0] == min_major and client_version[1] < min_minor):
-                    logger.warning(
-                        f"Kubernetes version incompatibility detected! Your client version {client_version_str} "
-                        f"(package: {kubernetes_client_version}) is below the minimum compatible version {min_major}.{min_minor} "
-                        f"required by server {server_version_str}. The server explicitly requires a minimum client version."
-                    )
-                    logger.warning(
-                        f"To resolve this issue, please update your kubernetes Python client to meet the minimum requirement."
+                if client_version[0] < min_major or (client_version[0] == min_major and client_version[1] < min_minor):                    
+                    click.secho(
+                        f"\nWARNING: Kubernetes client version {client_version_str} is incompatible with server {server_version_str}. "
+                        f"Server requires minimum client version {min_major}.{min_minor}. "
+                        f"\nPlease update Kubernetes Python Client: pip install --upgrade kubernetes>={min_major}.{min_minor}.0",
+                        fg="yellow"
                     )
                     is_compatible = False
         except (ValueError, TypeError, AttributeError) as e:
@@ -500,15 +498,12 @@ def verify_kubernetes_version_compatibility(logger) -> bool:
         if not has_min_compatibility:
             # Fall back to standard compatibility check if min versions not provided
             server_version_parsed = (int(server_version_info.major), int(server_version_info.minor))
-            if not is_kubernetes_version_compatible(client_version, server_version_parsed):
-                logger.warning(
-                    f"Kubernetes version incompatibility detected! Your client version {client_version_str} "
-                    f"(package: {kubernetes_client_version}) is not compatible with server version {server_version_str}. "
-                    f"According to Kubernetes support policy, client should be within 3 minor versions behind "
-                    f"and not more than 1 minor version ahead of the server."
-                )
-                logger.warning(
-                    f"To resolve this issue, please update your kubernetes Python client to a compatible version."
+            if not is_kubernetes_version_compatible(client_version, server_version_parsed):                
+                click.secho(
+                    f"\nWARNING: Kubernetes client version {client_version_str} is incompatible with server {server_version_str}. "
+                    f"Client must be within 3 minor versions behind and not more than 1 ahead of server. "
+                    f"\nPlease update Kubernetes Python Client: pip install --upgrade kubernetes",
+                    fg="yellow"
                 )
                 is_compatible = False
                 
