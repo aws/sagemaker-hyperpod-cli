@@ -12,10 +12,7 @@
 # language governing permissions and limitations under the License.
 
 import pytest
-import sys
-import os
-sys.path.append(os.path.join(os.path.dirname(__file__), 'hyperpod-pytorch-job-template'))
-from hyperpod_pytorch_job_template.v1_1.quota_allocation_util import (
+from sagemaker.hyperpod.training.quota_allocation_util import (
     _get_resources_from_instance,
     _get_limits,
     _is_valid,
@@ -204,11 +201,6 @@ class TestQuotaAllocationUtil:
         assert not valid
         assert message == "Invalid instance-type ml-123. Please re-check the instance type and contact AWS for support."
 
-    def test_is_valid_neither_node_count_nor_resources(self):
-        valid, message = _is_valid(None, None, None, None, "ml.g5.xlarge")
-        assert not valid
-        assert message == "Either node-count or a combination of accelerators, vcpu, memory-in-gib must be specified for instance-type ml.g5.xlarge"
-
     def test_is_valid_both_node_count_and_resources(self):
         valid, message = _is_valid(4.0, None, None, 2, "ml.g5.xlarge")
         assert not valid
@@ -233,11 +225,6 @@ class TestQuotaAllocationUtil:
         valid, message = _is_valid(None, 16.0, None, None, "ml.g5.xlarge")
         assert valid
         assert message == ""
-
-    def test_is_valid_limits_only(self):
-        valid, message = _is_valid(None, None, None, None, "ml.g5.xlarge")
-        assert not valid
-        assert message == "Either node-count or a combination of accelerators, vcpu, memory-in-gib must be specified for instance-type ml.g5.xlarge"
 
     # Test instance resources dictionary
     def test_instance_resources_structure(self):

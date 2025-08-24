@@ -220,11 +220,11 @@ class TestGpuQuotaAllocationIntegration:
                     text=True
                 )
         assert result.returncode != 0
-        assert "ValueError: Either node-count or a combination of accelerators, vcpu, " in result.stdout
+        assert "Either node-count or a combination of accelerators, vcpu, " in result.stdout
         assert "memory-in-gib must be specified for instance-type ml.g5.8xlarge" in result.stdout
 
     def test_invalid_no_node_count_or_quota_parameter(self, test_job_name):
-        """Test that invalid case where both node-count and any of the quota parameters are provided"""
+        """Test that case where both node-count and any of the quota parameters are provided"""
         # Test with no node-count, no accelerators/vcpu/memory parameters
         create_cmd = [
             "hyp", "create", "hyp-pytorch-job",
@@ -242,9 +242,7 @@ class TestGpuQuotaAllocationIntegration:
             capture_output=True,
             text=True
         )
-        assert result.returncode != 0
-        assert "ValueError: Either node-count or a combination of accelerators, vcpu, " in result.stdout
-        assert "memory-in-gib must be specified for instance-type ml.g5.8xlarge" in result.stdout
+        assert result.returncode == 0
 
     def test_invalid_instance_type_parameter(self, test_job_name):
         """Test case where invalid instance type parameter is provided"""
@@ -274,5 +272,5 @@ class TestGpuQuotaAllocationIntegration:
             text=True
         )
         assert result.returncode != 0
-        assert "ValueError: Invalid instance-type ml.n5.8xlarge" in result.stdout
+        assert "Invalid instance-type ml.n5.8xlarge" in result.stdout
         logger.info("Successfully verified invalid instance type error")

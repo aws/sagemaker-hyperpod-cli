@@ -2979,7 +2979,7 @@ class ReplicaSpec(BaseModel):
 
     name: str = Field(description="The name for the replica set")
     replicas: Optional[int] = Field(
-        default=1,
+        default=0,
         description="Replicas is the desired number of replicas of the given template.",
     )
     spares: Optional[int] = Field(

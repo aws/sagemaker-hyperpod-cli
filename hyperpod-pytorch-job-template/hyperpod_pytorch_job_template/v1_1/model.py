@@ -20,7 +20,6 @@ ALLOWED_TOPOLOGY_LABELS = {
     'topology.k8s.aws/network-node-layer-2',
     'topology.k8s.aws/network-node-layer-3'
 }
-from .quota_allocation_util import _is_valid, _get_resources_from_compute_quotas, _get_resources_from_instance, _get_limits
 
 class VolumeConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -111,7 +110,7 @@ class PyTorchJobConfig(BaseModel):
         min_length=1
     )
     node_count: Optional[int] = Field(
-        default=1, 
+        default=None,
         alias="node_count", 
         description="Number of nodes",
         ge=1
@@ -286,21 +285,27 @@ class PyTorchJobConfig(BaseModel):
         """
         Convert flat config to domain model (HyperPodPytorchJobSpec)
         """
-        
-        valid, error = _is_valid(
-           self.vcpu, self.memory, self.accelerators, self.node_count, self.instance_type
-        )
-        
-        if not valid:
-            raise ValueError(error)
 
         # Create container with required fields
         if self.instance_type is None:
             requests_value = {"nvidia.com/gpu": "0"}
             limits_value = {"nvidia.com/gpu": "0"}
         else:
-            requests_value = _get_resources_from_compute_quotas(self.instance_type, self.vcpu, self.memory, self.accelerators) or _get_resources_from_instance(self.instance_type, self.node_count)
-            limits_value = _get_limits(self.instance_type, self.vcpu_limit, self.memory_limit, self.accelerators_limit)
+            requests_value = {}
+            if self.accelerators is not None:
+                requests_value["accelerators"] = str(self.accelerators)
+            if self.vcpu is not None:
+                requests_value["vcpu"] = str(self.vcpu)
+            if self.memory is not None:
+                requests_value["memory"] = str(self.memory)
+
+            limits_value = {}
+            if self.accelerators_limit is not None:
+                limits_value["accelerators"] = str(self.accelerators_limit)
+            if self.vcpu_limit is not None:
+                limits_value["vcpu"] = str(self.vcpu_limit)
+            if self.memory_limit is not None:
+                limits_value["memory"] = str(self.memory_limit)
 
         # Create container with required fields
         container_kwargs = {
