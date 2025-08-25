@@ -337,6 +337,10 @@ def generate_click_command(
                 'resources_limits',
                 'resources_requests',
                 'tags',
+                'custom_bucket_name', # Fixed default, not configurable
+                'github_raw_url', # Fixed default, not configurable
+                'helm_repo_url', # Fixed default, not configurable
+                'helm_repo_path', # Fixed default, not configurable
             ):
                 continue
 
@@ -908,13 +912,16 @@ def build_config_from_schema(template: str, version: str, model_config=None, exi
                     else:
                         values[key] = val
     
+    # Fields that should not appear in config.yaml (fixed defaults)
+    excluded_fields = {'custom_bucket_name', 'github_raw_url', 'helm_repo_url', 'helm_repo_path'}
+    
     # Build the final config with required fields first, then optional
     for key in reqs:
-        if key in props:
+        if key in props and key not in excluded_fields:
             full_cfg[key] = values.get(key, None)
     
     for key in props:
-        if key not in reqs:
+        if key not in reqs and key not in excluded_fields:
             full_cfg[key] = values.get(key, None)
     
     # Build comment map with [Required] prefix for required fields
@@ -923,10 +930,11 @@ def build_config_from_schema(template: str, version: str, model_config=None, exi
         "version": "Schema version (latest available version used by default)",
     }
     for key, spec in props.items():
-        desc = spec.get("description", "")
-        if key in reqs:
-            desc = f"[Required] {desc}"
-        comment_map[key] = desc
+        if key not in excluded_fields:
+            desc = spec.get("description", "")
+            if key in reqs:
+                desc = f"[Required] {desc}"
+            comment_map[key] = desc
     
     return full_cfg, comment_map
 

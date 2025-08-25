@@ -113,6 +113,16 @@ def create_cluster_stack_helper(config_file: str, region: Optional[str] = None, 
                 filtered_config[k] = v
 
         # Create the HpClusterStack object
+        # Ensure fixed defaults are always set
+        if 'custom_bucket_name' not in filtered_config:
+            filtered_config['custom_bucket_name'] = 'sagemaker-hyperpod-cluster-stack-bucket'
+        if 'github_raw_url' not in filtered_config:
+            filtered_config['github_raw_url'] = 'https://raw.githubusercontent.com/aws-samples/awsome-distributed-training/refs/heads/main/1.architectures/7.sagemaker-hyperpod-eks/LifecycleScripts/base-config/on_create.sh'
+        if 'helm_repo_url' not in filtered_config:
+            filtered_config['helm_repo_url'] = 'https://github.com/aws/sagemaker-hyperpod-cli.git'
+        if 'helm_repo_path' not in filtered_config:
+            filtered_config['helm_repo_path'] = 'helm_chart/HyperPodHelmChart'
+        
         cluster_stack = HpClusterStack(**filtered_config)
 
         # Log the configuration

@@ -257,15 +257,15 @@ Parameters:
     Description: The name of the S3 bucket used to store the cluster lifecycle scripts.
   GithubRawUrl:
     Type: String
-    Default: {{ github_raw_url | default('https://raw.githubusercontent.com/aws-samples/awsome-distributed-training/refs/heads/main/1.architectures/7.sagemaker-hyperpod-eks/LifecycleScripts/base-config/on_create.sh') }}
+    Default: https://raw.githubusercontent.com/aws-samples/awsome-distributed-training/refs/heads/main/1.architectures/7.sagemaker-hyperpod-eks/LifecycleScripts/base-config/on_create.sh
     Description: The raw GitHub URL for the lifecycle script.
   HelmRepoUrl:
     Type: String
-    Default: {{ helm_repo_url | default('https://github.com/aws/sagemaker-hyperpod-cli.git') }}
+    Default: https://github.com/aws/sagemaker-hyperpod-cli.git
     Description: The URL of the Helm repo containing the HyperPod Helm chart.
   HelmRepoPath:
     Type: String
-    Default: {{ helm_repo_path | default('helm_chart/HyperPodHelmChart') }}
+    Default: helm_chart/HyperPodHelmChart
     Description: The path to the HyperPod Helm chart in the Helm repo.
   HelmOperators:
     Type: String

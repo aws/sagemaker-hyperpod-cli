@@ -334,8 +334,12 @@ class TestCreateClusterStackHelper(unittest.TestCase):
             mock_exists.assert_called_once_with('config.yaml')
             mock_yaml_load.assert_called_once()
             mock_cluster_stack.assert_called_once_with(
+                version='1.0',
                 eks_cluster_name='test-cluster',
-                version='1.0'
+                custom_bucket_name='sagemaker-hyperpod-cluster-stack-bucket',
+                github_raw_url='https://raw.githubusercontent.com/aws-samples/awsome-distributed-training/refs/heads/main/1.architectures/7.sagemaker-hyperpod-eks/LifecycleScripts/base-config/on_create.sh',
+                helm_repo_url='https://github.com/aws/sagemaker-hyperpod-cli.git',
+                helm_repo_path='helm_chart/HyperPodHelmChart'
             )
             mock_stack_instance.create.assert_called_once_with('us-west-2')
     

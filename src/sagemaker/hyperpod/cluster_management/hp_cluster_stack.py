@@ -136,8 +136,8 @@ class HpClusterStack(ClusterStackBase):
         parameters = self._create_parameters()
 
         stack_name = f"HyperpodClusterStack-{str(uuid.uuid4())[:5]}"
-        # Get account ID and create bucket name
-        bucket_name = f"sagemaker-hyperpod-cluster-stack-bucket"
+        # Use the fixed bucket name from the model
+        bucket_name = self.custom_bucket_name
         template_key = f"1.1/main-stack-eks-based-template.yaml"
 
         try:
