@@ -2,24 +2,20 @@ import json
 import pkgutil
 import click
 from typing import Callable, Optional, Mapping, Type
-
-
-def load_schema_for_version(version: str, schema_pkg: str) -> dict:
-    ver_pkg = f"{schema_pkg}.v{version.replace('.', '_')}"
-    raw = pkgutil.get_data(ver_pkg, "schema.json")
-    if raw is None:
-        raise click.ClickException(f"Could not load schema.json for version {version}")
-    return json.loads(raw)
+import sys
+from sagemaker.hyperpod.cli.common_utils import extract_version_from_args, get_latest_version, load_schema_for_version
 
 
 def generate_click_command(
     *,
-    version_key: Optional[str] = None,
     schema_pkg: str = "hyperpod_jumpstart_inference_template",
     registry: Mapping[str, Type] = None,
 ) -> Callable:
     if registry is None:
         raise ValueError("You must pass a registry mapping version→Model")
+
+    default_version = get_latest_version(registry)
+    version = extract_version_from_args(registry, schema_pkg, default_version)
 
     def decorator(func: Callable) -> Callable:
         # Parser for the single JSON‐dict env var flag
@@ -34,7 +30,8 @@ def generate_click_command(
         # 1) the wrapper click actually invokes
         def wrapped_func(*args, **kwargs):
             namespace = kwargs.pop("namespace", None)
-            version = version_key or kwargs.pop("version", "1.0")
+            name = kwargs.pop("metadata_name", None)
+            pop_version = kwargs.pop("version", "1.0")
 
             Model = registry.get(version)
             if Model is None:
@@ -42,47 +39,31 @@ def generate_click_command(
 
             flat = Model(**kwargs)
             domain = flat.to_domain()
-            return func(namespace, version, domain)
+            return func(name, namespace, version, domain)
 
-        # 2) inject the special JSON‐env flag before everything else
-        wrapped_func = click.option(
-            "--env",
-            callback=_parse_json_flag,
-            type=str,
-            default=None,
-            help=(
-                "JSON object of environment variables, e.g. "
-                '\'{"VAR1":"foo","VAR2":"bar"}\''
-            ),
-            metavar="JSON",
-        )(wrapped_func)
-
-        wrapped_func = click.option(
-            "--dimensions",
-            callback=_parse_json_flag,
-            type=str,
-            default=None,
-            help=("JSON object of dimensions, e.g. " '\'{"VAR1":"foo","VAR2":"bar"}\''),
-            metavar="JSON",
-        )(wrapped_func)
-
-        wrapped_func = click.option(
-            "--resources-limits",
-            callback=_parse_json_flag,
-            help='JSON object of resource limits, e.g. \'{"cpu":"2","memory":"4Gi"}\'',
-            metavar="JSON",
-        )(wrapped_func)
-
-        wrapped_func = click.option(
-            "--resources-requests",
-            callback=_parse_json_flag,
-            help='JSON object of resource requests, e.g. \'{"cpu":"1","memory":"2Gi"}\'',
-            metavar="JSON",
-        )(wrapped_func)
+        # 2) inject JSON flags only if they exist in the schema
+        schema = load_schema_for_version(version, schema_pkg)
+        props = schema.get("properties", {})
+        
+        json_flags = {
+            "env": ("JSON object of environment variables, e.g. " '\'{"VAR1":"foo","VAR2":"bar"}\''),
+            "dimensions": ("JSON object of dimensions, e.g. " '\'{"VAR1":"foo","VAR2":"bar"}\''),
+            "resources_limits": ('JSON object of resource limits, e.g. \'{"cpu":"2","memory":"4Gi"}\''),
+            "resources_requests": ('JSON object of resource requests, e.g. \'{"cpu":"1","memory":"2Gi"}\''),
+        }
+        
+        for flag_name, help_text in json_flags.items():
+            if flag_name in props:
+                wrapped_func = click.option(
+                    f"--{flag_name.replace('_', '-')}",
+                    callback=_parse_json_flag,
+                    type=str,
+                    default=None,
+                    help=help_text,
+                    metavar="JSON",
+                )(wrapped_func)
 
         # 3) auto-inject all schema.json fields
-        schema = load_schema_for_version(version_key or "1.0", schema_pkg)
-        props = schema.get("properties", {})
         reqs = set(schema.get("required", []))
 
         for name, spec in reversed(list(props.items())):

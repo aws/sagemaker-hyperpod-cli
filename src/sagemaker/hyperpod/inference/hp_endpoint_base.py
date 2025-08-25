@@ -114,7 +114,10 @@ class HPEndpointBase:
                 name=name,
             )
         except Exception as e:
-            handle_exception(e, name, namespace)
+            # Map kind to correct resource type
+            resource_type = 'hyp_jumpstart_endpoint' if kind == 'JumpStartModel' else 'hyp_custom_endpoint'
+            handle_exception(e, name, namespace, 
+                            operation_type='get', resource_type=resource_type)
 
     def call_delete_api(
         self,
@@ -135,7 +138,10 @@ class HPEndpointBase:
                 name=name,
             )
         except Exception as e:
-            handle_exception(e, name, namespace)
+            # Map kind to correct resource type
+            resource_type = 'hyp_jumpstart_endpoint' if kind == 'JumpStartModel' else 'hyp_custom_endpoint'
+            handle_exception(e, name, namespace, 
+                            operation_type='delete', resource_type=resource_type)
 
     @classmethod
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "get_operator_logs")
@@ -202,23 +208,6 @@ class HPEndpointBase:
             handle_exception(e, pod, namespace)
 
         return logs
-
-    @classmethod
-    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_pods_endpoint")
-    def list_pods(cls, namespace=None):
-        cls.verify_kube_config()
-
-        if not namespace:
-            namespace = get_default_namespace()
-
-        v1 = client.CoreV1Api()
-        response = v1.list_namespaced_pod(namespace=namespace)
-
-        pods = []
-        for item in response.items:
-            pods.append(item.metadata.name)
-
-        return pods
 
     @classmethod
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_namespaces")

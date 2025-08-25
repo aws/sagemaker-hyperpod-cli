@@ -1,5 +1,13 @@
 {
   "$defs": {
+    "topologyLabels": {
+      "enum": [
+        "topology.k8s.aws/ultraserver-id",
+        "topology.k8s.aws/network-node-layer-1",
+        "topology.k8s.aws/network-node-layer-2",
+        "topology.k8s.aws/network-node-layer-3"
+      ]
+    },
     "VolumeConfig": {
       "properties": {
         "name": {
@@ -194,7 +202,7 @@
           "type": "null"
         }
       ],
-      "default": null,
+      "default": 1,
       "description": "Number of nodes",
       "title": "Node Count"
     },
@@ -202,14 +210,14 @@
       "anyOf": [
         {
           "minimum": 1,
-          "type": "integer"
+          "type": "string"
         },
         {
           "type": "null"
         }
       ],
-      "default": null,
-      "description": "Number of tasks per node",
+      "default": "auto",
+      "description": "Number of workers per node; supported values: [auto,cpu, gpu, int]",
       "title": "Tasks Per Node"
     },
     "label_selector": {
@@ -271,6 +279,36 @@
       "description": "Queue name for job scheduling",
       "title": "Queue Name"
     },
+    "accelerators": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Number of accelerators (GPUs/TPUs)"
+    },
+    "vcpu": {
+      "type": "float",
+      "minimum": 0,
+      "description": "Number of vCPUs"
+    },
+    "memory": {
+      "type": "float",
+      "minimum": 0,
+      "description": "Amount of memory in GiB"
+    },
+    "accelerators-limit": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Limit for the number of accelerators (GPUs/TPUs)"
+    },
+    "vcpu-limit": {
+      "type": "float",
+      "minimum": 0,
+      "description": "Limit for the number of vCPUs"
+    },
+    "memory-limit": {
+      "type": "float",
+      "minimum": 0,
+      "description": "Limit for the amount of memory in GiB"
+    },
     "priority": {
       "anyOf": [
         {
@@ -328,7 +366,17 @@
       "default": null,
       "description": "Service account name",
       "title": "Service Account Name"
-    }
+    },
+    "preferred-topology": {
+      "type": "string",
+      "description": "Preferred topology annotation for scheduling",
+      "$ref": "#/$defs/topologyLabels"
+        },
+    "required-topology": {
+      "type": "string", 
+      "description": "Required topology annotation for scheduling",
+      "$ref": "#/$defs/topologyLabels"
+        }
   },
   "required": [
     "job_name",

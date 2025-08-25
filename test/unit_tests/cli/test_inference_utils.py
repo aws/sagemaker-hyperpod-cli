@@ -3,6 +3,7 @@ import json
 import click
 from click.testing import CliRunner
 from unittest.mock import Mock, patch
+import sys
 
 from sagemaker.hyperpod.cli.inference_utils import load_schema_for_version, generate_click_command
 
@@ -41,13 +42,15 @@ class TestGenerateClickCommand:
     @patch('sagemaker.hyperpod.cli.inference_utils.load_schema_for_version')
     def test_unsupported_version(self, mock_load_schema):
         mock_load_schema.return_value = {'properties': {}, 'required': []}
-        # Registry missing the default version key
-        registry = {}
-
-        @click.command()
-        @generate_click_command(registry=registry)
-        def cmd(namespace, version, domain):
-            click.echo('should not')
+        # Registry with version 2.0, but the default version (1.0) is not in registry
+        # This will cause get_latest_version to return 2.0, but extract_version_from_args
+        # will try to use default 1.0 which is not in registry
+        registry = {'2.0': Mock()}
+        with patch('sagemaker.hyperpod.cli.inference_utils.extract_version_from_args', return_value='1.0'):
+            @click.command()
+            @generate_click_command(registry=registry)
+            def cmd(namespace, version, domain):
+                click.echo('should not')
 
         # Invocation with no args uses default version 1.0 which is unsupported
         res = self.runner.invoke(cmd, [])
@@ -56,7 +59,15 @@ class TestGenerateClickCommand:
 
     @patch('sagemaker.hyperpod.cli.inference_utils.load_schema_for_version')
     def test_json_flags(self, mock_load_schema):
-        mock_load_schema.return_value = {'properties': {}, 'required': []}
+        mock_load_schema.return_value = {
+            'properties': {
+                'env': {'type': 'object'},
+                'dimensions': {'type': 'object'},
+                'resources_limits': {'type': 'object'},
+                'resources_requests': {'type': 'object'}
+            }, 
+            'required': []
+        }
         # Domain receives flags as attributes env, dimensions, resources_limits, resources_requests
         class DummyFlat:
             def __init__(self, **kwargs): self.__dict__.update(kwargs)
@@ -65,7 +76,7 @@ class TestGenerateClickCommand:
 
         @click.command()
         @generate_click_command(registry=registry)
-        def cmd(namespace, version, domain):
+        def cmd(name, namespace, version, domain):
             click.echo(json.dumps({
                 'env': domain.env, 'dimensions': domain.dimensions,
                 'limits': domain.resources_limits, 'reqs': domain.resources_requests
@@ -107,7 +118,7 @@ class TestGenerateClickCommand:
 
         @click.command()
         @generate_click_command(registry=registry)
-        def cmd(namespace, version, domain):
+        def cmd(name, namespace, version, domain):
             click.echo(f"{domain.s},{domain.i},{domain.n},{domain.b},{domain.e},{domain.d}")
 
         res = self.runner.invoke(cmd, [
@@ -116,19 +127,35 @@ class TestGenerateClickCommand:
         assert res.exit_code == 0
         assert res.output.strip() == 'hello,5,2.5,True,x,Z'
 
+    @patch('sagemaker.hyperpod.cli.inference_utils.extract_version_from_args')
     @patch('sagemaker.hyperpod.cli.inference_utils.load_schema_for_version')
-    def test_version_key_and_schema_pkg(self, mock_load_schema):
+    def test_version_and_schema_pkg(self, mock_load_schema, mock_extract_version):
+        # Setup mocks
         mock_load_schema.return_value = {'properties': {}, 'required': []}
+        mock_extract_version.return_value = '2.0'
+
+        # Create dummy model class
         class DummyFlat:
-            def __init__(self, **kwargs): pass
-            def to_domain(self): return self
-        registry = {'v2': DummyFlat}
+            def __init__(self, **kwargs):
+                pass
 
+            def to_domain(self):
+                return {}
+
+        # Setup registry
+        registry = {'2.0': DummyFlat}
+
+        # Create test command
         @click.command()
-        @generate_click_command(version_key='v2', schema_pkg='mypkg', registry=registry)
-        def cmd(namespace, version, domain):
-            click.echo(version)
+        @generate_click_command(schema_pkg='mypkg', registry=registry)
+        def cmd(name, namespace, version, domain):
+            click.echo(f"version: {version}")
 
-        res = self.runner.invoke(cmd, [])
-        assert res.exit_code == 0
-        mock_load_schema.assert_called_once_with('v2', 'mypkg')
+        # Test command execution
+        result = self.runner.invoke(cmd, [])
+        assert result.exit_code == 0
+        assert "version: 2.0" in result.output
+
+        # Verify mock calls
+        mock_load_schema.assert_called_once_with('2.0', 'mypkg')
+        mock_extract_version.assert_called_once()

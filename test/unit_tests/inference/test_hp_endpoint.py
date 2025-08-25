@@ -194,3 +194,37 @@ class TestHPEndpoint(unittest.TestCase):
             body={"input": "test"}, content_type="application/json"
         )
         self.assertEqual(result, "response")
+
+    @patch.object(HPEndpoint, "call_list_api")
+    @patch("kubernetes.client.CoreV1Api")
+    @patch.object(HPEndpoint, "verify_kube_config")
+    def test_list_pods(self, mock_verify_config, mock_core_api, mock_list_api):
+        mock_pod1 = MagicMock()
+        mock_pod1.metadata.name = "custom-endpoint-pod1"
+        mock_pod1.metadata.labels = {"app": "custom-endpoint"}
+        mock_pod2 = MagicMock()
+        mock_pod2.metadata.name = "custom-endpoint-pod2"
+        mock_pod2.metadata.labels = {"app": "custom-endpoint"}
+        mock_pod3 = MagicMock()
+        mock_pod3.metadata.name = "not-custom-endpoint-pod"
+        mock_pod3.metadata.labels = {"app": "not-custom-endpoint"}
+        mock_core_api.return_value.list_namespaced_pod.return_value.items = [
+            mock_pod1,
+            mock_pod2,
+            mock_pod3,
+        ]
+
+        mock_list_api.return_value = {
+            "items": [
+                {
+                    "metadata": {"name": "custom-endpoint"}
+                }
+            ]
+        }
+
+        result = self.endpoint.list_pods(namespace="test-ns")
+
+        self.assertEqual(result, ["custom-endpoint-pod1", "custom-endpoint-pod2"])
+        mock_core_api.return_value.list_namespaced_pod.assert_called_once_with(
+            namespace="test-ns"
+        )

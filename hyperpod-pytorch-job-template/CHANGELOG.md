@@ -1,3 +1,9 @@
+## v1.1.0 (2025-08-14)
+
+### Features
+
+ * Added parameters for task governance feature
+
 ## v1.0.2 (2025-07-31)
 
 ### Features

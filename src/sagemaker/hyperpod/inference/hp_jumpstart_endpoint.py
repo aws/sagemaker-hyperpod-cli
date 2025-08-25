@@ -20,6 +20,7 @@ from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
     _hyperpod_telemetry_emitter,
 )
 from sagemaker.hyperpod.common.telemetry.constants import Feature
+from kubernetes import client
 
 
 class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
@@ -43,7 +44,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
             endpoint_name = spec.sageMakerEndpoint.name
 
         if not endpoint_name and not name:
-            raise Exception('Input "name" is required if endpoint name is not provided')
+            raise Exception('Either metadata name or endpoint name must be provided')
 
         if not name:
             name = endpoint_name
@@ -240,3 +241,34 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
             raise Exception(
                 f"Current HyperPod cluster does not have instance type {instance_type}. Supported instance types are {cluster_instance_types}"
             )
+
+    @classmethod
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_pods_endpoint")
+    def list_pods(cls, namespace=None):
+        cls.verify_kube_config()
+
+        if not namespace:
+            namespace = get_default_namespace()
+
+        v1 = client.CoreV1Api()
+        list_pods_response = v1.list_namespaced_pod(namespace=namespace)
+
+        list_response = cls.call_list_api(
+            kind=JUMPSTART_MODEL_KIND,
+            namespace=namespace,
+        )
+
+        endpoints = set()
+        if list_response and list_response["items"]:
+            for item in list_response["items"]:
+                endpoints.add(item["metadata"]["name"])
+
+        pods = []
+        for item in list_pods_response.items:
+            app_name = item.metadata.labels.get("app", None)
+            if app_name in endpoints:
+                # list_namespaced_pod will return all pods in the namespace, so we need to filter
+                # out the pods that are created by jumpstart endpoint
+                pods.append(item.metadata.name)
+
+        return pods

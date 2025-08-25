@@ -37,8 +37,7 @@ from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import Mod
 from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
 
 model = Model(
-    model_id="deepseek-llm-r1-distill-qwen-1-5b",
-    model_version="2.0.4"
+    model_id="deepseek-llm-r1-distill-qwen-1-5b"
 )
 
 server = Server(
@@ -47,13 +46,10 @@ server = Server(
 
 endpoint_name = SageMakerEndpoint(name="endpoint-jumpstart")
 
-tls_config = TlsConfig(tls_certificate_output_s3_uri="s3://sample-bucket")
-
 js_endpoint = HPJumpStartEndpoint(
     model=model,
     server=server,
-    sage_maker_endpoint=endpoint_name,
-    tls_config=tls_config
+    sage_maker_endpoint=endpoint_name
 )
 
 js_endpoint.create()
@@ -85,7 +81,7 @@ from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
 
 model = Model(
     model_source_type="s3",
-    model_location="test-pytorch-job/model.tar.gz",
+    model_location="test-pytorch-job",
     s3_bucket_name="my-bucket",
     s3_region="us-east-2",
     prefetch_enabled=True

@@ -236,7 +236,9 @@ model = Model(
 server = Server(
     instance_type='{instance_type}',
 )
-endpoint_name = SageMakerEndpoint(name='{endpoint_name_value}')
+
+# Default endpoint name using model_id, modify as desired
+endpoint_name = SageMakerEndpoint(name='{model_id}')
 
 # Create endpoint spec
 js_endpoint = HPJumpStartEndpoint(

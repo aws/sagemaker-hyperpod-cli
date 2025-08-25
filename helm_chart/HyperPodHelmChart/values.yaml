@@ -115,6 +115,15 @@ namespace:
   create: true
   name: aws-hyperpod
 
+cert-manager:
+  enabled: false
+  namespace: cert-manager
+  global:
+    leaderElection:
+      namespace: cert-manager
+  crds:
+    enabled: true
+
 mlflow:
   enabled: false
 
@@ -180,6 +189,8 @@ nvidia-device-plugin:
               - ml.p5.48xlarge
               - ml.p5e.48xlarge
               - ml.p5en.48xlarge
+              - ml.p6-b200.48xlarge
+              - ml.p6e-gb200.36xlarge
   tolerations:
     - key: nvidia.com/gpu
       operator: Exists
@@ -197,6 +208,7 @@ aws-efa-k8s-device-plugin:
   devicePlugin:
     enabled: true
   supportedInstanceLabels:
+    # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa.html#efa-instance-types
     values:
       - ml.c5n.9xlarge
       - ml.c5n.18xlarge
@@ -237,6 +249,8 @@ aws-efa-k8s-device-plugin:
       - ml.p5.48xlarge
       - ml.p5e.48xlarge
       - ml.p5en.48xlarge
+      - ml.p6-b200.48xlarge
+      - ml.p6e-gb200.36xlarge
       - ml.r7i.large
       - ml.r7i.xlarge
       - ml.r7i.2xlarge

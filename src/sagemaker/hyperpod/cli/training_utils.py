@@ -3,29 +3,13 @@ import pkgutil
 import click
 from typing import Callable, Optional, Mapping, Type, Dict, Any
 from pydantic import ValidationError
-
-
-def load_schema_for_version(
-    version: str,
-    base_package: str,
-) -> dict:
-    """
-    Load schema.json from the top-level <base_package>.vX_Y_Z package.
-    """
-    ver_pkg = f"{base_package}.v{version.replace('.', '_')}"
-    raw = pkgutil.get_data(ver_pkg, "schema.json")
-    if raw is None:
-        raise click.ClickException(
-            f"Could not load schema.json for version {version} "
-            f"(looked in package {ver_pkg})"
-        )
-    return json.loads(raw)
+import sys
+from sagemaker.hyperpod.cli.common_utils import extract_version_from_args, get_latest_version, load_schema_for_version
 
 
 def generate_click_command(
     *,
-    version_key: Optional[str] = None,
-    schema_pkg: str,
+    schema_pkg: str = "hyperpod_pytorch_job_template",
     registry: Mapping[str, Type] = None,
 ) -> Callable:
     """
@@ -33,12 +17,14 @@ def generate_click_command(
       1) Injects click.options from the JSON Schema under `schema_pkg`
       2) At runtime, pops `version`, builds the flat model from `registry`, calls .to_domain()
       3) Finally invokes your handler as `func(version, domain_config)`
-    - `version_key`: if given, hard-codes the version (no --version flag injected)
     - `schema_pkg`: the importable package root to read schema.json from
     - `registry`: a dict mapping version → flat‐model class, e.g. hyperpod_pytorch_job_template.registry.SCHEMA_REGISTRY
     """
     if registry is None:
         raise ValueError("You must pass a registry mapping version→Model")
+
+    default_version = get_latest_version(registry)
+    version = extract_version_from_args(registry, schema_pkg, default_version)
 
     def decorator(func: Callable) -> Callable:
         # Parser for the single JSON‐dict env var flag
@@ -81,7 +67,7 @@ def generate_click_command(
         # 1) the wrapper click will call
         def wrapped_func(*args, **kwargs):
             # extract version
-            version = version_key or kwargs.pop("version", "1.0")
+            pop_version = kwargs.pop("version", default_version)
             debug = kwargs.pop("debug", False)
 
             # look up the model class
@@ -121,7 +107,7 @@ def generate_click_command(
             metavar="JSON",
         )(wrapped_func)
         wrapped_func = click.option(
-            "--label_selector",
+            "--label-selector",
             callback=_parse_json_flag,
             help='JSON object of resource limits, e.g. \'{"cpu":"2","memory":"4Gi"}\'',
             metavar="JSON",
@@ -165,7 +151,7 @@ def generate_click_command(
             ]
         )
 
-        schema = load_schema_for_version(version_key or "1.0", schema_pkg)
+        schema = load_schema_for_version(version, schema_pkg)
         props = schema.get("properties", {})
         reqs = set(schema.get("required", []))
 
@@ -193,15 +179,6 @@ def generate_click_command(
                 show_default=("default" in spec),
                 type=ctype,
                 help=spec.get("description", ""),
-            )(wrapped_func)
-
-        # 3) if no hard-coded version_key, inject the top-level --version flag
-        if version_key is None:
-            wrapped_func = click.option(
-                "--version",
-                default="1.0",
-                show_default=True,
-                help="Schema version to use",
             )(wrapped_func)
 
         return wrapped_func

@@ -13,8 +13,18 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config impo
     PersistentVolumeClaim
 )
 
+# Constants
+ALLOWED_TOPOLOGY_LABELS = {
+    'topology.k8s.aws/ultraserver-id',
+    'topology.k8s.aws/network-node-layer-1',
+    'topology.k8s.aws/network-node-layer-2',
+    'topology.k8s.aws/network-node-layer-3'
+}
+from .quota_allocation_util import _is_valid, _get_resources_from_compute_quotas, _get_resources_from_instance, _get_limits
 
 class VolumeConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str = Field(
         ..., 
         description="Volume name",
@@ -101,16 +111,15 @@ class PyTorchJobConfig(BaseModel):
         min_length=1
     )
     node_count: Optional[int] = Field(
-        default=None, 
+        default=1, 
         alias="node_count", 
         description="Number of nodes",
         ge=1
     )
-    tasks_per_node: Optional[int] = Field(
-        default=None, 
+    tasks_per_node: Optional[str] = Field(
+        default="auto", 
         alias="tasks_per_node", 
-        description="Number of tasks per node",
-        ge=1
+        description="Number of workers per node; supported values: [auto,cpu, gpu, int]",
     )
     label_selector: Optional[Dict[str, str]] = Field(
         default=None,
@@ -141,6 +150,31 @@ class PyTorchJobConfig(BaseModel):
         description="Priority class for job scheduling",
         min_length=1
     )
+    accelerators: Optional[int] = Field(
+        default=None,
+        description="Number of accelerators a.k.a GPUs or Trainium Chips",
+    )
+    vcpu: Optional[float] = Field(
+        default=None,
+        description="Number of vCPUs",
+    )
+    memory: Optional[float] = Field(
+        default=None,
+        description="Amount of memory in GiB",
+    )
+    accelerators_limit: Optional[int] = Field(
+        default=None,
+        description="Limit for the number of accelerators a.k.a GPUs or Trainium Chips",
+    )
+    vcpu_limit: Optional[float] = Field(
+        default=None,
+        description="Limit for the number of vCPUs",
+    )
+    memory_limit: Optional[float] = Field(
+        default=None,
+        description="Limit for the amount of memory in GiB",
+    )
+
     max_retry: Optional[int] = Field(
         default=None, 
         alias="max_retry", 
@@ -161,6 +195,17 @@ class PyTorchJobConfig(BaseModel):
         description="Service account name",
         min_length=1
     )
+    preferred_topology: Optional[str] = Field(
+        default=None,
+        alias="preferred_topology",
+        description="Preferred topology annotation for scheduling",
+    )
+    required_topology: Optional[str] = Field(
+        default=None,
+        alias="required_topology",
+        description="Required topology annotation for scheduling",
+    )
+
 
     @field_validator('volume')
     def validate_no_duplicates(cls, v):
@@ -226,18 +271,44 @@ class PyTorchJobConfig(BaseModel):
         
         return v
 
+    @field_validator('preferred_topology', 'required_topology')
+    def validate_topology_labels(cls, v):
+        """Validate topology labels are from allowed set."""
+        if v is None:
+            return v
+        
+        if v not in ALLOWED_TOPOLOGY_LABELS:
+            raise ValueError(f"Topology label '{v}' must be one of: {', '.join(sorted(ALLOWED_TOPOLOGY_LABELS))}")
+        
+        return v
+
     def to_domain(self) -> Dict:
         """
         Convert flat config to domain model (HyperPodPytorchJobSpec)
         """
         
+        valid, error = _is_valid(
+           self.vcpu, self.memory, self.accelerators, self.node_count, self.instance_type
+        )
+        
+        if not valid:
+            raise ValueError(error)
+
+        # Create container with required fields
+        if self.instance_type is None:
+            requests_value = {"nvidia.com/gpu": "0"}
+            limits_value = {"nvidia.com/gpu": "0"}
+        else:
+            requests_value = _get_resources_from_compute_quotas(self.instance_type, self.vcpu, self.memory, self.accelerators) or _get_resources_from_instance(self.instance_type, self.node_count)
+            limits_value = _get_limits(self.instance_type, self.vcpu_limit, self.memory_limit, self.accelerators_limit)
+
         # Create container with required fields
         container_kwargs = {
             "name": "pytorch-job-container",
             "image": self.image,
             "resources": Resources(
-                requests={"nvidia.com/gpu": "0"},
-                limits={"nvidia.com/gpu": "0"},
+                requests=requests_value,
+                limits=limits_value,
             ),
         }
 
@@ -320,9 +391,21 @@ class PyTorchJobConfig(BaseModel):
             metadata_labels["kueue.x-k8s.io/queue-name"] = self.queue_name
         if self.priority is not None:
             metadata_labels["kueue.x-k8s.io/priority-class"] = self.priority
+        
+        annotations = {}
+        if self.preferred_topology is not None:
+            annotations["kueue.x-k8s.io/podset-preferred-topology"] = (
+                self.preferred_topology
+            )
+        if self.required_topology is not None:
+            annotations["kueue.x-k8s.io/podset-required-topology"] = (
+                self.required_topology
+            )
 
         if metadata_labels:
             metadata_kwargs["labels"] = metadata_labels
+        if annotations:
+            metadata_kwargs["annotations"] = annotations
 
         # Create replica spec with only non-None values
         replica_kwargs = {
@@ -354,6 +437,7 @@ class PyTorchJobConfig(BaseModel):
             "name": self.job_name,
             "namespace": self.namespace,
             "labels": metadata_labels,
+            "annotations": annotations,
             "spec": job_kwargs,
         }
         return result
