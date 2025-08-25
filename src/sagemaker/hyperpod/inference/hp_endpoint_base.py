@@ -210,23 +210,6 @@ class HPEndpointBase:
         return logs
 
     @classmethod
-    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_pods_endpoint")
-    def list_pods(cls, namespace=None):
-        cls.verify_kube_config()
-
-        if not namespace:
-            namespace = get_default_namespace()
-
-        v1 = client.CoreV1Api()
-        response = v1.list_namespaced_pod(namespace=namespace)
-
-        pods = []
-        for item in response.items:
-            pods.append(item.metadata.name)
-
-        return pods
-
-    @classmethod
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_namespaces")
     def list_namespaces(cls):
         cls.verify_kube_config()
