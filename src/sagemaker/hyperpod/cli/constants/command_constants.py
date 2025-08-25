@@ -44,6 +44,7 @@ SAGEMAKER_MANAGED_LOCAL_QUEUE_SUFFIX = "-localqueue"
 SAGEMAKER_MANAGED_CLUSTER_QUEUE_SUFFIX = "-clusterqueue"
 SAGEMAKER_TRAINING_LAUNCHER_DIR = str(Path(__file__).parent.parent / "sagemaker_hyperpod_recipes")
 NVIDIA_GPU_RESOURCE_LIMIT_KEY = "nvidia.com/gpu"
+NEURON_RESOURCE_LIMIT_KEY = "aws.amazon.com/neurondevice"
 AVAILABLE_ACCELERATOR_DEVICES_KEY = "AvailableAcceleratorDevices"
 TOTAL_ACCELERATOR_DEVICES_KEY = "TotalAcceleratorDevices"
 USER_NAME_LABEL_KEY = "sagemaker.user/created-by"
