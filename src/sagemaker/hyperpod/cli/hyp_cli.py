@@ -19,6 +19,7 @@ from sagemaker.hyperpod.cli.commands.training import (
     pytorch_list_pods,
     pytorch_get_logs,
     pytorch_get_operator_logs,
+    pytorch_exec,
 )
 from sagemaker.hyperpod.cli.commands.inference import (
     js_create,
@@ -157,6 +158,12 @@ def get_operator_logs():
     pass
 
 
+@cli.group(cls=CLICommand)
+def exec():
+    """Execute commands in pods for endpoints or pytorch jobs."""
+    pass
+
+
 cli.add_command(init)
 cli.add_command(reset)
 cli.add_command(configure)
@@ -204,6 +211,8 @@ cli.add_command(set_cluster_context)
 cli.add_command(get_cluster_context)
 cli.add_command(get_monitoring)
 # cli.add_command(create_cluster_stack) # Not supported yet
+
+exec.add_command(pytorch_exec)
 
 if __name__ == "__main__":
     cli()

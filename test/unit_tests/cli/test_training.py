@@ -7,6 +7,7 @@ from sagemaker.hyperpod.cli.commands.training import (
     list_jobs,
     pytorch_describe,
     pytorch_get_operator_logs,
+    pytorch_exec,
 )
 from hyperpod_pytorch_job_template.v1_1.model import ALLOWED_TOPOLOGY_LABELS
 import sys
@@ -313,6 +314,54 @@ class TestTrainingCommands(unittest.TestCase):
             self.assertNotEqual(result.exit_code, 0)
             self.assertIn('Topology label', result.output)
             self.assertIn('must be one of:', result.output)
+
+    def test_pytorch_exec_requires_job_name(self):
+        """Test that pytorch_exec requires job-name"""
+        result = self.runner.invoke(pytorch_exec, ['ls'])
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("job-name", result.output.lower())
+
+    def test_pytorch_exec_requires_pod_or_all_pods(self):
+        """Test that pytorch_exec requires either --pod or --all-pods"""
+        result = self.runner.invoke(pytorch_exec, [
+            '--job-name', 'test-job',
+            'ls'
+        ])
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("Must specify exactly one", result.output)
+
+    @patch('sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob.get')
+    def test_pytorch_exec_single_pod_success(self, mock_get):
+        """Test successful pytorch_exec on single pod"""
+        mock_job = Mock()
+        mock_job.exec_command.return_value = "command output"
+        mock_get.return_value = mock_job
+
+        result = self.runner.invoke(pytorch_exec, [
+            '--job-name', 'test-job',
+            '--pod', 'test-pod',
+            '--', 'ls', '-la'
+        ])
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("command output", result.output)
+        mock_job.exec_command.assert_called_once_with(['ls', '-la'], 'test-pod', False, None)
+
+    @patch('sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob.get')
+    def test_pytorch_exec_error_handling(self, mock_get):
+        """Test pytorch_exec error handling"""
+        mock_job = Mock()
+        mock_job.exec_command.side_effect = ValueError("Pod not found")
+        mock_get.return_value = mock_job
+
+        result = self.runner.invoke(pytorch_exec, [
+            '--job-name', 'test-job',
+            '--pod', 'nonexistent-pod',
+            '--', 'ls'
+        ])
+
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("Pod not found", result.output)
 
 
 @unittest.skipUnless(PYDANTIC_AVAILABLE, "Pydantic model not available")

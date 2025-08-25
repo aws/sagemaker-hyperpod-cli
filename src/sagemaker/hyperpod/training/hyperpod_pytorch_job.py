@@ -5,7 +5,7 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config impo
     _HyperPodPytorchJob, HyperPodPytorchJobStatus
 )
 from sagemaker.hyperpod.common.config.metadata import Metadata
-from kubernetes import client, config
+from kubernetes import client, config, stream
 from typing import List, Optional, ClassVar
 from sagemaker.hyperpod.common.utils import (
     handle_exception,
@@ -319,6 +319,61 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             logger.error(f"Failed to delete HyperPodPytorchJob {self.metadata.name}!")
             handle_exception(e, self.metadata.name, self.metadata.namespace,
                             operation_type='delete', resource_type='training_job')
+
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "exec_pytorchjob")
+    def exec_command(self, command: List[str], pod: Optional[str] = None,
+                     all_pods: bool = False, container: Optional[str] = None):
+        """Execute a command in one or all pods associated with this job."""
+
+        self.verify_kube_config()
+
+        logger = self.get_logger()
+        logger = setup_logging(logger)
+
+        namespace = self.metadata.namespace
+        job_name = self.metadata.name
+
+        pods = self.list_pods()
+        if not pods:
+            logger.error(f"No pods found for training job {job_name} in namespace {namespace}")
+            raise RuntimeError(f"No pods found for training job {job_name} in namespace {namespace}")
+
+        if container is None:
+            container = self.replicaSpecs[0].template.spec.containers[0].name
+
+        try:
+            if all_pods:
+                output = ""
+                for pod_name in pods:
+                    output += f"=== Pod: {pod_name} ===\n"
+                    output += self._exec_command_on_pod(pod_name, command, container)
+                    output += "\n"
+                logger.info(f"Successfully executed command on all pods for job {job_name}")
+                return output
+            else:
+                if pod not in pods:
+                    logger.error(f"Pod {pod} not found in job {job_name}")
+                    raise ValueError(f"Pod {pod} not found in job {job_name}")
+
+                result = self._exec_command_on_pod(pod, command, container)
+                logger.info(f"Successfully executed command on pod {pod}")
+                return result
+
+        except Exception as e:
+            logger.error(f"Failed to execute command on job {job_name}")
+            handle_exception(e, job_name, namespace)
+
+    def _exec_command_on_pod(self, pod: str, command: List[str], container: Optional[str] = None):
+        return stream.stream(
+            client.CoreV1Api().connect_get_namespaced_pod_exec,
+            stderr=True,
+            stdout=True,
+            name=pod,
+            namespace=self.metadata.namespace,
+            command=command,
+            container=container
+        )
+
 
     @classmethod
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "get_pytorchjob")
