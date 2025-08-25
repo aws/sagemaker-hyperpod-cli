@@ -244,7 +244,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
 
     @classmethod
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_pods_endpoint")
-    def list_pods(cls, namespace=None):
+    def list_pods(cls, namespace=None, endpoint_name=None):
         cls.verify_kube_config()
 
         if not namespace:
@@ -253,15 +253,17 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         v1 = client.CoreV1Api()
         list_pods_response = v1.list_namespaced_pod(namespace=namespace)
 
-        list_response = cls.call_list_api(
-            kind=JUMPSTART_MODEL_KIND,
-            namespace=namespace,
-        )
-
         endpoints = set()
-        if list_response and list_response["items"]:
-            for item in list_response["items"]:
-                endpoints.add(item["metadata"]["name"])
+        if endpoint_name:
+            endpoints.add(endpoint_name)
+        else:
+            list_response = cls.call_list_api(
+                kind=INFERENCE_ENDPOINT_CONFIG_KIND,
+                namespace=namespace,
+            )
+            if list_response and list_response["items"]:
+                for item in list_response["items"]:
+                    endpoints.add(item["metadata"]["name"])
 
         pods = []
         for item in list_pods_response.items:

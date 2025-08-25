@@ -614,16 +614,23 @@ def custom_delete(
     default="default",
     help="Optional. The namespace of the jumpstart model to list pods for. Default set to 'default'.",
 )
+@click.option(
+    "--endpoint-name",
+    type=click.STRING,
+    required=False,
+    help="Optional. The name of the jumpstart endpoint to list pods.",
+)
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_pods_js_endpoint_cli")
 @handle_cli_exceptions()
 def js_list_pods(
     namespace: Optional[str],
+    endpoint_name: Optional[str],
 ):
     """
     List all pods related to jumpstart model endpoint.
     """
     my_endpoint = HPJumpStartEndpoint.model_construct()
-    pods = my_endpoint.list_pods(namespace=namespace)
+    pods = my_endpoint.list_pods(namespace=namespace, endpoint_name=endpoint_name)
     click.echo(pods)
 
 
@@ -635,16 +642,23 @@ def js_list_pods(
     default="default",
     help="Optional. The namespace of the custom model to list pods for. Default set to 'default'.",
 )
+@click.option(
+    "--endpoint-name",
+    type=click.STRING,
+    required=False,
+    help="Optional. The name of the custom model endpoint to list pods.",
+)
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_pods_custom_endpoint_cli")
 @handle_cli_exceptions()
 def custom_list_pods(
     namespace: Optional[str],
+    endpoint_name: Optional[str],
 ):
     """
     List all pods related to custom model endpoint.
     """
     my_endpoint = HPEndpoint.model_construct()
-    pods = my_endpoint.list_pods(namespace=namespace)
+    pods = my_endpoint.list_pods(namespace=namespace, endpoint_name=endpoint_name)
     click.echo(pods)
 
 

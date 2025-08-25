@@ -309,7 +309,7 @@ def test_js_list_pods(mock_hp, mock_namespace_exists):
     inst = Mock(list_pods=Mock(return_value="pods"))
     mock_hp.model_construct.return_value = inst
     runner = CliRunner()
-    result = runner.invoke(js_list_pods, ['--namespace', 'ns'])
+    result = runner.invoke(js_list_pods, ['--namespace', 'ns', '--endpoint-name', 'js-endpoint'])
     assert result.exit_code == 0
     assert 'pods' in result.output
 
@@ -320,7 +320,7 @@ def test_custom_list_pods(mock_hp, mock_namespace_exists):
     inst = Mock(list_pods=Mock(return_value="pods"))
     mock_hp.model_construct.return_value = inst
     runner = CliRunner()
-    result = runner.invoke(custom_list_pods, ['--namespace', 'ns'])
+    result = runner.invoke(custom_list_pods, ['--namespace', 'ns', '--endpoint-name', 'custom-endpoint'])
     assert result.exit_code == 0
     assert 'pods' in result.output
 
