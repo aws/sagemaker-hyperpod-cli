@@ -51,14 +51,10 @@ class KubernetesClient:
     _instance = None
     _kube_client = None
 
-    def __new__(cls, is_get_capacity: bool = False) -> "KubernetesClient":
+    def __new__(cls, config_file: Optional[str] = None) -> "KubernetesClient":
         if cls._instance is None:
             cls._instance = super(KubernetesClient, cls).__new__(cls)
-            config.load_kube_config(
-                config_file=KUBE_CONFIG_PATH
-                if not is_get_capacity
-                else TEMP_KUBE_CONFIG_FILE
-            )  # or config.load_incluster_config() for in-cluster config
+            config.load_kube_config(config_file=config_file or KUBE_CONFIG_PATH)
             cls._instance._kube_client = client.ApiClient()
         return cls._instance
 

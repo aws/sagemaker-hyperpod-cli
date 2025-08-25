@@ -16,6 +16,7 @@ import json
 import sys
 import botocore.config
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional, Tuple
 
 import boto3
@@ -191,30 +192,33 @@ def list_cluster(
 
     cluster_capacities: List[List[str]] = []
 
-    counter = 0
-    for cluster_name in cluster_names:
-        current_cluster_capacities_size = len(cluster_capacities)
-        rate_limited_operation(
-            cluster_name=cluster_name,
-            validator=validator,
-            sm_client=sm_client,
-            region=region,
-            temp_config_file=TEMP_KUBE_CONFIG_FILE,
-            cluster_capacities=cluster_capacities,
-            namespace=namespace,
-        )
-        # cluster_capacities will only be updated when the cluster
-        # is a valid Hyperpod EKS cluster. This check avoid
-        # we skipped many Hyperpod Slurm clusters and didn't return
-        # any Hyperpod EKS clusters.
-        if len(cluster_capacities) > current_cluster_capacities_size:
-            counter += 1
-        # Currently only support list <= 50 clusters
-        if counter >= 50:
-            logger.debug(
-                "The 'get-clusters' command has reached the maximum number of HyperPod clusters that can be listed, which is 50."
-            )
-            break
+    # Process clusters in parallel with limited concurrency
+    if cluster_names:
+        with ThreadPoolExecutor(max_workers=len(cluster_names)) as executor:
+            futures = {}
+            counter = 0
+
+            for cluster_name in cluster_names[:50]:  # Limit to 50 clusters
+                future = executor.submit(
+                    rate_limited_operation,
+                    cluster_name=cluster_name,
+                    validator=validator,
+                    sm_client=sm_client,
+                    region=region,
+                    temp_config_file=f"{TEMP_KUBE_CONFIG_FILE}_{cluster_name}",
+                    namespace=namespace,
+                )
+                futures[future] = cluster_name
+
+            for future in as_completed(futures):
+                cluster_name = futures[future]
+                try:
+                    result = future.result()
+                    if result:  # Only add if cluster processing was successful
+                        cluster_capacities.extend(result)
+                        counter += 1
+                except Exception as e:
+                    logger.error(f"Error processing cluster {cluster_name}: {e}")
 
     headers = [
         "Cluster",
@@ -245,9 +249,8 @@ def rate_limited_operation(
     sm_client: BaseClient,
     region: Optional[str],
     temp_config_file: str,
-    cluster_capacities: List[List[str]],
     namespace: Optional[List[str]],
-) -> None:
+) -> Optional[List[List[str]]]:
     try:
         eks_cluster_arn = validator.validate_cluster_and_get_eks_arn(
             cluster_name, sm_client
@@ -259,11 +262,12 @@ def rate_limited_operation(
             return
         eks_cluster_name = get_name_from_arn(eks_cluster_arn)
         _update_kube_config(eks_cluster_name, region, temp_config_file)
-        k8s_client = KubernetesClient(is_get_capacity=True)
+        k8s_client = KubernetesClient(config_file=temp_config_file)
         nodes = k8s_client.list_node_with_temp_config(
             temp_config_file, SAGEMAKER_HYPERPOD_NAME_LABEL
         )
         nodes_info = _aggregate_nodes_info(nodes)
+        cluster_capacities = []
 
         ns_nominal_quota = {}
         ns_quota_usage = {}
@@ -279,6 +283,7 @@ def rate_limited_operation(
                     + quota_allocation_id
                     + SAGEMAKER_MANAGED_CLUSTER_QUEUE_SUFFIX
                 )
+
                 cluster_queue = k8s_client.get_cluster_queue(cluster_queue_name)
                 nominal_quota = _get_cluster_queue_nominal_quota(cluster_queue)
                 quota_usage = _get_cluster_queue_quota_usage(cluster_queue)
@@ -312,8 +317,10 @@ def rate_limited_operation(
                     )
                 )
             cluster_capacities.append(capacities)
+        return cluster_capacities
     except Exception as e:
         logger.error(f"Error processing cluster {cluster_name}: {e}, continue...")
+        return None
 
 
 def _get_cluster_queue_nominal_quota(cluster_queue):

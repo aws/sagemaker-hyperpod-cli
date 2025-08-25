@@ -471,8 +471,9 @@ class ClusterTest(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertNotIn("cluster-1", result.output)
         self.assertNotIn("cluster-2", result.output)
-        # Expect JSON output
-        json.loads(result.output)
+        # Expect JSON output - should be empty list when no ClusterSummaries
+        output = json.loads(result.output)
+        self.assertEqual(output, [])
 
     @mock.patch("kubernetes.config.load_kube_config")
     @mock.patch("boto3.Session")
