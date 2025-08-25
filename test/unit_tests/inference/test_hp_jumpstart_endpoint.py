@@ -177,7 +177,7 @@ class TestHPJumpStartEndpoint(unittest.TestCase):
 
     @patch("kubernetes.client.CoreV1Api")
     @patch.object(HPJumpStartEndpoint, "verify_kube_config")
-    def test_list_pods(self, mock_verify_config, mock_core_api):
+    def test_list_pods_with_endpoint_name(self, mock_verify_config, mock_core_api):
         mock_pod1 = MagicMock()
         mock_pod1.metadata.name = "js-endpoint1-pod1"
         mock_pod1.metadata.labels = {"app": "js-endpoint1"}
