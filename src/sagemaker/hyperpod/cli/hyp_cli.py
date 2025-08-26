@@ -29,13 +29,17 @@ class LazyGroup(click.Group):
         self.modules_registered = set()
 
     def list_commands(self, ctx):
-        """Return list of commands without loading modules"""
-        # Return static command list for fast help generation (no module loading)
-        return sorted([
-            'create', 'list', 'describe', 'delete', 'list-pods', 'get-logs', 
-            'invoke', 'get-operator-logs', 'list-cluster', 'set-cluster-context', 
-            'get-cluster-context', 'get-monitoring'
-        ])
+        """Return list of commands by querying the registry"""
+        # Ensure registry is initialized and commands are discovered
+        self.registry.ensure_commands_loaded()
+        
+        subgroup_commands = self.registry.get_all_groups()
+        
+        top_level_commands = self.registry.get_top_level_commands()
+        
+        # Combine and return sorted list
+        all_commands = subgroup_commands + top_level_commands
+        return sorted(set(all_commands))
     
     def get_help(self, ctx):
         """Override get_help to avoid loading modules for help text"""
