@@ -2,6 +2,29 @@
 
 # Example Notebooks
 
+## Cluster Management Example Notebooks
+
+For detailed examples of cluster management with HyperPod, see:
+
+::::{grid} 1 2 2 2
+:gutter: 3
+
+:::{grid-item-card} CLI Cluster Management Example
+:link: https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/cluster_management/cluster_creation_init_experience.ipynb
+:class-card: sd-border-primary
+
+**Cluster Management Examples** Refer the Cluster Management CLI Example.
+:::
+
+:::{grid-item-card} SDK Cluster Management Example
+:link: https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/cluster_management/cluster_creation_sdk_experience.ipynb
+:class-card: sd-border-primary
+
+**Cluster Management Examples** Refer the Cluster Management SDK Example.
+:::
+
+::::
+
 ## Training Example Notebooks
 
 For detailed examples of training with HyperPod, see:
