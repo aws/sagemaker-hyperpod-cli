@@ -37,6 +37,10 @@ class TestGpuQuotaAllocationIntegration:
         ]
 
         result = execute_command(create_cmd)
+
+        # Wait a moment for the job to be created
+        time.sleep(5)
+
         assert result.returncode == 0
         assert "Using version: 1.1" in result.stdout
         logger.info(f"Successfully created job with required gpu quota parameters: {test_job_name}")
@@ -84,6 +88,10 @@ class TestGpuQuotaAllocationIntegration:
         ]
 
         result = execute_command(create_cmd)
+
+        # Wait a moment for the job to be created
+        time.sleep(5)
+
         assert result.returncode == 0
         assert "Using version: 1.1" in result.stdout
         logger.info(f"Successfully created job with required gpu quota parameters: {test_job_name}")
@@ -126,6 +134,10 @@ class TestGpuQuotaAllocationIntegration:
         ]
 
         result = execute_command(create_cmd)
+
+        # Wait a moment for the job to be created
+        time.sleep(5)
+
         assert result.returncode == 0
         assert "Using version: 1.1" in result.stdout
         logger.info(f"Successfully created job with required gpu quota parameters: {test_job_name}")
@@ -179,6 +191,10 @@ class TestGpuQuotaAllocationIntegration:
             "--namespace", NAMESPACE
         ]
         result = execute_command(describe_cmd)
+
+        # Wait a moment for the job to be created
+        time.sleep(5)
+
         assert result.returncode == 0
         assert "      Limits:   {'memory': '2899102924800m', 'nvidia.com/gpu': '1'}" in result.stdout
         assert "      Requests: {'cpu': '32', 'memory': '2040109465600m', 'nvidia.com/gpu': '1'}" in result.stdout
