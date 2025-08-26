@@ -15,6 +15,8 @@ Before you begin, ensure you have:
 .. note::
    **Region Configuration**: For commands that accept the ``--region`` option, if no region is explicitly provided, the command will use the default region from your AWS credentials configuration.
 
+   **Cluster stack names must be unique within each AWS region.** If you attempt to create a cluster stack with a name that already exists in the same region, the deployment will fail.
+
 Creating Your First Cluster
 ----------------------------
 
@@ -37,7 +39,7 @@ It's recommended to start with a new and clean directory for each cluster config
 
       .. code-block:: bash
 
-         hyp init hyp-cluster
+         hyp init cluster-stack
 
 This creates three files:
 
@@ -59,12 +61,12 @@ The config.yaml file contains key parameters like:
 
 .. code-block:: yaml
 
-   template: hyp-cluster
+   template: cluster-stack
    namespace: kube-system
    stage: gamma
    resource_name_prefix: sagemaker-hyperpod-eks
 
-**Option 2: Use CLI/SDK commands**
+**Option 2: Use CLI/SDK commands (Pre-Deployment)**
 
 .. tab-set::
 
@@ -72,10 +74,16 @@ The config.yaml file contains key parameters like:
 
       .. code-block:: bash
 
-         hyp configure --resource-name-prefix your-resource-prefix   
+         hyp configure --resource-name-prefix your-resource-prefix
+
+.. note::
+   The ``hyp configure`` command only modifies local configuration files. It does not affect existing deployed clusters.   
 
 4. Create the Cluster
 ~~~~~~~~~~~~~~~~~~~~~
+
+.. warning::
+   **Cluster Stack Name Uniqueness**: Cluster stack names must be unique within each AWS region. Ensure your ``resource_name_prefix`` in ``config.yaml`` generates a unique stack name for the target region to avoid deployment conflicts.
 
 .. tab-set::
 
@@ -102,7 +110,7 @@ Check the status of your cluster:
 
       .. code-block:: bash
 
-         hyp describe hyp-cluster your-cluster-name --region your-region
+         hyp describe cluster-stack your-cluster-name --region your-region
 
    .. tab-item:: SDK
 
@@ -114,6 +122,9 @@ Check the status of your cluster:
          response = HpClusterStack.describe("your-cluster-name", region="your-region")
          print(f"Stack Status: {response['Stacks'][0]['StackStatus']}")
          print(f"Stack Name: {response['Stacks'][0]['StackName']}")
+
+.. note::
+   **Region-Specific Stack Names**: Cluster stack names are unique within each AWS region. When describing a stack, ensure you specify the correct region where the stack was created, or the command will fail to find the stack.
          
 
 List all clusters:
@@ -124,7 +135,7 @@ List all clusters:
 
       .. code-block:: bash
 
-         hyp list hyp-cluster --region your-region
+         hyp list cluster-stack --region your-region
 
    .. tab-item:: SDK
 
@@ -144,13 +155,21 @@ Common Operations
 Update a Cluster
 ~~~~~~~~~~~~~~~~~
 
+.. important::
+   **Runtime vs Configuration Commands**: 
+   
+   - ``hyp update cluster`` modifies **existing, deployed clusters** (runtime settings like instance groups, node recovery)
+   - ``hyp configure`` modifies local ``config.yaml`` files **before** cluster creation
+   
+   Use the appropriate command based on whether your cluster is already deployed or not.
+
 .. tab-set::
 
    .. tab-item:: CLI
 
       .. code-block:: bash
 
-         hyp update hyp-cluster \
+         hyp update cluster \
              --cluster-name your-cluster-name \
              --instance-groups "[]" \
              --region your-region   

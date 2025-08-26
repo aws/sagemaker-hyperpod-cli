@@ -4,13 +4,13 @@
 .. ========================================
 
 .. .. .. click:: sagemaker.hyperpod.cli.commands.cluster_stack:create_cluster_stack
-.. ..    :prog: hyp create hyp-cluster
+.. ..    :prog: hyp create cluster-stack
 
 .. .. click:: sagemaker.hyperpod.cli.commands.cluster_stack:describe_cluster_stack
-..    :prog: hyp describe hyp-cluster
+..    :prog: hyp describe cluster-stack
 
 .. .. click:: sagemaker.hyperpod.cli.commands.cluster_stack:list_cluster_stacks
-..    :prog: hyp list hyp-cluster
+..    :prog: hyp list cluster-stack
 
 .. .. click:: sagemaker.hyperpod.cli.commands.cluster_stack:update_cluster
-..    :prog: hyp update hyp-cluster
+..    :prog: hyp update cluster
