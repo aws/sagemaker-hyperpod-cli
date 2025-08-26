@@ -42,7 +42,7 @@ def generate_click_command(
             return func(name, namespace, version, domain)
 
         # 2) inject the special JSON‐env flag before everything else
-        schema = load_schema_for_version(version_key or "1.0", schema_pkg)
+        schema = load_schema_for_version(version, schema_pkg)
         props = schema.get("properties", {})
 
         json_flags = {
