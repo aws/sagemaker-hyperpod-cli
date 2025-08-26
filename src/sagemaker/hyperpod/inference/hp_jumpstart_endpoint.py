@@ -264,7 +264,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
             endpoints.add(endpoint_name)
         else:
             list_response = cls.call_list_api(
-                kind=INFERENCE_ENDPOINT_CONFIG_KIND,
+                kind=JUMPSTART_MODEL_KIND,
                 namespace=namespace,
             )
             if list_response and list_response["items"]:
