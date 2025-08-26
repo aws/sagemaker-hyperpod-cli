@@ -12,7 +12,7 @@ TRAINING_CONFIG = {
     ],
     'template_packages': {
         'template_package': 'hyperpod_pytorch_job_template',
-        'supported_versions': ['1.0'],
+        'supported_versions': ['1.0', '1.1'],
     },
     'critical_deps': ['telemetry_emitter', 'telemetry_feature', 'training_utils'],
     'lazy_imports': {
@@ -30,7 +30,7 @@ def _setup_training_registries(deps):
     """Setup training-specific registries."""
     from sagemaker.hyperpod.common.lazy_loading import LazyRegistry
     registry = LazyRegistry(
-        versions=['1.0'],
+        versions=['1.0', '1.1'],
         registry_import_path='hyperpod_pytorch_job_template.registry:SCHEMA_REGISTRY'
     )
     deps['SCHEMA_REGISTRY'] = registry
@@ -39,7 +39,6 @@ def _setup_training_registries(deps):
 TRAINING_CONFIG['extra_setup'] = _setup_training_registries
 setup_lazy_module(__name__, TRAINING_CONFIG)
 
-# Helper functions for decorators
 def _get_telemetry_emitter():
     return getattr(sys.modules[__name__], '_hyperpod_telemetry_emitter')
 
@@ -48,7 +47,7 @@ def _get_generate_click_command():
 
 
 @register_training_command("hyp-pytorch-job", "create")
-@click.option("--version", default="1.0", help="Schema version to use")
+@click.option("--version", default="1.1", help="Schema version to use")
 @click.option("--debug", default=False, help="Enable debug mode")
 @LazyDecorator(_get_generate_click_command,
     schema_pkg=lambda: sys.modules[__name__]._MODULE_CONFIG["template_package"],
