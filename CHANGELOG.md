@@ -1,6 +1,6 @@
 # Changelog
 
-## v3.2.0 (2025-08-22)
+## v3.2.0 (2025-08-25)
 
 ### Features
 
@@ -46,3 +46,4 @@
 ### Features
 
 - feature: Add support for SageMaker HyperPod CLI
+
