@@ -517,7 +517,7 @@ def add_default_az_ids_to_config(dir_path: str, region: str):
             az_ids = all_az_ids[:2]
 
             update_list_field_in_config(dir_path, 'availability_zone_ids', az_ids)
-            click.secho(f"No availability_zone_ids provided. Using default AZ Id: az_ids.", fg="yellow")
+            click.secho(f"No availability_zone_ids provided. Using default AZ Id: {az_ids}.", fg="yellow")
         except Exception as e:
             raise Exception(f"Failed to find default availability_zone_ids for region {region}. Please provide one in config.yaml. Error details: {e}")
 
