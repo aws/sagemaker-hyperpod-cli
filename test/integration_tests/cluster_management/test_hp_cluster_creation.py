@@ -65,6 +65,34 @@ def get_cluster_status(cluster_name, region):
     except Exception as e:
         raise AssertionError(f"Failed to get cluster status: {e}")
 
+
+def wait_for_stack_complete(stack_name, region, timeout_minutes=45):
+    """Wait for CloudFormation stack to be CREATE_COMPLETE."""
+    import boto3
+    client = boto3.client('cloudformation', region_name=region)
+    
+    deadline = time.time() + (timeout_minutes * 60)
+    while time.time() < deadline:
+        try:
+            response = client.describe_stacks(StackName=stack_name)
+            status = response['Stacks'][0]['StackStatus']
+            
+            if status == 'CREATE_COMPLETE':
+                return True
+            elif status in ['CREATE_FAILED', 'ROLLBACK_COMPLETE']:
+                raise AssertionError(f"Stack creation failed with status: {status}")
+                
+            time.sleep(30)
+        except Exception as e:
+            if "does not exist" in str(e).lower():
+                print(f"[STATUS] Stack '{stack_name}' not found yet, waiting for creation...")
+            else:
+                print(f"[ERROR] Error checking stack status: {e}")
+            time.sleep(30)
+    
+    raise AssertionError(f"Stack did not complete after {timeout_minutes} minutes")
+
+
 # --------- Test Configuration ---------
 REGION = "us-east-2"
 
@@ -236,7 +264,6 @@ def test_describe_cluster_via_cli(runner, cluster_name):
 
 
 # --------- Extended Cluster Resource Verification Tests ---------
-
 @pytest.mark.dependency(name="wait_for_cluster", depends=["verify_submission"])
 def test_wait_for_cluster_ready(runner, cluster_name):
     """Wait for cluster to be ready by polling cluster status until InService.
@@ -271,9 +298,12 @@ def test_wait_for_cluster_ready(runner, cluster_name):
                 assert False, f"Cluster creation failed with status: {status}"
                 
         except AssertionError as e:
-            if "AWS CLI not available" in str(e) or "timed out" in str(e):
+            if "ResourceNotFound" in str(e) or "not found" in str(e):
+                print(f"[STATUS] Cluster '{cluster_name}' not created yet, waiting...")
+            elif "AWS CLI not available" in str(e) or "timed out" in str(e):
                 assert False, str(e)
-            print(f"[ERROR] Error during polling: {e}")
+            else:
+                print(f"[ERROR] Error during polling: {e}")
         
         time.sleep(poll_interval)
         # Exponential backoff with cap
@@ -282,7 +312,19 @@ def test_wait_for_cluster_ready(runner, cluster_name):
     assert False, f"Timed out waiting for cluster '{cluster_name}' to be InService after {timeout_minutes} minutes"
 
 
-@pytest.mark.dependency(name="update_cluster", depends=["wait_for_cluster"])
+# Add this test after cluster is InService but before cleanup
+@pytest.mark.dependency(name="wait_for_stack", depends=["wait_for_cluster"])
+def test_wait_for_stack_completion(runner, cluster_name):
+    """Wait for CloudFormation stack to be fully complete."""
+    global STACK_NAME
+    assert STACK_NAME, "Stack name should be available"
+    
+    print(f"⏳ Waiting for CloudFormation stack {STACK_NAME} to be CREATE_COMPLETE...")
+    wait_for_stack_complete(STACK_NAME, REGION)
+    print(f"✅ Stack {STACK_NAME} is now CREATE_COMPLETE")
+
+
+@pytest.mark.dependency(name="update_cluster", depends=["wait_for_stack"])
 def test_cluster_update_workflow(runner, cluster_name):
     """Test hyp update-cluster command by toggling node recovery setting."""
     global STACK_NAME
