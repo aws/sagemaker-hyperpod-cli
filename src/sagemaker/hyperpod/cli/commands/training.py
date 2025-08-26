@@ -1,24 +1,85 @@
 import click
-from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob
-from sagemaker.hyperpod.common.config import Metadata
-from sagemaker.hyperpod.cli.training_utils import generate_click_command
-from hyperpod_pytorch_job_template.registry import SCHEMA_REGISTRY
-from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
-    _hyperpod_telemetry_emitter,
-)
-from sagemaker.hyperpod.common.telemetry.constants import Feature
+import sys
+from typing import Any
 from sagemaker.hyperpod.common.cli_decorators import handle_cli_exceptions
-from sagemaker.hyperpod.common.utils import display_formatted_logs
+from sagemaker.hyperpod.common.lazy_loading import (
+    LazyRegistry, LazyDecorator, LazyImportManager, create_critical_deps_loader
+)
+from sagemaker.hyperpod.cli.command_registry import register_training_command
+
+# Define what should be available for lazy loading
+__all__ = [
+    'HyperPodPytorchJob', 'Metadata', 'generate_click_command', 'SCHEMA_REGISTRY',
+    '_hyperpod_telemetry_emitter', 'Feature', 'display_formatted_logs'
+]
+
+# Configuration for this module - centralizes template dependencies
+_MODULE_CONFIG = {
+    'template_package': 'hyperpod_pytorch_job_template',
+    'supported_versions': ['1.0'],
+    'schema_package': 'hyperpod_pytorch_job_template',
+}
+
+# Lazy import mapping - declarative and clean
+_LAZY_IMPORTS = {
+    'HyperPodPytorchJob': 'sagemaker.hyperpod.training.hyperpod_pytorch_job:HyperPodPytorchJob',
+    'Metadata': 'sagemaker.hyperpod.common.config:Metadata',
+    'generate_click_command': 'sagemaker.hyperpod.cli.training_utils:generate_click_command',
+    'SCHEMA_REGISTRY': f'{_MODULE_CONFIG["template_package"]}.registry:SCHEMA_REGISTRY',
+    '_hyperpod_telemetry_emitter': 'sagemaker.hyperpod.common.telemetry.telemetry_logging:_hyperpod_telemetry_emitter',
+    'Feature': 'sagemaker.hyperpod.common.telemetry.constants:Feature',
+    'display_formatted_logs': 'sagemaker.hyperpod.common.utils:display_formatted_logs'
+}
+
+# Critical dependencies for decorators
+_CRITICAL_DEPENDENCIES = {
+    '_hyperpod_telemetry_emitter': 'sagemaker.hyperpod.common.telemetry.telemetry_logging:_hyperpod_telemetry_emitter',
+    'Feature': 'sagemaker.hyperpod.common.telemetry.constants:Feature',
+    'generate_click_command': 'sagemaker.hyperpod.cli.training_utils:generate_click_command',
+}
+
+def _setup_schema_registry(deps):
+    """Extra setup function to create the schema registry."""
+    registry = LazyRegistry(
+        versions=_MODULE_CONFIG['supported_versions'],
+        registry_import_path=f'{_MODULE_CONFIG["template_package"]}.registry:SCHEMA_REGISTRY'
+    )
+    deps['SCHEMA_REGISTRY'] = registry
+    setattr(sys.modules[__name__], 'SCHEMA_REGISTRY', registry)
+
+# Create the critical dependencies loader (but don't call it yet)
+_ensure_critical_deps = create_critical_deps_loader(
+    dependencies=_CRITICAL_DEPENDENCIES,
+    module_name=__name__,
+    extra_setup=_setup_schema_registry
+)
+
+# Load critical deps immediately for CLI generation decorators
+_ensure_critical_deps()
+
+# Create the lazy import manager
+_import_manager = LazyImportManager(_LAZY_IMPORTS)
+
+# Use the manager to create our __getattr__ function
+__getattr__ = _import_manager.create_getattr_function(__name__)
+
+# Helper functions to get decorators (these will be lazy loaded)
+def _get_telemetry_emitter():
+    return _hyperpod_telemetry_emitter
+
+def _get_generate_click_command():
+    # Trigger lazy loading via __getattr__
+    return getattr(sys.modules[__name__], 'generate_click_command')
 
 
-@click.command("hyp-pytorch-job")
+@register_training_command("hyp-pytorch-job", "create")
 @click.option("--version", default="1.0", help="Schema version to use")
 @click.option("--debug", default=False, help="Enable debug mode")
-@generate_click_command(
-    schema_pkg="hyperpod_pytorch_job_template",
-    registry=SCHEMA_REGISTRY,
+@LazyDecorator(_get_generate_click_command,
+    schema_pkg=_MODULE_CONFIG["template_package"],
+    registry=lambda: sys.modules[__name__].SCHEMA_REGISTRY,
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "create_pytorchjob_cli")
+@LazyDecorator(_get_telemetry_emitter, lambda: sys.modules[__name__].Feature.HYPERPOD_CLI, "create_pytorchjob_cli")
 @handle_cli_exceptions()
 def pytorch_create(version, debug, config):
     """Create a PyTorch job."""
@@ -57,14 +118,14 @@ def pytorch_create(version, debug, config):
     job.create(debug=debug)
 
 
-@click.command("hyp-pytorch-job")
+@register_training_command("hyp-pytorch-job", "list")
 @click.option(
     "--namespace",
     "-n",
     default="default",
     help="Optional. The namespace to list jobs from. Defaults to 'default' namespace.",
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_pytorchjobs_cli")
+@LazyDecorator(_get_telemetry_emitter, lambda: sys.modules[__name__].Feature.HYPERPOD_CLI, "list_pytorchjobs_cli")
 @handle_cli_exceptions()
 def list_jobs(namespace: str):
     """List all HyperPod PyTorch jobs."""
@@ -132,7 +193,7 @@ def list_jobs(namespace: str):
         click.echo()  # Add empty line at the end
 
 
-@click.command("hyp-pytorch-job")
+@register_training_command("hyp-pytorch-job", "describe")
 @click.option(
     "--job-name", required=True, help="Required. The name of the job to describe"
 )
@@ -142,7 +203,7 @@ def list_jobs(namespace: str):
     default="default",
     help="Optional. The namespace of the job. Defaults to 'default' namespace.",
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_pytorchjob_cli")
+@LazyDecorator(_get_telemetry_emitter, lambda: sys.modules[__name__].Feature.HYPERPOD_CLI, "get_pytorchjob_cli")
 @handle_cli_exceptions()
 def pytorch_describe(job_name: str, namespace: str):
     """Describe a HyperPod PyTorch job."""
@@ -233,7 +294,7 @@ def pytorch_describe(job_name: str, namespace: str):
         click.echo("No status information available")
 
 
-@click.command("hyp-pytorch-job")
+@register_training_command("hyp-pytorch-job", "delete")
 @click.option(
     "--job-name", required=True, help="Required. The name of the job to delete"
 )
@@ -243,7 +304,7 @@ def pytorch_describe(job_name: str, namespace: str):
     default="default",
     help="Optional. The namespace of the job. Defaults to 'default' namespace.",
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "delete_pytorchjob_cli")
+@LazyDecorator(_get_telemetry_emitter, lambda: sys.modules[__name__].Feature.HYPERPOD_CLI, "delete_pytorchjob_cli")
 @handle_cli_exceptions()
 def pytorch_delete(job_name: str, namespace: str):
     """Delete a HyperPod PyTorch job."""
@@ -251,7 +312,7 @@ def pytorch_delete(job_name: str, namespace: str):
     job.delete()
 
 
-@click.command("hyp-pytorch-job")
+@register_training_command("hyp-pytorch-job", "list-pods")
 @click.option(
     "--job-name",
     required=True,
@@ -263,7 +324,7 @@ def pytorch_delete(job_name: str, namespace: str):
     default="default",
     help="Optional. The namespace of the job. Defaults to 'default' namespace.",
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_pods_pytorchjob_cli")
+@LazyDecorator(_get_telemetry_emitter, lambda: sys.modules[__name__].Feature.HYPERPOD_CLI, "list_pods_pytorchjob_cli")
 @handle_cli_exceptions()
 def pytorch_list_pods(job_name: str, namespace: str):
     """List all HyperPod PyTorch pods related to the job."""
@@ -292,7 +353,7 @@ def pytorch_list_pods(job_name: str, namespace: str):
     click.echo()
 
 
-@click.command("hyp-pytorch-job")
+@register_training_command("hyp-pytorch-job", "get-logs")
 @click.option(
     "--job-name",
     required=True,
@@ -307,7 +368,7 @@ def pytorch_list_pods(job_name: str, namespace: str):
     default="default",
     help="Optional. The namespace of the job. Defaults to 'default' namespace.",
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_pytorchjob_logs_from_pod_cli")
+@LazyDecorator(_get_telemetry_emitter, lambda: sys.modules[__name__].Feature.HYPERPOD_CLI, "get_pytorchjob_logs_from_pod_cli")
 @handle_cli_exceptions()
 def pytorch_get_logs(job_name: str, pod_name: str, namespace: str):
     """Get specific pod log for Hyperpod Pytorch job."""
@@ -319,14 +380,14 @@ def pytorch_get_logs(job_name: str, pod_name: str, namespace: str):
     display_formatted_logs(logs, title=f"Pod Logs for {pod_name}")
 
 
-@click.command("hyp-pytorch-job")
+@register_training_command("hyp-pytorch-job", "get-operator-logs")
 @click.option(
     "--since-hours",
     type=click.FLOAT,
     required=True,
     help="Required. The time frame to get logs for.",
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_pytorch_operator_logs")
+@LazyDecorator(_get_telemetry_emitter, lambda: sys.modules[__name__].Feature.HYPERPOD_CLI, "get_pytorch_operator_logs")
 @handle_cli_exceptions()
 def pytorch_get_operator_logs(since_hours: float):
     """Get operator logs for pytorch training jobs."""

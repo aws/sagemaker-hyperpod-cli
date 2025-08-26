@@ -14,20 +14,18 @@ import logging
 import subprocess
 import json
 import sys
-import botocore.config
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple
 
-import boto3
 import click
-from botocore.client import BaseClient
-from kubernetes import client
 from ratelimit import limits, sleep_and_retry
 from tabulate import tabulate
-
-from sagemaker.hyperpod.cli.clients.kubernetes_client import (
-    KubernetesClient,
+from sagemaker.hyperpod.common.lazy_loading import (
+    LazyDecorator, LazyImportManager, create_critical_deps_loader
 )
+from sagemaker.hyperpod.cli.command_registry import register_cluster_command
+
+# Import constants and lightweight dependencies that are always needed
 from sagemaker.hyperpod.cli.constants.command_constants import (
     AVAILABLE_ACCELERATOR_DEVICES_KEY,
     DEEP_HEALTH_CHECK_STATUS_LABEL,
@@ -42,36 +40,67 @@ from sagemaker.hyperpod.cli.constants.command_constants import (
     TEMP_KUBE_CONFIG_FILE,
     OutputFormat,
 )
-from sagemaker.hyperpod.common.telemetry.user_agent import (
-    get_user_agent_extra_suffix,
+
+# Import lightweight dependencies used directly at module level
+from sagemaker.hyperpod.cli.utils import setup_logger
+from sagemaker.hyperpod.cli.validators.cluster_validator import ClusterValidator
+
+# Define what should be available for lazy loading
+__all__ = [
+    'boto3', 'botocore', 'BaseClient', 'client', 'KubernetesClient', 
+    'get_user_agent_extra_suffix', 'ListPods', 'get_name_from_arn', 
+    'get_sagemaker_client', 'setup_logger', 'set_logging_level', 
+    'store_current_hyperpod_context', 'ClusterValidator', 'get_eks_cluster_name',
+    'get_cluster_context_util', 'get_monitoring_config', 'is_observability_addon_enabled',
+    '_hyperpod_telemetry_emitter', 'Feature'
+]
+
+# Critical dependencies for decorators
+_CRITICAL_DEPENDENCIES = {
+    '_hyperpod_telemetry_emitter': 'sagemaker.hyperpod.common.telemetry.telemetry_logging:_hyperpod_telemetry_emitter',
+    'Feature': 'sagemaker.hyperpod.common.telemetry.constants:Feature',
+}
+
+# Create the critical dependencies loader (but don't call it yet)
+_ensure_critical_deps = create_critical_deps_loader(
+    dependencies=_CRITICAL_DEPENDENCIES,
+    module_name=__name__
 )
-from sagemaker.hyperpod.cli.service.list_pods import (
-    ListPods,
-)
-from sagemaker.hyperpod.cli.utils import (
-    get_name_from_arn,
-    get_sagemaker_client,
-    setup_logger,
-    set_logging_level,
-    store_current_hyperpod_context,
-)
-from sagemaker.hyperpod.cli.validators.cluster_validator import (
-    ClusterValidator,
-)
-from sagemaker.hyperpod.cli.utils import (
-    get_eks_cluster_name,
-)
-from sagemaker.hyperpod.common.utils import (
-    get_cluster_context as get_cluster_context_util,
-)
-from sagemaker.hyperpod.observability.utils import (
-    get_monitoring_config,
-    is_observability_addon_enabled,
-)
-from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
-    _hyperpod_telemetry_emitter,
-)
-from sagemaker.hyperpod.common.telemetry.constants import Feature
+
+# Load critical deps immediately for CLI generation decorators
+_ensure_critical_deps()
+
+# Lazy import mapping
+_LAZY_IMPORTS = {
+    'boto3': 'boto3',
+    'botocore': 'botocore.config',
+    'BaseClient': 'botocore.client:BaseClient',
+    'client': 'kubernetes:client',
+    'KubernetesClient': 'sagemaker.hyperpod.cli.clients.kubernetes_client:KubernetesClient',
+    'get_user_agent_extra_suffix': 'sagemaker.hyperpod.common.telemetry.user_agent:get_user_agent_extra_suffix',
+    'ListPods': 'sagemaker.hyperpod.cli.service.list_pods:ListPods',
+    'get_name_from_arn': 'sagemaker.hyperpod.cli.utils:get_name_from_arn',
+    'get_sagemaker_client': 'sagemaker.hyperpod.cli.utils:get_sagemaker_client',
+    'set_logging_level': 'sagemaker.hyperpod.cli.utils:set_logging_level',
+    'store_current_hyperpod_context': 'sagemaker.hyperpod.cli.utils:store_current_hyperpod_context',
+    'get_eks_cluster_name': 'sagemaker.hyperpod.cli.utils:get_eks_cluster_name',
+    'get_cluster_context_util': 'sagemaker.hyperpod.common.utils:get_cluster_context',
+    'get_monitoring_config': 'sagemaker.hyperpod.observability.utils:get_monitoring_config',
+    'is_observability_addon_enabled': 'sagemaker.hyperpod.observability.utils:is_observability_addon_enabled',
+    '_hyperpod_telemetry_emitter': 'sagemaker.hyperpod.common.telemetry.telemetry_logging:_hyperpod_telemetry_emitter',
+    'Feature': 'sagemaker.hyperpod.common.telemetry.constants:Feature'
+}
+
+# Create the lazy import manager
+_import_manager = LazyImportManager(_LAZY_IMPORTS)
+
+# Use the manager to create our __getattr__ function
+__getattr__ = _import_manager.create_getattr_function(__name__)
+
+
+# Helper function to get telemetry decorator (lazy loaded)
+def _get_telemetry_emitter():
+    return _hyperpod_telemetry_emitter
 
 RATE_LIMIT = 4
 RATE_LIMIT_PERIOD = 1  # 1 second
@@ -79,7 +108,7 @@ RATE_LIMIT_PERIOD = 1  # 1 second
 logger = setup_logger(__name__)
 
 
-@click.command()
+@register_cluster_command("list-cluster")
 @click.option(
     "--region",
     type=click.STRING,
@@ -112,7 +141,7 @@ logger = setup_logger(__name__)
     multiple=True,
     help="Optional. The namespace that you want to check the capacity for. Only SageMaker managed namespaces are supported.",
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_cluster")
+@LazyDecorator(_get_telemetry_emitter, lambda: Feature.HYPERPOD, "list_cluster")
 def list_cluster(
     region: Optional[str],
     output: Optional[str],
@@ -151,7 +180,8 @@ def list_cluster(
          hyperpod-eks-cluster-a | ml.g5.2xlarge  |            2 |                              1|                              2 |                          N/A | 1                                              | 1
     """
     if debug:
-        set_logging_level(logger, logging.DEBUG)
+        set_logging_level_func = getattr(sys.modules[__name__], 'set_logging_level')
+        set_logging_level_func(logger, logging.DEBUG)
     validator = ClusterValidator()
 
     # Make use of user_agent_extra field of the botocore_config object
@@ -160,17 +190,21 @@ def list_cluster(
     # This config will also make sure that user_agent never fails to log the User-Agent string
     # even if boto User-Agent header format is updated in the future
     # Ref: https://botocore.amazonaws.com/v1/documentation/api/latest/reference/config.html
-    botocore_config = botocore.config.Config(
-        user_agent_extra=get_user_agent_extra_suffix()
+    botocore_module = getattr(sys.modules[__name__], 'botocore')
+    user_agent_func = getattr(sys.modules[__name__], 'get_user_agent_extra_suffix')
+    botocore_config = botocore_module.config.Config(
+        user_agent_extra=user_agent_func()
     )
 
-    session = boto3.Session(region_name=region) if region else boto3.Session()
+    boto3_module = getattr(sys.modules[__name__], 'boto3')
+    session = boto3_module.Session(region_name=region) if region else boto3_module.Session()
     if not validator.validate_aws_credential(session):
         logger.error("Failed to list clusters capacity due to invalid AWS credentials.")
         sys.exit(1)
 
     try:
-        sm_client = get_sagemaker_client(session, botocore_config)
+        get_sagemaker_client_func = getattr(sys.modules[__name__], 'get_sagemaker_client')
+        sm_client = get_sagemaker_client_func(session, botocore_config)
     except botocore.exceptions.NoRegionError:
         logger.error(
             f"Please ensure you have configured the AWS default region or use the '--region' argument to specify the region."
@@ -242,7 +276,7 @@ def list_cluster(
 def rate_limited_operation(
     cluster_name: str,
     validator: ClusterValidator,
-    sm_client: BaseClient,
+    sm_client: Any,
     region: Optional[str],
     temp_config_file: str,
     cluster_capacities: List[List[str]],
@@ -257,9 +291,11 @@ def rate_limited_operation(
                 f"Cannot find EKS cluster behind {cluster_name}, continue..."
             )
             return
-        eks_cluster_name = get_name_from_arn(eks_cluster_arn)
+        get_name_from_arn_func = getattr(sys.modules[__name__], 'get_name_from_arn')
+        eks_cluster_name = get_name_from_arn_func(eks_cluster_arn)
         _update_kube_config(eks_cluster_name, region, temp_config_file)
-        k8s_client = KubernetesClient(is_get_capacity=True)
+        KubernetesClient_class = getattr(sys.modules[__name__], 'KubernetesClient')
+        k8s_client = KubernetesClient_class(is_get_capacity=True)
         nodes = k8s_client.list_node_with_temp_config(
             temp_config_file, SAGEMAKER_HYPERPOD_NAME_LABEL
         )
@@ -367,7 +403,7 @@ def _get_available_quota(nominal, usage, flavor, resource_name):
     return "N/A"
 
 
-def _get_hyperpod_clusters(sm_client: boto3.client) -> List[str]:
+def _get_hyperpod_clusters(sm_client: Any) -> List[str]:
     cluster_names: List[str] = []
     response = sm_client.list_clusters()
     if "ClusterSummaries" in response:
@@ -410,9 +446,10 @@ def _restructure_output(summary_list, namespaces):
 
 
 def _aggregate_nodes_info(
-    nodes: List[client.V1Node],
+    nodes: List[Any],
 ) -> Dict[str, Dict[str, Any]]:
-    list_pods_service = ListPods()
+    ListPods_class = getattr(sys.modules[__name__], 'ListPods')
+    list_pods_service = ListPods_class()
     nodes_resource_allocated_dict = (
         list_pods_service.list_pods_and_get_requested_resources_group_by_node_name()
     )
@@ -473,7 +510,7 @@ def _aggregate_nodes_info(
     return nodes_summary
 
 
-@click.command()
+@register_cluster_command("set-cluster-context")
 @click.option(
     "--cluster-name",
     type=click.STRING,
@@ -518,29 +555,37 @@ def set_cluster_context(
         None
     """
     if debug:
-        set_logging_level(logger, logging.DEBUG)
+        set_logging_level_func = getattr(sys.modules[__name__], 'set_logging_level')
+        set_logging_level_func(logger, logging.DEBUG)
     validator = ClusterValidator()
-    botocore_config = botocore.config.Config(
-        user_agent_extra=get_user_agent_extra_suffix()
+    botocore_module = getattr(sys.modules[__name__], 'botocore')
+    user_agent_func = getattr(sys.modules[__name__], 'get_user_agent_extra_suffix')
+    botocore_config = botocore_module.config.Config(
+        user_agent_extra=user_agent_func()
     )
-    session = boto3.Session(region_name=region) if region else boto3.Session()
+    boto3_module = getattr(sys.modules[__name__], 'boto3')
+    session = boto3_module.Session(region_name=region) if region else boto3_module.Session()
     if not validator.validate_aws_credential(session):
         logger.error("Cannot connect to HyperPod cluster due to aws credentials error")
         sys.exit(1)
 
     try:
-        sm_client = get_sagemaker_client(session, botocore_config)
+        get_sagemaker_client_func = getattr(sys.modules[__name__], 'get_sagemaker_client')
+        sm_client = get_sagemaker_client_func(session, botocore_config)
         hp_cluster_details = sm_client.describe_cluster(ClusterName=cluster_name)
         logger.debug("Fetched hyperpod cluster details")
-        store_current_hyperpod_context(hp_cluster_details)
+        store_current_hyperpod_context_func = getattr(sys.modules[__name__], 'store_current_hyperpod_context')
+        store_current_hyperpod_context_func(hp_cluster_details)
         eks_cluster_arn = hp_cluster_details["Orchestrator"]["Eks"]["ClusterArn"]
         logger.debug(
             f"hyperpod cluster's EKS orchestrator cluster arn: {eks_cluster_arn}"
         )
 
-        eks_name = get_name_from_arn(eks_cluster_arn)
+        get_name_from_arn_func = getattr(sys.modules[__name__], 'get_name_from_arn')
+        eks_name = get_name_from_arn_func(eks_cluster_arn)
         _update_kube_config(eks_name, region, None)
-        k8s_client = KubernetesClient()
+        KubernetesClient_class = getattr(sys.modules[__name__], 'KubernetesClient')
+        k8s_client = KubernetesClient_class()
         k8s_client.set_context(eks_cluster_arn, namespace)
     except botocore.exceptions.NoRegionError:
         logger.error(
@@ -554,7 +599,7 @@ def set_cluster_context(
         sys.exit(1)
 
 
-@click.command()
+@register_cluster_command("get-cluster-context")
 @click.option(
     "--debug",
     is_flag=True,
@@ -573,10 +618,12 @@ def get_cluster_context(
         None
     """
     if debug:
-        set_logging_level(logger, logging.DEBUG)
+        set_logging_level_func = getattr(sys.modules[__name__], 'set_logging_level')
+        set_logging_level_func(logger, logging.DEBUG)
 
     try:
-        current_context = get_cluster_context_util()
+        get_cluster_context_util_func = getattr(sys.modules[__name__], 'get_cluster_context_util')
+        current_context = get_cluster_context_util_func()
         print(f"Cluster context:{current_context}")
     except botocore.exceptions.NoRegionError:
         logger.error(
@@ -590,7 +637,7 @@ def get_cluster_context(
         sys.exit(1)
 
 
-@click.command()
+@register_cluster_command("get-monitoring")
 @click.option("--grafana", is_flag=True, help="Returns Grafana Dashboard URL")
 @click.option("--prometheus", is_flag=True, help="Returns Prometheus Workspace URL")
 @click.option("--list", is_flag=True, help="Returns list of available metrics")
@@ -601,10 +648,13 @@ def get_monitoring(grafana: bool, prometheus: bool, list: bool) -> None:
             print("Error: Please select at least one option")
             print("Usage : hyp get-monitoring --grafana/--prometheus/--list/--help")
             return
-        if not is_observability_addon_enabled(get_eks_cluster_name()):
+        get_eks_cluster_name_func = getattr(sys.modules[__name__], 'get_eks_cluster_name')
+        is_observability_addon_enabled_func = getattr(sys.modules[__name__], 'is_observability_addon_enabled')
+        if not is_observability_addon_enabled_func(get_eks_cluster_name_func()):
             print("Observability addon is not enabled for this cluster")
             sys.exit(1)
-        monitor_config = get_monitoring_config()
+        get_monitoring_config_func = getattr(sys.modules[__name__], 'get_monitoring_config')
+        monitor_config = get_monitoring_config_func()
         if prometheus:
             print(f"Prometheus workspace URL: {monitor_config.prometheusURL}")
         if grafana:
