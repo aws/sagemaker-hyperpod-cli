@@ -2,6 +2,22 @@ import click
 from typing import Optional
 from .command_registry import get_registry
 
+# Single source of truth for CLI help text
+CLI_HELP_TEXT = {
+    'create': 'Create endpoints or pytorch jobs.',
+    'list': 'List endpoints or pytorch jobs.',
+    'describe': 'Describe endpoints or pytorch jobs.',
+    'delete': 'Delete endpoints or pytorch jobs.',
+    'list-pods': 'List pods for endpoints or pytorch jobs.',
+    'get-logs': 'Get pod logs for endpoints or pytorch jobs.',
+    'invoke': 'Invoke model endpoints.',
+    'get-operator-logs': 'Get operator logs for endpoints.',
+    'list-cluster': 'List SageMaker Hyperpod Clusters with metadata.',
+    'set-cluster-context': 'Connect to a HyperPod EKS cluster.',
+    'get-cluster-context': 'Get context related to the current set cluster.',
+    'get-monitoring': 'Get monitoring configurations for Hyperpod cluster.'
+}
+
 # Custom CLI group that delays command registration until needed
 class LazyGroup(click.Group):
     def __init__(self, *args, **kwargs):
@@ -43,25 +59,9 @@ class LazyGroup(click.Group):
     
     def format_commands(self, ctx, formatter):
         """Format commands section without loading modules"""
-        # Static help text mapping for fast help generation (no registry queries)
-        static_help = {
-            'create': 'Create endpoints or pytorch jobs.',
-            'list': 'List endpoints or pytorch jobs.',
-            'describe': 'Describe endpoints or pytorch jobs.',
-            'delete': 'Delete endpoints or pytorch jobs.',
-            'list-pods': 'List pods for endpoints or pytorch jobs.',
-            'get-logs': 'Get pod logs for endpoints or pytorch jobs.',
-            'invoke': 'Invoke model endpoints.',
-            'get-operator-logs': 'Get operator logs for endpoints.',
-            'list-cluster': 'List SageMaker Hyperpod Clusters with metadata.',
-            'set-cluster-context': 'Connect to a HyperPod EKS cluster.',
-            'get-cluster-context': 'Get context related to the current set cluster.',
-            'get-monitoring': 'Get monitoring configurations for Hyperpod cluster.'
-        }
-        
         commands = []
         for name in self.list_commands(ctx):
-            help_text = static_help.get(name, f'{name.replace("-", " ").title()} operations.')
+            help_text = CLI_HELP_TEXT.get(name, f'{name.replace("-", " ").title()} operations.')
             commands.append((name, help_text))
         
         if commands:
@@ -158,50 +158,50 @@ cli = LazyGroup()
 # Create subgroups, lightweight and don't trigger imports
 @cli.group(cls=CLICommand)
 def create():
-    """Create endpoints or pytorch jobs."""
     pass
+create.__doc__ = CLI_HELP_TEXT['create']
 
 
 @cli.group(cls=CLICommand)
 def list():
-    """List endpoints or pytorch jobs."""
     pass
+list.__doc__ = CLI_HELP_TEXT['list']
 
 
 @cli.group(cls=CLICommand)
 def describe():
-    """Describe endpoints or pytorch jobs."""
     pass
+describe.__doc__ = CLI_HELP_TEXT['describe']
 
 
 @cli.group(cls=CLICommand)
 def delete():
-    """Delete endpoints or pytorch jobs."""
     pass
+delete.__doc__ = CLI_HELP_TEXT['delete']
 
 
 @cli.group(cls=CLICommand)
 def list_pods():
-    """List pods for endpoints or pytorch jobs."""
     pass
+list_pods.__doc__ = CLI_HELP_TEXT['list-pods']
 
 
 @cli.group(cls=CLICommand)
 def get_logs():
-    """Get pod logs for endpoints or pytorch jobs."""
     pass
+get_logs.__doc__ = CLI_HELP_TEXT['get-logs']
 
 
 @cli.group(cls=CLICommand)
 def invoke():
-    """Invoke model endpoints."""
     pass
+invoke.__doc__ = CLI_HELP_TEXT['invoke']
 
 
 @cli.group(cls=CLICommand)
 def get_operator_logs():
-    """Get operator logs for endpoints."""
     pass
+get_operator_logs.__doc__ = CLI_HELP_TEXT['get-operator-logs']
 
 
 if __name__ == "__main__":
