@@ -54,6 +54,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace=namespace,
             spec=spec,
+            debug=debug,
         )
 
         self.metadata = Metadata(
@@ -93,6 +94,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace=namespace,
             spec=spec,
+            debug=False,
         )
 
         self.metadata = Metadata(
