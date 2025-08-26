@@ -59,6 +59,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
             kind=JUMPSTART_MODEL_KIND,
             namespace=namespace,
             spec=spec,
+            debug=debug,
         )
 
         self.metadata = Metadata(
@@ -102,6 +103,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
             kind=JUMPSTART_MODEL_KIND,
             namespace=namespace,
             spec=spec,
+            debug=False,
         )
 
         self.metadata = Metadata(
