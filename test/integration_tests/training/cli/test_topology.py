@@ -41,6 +41,10 @@ class TestTopologyIntegration:
             "--namespace", NAMESPACE
         ]
         result = execute_command(describe_cmd)
+
+        # Wait a moment for the job to be created
+        time.sleep(5)
+
         assert result.returncode == 0
         assert f"Annotations:    {{'kueue.x-k8s.io/podset-required-topology': '{TOPOLOGY}'}}" in result.stdout
 
