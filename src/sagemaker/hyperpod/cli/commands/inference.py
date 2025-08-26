@@ -5,84 +5,59 @@ from typing import Optional, Any
 from tabulate import tabulate
 from sagemaker.hyperpod.common.cli_decorators import handle_cli_exceptions
 from sagemaker.hyperpod.common.lazy_loading import (
-    LazyRegistry, LazyDecorator, LazyImportManager, create_critical_deps_loader
+    LazyDecorator, setup_lazy_module
 )
 from sagemaker.hyperpod.cli.command_registry import register_inference_command
 
-# Define what should be available for lazy loading
-__all__ = [
-    'boto3', 'generate_click_command', 'JS_REG', 'C_REG', 'HPJumpStartEndpoint',
-    'HPEndpoint', 'Endpoint', '_hyperpod_telemetry_emitter', 'Feature', 'display_formatted_logs'
-]
-
-# Configuration for this module - centralizes template dependencies
-_MODULE_CONFIG = {
-    'jumpstart_template_package': 'hyperpod_jumpstart_inference_template',
-    'custom_template_package': 'hyperpod_custom_inference_template',
-    'supported_versions': ['1.0'],  # Conservative: only 1.0 to avoid notebook issues
-}
-
-# Critical dependencies for decorators
-_CRITICAL_DEPENDENCIES = {
-    '_hyperpod_telemetry_emitter': 'sagemaker.hyperpod.common.telemetry.telemetry_logging:_hyperpod_telemetry_emitter',
-    'Feature': 'sagemaker.hyperpod.common.telemetry.constants:Feature',
-    'generate_click_command': 'sagemaker.hyperpod.cli.inference_utils:generate_click_command',
+INFERENCE_CONFIG = {
+    'exports': [
+        'boto3', 'generate_click_command', 'JS_REG', 'C_REG', 'HPJumpStartEndpoint',
+        'HPEndpoint', 'Endpoint', '_hyperpod_telemetry_emitter', 'Feature', 'display_formatted_logs'
+    ],
+    'template_packages': {
+        'jumpstart_template_package': 'hyperpod_jumpstart_inference_template',
+        'custom_template_package': 'hyperpod_custom_inference_template',
+        'supported_versions': ['1.0'],
+    },
+    'critical_deps': ['telemetry_emitter', 'telemetry_feature', 'inference_utils'],
+    'lazy_imports': {
+        'boto3': 'boto3',
+        'generate_click_command': 'sagemaker.hyperpod.cli.inference_utils:generate_click_command',
+        'JS_REG': 'hyperpod_jumpstart_inference_template.registry:SCHEMA_REGISTRY',
+        'C_REG': 'hyperpod_custom_inference_template.registry:SCHEMA_REGISTRY',
+        'HPJumpStartEndpoint': 'sagemaker.hyperpod.inference.hp_jumpstart_endpoint:HPJumpStartEndpoint',
+        'HPEndpoint': 'sagemaker.hyperpod.inference.hp_endpoint:HPEndpoint',
+        'Endpoint': 'sagemaker_core.resources:Endpoint',
+        '_hyperpod_telemetry_emitter': 'sagemaker.hyperpod.common.telemetry.telemetry_logging:_hyperpod_telemetry_emitter',
+        'Feature': 'sagemaker.hyperpod.common.telemetry.constants:Feature',
+        'display_formatted_logs': 'sagemaker.hyperpod.common.utils:display_formatted_logs'
+    }
 }
 
 def _setup_inference_registries(deps):
-    """Extra setup function to create the inference registries."""
+    """Setup inference-specific registries."""
+    from sagemaker.hyperpod.common.lazy_loading import LazyRegistry
     js_registry = LazyRegistry(
-        versions=_MODULE_CONFIG['supported_versions'],
-        registry_import_path=f'{_MODULE_CONFIG["jumpstart_template_package"]}.registry:SCHEMA_REGISTRY'
+        versions=['1.0'],
+        registry_import_path='hyperpod_jumpstart_inference_template.registry:SCHEMA_REGISTRY'
     )
-    
     custom_registry = LazyRegistry(
-        versions=_MODULE_CONFIG['supported_versions'],
-        registry_import_path=f'{_MODULE_CONFIG["custom_template_package"]}.registry:SCHEMA_REGISTRY'
+        versions=['1.0'],
+        registry_import_path='hyperpod_custom_inference_template.registry:SCHEMA_REGISTRY'
     )
-    
     deps['JS_REG'] = js_registry
     deps['C_REG'] = custom_registry
     setattr(sys.modules[__name__], 'JS_REG', js_registry)
     setattr(sys.modules[__name__], 'C_REG', custom_registry)
 
-# Create the critical dependencies loader (but don't call it yet)
-_ensure_critical_deps = create_critical_deps_loader(
-    dependencies=_CRITICAL_DEPENDENCIES,
-    module_name=__name__,
-    extra_setup=_setup_inference_registries
-)
+INFERENCE_CONFIG['extra_setup'] = _setup_inference_registries
+setup_lazy_module(__name__, INFERENCE_CONFIG)
 
-# Load critical deps immediately for CLI generation decorators
-_ensure_critical_deps()
-
-# Lazy import mapping - declarative and template-agnostic
-_LAZY_IMPORTS = {
-    'boto3': 'boto3',
-    'generate_click_command': 'sagemaker.hyperpod.cli.inference_utils:generate_click_command',
-    'JS_REG': f'{_MODULE_CONFIG["jumpstart_template_package"]}.registry:SCHEMA_REGISTRY',
-    'C_REG': f'{_MODULE_CONFIG["custom_template_package"]}.registry:SCHEMA_REGISTRY',
-    'HPJumpStartEndpoint': 'sagemaker.hyperpod.inference.hp_jumpstart_endpoint:HPJumpStartEndpoint',
-    'HPEndpoint': 'sagemaker.hyperpod.inference.hp_endpoint:HPEndpoint',
-    'Endpoint': 'sagemaker_core.resources:Endpoint',
-    '_hyperpod_telemetry_emitter': 'sagemaker.hyperpod.common.telemetry.telemetry_logging:_hyperpod_telemetry_emitter',
-    'Feature': 'sagemaker.hyperpod.common.telemetry.constants:Feature',
-    'display_formatted_logs': 'sagemaker.hyperpod.common.utils:display_formatted_logs'
-}
-
-# Create the lazy import manager
-_import_manager = LazyImportManager(_LAZY_IMPORTS)
-
-# Use the manager to create our __getattr__ function
-__getattr__ = _import_manager.create_getattr_function(__name__)
-
-
-# Helper functions to get decorators (these will be lazy loaded)
+# Helper functions for decorators  
 def _get_telemetry_emitter():
-    return _hyperpod_telemetry_emitter
+    return getattr(sys.modules[__name__], '_hyperpod_telemetry_emitter')
 
 def _get_generate_click_command():
-    # Trigger lazy loading via __getattr__
     return getattr(sys.modules[__name__], 'generate_click_command')
 
 
@@ -97,7 +72,7 @@ def _get_generate_click_command():
 )
 @click.option("--version", default="1.0", help="Schema version to use")
 @LazyDecorator(_get_generate_click_command,
-    schema_pkg=_MODULE_CONFIG["jumpstart_template_package"],
+    schema_pkg="hyperpod_jumpstart_inference_template",
     registry=lambda: sys.modules[__name__].JS_REG,
 )
 @LazyDecorator(_get_telemetry_emitter, lambda: sys.modules[__name__].Feature.HYPERPOD_CLI, "create_js_endpoint_cli")
@@ -120,7 +95,7 @@ def js_create(name, namespace, version, js_endpoint):
 )
 @click.option("--version", default="1.0", help="Schema version to use")
 @LazyDecorator(_get_generate_click_command,
-    schema_pkg=_MODULE_CONFIG["custom_template_package"],
+    schema_pkg="hyperpod_custom_inference_template",
     registry=lambda: sys.modules[__name__].C_REG,
 )
 @LazyDecorator(_get_telemetry_emitter, lambda: sys.modules[__name__].Feature.HYPERPOD_CLI, "create_custom_endpoint_cli")
@@ -169,10 +144,10 @@ def custom_invoke(
     except json.JSONDecodeError:
         raise click.ClickException("--body must be valid JSON")
 
-    rt = boto3.client("sagemaker-runtime")
+    rt = sys.modules[__name__].boto3.client("sagemaker-runtime")
 
     try:
-        endpoint = Endpoint.get(endpoint_name)
+        endpoint = sys.modules[__name__].Endpoint.get(endpoint_name)
     except Exception as e:
         endpoint = None
 
@@ -181,7 +156,7 @@ def custom_invoke(
             f"Endpoint {endpoint_name} creation has been initated but is currently not in service")
     elif not endpoint:
         try:
-            hp_endpoint = HPEndpoint.get(endpoint_name)
+            hp_endpoint = sys.modules[__name__].HPEndpoint.get(endpoint_name)
         except Exception as e:
             hp_endpoint = None
 
@@ -216,7 +191,7 @@ def js_list(
     """
     List all Hyperpod Jumpstart model endpoints.
     """
-    endpoints = HPJumpStartEndpoint.model_construct().list(namespace)
+    endpoints = sys.modules[__name__].HPJumpStartEndpoint.model_construct().list(namespace)
     data = [ep.model_dump() for ep in endpoints]
 
     if not data:
@@ -259,7 +234,7 @@ def custom_list(
     """
     List all Hyperpod custom model endpoints.
     """
-    endpoints = HPEndpoint.model_construct().list(namespace)
+    endpoints = sys.modules[__name__].HPEndpoint.model_construct().list(namespace)
     data = [ep.model_dump() for ep in endpoints]
 
     if not data:
@@ -318,7 +293,7 @@ def js_describe(
     """
     Describe a Hyperpod Jumpstart model endpoint.
     """
-    my_endpoint = HPJumpStartEndpoint.model_construct().get(name, namespace)
+    my_endpoint = sys.modules[__name__].HPJumpStartEndpoint.model_construct().get(name, namespace)
     data = my_endpoint.model_dump()
 
     if full:
@@ -467,7 +442,7 @@ def custom_describe(
     """
     Describe a Hyperpod custom model endpoint.
     """
-    my_endpoint = HPEndpoint.model_construct().get(name, namespace)
+    my_endpoint = sys.modules[__name__].HPEndpoint.model_construct().get(name, namespace)
     data = my_endpoint.model_dump()
 
     if full:
@@ -643,7 +618,7 @@ def js_delete(
     """
     # Auto-detects the endpoint type and operation
     # 0Provides 404 message: "❓ JumpStart endpoint 'missing-name' not found..."
-    my_endpoint = HPJumpStartEndpoint.model_construct().get(name, namespace)
+    my_endpoint = sys.modules[__name__].HPJumpStartEndpoint.model_construct().get(name, namespace)
     my_endpoint.delete()
 
 
@@ -670,7 +645,7 @@ def custom_delete(
     """
     Delete a Hyperpod custom model endpoint.
     """
-    my_endpoint = HPEndpoint.model_construct().get(name, namespace)
+    my_endpoint = sys.modules[__name__].HPEndpoint.model_construct().get(name, namespace)
     my_endpoint.delete()
 
 
@@ -690,7 +665,7 @@ def js_list_pods(
     """
     List all pods related to jumpstart model endpoint.
     """
-    my_endpoint = HPJumpStartEndpoint.model_construct()
+    my_endpoint = sys.modules[__name__].HPJumpStartEndpoint.model_construct()
     pods = my_endpoint.list_pods(namespace=namespace)
     click.echo(pods)
 
@@ -711,7 +686,7 @@ def custom_list_pods(
     """
     List all pods related to custom model endpoint.
     """
-    my_endpoint = HPEndpoint.model_construct()
+    my_endpoint = sys.modules[__name__].HPEndpoint.model_construct()
     pods = my_endpoint.list_pods(namespace=namespace)
     click.echo(pods)
 
@@ -746,12 +721,12 @@ def js_get_logs(
     """
     Get specific pod log for jumpstart model endpoint.
     """
-    my_endpoint = HPJumpStartEndpoint.model_construct()
+    my_endpoint = sys.modules[__name__].HPJumpStartEndpoint.model_construct()
     logs = my_endpoint.get_logs(pod=pod_name, container=container, namespace=namespace)
     
     # Use common log display utility for consistent formatting across all job types
     container_info = f" (container: {container})" if container else ""
-    display_formatted_logs(logs, title=f"JumpStart Endpoint Logs for {pod_name}{container_info}")
+    sys.modules[__name__].display_formatted_logs(logs, title=f"JumpStart Endpoint Logs for {pod_name}{container_info}")
 
 
 @register_inference_command("hyp-custom-endpoint", "get-logs")
@@ -784,12 +759,12 @@ def custom_get_logs(
     """
     Get specific pod log for custom model endpoint.
     """
-    my_endpoint = HPEndpoint.model_construct()
+    my_endpoint = sys.modules[__name__].HPEndpoint.model_construct()
     logs = my_endpoint.get_logs(pod=pod_name, container=container, namespace=namespace)
     
     # Use common log display utility for consistent formatting across all job types
     container_info = f" (container: {container})" if container else ""
-    display_formatted_logs(logs, title=f"Custom Endpoint Logs for {pod_name}{container_info}")
+    sys.modules[__name__].display_formatted_logs(logs, title=f"Custom Endpoint Logs for {pod_name}{container_info}")
 
 
 @click.command("hyp-jumpstart-endpoint")
@@ -807,7 +782,7 @@ def js_get_operator_logs(
     """
     Get operator logs for jumpstart model endpoint.
     """
-    my_endpoint = HPJumpStartEndpoint.model_construct()
+    my_endpoint = sys.modules[__name__].HPJumpStartEndpoint.model_construct()
     logs = my_endpoint.get_operator_logs(since_hours=since_hours)
     click.echo(logs)
 
@@ -827,6 +802,6 @@ def custom_get_operator_logs(
     """
     Get operator logs for custom model endpoint.
     """
-    my_endpoint = HPEndpoint.model_construct()
+    my_endpoint = sys.modules[__name__].HPEndpoint.model_construct()
     logs = my_endpoint.get_operator_logs(since_hours=since_hours)
     click.echo(logs)

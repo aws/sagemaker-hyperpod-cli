@@ -7,7 +7,6 @@ class LazyGroup(click.Group):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        # Get the command registry
         self.registry = get_registry()
         
         # ensure that duplicate modules aren't loaded
@@ -70,7 +69,6 @@ class LazyGroup(click.Group):
                 formatter.write_dl(commands)
 
     def get_command(self, ctx, name):
-        # Always ensure commands are loaded first
         self.registry.ensure_commands_loaded()
         
         # Register modules when actually needed
@@ -80,7 +78,6 @@ class LazyGroup(click.Group):
     
     def _register_module_for_command(self, name):
         """Register only the module needed for a specific command"""
-        # Use registry to determine which module provides this command
         module_name = self.registry.get_module_for_command(name)
         
         if module_name and module_name not in self.modules_registered:
@@ -108,7 +105,7 @@ class LazyGroup(click.Group):
             pytorch_create, list_jobs, pytorch_describe, pytorch_delete,
             pytorch_list_pods, pytorch_get_logs, pytorch_get_operator_logs
             )
-            # All are command objects - don't call them!
+
             self.commands['create'].add_command(pytorch_create)
             self.commands['list'].add_command(list_jobs)
             self.commands['describe'].add_command(pytorch_describe)
@@ -124,7 +121,7 @@ class LazyGroup(click.Group):
                 js_list_pods, custom_list_pods, js_get_logs, custom_get_logs,
                 js_get_operator_logs, custom_get_operator_logs,
             )
-            # All are command objects (should NOT be called)
+
             self.commands['create'].add_command(js_create)
             self.commands['create'].add_command(custom_create)
             self.commands['list'].add_command(js_list)

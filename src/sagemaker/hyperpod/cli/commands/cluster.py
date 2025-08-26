@@ -25,7 +25,6 @@ from sagemaker.hyperpod.common.lazy_loading import (
 )
 from sagemaker.hyperpod.cli.command_registry import register_cluster_command
 
-# Import constants and lightweight dependencies that are always needed
 from sagemaker.hyperpod.cli.constants.command_constants import (
     AVAILABLE_ACCELERATOR_DEVICES_KEY,
     DEEP_HEALTH_CHECK_STATUS_LABEL,
@@ -41,11 +40,9 @@ from sagemaker.hyperpod.cli.constants.command_constants import (
     OutputFormat,
 )
 
-# Import lightweight dependencies used directly at module level
 from sagemaker.hyperpod.cli.utils import setup_logger
 from sagemaker.hyperpod.cli.validators.cluster_validator import ClusterValidator
 
-# Define what should be available for lazy loading
 __all__ = [
     'boto3', 'botocore', 'BaseClient', 'client', 'KubernetesClient', 
     'get_user_agent_extra_suffix', 'ListPods', 'get_name_from_arn', 
@@ -55,22 +52,19 @@ __all__ = [
     '_hyperpod_telemetry_emitter', 'Feature'
 ]
 
-# Critical dependencies for decorators
 _CRITICAL_DEPENDENCIES = {
     '_hyperpod_telemetry_emitter': 'sagemaker.hyperpod.common.telemetry.telemetry_logging:_hyperpod_telemetry_emitter',
     'Feature': 'sagemaker.hyperpod.common.telemetry.constants:Feature',
 }
 
-# Create the critical dependencies loader (but don't call it yet)
 _ensure_critical_deps = create_critical_deps_loader(
     dependencies=_CRITICAL_DEPENDENCIES,
     module_name=__name__
 )
 
-# Load critical deps immediately for CLI generation decorators
 _ensure_critical_deps()
 
-# Lazy import mapping
+
 _LAZY_IMPORTS = {
     'boto3': 'boto3',
     'botocore': 'botocore.config',
@@ -91,14 +85,12 @@ _LAZY_IMPORTS = {
     'Feature': 'sagemaker.hyperpod.common.telemetry.constants:Feature'
 }
 
-# Create the lazy import manager
 _import_manager = LazyImportManager(_LAZY_IMPORTS)
 
 # Use the manager to create our __getattr__ function
 __getattr__ = _import_manager.create_getattr_function(__name__)
 
 
-# Helper function to get telemetry decorator (lazy loaded)
 def _get_telemetry_emitter():
     return _hyperpod_telemetry_emitter
 

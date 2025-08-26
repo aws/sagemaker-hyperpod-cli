@@ -2,73 +2,48 @@ import click
 import sys
 from typing import Any
 from sagemaker.hyperpod.common.cli_decorators import handle_cli_exceptions
-from sagemaker.hyperpod.common.lazy_loading import (
-    LazyRegistry, LazyDecorator, LazyImportManager, create_critical_deps_loader
-)
+from sagemaker.hyperpod.common.lazy_loading import LazyDecorator, setup_lazy_module
 from sagemaker.hyperpod.cli.command_registry import register_training_command
 
-# Define what should be available for lazy loading
-__all__ = [
-    'HyperPodPytorchJob', 'Metadata', 'generate_click_command', 'SCHEMA_REGISTRY',
-    '_hyperpod_telemetry_emitter', 'Feature', 'display_formatted_logs'
-]
-
-# Configuration for this module - centralizes template dependencies
-_MODULE_CONFIG = {
-    'template_package': 'hyperpod_pytorch_job_template',
-    'supported_versions': ['1.0'],
-    'schema_package': 'hyperpod_pytorch_job_template',
+TRAINING_CONFIG = {
+    'exports': [
+        'HyperPodPytorchJob', 'Metadata', 'generate_click_command', 'SCHEMA_REGISTRY',
+        '_hyperpod_telemetry_emitter', 'Feature', 'display_formatted_logs'
+    ],
+    'template_packages': {
+        'template_package': 'hyperpod_pytorch_job_template',
+        'supported_versions': ['1.0'],
+    },
+    'critical_deps': ['telemetry_emitter', 'telemetry_feature', 'training_utils'],
+    'lazy_imports': {
+        'HyperPodPytorchJob': 'sagemaker.hyperpod.training.hyperpod_pytorch_job:HyperPodPytorchJob',
+        'Metadata': 'sagemaker.hyperpod.common.config:Metadata',
+        'generate_click_command': 'sagemaker.hyperpod.cli.training_utils:generate_click_command',
+        'SCHEMA_REGISTRY': 'hyperpod_pytorch_job_template.registry:SCHEMA_REGISTRY',
+        '_hyperpod_telemetry_emitter': 'sagemaker.hyperpod.common.telemetry.telemetry_logging:_hyperpod_telemetry_emitter',
+        'Feature': 'sagemaker.hyperpod.common.telemetry.constants:Feature',
+        'display_formatted_logs': 'sagemaker.hyperpod.common.utils:display_formatted_logs'
+    }
 }
 
-# Lazy import mapping - declarative and clean
-_LAZY_IMPORTS = {
-    'HyperPodPytorchJob': 'sagemaker.hyperpod.training.hyperpod_pytorch_job:HyperPodPytorchJob',
-    'Metadata': 'sagemaker.hyperpod.common.config:Metadata',
-    'generate_click_command': 'sagemaker.hyperpod.cli.training_utils:generate_click_command',
-    'SCHEMA_REGISTRY': f'{_MODULE_CONFIG["template_package"]}.registry:SCHEMA_REGISTRY',
-    '_hyperpod_telemetry_emitter': 'sagemaker.hyperpod.common.telemetry.telemetry_logging:_hyperpod_telemetry_emitter',
-    'Feature': 'sagemaker.hyperpod.common.telemetry.constants:Feature',
-    'display_formatted_logs': 'sagemaker.hyperpod.common.utils:display_formatted_logs'
-}
-
-# Critical dependencies for decorators
-_CRITICAL_DEPENDENCIES = {
-    '_hyperpod_telemetry_emitter': 'sagemaker.hyperpod.common.telemetry.telemetry_logging:_hyperpod_telemetry_emitter',
-    'Feature': 'sagemaker.hyperpod.common.telemetry.constants:Feature',
-    'generate_click_command': 'sagemaker.hyperpod.cli.training_utils:generate_click_command',
-}
-
-def _setup_schema_registry(deps):
-    """Extra setup function to create the schema registry."""
+def _setup_training_registries(deps):
+    """Setup training-specific registries."""
+    from sagemaker.hyperpod.common.lazy_loading import LazyRegistry
     registry = LazyRegistry(
-        versions=_MODULE_CONFIG['supported_versions'],
-        registry_import_path=f'{_MODULE_CONFIG["template_package"]}.registry:SCHEMA_REGISTRY'
+        versions=['1.0'],
+        registry_import_path='hyperpod_pytorch_job_template.registry:SCHEMA_REGISTRY'
     )
     deps['SCHEMA_REGISTRY'] = registry
     setattr(sys.modules[__name__], 'SCHEMA_REGISTRY', registry)
 
-# Create the critical dependencies loader (but don't call it yet)
-_ensure_critical_deps = create_critical_deps_loader(
-    dependencies=_CRITICAL_DEPENDENCIES,
-    module_name=__name__,
-    extra_setup=_setup_schema_registry
-)
+TRAINING_CONFIG['extra_setup'] = _setup_training_registries
+setup_lazy_module(__name__, TRAINING_CONFIG)
 
-# Load critical deps immediately for CLI generation decorators
-_ensure_critical_deps()
-
-# Create the lazy import manager
-_import_manager = LazyImportManager(_LAZY_IMPORTS)
-
-# Use the manager to create our __getattr__ function
-__getattr__ = _import_manager.create_getattr_function(__name__)
-
-# Helper functions to get decorators (these will be lazy loaded)
+# Helper functions for decorators
 def _get_telemetry_emitter():
-    return _hyperpod_telemetry_emitter
+    return getattr(sys.modules[__name__], '_hyperpod_telemetry_emitter')
 
 def _get_generate_click_command():
-    # Trigger lazy loading via __getattr__
     return getattr(sys.modules[__name__], 'generate_click_command')
 
 
@@ -76,7 +51,7 @@ def _get_generate_click_command():
 @click.option("--version", default="1.0", help="Schema version to use")
 @click.option("--debug", default=False, help="Enable debug mode")
 @LazyDecorator(_get_generate_click_command,
-    schema_pkg=_MODULE_CONFIG["template_package"],
+    schema_pkg=lambda: sys.modules[__name__]._MODULE_CONFIG["template_package"],
     registry=lambda: sys.modules[__name__].SCHEMA_REGISTRY,
 )
 @LazyDecorator(_get_telemetry_emitter, lambda: sys.modules[__name__].Feature.HYPERPOD_CLI, "create_pytorchjob_cli")
@@ -101,7 +76,7 @@ def pytorch_create(version, debug, config):
 
     # Prepare job kwargs
     job_kwargs = {
-        "metadata": Metadata(**metadata_kwargs),
+        "metadata": sys.modules[__name__].Metadata(**metadata_kwargs),
         "replica_specs": spec.get("replica_specs"),
     }
 
@@ -114,7 +89,7 @@ def pytorch_create(version, debug, config):
         job_kwargs["run_policy"] = spec.get("run_policy")
 
     # Create job
-    job = HyperPodPytorchJob(**job_kwargs)
+    job = sys.modules[__name__].HyperPodPytorchJob(**job_kwargs)
     job.create(debug=debug)
 
 
@@ -129,7 +104,7 @@ def pytorch_create(version, debug, config):
 @handle_cli_exceptions()
 def list_jobs(namespace: str):
     """List all HyperPod PyTorch jobs."""
-    jobs = HyperPodPytorchJob.list(namespace=namespace)
+    jobs = sys.modules[__name__].HyperPodPytorchJob.list(namespace=namespace)
 
     if not jobs:
         click.echo("No jobs found.")
@@ -207,7 +182,7 @@ def list_jobs(namespace: str):
 @handle_cli_exceptions()
 def pytorch_describe(job_name: str, namespace: str):
     """Describe a HyperPod PyTorch job."""
-    job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
+    job = sys.modules[__name__].HyperPodPytorchJob.get(name=job_name, namespace=namespace)
 
     if job is None:
         raise Exception(f"Job {job_name} not found in namespace {namespace}")
@@ -308,7 +283,7 @@ def pytorch_describe(job_name: str, namespace: str):
 @handle_cli_exceptions()
 def pytorch_delete(job_name: str, namespace: str):
     """Delete a HyperPod PyTorch job."""
-    job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
+    job = sys.modules[__name__].HyperPodPytorchJob.get(name=job_name, namespace=namespace)
     job.delete()
 
 
@@ -328,7 +303,7 @@ def pytorch_delete(job_name: str, namespace: str):
 @handle_cli_exceptions()
 def pytorch_list_pods(job_name: str, namespace: str):
     """List all HyperPod PyTorch pods related to the job."""
-    job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
+    job = sys.modules[__name__].HyperPodPytorchJob.get(name=job_name, namespace=namespace)
     pods = job.list_pods()
 
     if not pods:
@@ -373,11 +348,11 @@ def pytorch_list_pods(job_name: str, namespace: str):
 def pytorch_get_logs(job_name: str, pod_name: str, namespace: str):
     """Get specific pod log for Hyperpod Pytorch job."""
     click.echo("Listing logs for pod: " + pod_name)
-    job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
+    job = sys.modules[__name__].HyperPodPytorchJob.get(name=job_name, namespace=namespace)
     logs = job.get_logs_from_pod(pod_name=pod_name)
 
     # Use common log display utility for consistent formatting across all job types
-    display_formatted_logs(logs, title=f"Pod Logs for {pod_name}")
+    sys.modules[__name__].display_formatted_logs(logs, title=f"Pod Logs for {pod_name}")
 
 
 @register_training_command("hyp-pytorch-job", "get-operator-logs")
@@ -391,7 +366,7 @@ def pytorch_get_logs(job_name: str, pod_name: str, namespace: str):
 @handle_cli_exceptions()
 def pytorch_get_operator_logs(since_hours: float):
     """Get operator logs for pytorch training jobs."""
-    logs = HyperPodPytorchJob.get_operator_logs(since_hours=since_hours)
+    logs = sys.modules[__name__].HyperPodPytorchJob.get_operator_logs(since_hours=since_hours)
     
     # Use common log display utility for consistent formatting across all job types
-    display_formatted_logs(logs, title="PyTorch Operator Logs")
+    sys.modules[__name__].display_formatted_logs(logs, title="PyTorch Operator Logs")

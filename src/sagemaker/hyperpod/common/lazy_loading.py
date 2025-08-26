@@ -248,3 +248,82 @@ def create_critical_deps_loader(
         return deps
     
     return _ensure_critical_deps
+
+
+def setup_lazy_module(module_name: str, config: Dict[str, Any]) -> None:
+    """
+    Setup lazy loading infrastructure for a command module.
+    
+    This eliminates boilerplate by providing a single setup function that handles
+    all the lazy loading infrastructure based on configuration.
+    
+    Args:
+        module_name: The __name__ of the module
+        config: Configuration dict with keys:
+            - exports: List of what should be available (__all__)
+            - template_packages: Dict of template package configs
+            - critical_deps: List of dependencies needed for decorators
+            - lazy_imports: Dict mapping names to import paths
+            - extra_setup: Optional function for additional setup
+    """
+    module = sys.modules[module_name]
+    
+    # Set __all__ for the module
+    if 'exports' in config:
+        setattr(module, '__all__', config['exports'])
+    
+    # Create module config if template packages specified
+    if 'template_packages' in config:
+        setattr(module, '_MODULE_CONFIG', config['template_packages'])
+    
+    # Setup critical dependencies
+    if 'critical_deps' in config:
+        critical_deps = {}
+        base_paths = {
+            'telemetry_emitter': 'sagemaker.hyperpod.common.telemetry.telemetry_logging:_hyperpod_telemetry_emitter',
+            'telemetry_feature': 'sagemaker.hyperpod.common.telemetry.constants:Feature',
+            'training_utils': 'sagemaker.hyperpod.cli.training_utils:generate_click_command',
+            'inference_utils': 'sagemaker.hyperpod.cli.inference_utils:generate_click_command'
+        }
+        
+        for dep in config['critical_deps']:
+            if dep in base_paths:
+                # Map to final attribute names
+                if dep == 'telemetry_emitter':
+                    critical_deps['_hyperpod_telemetry_emitter'] = base_paths[dep]
+                elif dep == 'telemetry_feature':
+                    critical_deps['Feature'] = base_paths[dep]
+                elif dep == 'training_utils':
+                    critical_deps['generate_click_command'] = base_paths[dep]
+                elif dep == 'inference_utils':
+                    critical_deps['generate_click_command'] = base_paths[dep]
+            else:
+                critical_deps[dep] = config['lazy_imports'].get(dep, dep)
+        
+        # Create and call critical deps loader
+        extra_setup = config.get('extra_setup')
+        ensure_critical_deps = create_critical_deps_loader(
+            dependencies=critical_deps,
+            module_name=module_name,
+            extra_setup=extra_setup
+        )
+        ensure_critical_deps()
+        setattr(module, '_ensure_critical_deps', ensure_critical_deps)
+    
+    # Setup lazy imports
+    if 'lazy_imports' in config:
+        import_manager = LazyImportManager(config['lazy_imports'])
+        getattr_func = import_manager.create_getattr_function(module_name)
+        setattr(module, '__getattr__', getattr_func)
+        setattr(module, '_import_manager', import_manager)
+    
+    # Helper functions for decorators
+    if 'telemetry_emitter' in config.get('critical_deps', []):
+        def _get_telemetry_emitter():
+            return getattr(module, '_hyperpod_telemetry_emitter')
+        setattr(module, '_get_telemetry_emitter', _get_telemetry_emitter)
+    
+    if any('utils' in dep for dep in config.get('critical_deps', [])):
+        def _get_generate_click_command():
+            return getattr(module, 'generate_click_command')
+        setattr(module, '_get_generate_click_command', _get_generate_click_command)
