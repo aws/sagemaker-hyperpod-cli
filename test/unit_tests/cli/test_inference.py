@@ -27,18 +27,18 @@ def test_js_create_with_required_args():
     # Reload the inference module with mocked sys.argv
     if 'sagemaker.hyperpod.cli.commands.inference' in sys.modules:
         importlib.reload(sys.modules['sagemaker.hyperpod.cli.commands.inference'])
-    
+
     from sagemaker.hyperpod.cli.commands.inference import js_create
-    
+
     with patch('sagemaker.hyperpod.cli.inference_utils.load_schema_for_version') as mock_load_schema, \
          patch('sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint') as mock_endpoint_class, \
          patch('sagemaker.hyperpod.common.cli_decorators._is_valid_jumpstart_model_id') as mock_model_validation, \
          patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists') as mock_namespace_exists:
-        
+
         # Mock enhanced error handling
         mock_model_validation.return_value = True  # Allow test model-id
         mock_namespace_exists.return_value = True  # Allow test namespace
-        
+
         # Mock schema loading
         mock_load_schema.return_value = {
             "properties": {
@@ -140,12 +140,12 @@ def test_custom_create_with_required_args():
     # Reload the inference module with mocked sys.argv
     if 'sagemaker.hyperpod.cli.commands.inference' in sys.modules:
         importlib.reload(sys.modules['sagemaker.hyperpod.cli.commands.inference'])
-    
+
     from sagemaker.hyperpod.cli.commands.inference import custom_create
-    
+
     with patch('sagemaker.hyperpod.cli.inference_utils.load_schema_for_version') as mock_load_schema, \
          patch('sagemaker.hyperpod.cli.commands.inference.HPEndpoint') as mock_endpoint_class:
-        
+
         # Mock schema loading to include storage flags
         mock_load_schema.return_value = {
             "properties": {

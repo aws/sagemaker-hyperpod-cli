@@ -17,8 +17,8 @@ keywords:
 
 Installation <installation>
 Getting Started <getting_started>
-CLI Reference <cli_reference>
-SDK reference <api/api_index>
+CLI Reference <cli/cli_index>
+SDK Reference <sdk/sdk_index>
 Advanced Resources <advanced_resources>
 ```
 
@@ -93,7 +93,7 @@ Version Info - you’re viewing latest documentation for SageMaker Hyperpod CLI 
 :gutter: 3
 
 :::{grid-item-card} API reference
-:link: api/api_index.html
+:link: sdk/sdk_index.html
 :class-card: sd-border-primary
 
 **Explore APIs** - Checkout API Documentation

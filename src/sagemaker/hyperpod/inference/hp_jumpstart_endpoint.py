@@ -125,9 +125,12 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
             namespace=self.metadata.namespace,
         )
 
-        self.status = JumpStartModelStatus.model_validate(
-            response["status"], by_name=True
-        )
+        if isinstance(response, dict) and "status" in response:
+            self.status = JumpStartModelStatus.model_validate(
+                response["status"], by_name=True
+            )
+        else:
+            self.status = None
 
         return self
 
@@ -165,6 +168,9 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
             kind=JUMPSTART_MODEL_KIND,
             namespace=namespace,
         )
+
+        if not isinstance(response, dict):
+            raise Exception(f"Expected dictionary response, got {type(response)}")
 
         endpoint = HPJumpStartEndpoint.model_validate(response["spec"], by_name=True)
         status = response.get("status")

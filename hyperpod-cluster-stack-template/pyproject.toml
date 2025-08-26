@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hyperpod-cluster-stack-template"
+version = "1.0"
+readme = "README.md"
+authors = [{name = "Amazon Web Services"}]
+license = {text = "Apache-2.0"}
+description = "Versioned JSON-schema + Pydantic models for HyperpodPytorchJobOperator"
+requires-python = ">=3.8"
+dependencies = [
+    "pydantic",
+]
+
+[tool.setuptools.packages.find]
+# find all subpackages under hyperpod_pytorch_job_template
+where = ["."]
+include = ["hyperpod_cluster_stack_template*"]
+
+[tool.setuptools]
+# tells setuptools to include package_data entries below
+include-package-data = true
+
+[tool.setuptools.package-data]
+"*" = ["*.yaml"]

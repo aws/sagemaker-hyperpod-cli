@@ -19,12 +19,17 @@ import sys
 import re
 import json
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, ClassVar
 
+# Mock kubernetes.config before adding source path to prevent import errors
+from unittest.mock import MagicMock
+import types
+kubernetes_config = types.ModuleType('kubernetes.config')
+kubernetes_config.KUBE_CONFIG_DEFAULT_LOCATION = "~/.kube/config"
+sys.modules['kubernetes.config'] = kubernetes_config
 
-
-def setup(app):
-    """Register our sphinx hooks."""
+# Add the source directory to Python path
+sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 
 # Get version from setup.py
@@ -71,10 +76,12 @@ extensions = [
     "sphinx_copybutton",
     "sphinx.ext.autosummary",
     "sphinx.ext.autosectionlabel",
+    "sphinx_design",
+    "sphinx_click"
 ]
 
 
-autodoc_mock_imports = ["pyspark", "feature_store_pyspark", "py4j"]
+autodoc_mock_imports = ["pyspark", "feature_store_pyspark", "py4j", "boto3", "botocore", "kubernetes", "yaml", "sagemaker_core"]
 
 source_suffix = {
     '.rst': 'restructuredtext',
@@ -82,8 +89,19 @@ source_suffix = {
     '.md': 'myst-nb',
 }
 
-autoclass_content = "both"
-autodoc_default_flags = ["show-inheritance", "members", "undoc-members"]
+autoclass_content = "class"
+autodoc_class_signature = "mixed"
+autodoc_default_options = {
+    "members": True,
+    "undoc-members": False,
+    "private-members": False,
+    "special-members": False,
+    "show-inheritance": False,
+}
+
+# Don't document class attributes automatically
+autodoc_typehints_format = "short"
+autodoc_preserve_defaults = True
 autodoc_member_order = "bysource"
 default_role = "py:obj"
 
@@ -103,9 +121,9 @@ html_theme_options = {
     "use_fullscreen_button": False,
     "use_download_button": False,
     "home_page_in_toc": True,
-    # Configuration to disable right-side table of contents
-    "secondary_sidebar_items": [],  # Remove all content from right sidebar
-    "show_toc_level": 0,           # Disable automatic TOC generation
+    "secondary_sidebar_items": ["edit-this-page", "page-toc"],
+    "toc_title": "Table of contents",
+    "show_toc_level": 3,   
 }
 
 author = "Amazon Web Services"
@@ -117,6 +135,14 @@ html_css_files = ["custom.css",
                   "search_accessories.css",
                   ]
 napoleon_use_rtype = False
+napoleon_use_param = False
+napoleon_include_init_with_doc = False
+napoleon_use_ivar = True
+napoleon_parameter_style = "table"
+napoleon_type_aliases = None
+napoleon_custom_sections = [('Parameters', 'params_style')]
+
+viewcode_line_numbers = True
 
 # nbsphinx configuration
 nbsphinx_allow_errors = True
@@ -135,6 +161,7 @@ myst_enable_extensions = [
     "smartquotes",
     "substitution",
     "tasklist",
+    "attrs_inline",
 ]
 myst_heading_anchors = 3
 nb_execution_mode = "off"
@@ -146,11 +173,20 @@ myst_substitutions = {
 
 # Automatically extract typehints when specified and place them in
 # descriptions of the relevant function/method.
-autodoc_typehints = "description"
+autodoc_typehints = "signature"
+
+# Clean documentation without Pydantic boilerplate
+# Hide constructor signature and parameters
+autodoc_class_signature = "separated"
+autodoc_member_order = "bysource"
+
+def setup(app):
+    pass
 
 
 # autosummary
 autosummary_generate = True
+autosummary_ignore_module_all = False
 
 # autosectionlabel
 autosectionlabel_prefix_document = True

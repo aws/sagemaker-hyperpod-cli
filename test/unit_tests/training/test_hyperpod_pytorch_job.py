@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, Mock
 from kubernetes.client.exceptions import ApiException
 
 from sagemaker.hyperpod.training import (

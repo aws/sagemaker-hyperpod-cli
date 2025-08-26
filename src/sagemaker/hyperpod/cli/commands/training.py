@@ -331,6 +331,38 @@ def pytorch_get_logs(job_name: str, pod_name: str, namespace: str):
 def pytorch_get_operator_logs(since_hours: float):
     """Get operator logs for pytorch training jobs."""
     logs = HyperPodPytorchJob.get_operator_logs(since_hours=since_hours)
-    
+
     # Use common log display utility for consistent formatting across all job types
     display_formatted_logs(logs, title="PyTorch Operator Logs")
+
+
+@click.command("hyp-pytorch-job",
+               help="""Execute commands in pods associated with a HyperPod PyTorch job.
+
+Usage Format:
+  hyp exec --job-name <job-name> [-p <pod-name>] [--all-pods] -- <command>""")
+@click.option("--job-name", required=True, help="Required. The name of the job to execute the command within.")
+@click.option("--pod", "-p", help="The name of the pod to execute the command in. (Required: specify either --pod or --all-pods)")
+@click.option("--all-pods", is_flag=True, help="Execute command in all pods associated with the job. (Required: specify either --pod or --all-pods)")
+@click.option("--namespace", "-n", default="default", help="Optional. The namespace of the job.")
+@click.option("--container", help="Optional. The container name to execute the command in.")
+@click.argument("command", nargs=-1, required=True)
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "exec_pytorchjob_cli")
+def pytorch_exec(job_name: str, pod: str, all_pods: bool, namespace: str, container: str, command: tuple):
+    """Execute commands in pods associated with a HyperPod PyTorch job."""
+    if (all_pods and pod) or not (all_pods or pod):
+        raise click.UsageError("Must specify exactly one of the following: --all-pods, --pod")
+
+    try:
+        job = HyperPodPytorchJob.get(name=job_name, namespace=namespace)
+        output = job.exec_command(list(command), pod, all_pods, container)
+        if output:
+            click.echo(output)
+        else:
+            click.echo("Command executed successfully (no output)")
+    except ValueError as e:
+        # User input validation errors
+        raise click.UsageError(str(e))
+    except Exception as e:
+        # Other errors (API, network, etc.)
+        raise click.UsageError(f"Failed to execute command: {str(e)}")

@@ -1,3 +1,5 @@
+import subprocess
+import sys
 import uuid
 import pytest
 import json
@@ -12,6 +14,30 @@ from sagemaker.hyperpod.training import (
     Template,
 )
 from sagemaker.hyperpod.common.config import Metadata
+
+@pytest.fixture(scope="session", autouse=True)
+def ensure_template_package_installed():
+    """Ensure template package is installed globally for CLI usage."""
+    try:
+        import hyperpod_cluster_stack_template
+    except ImportError:
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "./hyperpod-cluster-stack-template"])
+            print("✓ hyperpod-cluster-stack-template installed for CLI usage")
+        except subprocess.CalledProcessError as e:
+            print(f"✗ Failed to install template package for CLI: {e}")
+            raise
+
+def pytest_configure(config):
+    """Install hyperpod-cluster-stack-template from local directory before test collection."""
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "./hyperpod-cluster-stack-template"],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print("✓ hyperpod-cluster-stack-template installed successfully from local directory")
+    except subprocess.CalledProcessError as e:
+        print(f"✗ Failed to install hyperpod-cluster-stack-template from ./hyperpod-cluster-stack-template: {e}")
+        print("Make sure the hyperpod-cluster-stack-template directory exists in the project root")
+        raise
 
 @pytest.fixture(scope="class")
 def test_job_name():

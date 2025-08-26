@@ -94,7 +94,7 @@ def custom_invoke(
     content_type: Optional[str]
 ):
     """
-    Invoke a model endpoint.
+    Invoke a custom model endpoint.
     """
     try:
         payload = json.dumps(json.loads(body))

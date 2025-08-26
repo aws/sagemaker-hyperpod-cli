@@ -7,6 +7,7 @@ from sagemaker.hyperpod.cli.commands.training import (
     list_jobs,
     pytorch_describe,
     pytorch_get_operator_logs,
+    pytorch_exec,
 )
 from hyperpod_pytorch_job_template.v1_1.model import ALLOWED_TOPOLOGY_LABELS
 import sys
@@ -68,9 +69,9 @@ class TestTrainingCommands(unittest.TestCase):
         # Reload the training module with mocked sys.argv, as sys.argv is loaded during the import
         if 'sagemaker.hyperpod.cli.commands.training' in sys.modules:
             importlib.reload(sys.modules['sagemaker.hyperpod.cli.commands.training'])
-        
+
         from sagemaker.hyperpod.cli.commands.training import pytorch_create
-        
+
         with patch("sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob") as mock_hyperpod_job:
             # Setup mock
             mock_instance = Mock()
@@ -117,9 +118,9 @@ class TestTrainingCommands(unittest.TestCase):
         # Reload the training module with mocked sys.argv
         if 'sagemaker.hyperpod.cli.commands.training' in sys.modules:
             importlib.reload(sys.modules['sagemaker.hyperpod.cli.commands.training'])
-        
+
         from sagemaker.hyperpod.cli.commands.training import pytorch_create
-        
+
         with patch("sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob") as mock_hyperpod_job:
             mock_instance = Mock()
             mock_hyperpod_job.return_value = mock_instance
@@ -263,7 +264,7 @@ class TestTrainingCommands(unittest.TestCase):
 
     def test_valid_topology_label_cli(self):
         """Test CLI accepts valid topology labels."""
-        
+
         for label in ALLOWED_TOPOLOGY_LABELS:
             # Test preferred-topology
             result = self.runner.invoke(pytorch_create, [
@@ -274,7 +275,7 @@ class TestTrainingCommands(unittest.TestCase):
             # Should not have validation errors (may fail later due to other reasons)
             self.assertNotIn('Topology label', result.output)
             self.assertNotIn('must be one of:', result.output)
-            
+
             # Test required-topology
             result = self.runner.invoke(pytorch_create, [
                 '--job-name', f'test-job-req-{hash(label) % 1000}',  # Unique job names
@@ -292,27 +293,75 @@ class TestTrainingCommands(unittest.TestCase):
             'topology.k8s.aws/invalid-layer',
             'custom/topology-label'
         ]
-        
+
         for label in invalid_labels:
             # Test preferred-topology-label
             result = self.runner.invoke(pytorch_create, [
-                '--job-name', 'test-job', 
+                '--job-name', 'test-job',
                 '--image', 'pytorch:latest',
                 '--preferred-topology', label
             ])
             self.assertNotEqual(result.exit_code, 0)
             self.assertIn('Topology label', result.output)
             self.assertIn('must be one of:', result.output)
-            
+
             # Test required-topology
             result = self.runner.invoke(pytorch_create, [
-                '--job-name', 'test-job', 
+                '--job-name', 'test-job',
                 '--image', 'pytorch:latest',
                 '--required-topology', label
             ])
             self.assertNotEqual(result.exit_code, 0)
             self.assertIn('Topology label', result.output)
             self.assertIn('must be one of:', result.output)
+
+    def test_pytorch_exec_requires_job_name(self):
+        """Test that pytorch_exec requires job-name"""
+        result = self.runner.invoke(pytorch_exec, ['ls'])
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("job-name", result.output.lower())
+
+    def test_pytorch_exec_requires_pod_or_all_pods(self):
+        """Test that pytorch_exec requires either --pod or --all-pods"""
+        result = self.runner.invoke(pytorch_exec, [
+            '--job-name', 'test-job',
+            'ls'
+        ])
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("Must specify exactly one", result.output)
+
+    @patch('sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob.get')
+    def test_pytorch_exec_single_pod_success(self, mock_get):
+        """Test successful pytorch_exec on single pod"""
+        mock_job = Mock()
+        mock_job.exec_command.return_value = "command output"
+        mock_get.return_value = mock_job
+
+        result = self.runner.invoke(pytorch_exec, [
+            '--job-name', 'test-job',
+            '--pod', 'test-pod',
+            '--', 'ls', '-la'
+        ])
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("command output", result.output)
+        mock_job.exec_command.assert_called_once_with(['ls', '-la'], 'test-pod', False, None)
+
+    @patch('sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob.get')
+    def test_pytorch_exec_error_handling(self, mock_get):
+        """Test pytorch_exec error handling"""
+        mock_job = Mock()
+        mock_job.exec_command.side_effect = ValueError("Pod not found")
+        mock_get.return_value = mock_job
+
+        result = self.runner.invoke(pytorch_exec, [
+            '--job-name', 'test-job',
+            '--pod', 'nonexistent-pod',
+            '--', 'ls'
+        ])
+
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("Pod not found", result.output)
 
 
 @unittest.skipUnless(PYDANTIC_AVAILABLE, "Pydantic model not available")
@@ -437,7 +486,7 @@ class TestValidationPatterns(unittest.TestCase):
         )
         self.assertEqual(config.node_count, 5)
         
-        # Test tasks_per_node
+        # Test tasks_per_node - should remain as "auto" when set to "auto"
         config = PyTorchJobConfig(
             job_name="test-job", 
             image="pytorch:latest", 
@@ -449,9 +498,9 @@ class TestValidationPatterns(unittest.TestCase):
         config = PyTorchJobConfig(
             job_name="test-job", 
             image="pytorch:latest", 
-            max_retry=0
+            max_retry=3
         )
-        self.assertEqual(config.max_retry, 0)
+        self.assertEqual(config.max_retry, 3)
 
     def test_integer_field_validation_failure(self):
         """Test integer field validation failures"""
@@ -774,14 +823,14 @@ class TestValidationPatterns(unittest.TestCase):
         self.assertEqual(config.pull_policy, "Always")
         self.assertEqual(config.instance_type, "ml.p4d.24xlarge")
         self.assertEqual(config.node_count, 2)
-        self.assertEqual(config.tasks_per_node, "auto")
+        self.assertEqual(config.tasks_per_node, "auto") # Should remain as "auto"
         self.assertEqual(config.label_selector, {"accelerator": "nvidia"})
         self.assertEqual(config.queue_name, "training-queue")
         self.assertEqual(config.priority, "high")
         self.assertEqual(config.max_retry, 3)
         self.assertEqual(len(config.volume), 1)
         self.assertEqual(config.service_account_name, "training-sa")
-        
+
     def test_valid_topology_labels(self):
         """Test that valid topology labels are accepted."""
 

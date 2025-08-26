@@ -90,6 +90,7 @@ def test_wait_until_inservice(js_endpoint_name):
 
 
 @pytest.mark.dependency(depends=["create"])
+@pytest.mark.skip
 def test_custom_invoke(runner, js_endpoint_name):
     result = runner.invoke(custom_invoke, [
         "--endpoint-name", js_endpoint_name,

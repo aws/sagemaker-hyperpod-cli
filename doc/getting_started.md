@@ -6,12 +6,17 @@
 :hidden:
 :maxdepth: 1
 
-Training <training>
-Inference <inference>
+Cluster Management <getting_started/cluster_management>
+Training <getting_started/training>
+Inference <getting_started/inference>
 
 ```
 
 This guide will help you get started with the SageMaker HyperPod CLI and SDK to perform basic operations.
+
+```{note}
+**Region Configuration**: For commands that accept the `--region` option, if no region is explicitly provided, the command will use the default region from your AWS credentials configuration.
+```
 
 ## List Available Clusters
 

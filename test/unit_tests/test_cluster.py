@@ -66,9 +66,9 @@ class ClusterTest(unittest.TestCase):
             "Orchestrator": {
                 "Eks": {
                     "ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/my-cluster"
-                }
+            },
+            "InstanceGroups": [{"CurrentCount": 2}]                },
             }
-        }
 
         self.mock_k8s_client.context_exists.return_value = False
         self.mock_k8s_client.set_context.return_value = None
@@ -104,9 +104,9 @@ class ClusterTest(unittest.TestCase):
             "Orchestrator": {
                 "Eks": {
                     "ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/my-cluster"
-                }
+            },
+            "InstanceGroups": [{"CurrentCount": 2}]                },
             }
-        }
 
         self.mock_k8s_client.context_exists.return_value = False
         self.mock_k8s_client.set_context.return_value = None
@@ -145,9 +145,9 @@ class ClusterTest(unittest.TestCase):
             "Orchestrator": {
                 "Eks": {
                     "ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/my-cluster"
-                }
+            },
+            "InstanceGroups": [{"CurrentCount": 2}]                },
             }
-        }
 
         self.mock_k8s_client.context_exists.return_value = False
         self.mock_k8s_client.set_context.return_value = None
@@ -225,9 +225,9 @@ class ClusterTest(unittest.TestCase):
             "Orchestrator": {
                 "Eks": {
                     "ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/my-cluster"
-                }
+            },
+            "InstanceGroups": [{"CurrentCount": 2}]                },
             }
-        }
 
         self.mock_k8s_client.context_exists.return_value = False
         self.mock_k8s_client.set_context.return_value = None
@@ -294,9 +294,10 @@ class ClusterTest(unittest.TestCase):
             "Orchestrator": {
                 "Eks": {
                     "ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
-                }
+            },
+            "InstanceGroups": [{"CurrentCount": 2}]                },
             }
-        }
+
         self.mock_sm_client.list_clusters.return_value = (
             _generate_get_clusters_response()
         )
@@ -348,9 +349,10 @@ class ClusterTest(unittest.TestCase):
             "Orchestrator": {
                 "Eks": {
                     "ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
-                }
+            },
+            "InstanceGroups": [{"CurrentCount": 2}]                },
             }
-        }
+
         self.mock_sm_client.list_clusters.return_value = (
             _generate_get_clusters_response()
         )
@@ -460,9 +462,10 @@ class ClusterTest(unittest.TestCase):
             "Orchestrator": {
                 "Eks": {
                     "ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
-                }
+            },
+            "InstanceGroups": [{"CurrentCount": 2}]                },
             }
-        }
+
         self.mock_sm_client.list_clusters.return_value = {"Key": "Value"}
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
@@ -511,9 +514,10 @@ class ClusterTest(unittest.TestCase):
             "Orchestrator": {
                 "Eks": {
                     "ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
-                }
+            },
+            "InstanceGroups": [{"CurrentCount": 2}]                },
             }
-        }
+
         self.mock_sm_client.list_clusters.return_value = (
             _generate_get_clusters_response()
         )
@@ -572,9 +576,10 @@ class ClusterTest(unittest.TestCase):
             "Orchestrator": {
                 "Eks": {
                     "ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
-                }
+            },
+            "InstanceGroups": [{"CurrentCount": 2}]                },
             }
-        }
+
         self.mock_sm_client.list_clusters.return_value = (
             _generate_get_clusters_response()
         )
@@ -630,9 +635,11 @@ class ClusterTest(unittest.TestCase):
             "Orchestrator": {
                 "Eks": {
                     "ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
-                }
+            },
+            },
+            "InstanceGroups": [{"CurrentCount": 2}]
             }
-        }
+
         self.mock_sm_client.list_clusters.return_value = (
             _generate_get_clusters_response()
         )
@@ -688,9 +695,10 @@ class ClusterTest(unittest.TestCase):
             "Orchestrator": {
                 "Eks": {
                     "ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
-                }
+            },
+            "InstanceGroups": [{"CurrentCount": 2}]                },
             }
-        }
+
         self.mock_sm_client.list_clusters.return_value = (
             _generate_get_clusters_response()
         )
@@ -773,9 +781,10 @@ class ClusterTest(unittest.TestCase):
             "Orchestrator": {
                 "Eks": {
                     "ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/cluster-3"
-                }
+            },
+            "InstanceGroups": [{"CurrentCount": 2}]                },
             }
-        }
+
         self.mock_sm_client.list_clusters.return_value = (
             _generate_get_clusters_response()
         )
@@ -827,9 +836,10 @@ class ClusterTest(unittest.TestCase):
             "Orchestrator": {
                 "Eks": {
                     "ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/cluster-3"
-                }
+            },
+            "InstanceGroups": [{"CurrentCount": 2}]                },
             }
-        }
+
         self.mock_sm_client.list_clusters.side_effect = Exception("Unexpected error")
         self.mock_session.client.return_value = self.mock_sm_client
         mock_session.return_value = self.mock_session
@@ -876,9 +886,11 @@ class ClusterTest(unittest.TestCase):
             "Orchestrator": {
                 "Eks": {
                     "ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/cluster-3"
-                }
+            },
+            },
+            "InstanceGroups": [{"CurrentCount": 2}]
             }
-        }
+
         self.mock_sm_client.list_clusters.return_value = (
             _generate_get_clusters_response()
         )
@@ -925,9 +937,11 @@ class ClusterTest(unittest.TestCase):
             "Orchestrator": {
                 "Eks": {
                     "ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/cluster-3"
-                }
+            },
+            },
+            "InstanceGroups": [{"CurrentCount": 2}]
             }
-        }
+
         self.mock_sm_client.list_clusters.return_value = (
             _generate_get_clusters_response()
         )
@@ -986,9 +1000,11 @@ class ClusterTest(unittest.TestCase):
             "Orchestrator": {
                 "Eks": {
                     "ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
-                }
+            },
+            },
+            "InstanceGroups": [{"CurrentCount": 2}]
             }
-        }
+
         self.mock_sm_client.list_clusters.return_value = (
             {
                 "ClusterSummaries": [
@@ -1056,8 +1072,9 @@ class ClusterTest(unittest.TestCase):
             "Orchestrator": {
                 "Eks": {
                     "ClusterArn": "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
-                }
-            }
+            },
+            },
+            "InstanceGroups": [{"CurrentCount": 2}]
         }
         self.mock_sm_client.list_clusters.return_value = (
             {
@@ -1086,6 +1103,57 @@ class ClusterTest(unittest.TestCase):
         self.assertIn('"AvailableAcceleratorDevices": "N/A"', result.output)
         # Expect JSON output
         json.loads(result.output)
+
+    @mock.patch("subprocess.run")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.validators.cluster_validator.ClusterValidator.validate_cluster_and_get_eks_arn")
+    @mock.patch("sagemaker.hyperpod.cli.validators.cluster_validator.ClusterValidator.validate_aws_credential")
+    @mock.patch("boto3.Session")
+    @mock.patch("kubernetes.config.load_kube_config")
+    def test_list_clusters_with_zero_instances_shows_zero_nodes(
+        self,
+        mock_load_kube_config: mock.Mock,
+        mock_session: mock.Mock,
+        mock_validate_aws_credentials: mock.Mock,
+        mock_validate_cluster_and_get_eks_arn: mock.Mock,
+        mock_kubernetes_client: mock.Mock,
+        mock_subprocess_run: mock.Mock,
+    ):
+        """Test that clusters with 0 instances are shown with 0 nodes."""
+        # Arrange
+        mock_validate_aws_credentials.return_value = True
+        mock_validate_cluster_and_get_eks_arn.return_value = "arn:aws:eks:us-west-2:123456789012:cluster/cluster-1"
+        mock_load_kube_config.return_value = None
+        mock_subprocess_run.return_value = None
+
+        # Mock cluster list response
+        self.mock_sm_client.list_clusters.return_value = {
+            "ClusterSummaries": [
+                {"ClusterName": "zero-instance-cluster"}
+            ]
+        }
+        
+        # Mock describe_cluster to return cluster with 0 instances
+        self.mock_sm_client.describe_cluster.return_value = {
+            "ClusterStatus": "Failed",
+            "ClusterName": "zero-instance-cluster",
+            "InstanceGroups": [
+                {"CurrentCount": 0},  # Zero instances
+                {"CurrentCount": 0}   # Zero instances
+            ]
+        }
+        
+        self.mock_session.client.return_value = self.mock_sm_client
+        mock_session.return_value = self.mock_session
+
+        # Act
+        result = self.runner.invoke(list_cluster)
+
+        # Assert
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("zero-instance-cluster", result.output)
+        # Should contain TotalNodes with 0 value
+        self.assertIn('"TotalNodes": 0', result.output)
 
 
 def _generate_nodes_list():
@@ -1213,7 +1281,7 @@ def _generate_get_cluster_queue_response():
                             ]
                         },
                     ]
-                }
+                },
             ],
         },
         "status": {
@@ -1225,7 +1293,7 @@ def _generate_get_cluster_queue_response():
                         {"name": "memory", "total": "4Gi", "borrowed": "0Gi"},
                         {"name": "nvidia.com/gpu", "total": 1, "borrowed": 0}
                     ]
-                }
+                },
             ]
         }
     }

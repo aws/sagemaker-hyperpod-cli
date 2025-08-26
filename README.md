@@ -159,6 +159,13 @@ hyp create hyp-pytorch-job \
     --queue-name "training-queue" \
     --priority "high" \
     --max-retry 3 \
+    --accelerators 8 \
+    --vcpu 96.0 \
+    --memory 1152.0 \
+    --accelerators-limit 8 \
+    --vcpu-limit 96.0 \
+    --memory-limit 1152.0 \
+    --preferred-topology "topology.kubernetes.io/zone=us-west-2a" \
     --volume name=model-data,type=hostPath,mount_path=/data,path=/data \
     --volume name=training-output,type=pvc,mount_path=/data2,claim_name=my-pvc,read_only=false
 ```

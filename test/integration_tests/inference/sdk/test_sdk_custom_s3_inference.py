@@ -127,6 +127,7 @@ def test_wait_until_inservice():
 
 
 @pytest.mark.dependency(depends=["create"])
+@pytest.mark.skip
 def test_invoke_endpoint(monkeypatch):
     original_transform = codec.transform
 

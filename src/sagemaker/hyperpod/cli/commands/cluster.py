@@ -14,6 +14,7 @@ import logging
 import subprocess
 import json
 import sys
+import signal
 import botocore.config
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -252,6 +253,39 @@ def rate_limited_operation(
     namespace: Optional[List[str]],
 ) -> Optional[List[List[str]]]:
     try:
+        cluster_capacities = []  # Initialize at the beginning
+        
+        # Get cluster details to check instance count
+        cluster_response = sm_client.describe_cluster(ClusterName=cluster_name)
+        cluster_status = cluster_response.get('ClusterStatus', 'Unknown')
+        
+        # Check if cluster has zero instances
+        instance_groups = cluster_response.get('InstanceGroups', [])
+        total_instances = sum(
+            group.get('CurrentCount', 0) for group in instance_groups
+        )
+        
+        # If cluster has 0 instances, add it with 0 nodes
+        if total_instances == 0:
+            logger.info(f"Adding cluster {cluster_name} with 0 instances (status: {cluster_status})")
+            zero_instance_row = [
+                cluster_name,
+                "N/A",  # InstanceType
+                0,      # TotalNodes
+                0,      # AcceleratorDevicesAvailable
+                0,      # NodeHealthStatus=Schedulable
+                "N/A",  # DeepHealthCheckStatus=Passed
+            ]
+            
+            # Add namespace columns with 0 values
+            if namespace:
+                for ns in namespace:
+                    zero_instance_row.extend([0, 0])  # Total and Available accelerator devices
+            
+            cluster_capacities.append(zero_instance_row)
+            return cluster_capacities
+        
+        # Proceed with EKS validation for clusters with instances
         eks_cluster_arn = validator.validate_cluster_and_get_eks_arn(
             cluster_name, sm_client
         )
@@ -259,7 +293,7 @@ def rate_limited_operation(
             logger.warning(
                 f"Cannot find EKS cluster behind {cluster_name}, continue..."
             )
-            return
+            return None
         eks_cluster_name = get_name_from_arn(eks_cluster_arn)
         _update_kube_config(eks_cluster_name, region, temp_config_file)
         k8s_client = KubernetesClient(config_file=temp_config_file)
@@ -267,31 +301,31 @@ def rate_limited_operation(
             temp_config_file, SAGEMAKER_HYPERPOD_NAME_LABEL
         )
         nodes_info = _aggregate_nodes_info(nodes)
-        cluster_capacities = []
 
         ns_nominal_quota = {}
         ns_quota_usage = {}
 
-        for ns in namespace:
-            sm_managed_namespace = k8s_client.get_sagemaker_managed_namespace(ns)
-            if sm_managed_namespace:
-                quota_allocation_id = sm_managed_namespace.metadata.labels[
-                    SAGEMAKER_QUOTA_ALLOCATION_LABEL
-                ]
-                cluster_queue_name = (
-                    HYPERPOD_NAMESPACE_PREFIX
-                    + quota_allocation_id
-                    + SAGEMAKER_MANAGED_CLUSTER_QUEUE_SUFFIX
-                )
+        if namespace:
+            for ns in namespace:
+                sm_managed_namespace = k8s_client.get_sagemaker_managed_namespace(ns)
+                if sm_managed_namespace:
+                    quota_allocation_id = sm_managed_namespace.metadata.labels[
+                        SAGEMAKER_QUOTA_ALLOCATION_LABEL
+                    ]
+                    cluster_queue_name = (
+                        HYPERPOD_NAMESPACE_PREFIX
+                        + quota_allocation_id
+                        + SAGEMAKER_MANAGED_CLUSTER_QUEUE_SUFFIX
+                    )
 
-                cluster_queue = k8s_client.get_cluster_queue(cluster_queue_name)
-                nominal_quota = _get_cluster_queue_nominal_quota(cluster_queue)
-                quota_usage = _get_cluster_queue_quota_usage(cluster_queue)
-                ns_nominal_quota[ns] = nominal_quota
-                ns_quota_usage[ns] = quota_usage
-            else:
-                ns_nominal_quota[ns] = {}
-                ns_quota_usage[ns] = {}
+                    cluster_queue = k8s_client.get_cluster_queue(cluster_queue_name)
+                    nominal_quota = _get_cluster_queue_nominal_quota(cluster_queue)
+                    quota_usage = _get_cluster_queue_quota_usage(cluster_queue)
+                    ns_nominal_quota[ns] = nominal_quota
+                    ns_quota_usage[ns] = quota_usage
+                else:
+                    ns_nominal_quota[ns] = {}
+                    ns_quota_usage[ns] = {}
 
         for instance_type, nodes_summary in nodes_info.items():
             capacities = [
@@ -302,20 +336,21 @@ def rate_limited_operation(
                 nodes_summary["schedulable"],
                 nodes_summary["deep_health_check_passed"],
             ]
-            for ns in namespace:
-                capacities.append(
-                    ns_nominal_quota.get(ns)
-                    .get(instance_type, {})
-                    .get(NVIDIA_GPU_RESOURCE_LIMIT_KEY, "N/A")
-                )
-                capacities.append(
-                    _get_available_quota(
-                        ns_nominal_quota.get(ns),
-                        ns_quota_usage.get(ns),
-                        instance_type,
-                        NVIDIA_GPU_RESOURCE_LIMIT_KEY,
+            if namespace:
+                for ns in namespace:
+                    capacities.append(
+                        ns_nominal_quota.get(ns)
+                        .get(instance_type, {})
+                        .get(NVIDIA_GPU_RESOURCE_LIMIT_KEY, "N/A")
                     )
-                )
+                    capacities.append(
+                        _get_available_quota(
+                            ns_nominal_quota.get(ns),
+                            ns_quota_usage.get(ns),
+                            instance_type,
+                            NVIDIA_GPU_RESOURCE_LIMIT_KEY,
+                        )
+                    )
             cluster_capacities.append(capacities)
         return cluster_capacities
     except Exception as e:
@@ -526,16 +561,26 @@ def set_cluster_context(
     """
     if debug:
         set_logging_level(logger, logging.DEBUG)
-    validator = ClusterValidator()
-    botocore_config = botocore.config.Config(
-        user_agent_extra=get_user_agent_extra_suffix()
-    )
-    session = boto3.Session(region_name=region) if region else boto3.Session()
-    if not validator.validate_aws_credential(session):
-        logger.error("Cannot connect to HyperPod cluster due to aws credentials error")
-        sys.exit(1)
-
+    
+    timeout = 60  # 1 minute
+    
+    def timeout_handler(signum, frame):
+        raise TimeoutError(f"Operation timed out after {timeout} seconds")
+    
+    # Set up timeout
+    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(timeout)
+    
     try:
+        validator = ClusterValidator()
+        botocore_config = botocore.config.Config(
+            user_agent_extra=get_user_agent_extra_suffix()
+        )
+        session = boto3.Session(region_name=region) if region else boto3.Session()
+        if not validator.validate_aws_credential(session):
+            logger.error("Cannot connect to HyperPod cluster due to aws credentials error")
+            sys.exit(1)
+
         sm_client = get_sagemaker_client(session, botocore_config)
         hp_cluster_details = sm_client.describe_cluster(ClusterName=cluster_name)
         logger.debug("Fetched hyperpod cluster details")
@@ -549,6 +594,14 @@ def set_cluster_context(
         _update_kube_config(eks_name, region, None)
         k8s_client = KubernetesClient()
         k8s_client.set_context(eks_cluster_arn, namespace)
+        
+        # Cancel the alarm if operation completes successfully
+        signal.alarm(0)
+        logger.info(f"Successfully connected to cluster {cluster_name}")
+        
+    except TimeoutError as e:
+        logger.error("Timed out - Please check credentials, setup configurations  and try again")
+        sys.exit(1)
     except botocore.exceptions.NoRegionError:
         logger.error(
             f"Please ensure you configured AWS default region or use '--region' argument to specify the region"
@@ -559,6 +612,9 @@ def set_cluster_context(
             f"Unexpected error happens when try to connect to cluster {cluster_name}. Error: {e}"
         )
         sys.exit(1)
+    finally:
+        # Ensure alarm is cancelled in all cases
+        signal.alarm(0)
 
 
 @click.command()

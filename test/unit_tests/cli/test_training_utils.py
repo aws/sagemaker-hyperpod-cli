@@ -152,7 +152,11 @@ class TestGenerateClickCommand:
 
         class DummyModel:
             def __init__(self, **kwargs):
-                self.__dict__.update(kwargs)
+                # Set default values for all expected attributes
+                self.node_count = kwargs.get('node_count', None)
+                self.deep_health_check_passed_nodes_only = kwargs.get('deep_health_check_passed_nodes_only', None)
+                self.tasks_per_node = kwargs.get('tasks_per_node', None)
+                self.job_name = kwargs.get('job_name', None)
 
             def to_domain(self):
                 return self

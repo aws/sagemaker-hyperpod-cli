@@ -24,6 +24,10 @@ SageMaker HyperPod training jobs allow you to:
 - Manage job scheduling and priorities
 - Mount volumes and persistent volume claims
 
+```{note}
+**Region Configuration**: For commands that accept the `--region` option, if no region is explicitly provided, the command will use the default region from your AWS credentials configuration.
+```
+
 ## Creating Training Jobs
 
 You can create training jobs using either the CLI or SDK approach:
@@ -90,8 +94,19 @@ pytorch_job.create()
 
 When creating a training job, you'll need to specify:
 
-- **job-name**: Unique identifier for your training job
-- **image**: Docker image containing your training environment
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| **job-name** | TEXT | Yes | Unique identifier for your training job |
+| **image** | TEXT | Yes | Docker image containing your training environment |
+| **accelerators** | INTEGER | No | Number of accelerators a.k.a GPUs or Trainium Chips |
+| **vcpu** | FLOAT | No | Number of vCPUs |
+| **memory** | FLOAT | No | Amount of memory in GiB |
+| **accelerators-limit** | INTEGER | No | Limit for the number of accelerators a.k.a GPUs or Trainium Chips |
+| **vcpu-limit** | FLOAT | No | Limit for the number of vCPUs |
+| **memory-limit** | FLOAT | No | Limit for the amount of memory in GiB |
+| **preferred-topology** | TEXT | No | Preferred topology annotation for scheduling |
+| **required-topology** | TEXT | No | Required topology annotation for scheduling |
+| **debug** | FLAG | No | Enable debug mode |
 
 
 ## Managing Training Jobs
