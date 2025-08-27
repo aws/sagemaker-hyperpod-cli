@@ -66,7 +66,7 @@ def get_cluster_status(cluster_name, region):
         raise AssertionError(f"Failed to get cluster status: {e}")
 
 
-def wait_for_stack_complete(stack_name, region, timeout_minutes=45):
+def wait_for_stack_complete(stack_name, region, timeout_minutes=15):
     """Wait for CloudFormation stack to be CREATE_COMPLETE."""
     import boto3
     client = boto3.client('cloudformation', region_name=region)
