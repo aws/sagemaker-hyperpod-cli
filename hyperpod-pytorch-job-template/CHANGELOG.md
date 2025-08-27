@@ -1,3 +1,10 @@
+## v1.1.1 (2025-08-27)
+
+### Features
+
+ * Change default container name in pytorch template
+ * Implementing Task governance feature for SDK flow
+
 ## v1.1.0 (2025-08-14)
 
 ### Features
