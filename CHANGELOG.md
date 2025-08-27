@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.2.1 (2025-08-27)
+
+### Features
+
+ * Cluster management 
+   * Bug Fixes with cluster creation
+   * Enable cluster template to be installed with hyperpod CLI .
+
 ## v3.2.0 (2025-08-25)
 
 ### Features
@@ -46,4 +54,5 @@
 ### Features
 
 - feature: Add support for SageMaker HyperPod CLI
+
 
