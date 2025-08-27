@@ -89,9 +89,8 @@ setup(
         "pydantic>=2.10.6,<3.0.0",
         "hyperpod-pytorch-job-template>=1.0.0, <2.0.0",
         "hyperpod-custom-inference-template>=1.0.0, <2.0.0",
-         "hyperpod-jumpstart-inference-template>=1.0.0, <2.0.0",
-        # To be enabled after launch
-        #"hyperpod-cluster-stack-template>=1.0.0, <2.0.0"
+        "hyperpod-jumpstart-inference-template>=1.0.0, <2.0.0",
+        "hyperpod-cluster-stack-template>=1.0.0, <2.0.0"
     ],
     entry_points={
         "console_scripts": [
