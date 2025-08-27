@@ -17,7 +17,8 @@ from typing import Optional
 from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
     Model,
     SageMakerEndpoint,
-    Server
+    Server,
+    TlsConfig
 )
 from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
 
@@ -86,8 +87,12 @@ class FlatHPJumpStartEndpoint(BaseModel):
             instance_type=self.instance_type,
         )
         sage_ep = SageMakerEndpoint(name=self.endpoint_name)
+        tls = (
+            TlsConfig(tls_certificate_output_s3_uri=self.tls_certificate_output_s3_uri)
+        )
         return HPJumpStartEndpoint(
             model=model,
             server=server,
             sage_maker_endpoint=sage_ep,
+            tls_config=tls
         )

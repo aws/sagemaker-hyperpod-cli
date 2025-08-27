@@ -78,7 +78,7 @@
         }
       ],
       "default": null,
-      "description": "S3 URI to write the TLS certificate (optional)",
+      "description": "S3 URI to write the TLS certificate",
       "title": "Tls Certificate Output S3 Uri"
     }
   },

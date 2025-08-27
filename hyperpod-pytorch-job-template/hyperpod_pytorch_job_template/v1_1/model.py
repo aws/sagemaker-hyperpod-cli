@@ -110,7 +110,7 @@ class PyTorchJobConfig(BaseModel):
         min_length=1
     )
     node_count: Optional[int] = Field(
-        default=None,
+        default=1,
         alias="node_count", 
         description="Number of nodes",
         ge=1

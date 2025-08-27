@@ -54,7 +54,11 @@
         "read_only": {
           "anyOf": [
             {
-              "type": "boolean"
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
             },
             {
               "type": "null"
@@ -197,14 +201,15 @@
     "tasks_per_node": {
       "anyOf": [
         {
-          "type": "string"
+          "minimum": 1,
+          "type": "integer"
         },
         {
           "type": "null"
         }
       ],
-      "default": "auto",
-      "description": "Number of workers per node; supported values: [auto,cpu, gpu, int]",
+      "default": null,
+      "description": "Number of tasks per node",
       "title": "Tasks Per Node"
     },
     "label_selector": {
