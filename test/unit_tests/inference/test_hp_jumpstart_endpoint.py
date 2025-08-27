@@ -44,6 +44,7 @@ class TestHPJumpStartEndpoint(unittest.TestCase):
             kind=JUMPSTART_MODEL_KIND,
             namespace="test-ns",
             spec=unittest.mock.ANY,
+            debug=False,
         )
         self.assertEqual(self.endpoint.metadata.name, "test-name")
 
