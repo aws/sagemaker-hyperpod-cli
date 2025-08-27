@@ -99,6 +99,7 @@ REGION = "us-east-2"
 # Global variables to share data between tests
 STACK_NAME = None
 CREATE_TIME = None
+UNIQUE_TIMESTAMP = int(time.time() * 1000)
 
 @pytest.fixture(scope="module")
 def runner():
@@ -106,7 +107,7 @@ def runner():
 
 @pytest.fixture(scope="module")
 def cluster_name():
-    return "hyperpod-cluster"
+    return f"hyperpod-{UNIQUE_TIMESTAMP}-cluster-integ-test"
 
 @pytest.fixture(scope="module")
 def create_time():
@@ -137,7 +138,8 @@ def test_configure_cluster(runner, cluster_name):
     # Configuration mapping for cleaner code
     config_options = {
         "stage": "prod",
-        "resource-name-prefix": f"hyperpod-cli-integ-test-{int(time.time())}",
+        "resource-name-prefix": f"hyperpod-cli-integ-test-{UNIQUE_TIMESTAMP}",
+        "hyperpod-cluster-name": cluster_name,
         "create-vpc-stack": "true",
         "create-security-group-stack": "true",
         "create-eks-cluster-stack": "true",
