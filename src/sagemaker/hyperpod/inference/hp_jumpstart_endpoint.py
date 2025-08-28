@@ -59,6 +59,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
             kind=JUMPSTART_MODEL_KIND,
             namespace=namespace,
             spec=spec,
+            debug=debug,
         )
 
         self.metadata = Metadata(
@@ -76,9 +77,10 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         input: Dict,
         name: str = None,
         namespace: str = None,
+        debug = False
     ) -> None:
         logger = self.get_logger()
-        logger = setup_logging(logger)
+        logger = setup_logging(logger, debug)
 
         spec = _HPJumpStartEndpoint.model_validate(input, by_name=True)
 
@@ -102,6 +104,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
             kind=JUMPSTART_MODEL_KIND,
             namespace=namespace,
             spec=spec,
+            debug=debug,
         )
 
         self.metadata = Metadata(
