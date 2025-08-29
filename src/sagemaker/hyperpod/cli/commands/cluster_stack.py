@@ -18,6 +18,7 @@ from sagemaker.hyperpod.common.telemetry import _hyperpod_telemetry_emitter
 from sagemaker.hyperpod.common.telemetry.constants import Feature
 from sagemaker.hyperpod.common.utils import setup_logging
 from sagemaker.hyperpod.cli.utils import convert_datetimes
+from sagemaker.hyperpod import create_boto3_client
 
 logger = logging.getLogger(__name__)
 
@@ -292,8 +293,12 @@ def list_cluster_stacks(region, debug, status):
     
 @click.command("cluster-stack")
 @click.argument("stack-name", required=True)
+@click.option("--retain-resources", help="Comma-separated list of resources to retain during deletion")
+@click.option("--force-with-retain", is_flag=True, help="Force deletion with retention of failed resources")
+@click.option("--region", help="AWS region")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
-def delete(stack_name: str, debug: bool) -> None:
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "delete_cluster_stack_cli")
+def delete_cluster_stack(stack_name: str, retain_resources: str, force_with_retain: bool, region: str, debug: bool) -> None:
     """Delete a HyperPod cluster stack.
 
     Removes the specified CloudFormation stack and all associated AWS resources.
@@ -306,11 +311,183 @@ def delete(stack_name: str, debug: bool) -> None:
 
           # Delete a cluster stack
           hyp delete hyp-cluster my-stack-name
+
+          # Delete with retained resources
+          hyp delete hyp-cluster my-stack-name --retain-resources S3Bucket-TrainingData,EFSFileSystem-Models
+
+          # Force deletion with retention
+          hyp delete hyp-cluster my-stack-name --retain-resources S3Bucket-TrainingData --force-with-retain
     """
     logger = setup_logging(logging.getLogger(__name__), debug)
     
-    logger.info(f"Deleting stack: {stack_name}")
-    logger.info("This feature is not yet implemented.")
+    try:
+        # Parse retain resources
+        retain_list = []
+        if retain_resources:
+            retain_list = [r.strip() for r in retain_resources.split(',') if r.strip()]
+        
+        # Get stack resources for warning display
+        cf_client = create_boto3_client('cloudformation', region_name=region)
+        
+        try:
+            resources_response = cf_client.list_stack_resources(StackName=stack_name)
+            resources = resources_response.get('StackResourceSummaries', [])
+        except Exception as e:
+            if "does not exist" in str(e):
+                click.secho(f"❌ Stack '{stack_name}' not found", fg='red')
+                return
+            raise
+        
+        if not resources:
+            click.secho(f"❌ No resources found in stack '{stack_name}'", fg='red')
+            return
+        
+        # Categorize resources
+        resource_categories = {
+            'EC2 Instances': [],
+            'Networking': [],
+            'IAM': [],
+            'Storage': [],
+            'Other': []
+        }
+        
+        for resource in resources:
+            resource_type = resource.get('ResourceType', '')
+            resource_name = resource.get('LogicalResourceId', '')
+            physical_id = resource.get('PhysicalResourceId', '')
+            
+            if 'EC2::Instance' in resource_type:
+                resource_categories['EC2 Instances'].append(f" - {resource_name} ({physical_id})")
+            elif any(net_type in resource_type for net_type in ['VPC', 'SecurityGroup', 'InternetGateway', 'Subnet', 'RouteTable']):
+                resource_categories['Networking'].append(f" - {resource_name}")
+            elif 'IAM' in resource_type:
+                resource_categories['IAM'].append(f" - {resource_name}")
+            elif any(storage_type in resource_type for storage_type in ['S3', 'EFS', 'EBS']):
+                resource_categories['Storage'].append(f" - {resource_name}")
+            else:
+                resource_categories['Other'].append(f" - {resource_name}")
+        
+        # Count total resources
+        total_resources = sum(len(category) for category in resource_categories.values())
+        retained_count = len(retain_list)
+        
+        # Display warning
+        click.secho(f"⚠ WARNING: This will delete the following {total_resources} resources:", fg='yellow')
+        click.echo()
+        
+        for category, items in resource_categories.items():
+            if items:
+                click.echo(f"{category} ({len(items)}):")
+                for item in items:
+                    click.echo(item)
+                click.echo()
+        
+        if retain_list:
+            click.secho(f"The following {retained_count} resources will be RETAINED:", fg='green')
+            for resource in retain_list:
+                click.secho(f" ✓ {resource} (retained)", fg='green')
+            click.echo()
+        
+        # Confirmation prompt (skip if force flag is used)
+        if not force_with_retain:
+            if not click.confirm("Continue?", default=False):
+                click.echo("Operation cancelled.")
+                return
+        
+        # Perform deletion
+        delete_params = {'StackName': stack_name}
+        if retain_list:
+            delete_params['RetainResources'] = retain_list
+        
+        logger.info(f"Deleting stack: {stack_name} with params: {delete_params}")
+        
+        try:
+            cf_client.delete_stack(**delete_params)
+            
+            if force_with_retain:
+                click.secho("✓ Force deletion completed", fg='green')
+                click.secho(f"✓ Deleted all possible resources ({total_resources - retained_count}/{total_resources})", fg='green')
+                
+                if retain_list:
+                    click.echo()
+                    click.secho(f"Retained due to user request ({len(retain_list)}):", fg='green')
+                    for resource in retain_list:
+                        click.secho(f" ✓ {resource} (user requested)", fg='green')
+                
+                click.echo()
+                click.secho(f"✓ Stack '{stack_name}' deletion completed with retentions", fg='green')
+            else:
+                click.secho(f"✓ Stack '{stack_name}' deletion initiated successfully", fg='green')
+                
+                if retain_list:
+                    click.echo()
+                    click.secho(f"Successfully retained as requested ({len(retain_list)}):", fg='green')
+                    for resource in retain_list:
+                        click.secho(f" ✓ {resource} (retained)", fg='green')
+        
+        except Exception as delete_error:
+            # Handle termination protection specifically
+            if "TerminationProtection is enabled" in str(delete_error):
+                click.secho("❌ Stack deletion blocked: Termination Protection is enabled", fg='red')
+                click.echo()
+                click.secho("To delete this stack, first disable termination protection:", fg='yellow')
+                click.secho(f"aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name {stack_name} --region {region or 'us-west-2'}", fg='cyan')
+                click.echo()
+                click.secho("Then retry the delete command.", fg='yellow')
+                raise click.ClickException("Termination protection must be disabled before deletion")
+            
+            # Handle partial deletion failures
+            click.secho("✗ Stack deletion failed", fg='red')
+            
+            # Try to get current stack resources to show what was deleted
+            try:
+                current_resources = cf_client.list_stack_resources(StackName=stack_name)
+                current_resource_names = {r['LogicalResourceId'] for r in current_resources.get('StackResourceSummaries', [])}
+                original_resource_names = {r['LogicalResourceId'] for r in resources}
+                
+                deleted_resources = original_resource_names - current_resource_names
+                failed_resources = current_resource_names - set(retain_list) if retain_list else current_resource_names
+                
+                if deleted_resources:
+                    click.echo()
+                    click.secho(f"Successfully deleted ({len(deleted_resources)}):", fg='green')
+                    for resource in deleted_resources:
+                        click.secho(f" ✓ {resource}", fg='green')
+                
+                if failed_resources:
+                    click.echo()
+                    click.secho(f"Failed to delete ({len(failed_resources)}):", fg='red')
+                    for resource in failed_resources:
+                        click.secho(f" ✗ {resource} (DependencyViolation: has dependent resources)", fg='red')
+                
+                if retain_list:
+                    click.echo()
+                    click.secho(f"Successfully retained as requested ({len(retain_list)}):", fg='green')
+                    for resource in retain_list:
+                        click.secho(f" ✓ {resource} (retained)", fg='green')
+                
+                click.echo()
+                click.secho("Run with --force-with-retain to complete deletion of remaining resources", fg='yellow')
+                
+            except:
+                # If we can't get current resources, show generic error
+                click.secho(f"Error: {delete_error}", fg='red')
+            
+            raise click.ClickException(str(delete_error))
+    
+    except Exception as e:
+        logger.error(f"Failed to delete stack: {e}")
+        if debug:
+            logger.exception("Detailed error information:")
+        
+        if "does not exist" in str(e):
+            click.secho(f"❌ Stack '{stack_name}' not found", fg='red')
+        elif "AccessDenied" in str(e):
+            click.secho("❌ Access denied. Check AWS permissions", fg='red')
+        else:
+            click.secho(f"❌ Error deleting stack: {e}", fg='red')
+        
+        raise click.ClickException(str(e))
 
 @click.command("cluster")
 @click.option("--cluster-name", required=True, help="The name of the cluster to update")
