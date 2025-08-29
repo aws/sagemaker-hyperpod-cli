@@ -294,11 +294,10 @@ def list_cluster_stacks(region, debug, status):
 @click.command("cluster-stack")
 @click.argument("stack-name", required=True)
 @click.option("--retain-resources", help="Comma-separated list of resources to retain during deletion")
-@click.option("--force-with-retain", is_flag=True, help="Force deletion with retention of failed resources")
-@click.option("--region", help="AWS region")
+@click.option("--region", required=True, help="AWS region (required)")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "delete_cluster_stack_cli")
-def delete_cluster_stack(stack_name: str, retain_resources: str, force_with_retain: bool, region: str, debug: bool) -> None:
+def delete_cluster_stack(stack_name: str, retain_resources: str, region: str, debug: bool) -> None:
     """Delete a HyperPod cluster stack.
 
     Removes the specified CloudFormation stack and all associated AWS resources.
@@ -310,13 +309,10 @@ def delete_cluster_stack(stack_name: str, retain_resources: str, force_with_reta
        .. code-block:: bash
 
           # Delete a cluster stack
-          hyp delete hyp-cluster my-stack-name
+          hyp delete cluster-stack my-stack-name --region us-west-2
 
-          # Delete with retained resources
-          hyp delete hyp-cluster my-stack-name --retain-resources S3Bucket-TrainingData,EFSFileSystem-Models
-
-          # Force deletion with retention
-          hyp delete hyp-cluster my-stack-name --retain-resources S3Bucket-TrainingData --force-with-retain
+          # Delete with retained resources (only works on DELETE_FAILED stacks)
+          hyp delete cluster-stack my-stack-name --retain-resources S3Bucket-TrainingData,EFSFileSystem-Models --region us-west-2
     """
     logger = setup_logging(logging.getLogger(__name__), debug)
     
@@ -342,7 +338,29 @@ def delete_cluster_stack(stack_name: str, retain_resources: str, force_with_reta
             click.secho(f"❌ No resources found in stack '{stack_name}'", fg='red')
             return
         
-        # Categorize resources
+        # Validate retain resources exist in stack
+        if retain_list:
+            existing_resource_names = {r.get('LogicalResourceId', '') for r in resources}
+            valid_retain_resources = []
+            invalid_retain_resources = []
+            
+            for resource in retain_list:
+                if resource in existing_resource_names:
+                    valid_retain_resources.append(resource)
+                else:
+                    invalid_retain_resources.append(resource)
+            
+            # Show warning for non-existent resources
+            if invalid_retain_resources:
+                click.secho(f"⚠️  Warning: The following {len(invalid_retain_resources)} resources don't exist in the stack:", fg='yellow')
+                for resource in invalid_retain_resources:
+                    click.secho(f" - {resource} (not found)", fg='yellow')
+                click.echo()
+            
+            # Update retain_list to only include valid resources
+            retain_list = valid_retain_resources
+        
+        # Categorize resources (excluding retained ones from deletion display)
         resource_categories = {
             'EC2 Instances': [],
             'Networking': [],
@@ -356,6 +374,10 @@ def delete_cluster_stack(stack_name: str, retain_resources: str, force_with_reta
             resource_name = resource.get('LogicalResourceId', '')
             physical_id = resource.get('PhysicalResourceId', '')
             
+            # Skip resources that will be retained
+            if resource_name in retain_list:
+                continue
+                
             if 'EC2::Instance' in resource_type:
                 resource_categories['EC2 Instances'].append(f" - {resource_name} ({physical_id})")
             elif any(net_type in resource_type for net_type in ['VPC', 'SecurityGroup', 'InternetGateway', 'Subnet', 'RouteTable']):
@@ -367,7 +389,7 @@ def delete_cluster_stack(stack_name: str, retain_resources: str, force_with_reta
             else:
                 resource_categories['Other'].append(f" - {resource_name}")
         
-        # Count total resources
+        # Count total resources (excluding retained ones)
         total_resources = sum(len(category) for category in resource_categories.values())
         retained_count = len(retain_list)
         
@@ -388,11 +410,10 @@ def delete_cluster_stack(stack_name: str, retain_resources: str, force_with_reta
                 click.secho(f" ✓ {resource} (retained)", fg='green')
             click.echo()
         
-        # Confirmation prompt (skip if force flag is used)
-        if not force_with_retain:
-            if not click.confirm("Continue?", default=False):
-                click.echo("Operation cancelled.")
-                return
+        # Confirmation prompt
+        if not click.confirm("Continue?", default=False):
+            click.echo("Operation cancelled.")
+            return
         
         # Perform deletion
         delete_params = {'StackName': stack_name}
@@ -404,26 +425,16 @@ def delete_cluster_stack(stack_name: str, retain_resources: str, force_with_reta
         try:
             cf_client.delete_stack(**delete_params)
             
-            if force_with_retain:
-                click.secho("✓ Force deletion completed", fg='green')
-                click.secho(f"✓ Deleted all possible resources ({total_resources - retained_count}/{total_resources})", fg='green')
-                
-                if retain_list:
-                    click.echo()
-                    click.secho(f"Retained due to user request ({len(retain_list)}):", fg='green')
-                    for resource in retain_list:
-                        click.secho(f" ✓ {resource} (user requested)", fg='green')
-                
+            click.secho(f"✓ Stack '{stack_name}' deletion initiated successfully", fg='green')
+            
+            if retain_list:
                 click.echo()
-                click.secho(f"✓ Stack '{stack_name}' deletion completed with retentions", fg='green')
-            else:
-                click.secho(f"✓ Stack '{stack_name}' deletion initiated successfully", fg='green')
-                
-                if retain_list:
-                    click.echo()
-                    click.secho(f"Successfully retained as requested ({len(retain_list)}):", fg='green')
-                    for resource in retain_list:
-                        click.secho(f" ✓ {resource} (retained)", fg='green')
+                click.secho(f"Successfully retained as requested ({len(retain_list)}):", fg='green')
+                for resource in retain_list:
+                    click.secho(f" ✓ {resource} (retained)", fg='green')
+                click.echo()
+                click.secho("💡 Retained resources will remain as standalone AWS resources", fg='cyan')
+                click.secho("   You can access them directly via AWS Console/CLI using their physical resource IDs", fg='cyan')
         
         except Exception as delete_error:
             # Handle termination protection specifically
@@ -435,6 +446,21 @@ def delete_cluster_stack(stack_name: str, retain_resources: str, force_with_reta
                 click.echo()
                 click.secho("Then retry the delete command.", fg='yellow')
                 raise click.ClickException("Termination protection must be disabled before deletion")
+            
+            # Handle CloudFormation retain-resources limitation
+            if retain_list and "specify which resources to retain only when the stack is in the DELETE_FAILED state" in str(delete_error):
+                click.secho("❌ CloudFormation limitation: --retain-resources only works on failed deletions", fg='red')
+                click.echo()
+                click.secho("💡 Recommended workflow:", fg='yellow')
+                click.secho("1. First try deleting without --retain-resources:", fg='cyan')
+                click.secho(f"   hyp delete cluster-stack {stack_name} --region {region or 'us-west-2'}", fg='cyan')
+                click.echo()
+                click.secho("2. If deletion fails, the stack will be in DELETE_FAILED state", fg='cyan')
+                click.secho("3. Then retry with --retain-resources to keep specific resources:", fg='cyan')
+                click.secho(f"   hyp delete cluster-stack {stack_name} --retain-resources {retain_resources} --region {region or 'us-west-2'}", fg='cyan')
+                click.echo()
+                click.secho("⚠️  Alternative: Delete without retention and manually preserve important data first", fg='yellow')
+                return  # Exit gracefully without raising exception
             
             # Handle partial deletion failures
             click.secho("✗ Stack deletion failed", fg='red')
@@ -467,7 +493,8 @@ def delete_cluster_stack(stack_name: str, retain_resources: str, force_with_reta
                         click.secho(f" ✓ {resource} (retained)", fg='green')
                 
                 click.echo()
-                click.secho("Run with --force-with-retain to complete deletion of remaining resources", fg='yellow')
+                click.secho("💡 Note: Some resources may have dependencies preventing deletion", fg='yellow')
+                click.secho("   Check the AWS CloudFormation console for detailed dependency information", fg='cyan')
                 
             except:
                 # If we can't get current resources, show generic error
@@ -487,7 +514,9 @@ def delete_cluster_stack(stack_name: str, retain_resources: str, force_with_reta
         else:
             click.secho(f"❌ Error deleting stack: {e}", fg='red')
         
-        raise click.ClickException(str(e))
+        # Only raise exception for truly unexpected errors, not user-facing ones
+        if not any(msg in str(e) for msg in ["does not exist", "AccessDenied"]):
+            raise click.ClickException(str(e))
 
 @click.command("cluster")
 @click.option("--cluster-name", required=True, help="The name of the cluster to update")
