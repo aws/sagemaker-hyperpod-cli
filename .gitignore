@@ -29,3 +29,5 @@ doc/_build/
 /results/
 
 .idea/
+
+.venv
