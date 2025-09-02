@@ -4,6 +4,7 @@ import click
 from typing import Callable, Optional, Mapping, Type
 import sys
 from sagemaker.hyperpod.cli.common_utils import extract_version_from_args, get_latest_version, load_schema_for_version
+from sagemaker.hyperpod.cli.parsers import parse_dict_parameter
 
 
 def generate_click_command(
@@ -18,14 +19,7 @@ def generate_click_command(
     version = extract_version_from_args(registry, schema_pkg, default_version)
 
     def decorator(func: Callable) -> Callable:
-        # Parser for the single JSON‐dict env var flag
-        def _parse_json_flag(ctx, param, value):
-            if value is None:
-                return None
-            try:
-                return json.loads(value)
-            except json.JSONDecodeError as e:
-                raise click.BadParameter(f"{param.name!r} must be valid JSON: {e}")
+        # Use unified parser for consistent behavior
 
         # 1) the wrapper click actually invokes
         def wrapped_func(*args, **kwargs):
@@ -46,21 +40,21 @@ def generate_click_command(
         props = schema.get("properties", {})
 
         json_flags = {
-            "env": ("JSON object of environment variables, e.g. " '\'{"VAR1":"foo","VAR2":"bar"}\''),
-            "dimensions": ("JSON object of dimensions, e.g. " '\'{"VAR1":"foo","VAR2":"bar"}\''),
-            "resources_limits": ('JSON object of resource limits, e.g. \'{"cpu":"2","memory":"4Gi"}\''),
-            "resources_requests": ('JSON object of resource requests, e.g. \'{"cpu":"1","memory":"2Gi"}\''),
+            "env": "Environment variables. Supports JSON format: '{\"VAR1\":\"foo\",\"VAR2\":\"bar\"}' or simple format: '{VAR1: foo, VAR2: bar}'",
+            "dimensions": "Dimensions. Supports JSON format: '{\"VAR1\":\"foo\",\"VAR2\":\"bar\"}' or simple format: '{VAR1: foo, VAR2: bar}'", 
+            "resources_limits": "Resource limits. Supports JSON format: '{\"cpu\":\"2\",\"memory\":\"4Gi\"}' or simple format: '{cpu: 2, memory: 4Gi}'",
+            "resources_requests": "Resource requests. Supports JSON format: '{\"cpu\":\"1\",\"memory\":\"2Gi\"}' or simple format: '{cpu: 1, memory: 2Gi}'",
         }
 
         for flag_name, help_text in json_flags.items():
             if flag_name in props:
                 wrapped_func = click.option(
                     f"--{flag_name.replace('_', '-')}",
-                    callback=_parse_json_flag,
+                    callback=parse_dict_parameter,
                     type=str,
                     default=None,
                     help=help_text,
-                    metavar="JSON",
+                    metavar="JSON|SIMPLE",
                 )(wrapped_func)
 
         # 3) auto-inject all schema.json fields

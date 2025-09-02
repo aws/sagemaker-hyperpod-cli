@@ -92,7 +92,7 @@ class TestGenerateClickCommand:
         # Test invalid JSON input
         result = self.runner.invoke(cmd, ['--environment', 'invalid'])
         assert result.exit_code == 2
-        assert 'must be valid JSON' in result.output
+        assert 'Invalid format for --environment' in result.output
 
     @patch('sagemaker.hyperpod.cli.training_utils.pkgutil.get_data')
     def test_list_parameters(self, mock_get_data):
@@ -404,14 +404,14 @@ class TestGenerateClickCommand:
             '--volume', 'name=model-data,type=hostPath,mount_path,path=/host/data'
         ])
         assert result.exit_code == 2
-        assert "should be key=value" in result.output
+        assert "Invalid format for --volume" in result.output
 
         # Test empty volume parameter
         result = self.runner.invoke(cmd, [
             '--volume', ''
         ])
         assert result.exit_code == 2
-        assert "Error parsing volume" in result.output
+        assert "Invalid format for --volume" in result.output
 
     @patch('sagemaker.hyperpod.cli.training_utils.pkgutil.get_data')
     def test_volume_flag_with_equals_in_value(self, mock_get_data):
@@ -584,13 +584,13 @@ class TestGenerateClickCommand:
             {
                 'args': ['--job-name', 'test-job', '--environment', 'invalid-json'],
                 'expected_error': True,
-                'error_message': "must be valid JSON"
+                'error_message': "Invalid format for --environment"
             },
             # Invalid volume format
             {
                 'args': ['--job-name', 'test-job', '--volume', 'invalid-volume-format'],
                 'expected_error': True,
-                'error_message': "Invalid volume format"
+                'error_message': "Invalid format for --volume"
             },
             # Multiple valid volumes
             {

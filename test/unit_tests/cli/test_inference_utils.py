@@ -73,7 +73,7 @@ class TestGenerateClickCommand:
         # invalid JSON produces click error
         res_err = self.runner.invoke(cmd, ['--env', 'notjson'])
         assert res_err.exit_code == 2
-        assert 'must be valid JSON' in res_err.output
+        assert 'Invalid format for --env' in res_err.output
 
     @patch('sagemaker.hyperpod.cli.inference_utils.load_schema_for_version')
     def test_type_mapping_and_defaults(self, mock_load_schema):

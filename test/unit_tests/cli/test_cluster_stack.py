@@ -4,7 +4,8 @@ from unittest.mock import Mock, patch, mock_open
 from click.testing import CliRunner
 from datetime import datetime
 import click
-from sagemaker.hyperpod.cli.commands.cluster_stack import update_cluster, list_cluster_stacks, parse_status_list
+from sagemaker.hyperpod.cli.commands.cluster_stack import update_cluster, list_cluster_stacks
+from sagemaker.hyperpod.cli.parsers import parse_list_parameter
 
 
 class TestUpdateCluster:
@@ -227,7 +228,7 @@ class TestListClusterStacks:
         
         # Assert
         assert result.exit_code != 0
-        assert 'Invalid list format' in result.output
+        assert 'Invalid format for --status' in result.output
         mock_hp_cluster_list.assert_not_called()
 
     @patch('sagemaker.hyperpod.cli.commands.cluster_stack.HpClusterStack.list')
@@ -262,38 +263,45 @@ class TestListClusterStacks:
         mock_hp_cluster_list.assert_called_once_with(region=None, stack_status_filter=['CREATE_IN_PROGRESS'])
 
 
-class TestParseStatusList:
-    """Test cases for parse_status_list function"""
+class TestParseListParameter:
+    """Test cases for parse_list_parameter function used by status parsing"""
 
-    def test_parse_status_list_valid_format(self):
-        """Test parsing valid list format."""
-        result = parse_status_list(None, None, "['CREATE_COMPLETE', 'UPDATE_COMPLETE']")
+    def test_parse_list_parameter_valid_json_format(self):
+        """Test parsing valid JSON list format."""
+        result = parse_list_parameter(None, None, '["CREATE_COMPLETE", "UPDATE_COMPLETE"]')
         assert result == ['CREATE_COMPLETE', 'UPDATE_COMPLETE']
 
-    def test_parse_status_list_single_item(self):
+    def test_parse_list_parameter_simple_format(self):
+        """Test parsing simple list format."""
+        result = parse_list_parameter(None, None, '[CREATE_COMPLETE, UPDATE_COMPLETE]')
+        assert result == ['CREATE_COMPLETE', 'UPDATE_COMPLETE']
+
+    def test_parse_list_parameter_single_item(self):
         """Test parsing single item list."""
-        result = parse_status_list(None, None, "['CREATE_COMPLETE']")
+        result = parse_list_parameter(None, None, '["CREATE_COMPLETE"]')
         assert result == ['CREATE_COMPLETE']
 
-    def test_parse_status_list_empty_input(self):
+    def test_parse_list_parameter_empty_input(self):
         """Test parsing empty/None input."""
-        result = parse_status_list(None, None, None)
+        result = parse_list_parameter(None, None, None)
         assert result is None
         
-        result = parse_status_list(None, None, "")
+        result = parse_list_parameter(None, None, "")
         assert result is None
 
-    def test_parse_status_list_invalid_format(self):
-        """Test parsing invalid format raises BadParameter."""
-        with pytest.raises(click.BadParameter) as exc_info:
-            parse_status_list(None, None, "invalid-format")
-        assert "Invalid list format" in str(exc_info.value)
+    def test_parse_list_parameter_invalid_format(self):
+        """Test parsing invalid format raises ParameterParsingError."""
+        from sagemaker.hyperpod.cli.parsers import ParameterParsingError
+        with pytest.raises(ParameterParsingError) as exc_info:
+            parse_list_parameter(None, None, "invalid-format")
+        assert "Invalid format" in str(exc_info.value)
 
-    def test_parse_status_list_non_list_format(self):
-        """Test parsing valid syntax but non-list raises BadParameter."""
-        with pytest.raises(click.BadParameter) as exc_info:
-            parse_status_list(None, None, "'not-a-list'")
-        assert "Expected list format" in str(exc_info.value)
+    def test_parse_list_parameter_non_list_format(self):
+        """Test parsing valid syntax but non-list raises ParameterParsingError."""
+        from sagemaker.hyperpod.cli.parsers import ParameterParsingError
+        with pytest.raises(ParameterParsingError) as exc_info:
+            parse_list_parameter(None, None, '"not-a-list"')
+        assert "Expected a list for --parameter" in str(exc_info.value)
 
 
 @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.importlib.resources.read_text')

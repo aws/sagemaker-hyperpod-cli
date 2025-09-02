@@ -793,7 +793,7 @@ class ClusterTest(unittest.TestCase):
 
         result = self.runner.invoke(
             list_cluster,
-            ["--clusters", "cluster-3"],
+            ["--clusters", "[cluster-3]"],
         )
         self.assertEqual(result.exit_code, 0)
         self.assertNotIn("cluster-1", result.output)

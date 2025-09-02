@@ -5,6 +5,7 @@ from typing import Callable, Optional, Mapping, Type, Dict, Any
 from pydantic import ValidationError
 import sys
 from sagemaker.hyperpod.cli.common_utils import extract_version_from_args, get_latest_version, load_schema_for_version
+from sagemaker.hyperpod.cli.parsers import parse_dict_parameter, parse_list_parameter, parse_complex_object_parameter
 
 
 def generate_click_command(
@@ -27,45 +28,7 @@ def generate_click_command(
     version = extract_version_from_args(registry, schema_pkg, default_version)
 
     def decorator(func: Callable) -> Callable:
-        # Parser for the single JSON‐dict env var flag
-        def _parse_json_flag(ctx, param, value):
-            if value is None:
-                return None
-            try:
-                return json.loads(value)
-            except json.JSONDecodeError as e:
-                raise click.BadParameter(f"{param.name!r} must be valid JSON: {e}")
-
-        # Parser for list flags
-        def _parse_list_flag(ctx, param, value):
-            if value is None:
-                return None
-            # Remove brackets and split by comma
-            value = value.strip("[]")
-            return [item.strip() for item in value.split(",") if item.strip()]
-
-        def _parse_volume_param(ctx, param, value):
-            """Parse volume parameters from command line format to dictionary format."""
-            if not value:
-                return None
-            
-            volumes = []
-            for i, v in enumerate(value):
-                try:
-                    # Split by comma and then by equals, with validation
-                    parts = {}
-                    for item in v.split(','):
-                        if '=' not in item:
-                            raise click.UsageError(f"Invalid volume format in volume {i+1}: '{item}' should be key=value")
-                        key, val = item.split('=', 1)  # Split only on first '=' to handle values with '='
-                        parts[key.strip()] = val.strip()
-                    
-                    volumes.append(parts)
-                except Exception as e:
-                    raise click.UsageError(f"Error parsing volume {i+1}: {str(e)}")
-            
-            # Note: Detailed validation will be handled by schema validation
-            return volumes
+        # Use unified parsers for consistent behavior across all parameter types
     
         # 1) the wrapper click will call
         def wrapped_func(*args, **kwargs):
@@ -103,47 +66,47 @@ def generate_click_command(
         
         wrapped_func = click.option(
             "--environment",
-            callback=_parse_json_flag,
+            callback=parse_dict_parameter,
             type=str,
             default=None,
             help=(
-                "JSON object of environment variables, e.g. "
-                '\'{"VAR1":"foo","VAR2":"bar"}\''
+                "Environment variables. Supports JSON format: "
+                '\'{"VAR1":"foo","VAR2":"bar"}\' or simple format: '
+                '\'{VAR1: foo, VAR2: bar}\''
             ),
-            metavar="JSON",
+            metavar="JSON|SIMPLE",
         )(wrapped_func)
         wrapped_func = click.option(
             "--label-selector",
-            callback=_parse_json_flag,
-            help='JSON object of resource limits, e.g. \'{"cpu":"2","memory":"4Gi"}\'',
-            metavar="JSON",
+            callback=parse_dict_parameter,
+            help='Node label selector. Supports JSON format: \'{"cpu":"2","memory":"4Gi"}\' or simple format: \'{cpu: 2, memory: 4Gi}\'',
+            metavar="JSON|SIMPLE",
         )(wrapped_func)
 
         wrapped_func = click.option(
             "--volume",
             multiple=True,
-            callback=_parse_volume_param,
-            help="List of volume configurations. \
-                Command structure: --volume name=<volume_name>,type=<volume_type>,mount_path=<mount_path>,<type-specific options> \
-                For hostPath: --volume name=model-data,type=hostPath,mount_path=/data,path=/data  \
-                For persistentVolumeClaim: --volume name=training-output,type=pvc,mount_path=/mnt/output,claim_name=training-output-pvc,read_only=false \
-                If multiple --volume flag if multiple volumes are needed.",
+            callback=lambda ctx, param, value: parse_complex_object_parameter(ctx, param, value, allow_multiple=True),
+            help="Volume configurations. Supports JSON format: "
+                '\'{"name":"vol1","type":"hostPath","mount_path":"/data","path":"/data"}\' '
+                "or key-value format: 'name=vol1,type=hostPath,mount_path=/data,path=/data'. "
+                "Use multiple --volume flags for multiple volumes.",
         )(wrapped_func)
 
         # Add list options
         list_params = {
-            "command": "List of command arguments",
-            "args": "List of script arguments, e.g. '[--batch-size, 32, --learning-rate, 0.001]'",
+            "command": "Command arguments. Supports JSON format: '[\"python\", \"train.py\"]' or simple format: '[python, train.py]'",
+            "args": "Script arguments. Supports JSON format: '[\"--batch-size\", \"32\", \"--learning-rate\", \"0.001\"]' or simple format: '[--batch-size, 32, --learning-rate, 0.001]'",
         }
 
         for param_name, help_text in list_params.items():
             wrapped_func = click.option(
                 f"--{param_name}",
-                callback=_parse_list_flag,
+                callback=parse_list_parameter,
                 type=str,
                 default=None,
                 help=help_text,
-                metavar="LIST",
+                metavar="JSON|SIMPLE",
             )(wrapped_func)
 
         excluded_props = set(
