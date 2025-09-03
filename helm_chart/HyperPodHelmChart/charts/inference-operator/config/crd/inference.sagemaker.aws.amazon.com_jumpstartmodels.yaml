@@ -219,6 +219,24 @@ spec:
                   type: object
                 maxItems: 100
                 type: array
+              loadBalancer:
+                description: Configuration for Application Load Balancer
+                properties:
+                  healthCheckPath:
+                    default: /ping
+                    description: Health check path for the ALB target group. Defaults
+                      to /ping if not specified.
+                    pattern: ^/.*
+                    type: string
+                  routingAlgorithm:
+                    default: least_outstanding_requests
+                    description: Routing algorithm for the ALB target group (least_oustanding_requests
+                      or round_robin)
+                    enum:
+                    - least_outstanding_requests
+                    - round_robin
+                    type: string
+                type: object
               maxDeployTimeInSeconds:
                 default: 3600
                 description: Maximum allowed time in seconds for the deployment to
@@ -320,8 +338,8 @@ spec:
                 properties:
                   name:
                     default: ""
-                    description: Name of a SageMaker endpoint to be created for this JumpStartModel.
-                      The default value of empty string, when used, will skip endpoint creation.
+                    description: Name of sagemaker endpoint. Defaults to empty string
+                      which represents that Sagemaker endpoint will not be created.
                     maxLength: 63
                     pattern: ^$|^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$
                     type: string
