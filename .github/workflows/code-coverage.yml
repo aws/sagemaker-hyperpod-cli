@@ -36,7 +36,7 @@ jobs:
       
       - name: Run Unit Tests with Coverage
         run: |
-          pytest test/unit_tests/ --cov=src/ --cov-report=term-missing --cov-report=xml --cov-fail-under=70
+          pytest test/unit_tests/ --cov=src/ --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=70
       
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v4
