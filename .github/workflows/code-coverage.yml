@@ -39,7 +39,7 @@ jobs:
           pytest test/unit_tests/ --cov=src/ --cov-report=term-missing --cov-report=xml --cov-fail-under=70
       
       - name: Upload Coverage Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage-report
