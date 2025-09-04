@@ -104,6 +104,7 @@ class TestHPEndpoint(unittest.TestCase):
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace="test-ns",
             spec=unittest.mock.ANY,
+            debug=False,
         )
         self.assertEqual(self.endpoint.metadata.name, "test-name")
 
@@ -115,7 +116,13 @@ class TestHPEndpoint(unittest.TestCase):
 
         self.endpoint.create_from_dict(input_dict, namespace="test-ns")
 
-        mock_create_api.assert_called_once()
+        mock_create_api.assert_called_once_with(
+            name=unittest.mock.ANY,
+            kind=INFERENCE_ENDPOINT_CONFIG_KIND,
+            namespace="test-ns",
+            spec=unittest.mock.ANY,
+            debug=False,
+        )
 
     @patch.object(HPEndpoint, "call_get_api")
     def test_refresh(self, mock_get_api):

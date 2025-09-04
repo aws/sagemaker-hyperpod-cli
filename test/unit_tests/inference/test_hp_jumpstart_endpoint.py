@@ -44,6 +44,7 @@ class TestHPJumpStartEndpoint(unittest.TestCase):
             kind=JUMPSTART_MODEL_KIND,
             namespace="test-ns",
             spec=unittest.mock.ANY,
+            debug=False,
         )
         self.assertEqual(self.endpoint.metadata.name, "test-name")
 
@@ -60,7 +61,13 @@ class TestHPJumpStartEndpoint(unittest.TestCase):
             input_dict, name="test-name", namespace="test-ns"
         )
 
-        mock_create_api.assert_called_once()
+        mock_create_api.assert_called_once_with(
+            name="test-name",
+            kind=JUMPSTART_MODEL_KIND,
+            namespace="test-ns",
+            spec=unittest.mock.ANY,
+            debug=False,
+        )
 
     @patch.object(HPJumpStartEndpoint, "call_get_api")
     def test_refresh(self, mock_get_api):
