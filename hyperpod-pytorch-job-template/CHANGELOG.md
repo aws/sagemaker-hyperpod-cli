@@ -1,3 +1,9 @@
+## v1.1.2 (2025-09-04)
+
+### Features
+ 
+ * Fix for production canary failures caused by bad training job template.
+
 ## v1.1.1 (2025-08-27)
 
 ### Features
