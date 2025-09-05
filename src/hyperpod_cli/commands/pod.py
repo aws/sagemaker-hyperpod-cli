@@ -24,6 +24,8 @@ from hyperpod_cli.utils import (
     setup_logger,
     set_logging_level,
 )
+from hyperpod_cli.telemetry import _hyperpod_telemetry_emitter
+from hyperpod_cli.telemetry.constants import Feature
 
 logger = setup_logger(__name__)
 
@@ -54,6 +56,7 @@ logger = setup_logger(__name__)
     is_flag=True,
     help="Enable debug mode",
 )
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "get_log_cli")
 def get_log(
     job_name: str,
     pod: str,
@@ -148,6 +151,7 @@ def _exec_command_required_option_pod_and_all_pods():
     is_flag=True,
     help="Enable debug mode",
 )
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "exec_cli")
 def exec(
     job_name: str,
     namespace: Optional[str],
