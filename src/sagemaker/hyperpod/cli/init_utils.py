@@ -20,6 +20,7 @@ from sagemaker.hyperpod.cli.constants.init_constants import (
     CFN
 )
 from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack
+from sagemaker.hyperpod.cli.parsers import parse_dict_parameter, parse_complex_object_parameter
 
 log = logging.getLogger()
 
@@ -207,58 +208,7 @@ def generate_click_command(
                 # If template can't be fetched, use empty dict
                 pass
             
-        # JSON flag parser
-        def _parse_json_flag(ctx, param, value):
-            if value is None:
-                return None
-            try:
-                return json.loads(value)
-            except json.JSONDecodeError:
-                # Try to fix unquoted list items: [python, train.py] -> ["python", "train.py"]
-                if value.strip().startswith('[') and value.strip().endswith(']'):
-                    try:
-                        # Remove brackets and split by comma
-                        inner = value.strip()[1:-1]
-                        items = [item.strip().strip('"').strip("'") for item in inner.split(',')]
-                        return items
-                    except:
-                        pass
-                raise click.BadParameter(f"{param.name!r} must be valid JSON or a list like [item1, item2]")
-
-
-        # Volume flag parser
-        def _parse_volume_flag(ctx, param, value):
-            if not value:
-                return None
-            
-            # Handle multiple volume flags
-            if not isinstance(value, (list, tuple)):
-                value = [value]
-            
-            from hyperpod_pytorch_job_template.v1_0.model import VolumeConfig
-            volumes = []
-            
-            for vol_str in value:
-                # Parse volume string: name=model-data,type=hostPath,mount_path=/data,path=/data
-                vol_dict = {}
-                for pair in vol_str.split(','):
-                    if '=' in pair:
-                        key, val = pair.split('=', 1)
-                        key = key.strip()
-                        val = val.strip()
-                        
-                        # Convert read_only to boolean
-                        if key == 'read_only':
-                            vol_dict[key] = val.lower() in ('true', '1', 'yes', 'on')
-                        else:
-                            vol_dict[key] = val
-                
-                try:
-                    volumes.append(VolumeConfig(**vol_dict))
-                except Exception as e:
-                    raise click.BadParameter(f"Invalid volume configuration '{vol_str}': {e}")
-            
-            return volumes
+        # Use unified parsers for consistent behavior across all parameter types
 
         @functools.wraps(func)
         def wrapped(*args, **kwargs):
@@ -318,9 +268,9 @@ def generate_click_command(
             if flag_name in union_props:
                 wrapped = click.option(
                     f"--{flag}",
-                    callback=_parse_json_flag,
-                    metavar="JSON",
-                    help=f"JSON object for {flag.replace('-', ' ')}",
+                    callback=parse_dict_parameter,
+                    metavar="JSON|SIMPLE",
+                    help=f"{flag.replace('-', ' ').title()}. Supports JSON format or simple format",
                 )(wrapped)
 
 
@@ -366,8 +316,8 @@ def generate_click_command(
                 wrapped = click.option(
                     f"--{name.replace('_','-')}",
                     multiple=True,
-                    callback=_parse_volume_flag,
-                    help=help_text,
+                    callback=lambda ctx, param, value: parse_complex_object_parameter(ctx, param, value, allow_multiple=True),
+                    help="Volume configurations. Supports JSON format or key-value format with multiple --volume flags",
                 )(wrapped)
             else:
                 wrapped = click.option(
@@ -393,9 +343,9 @@ def generate_click_command(
             if cfn_param_name == 'Tags':
                 wrapped = click.option(
                     f"--{pascal_to_kebab(cfn_param_name)}",
-                    callback=_parse_json_flag,
-                    metavar="JSON",
-                    help=cfn_param_details.get('Description', ''),
+                    callback=parse_dict_parameter,
+                    metavar="JSON|SIMPLE",
+                    help=cfn_param_details.get('Description', '') + " Supports JSON format or simple format",
                 )(wrapped)
             else:
                 cfn_default = cfn_param_details.get('Default')
