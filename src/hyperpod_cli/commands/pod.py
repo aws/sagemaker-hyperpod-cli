@@ -76,9 +76,8 @@ def get_log(
         )
         click.echo(result)
     except Exception as e:
-        sys.exit(
-            f"Unexpected error happens when trying to get logs for training job {job_name} : {e}"
-        )
+        logger.error(f"Unexpected error happens when trying to get logs for training job {job_name} : {e}")
+        raise
     
     try:
         cloudwatch_link = get_logs_service.generate_cloudwatch_link(pod, namespace=namespace)
@@ -177,6 +176,5 @@ def exec(
         )
         click.echo(result)
     except Exception as e:
-        sys.exit(
-            f"Unexpected error happens when trying to exec command for pod {pod} : {e}"
-        )
+        logger.error(f"Unexpected error happens when trying to exec command for pod {pod} : {e}")
+        raise

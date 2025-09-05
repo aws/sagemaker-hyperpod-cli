@@ -147,9 +147,8 @@ def get_job(
         result = get_training_job_service.get_training_job(job_name, namespace, verbose)
         click.echo(result)
     except Exception as e:
-        sys.exit(
-            f"Unexpected error happens when trying to get training job {job_name} : {e}"
-        )
+        logger.error(f"Unexpected error happens when trying to get training job {job_name} : {e}")
+        raise
 
 
 @click.command()
@@ -209,7 +208,8 @@ def list_jobs(
         )
         click.echo(result)
     except Exception as e:
-        sys.exit(f"Unexpected error happens when trying to list training job : {e}")
+        logger.error(f"Unexpected error happens when trying to list training job : {e}")
+        raise
 
 
 @click.command()
@@ -251,9 +251,8 @@ def list_pods(
         result = list_pods_service.list_pods_for_training_job(job_name, namespace, True)
         click.echo(result)
     except Exception as e:
-        sys.exit(
-            f"Unexpected error happens when trying to list pods for training job {job_name} : {e}"
-        )
+        logger.error(f"Unexpected error happens when trying to list pods for training job {job_name} : {e}")
+        raise
 
 
 @click.command()
@@ -293,9 +292,8 @@ def cancel_job(
         result = cancel_training_job_service.cancel_training_job(job_name, namespace)
         click.echo(result)
     except Exception as e:
-        sys.exit(
-            f"Unexpected error happens when trying to cancel training job {job_name} : {e}"
-        )
+        logger.error(f"Unexpected error happens when trying to cancel training job {job_name} : {e}")
+        raise
 
 
 @click.command()
