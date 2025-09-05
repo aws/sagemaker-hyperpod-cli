@@ -145,7 +145,6 @@ def _extract_telemetry_data(func_name: str, *args, **kwargs) -> str:
             telemetry_data.append(f"recipe_name={recipe}")
             
             # Extract sequence length, GPU type, model size from recipe
-            import re
             if seq_match := re.search(r'seq(\d+)k?', recipe):
                 telemetry_data.append(f"sequence_length={seq_match.group(1)}k")
             if gpu_match := re.search(r'(p5x\d+|trn1x?\d*|p4)', recipe):
@@ -230,7 +229,7 @@ def _extract_telemetry_data(func_name: str, *args, **kwargs) -> str:
             telemetry_data.append(f"label_selector_provided=true")
     
     # Pod metrics (list_pods_cli from job.py, get_log_cli and exec_cli from pod.py)
-    elif func_name in ["list_pods_cli", "get_log_cli", "exec_cli"]: # DONE
+    elif func_name in ["list_pods_cli", "get_log_cli", "exec_cli"]:
         job_name = kwargs.get('job_name')
         namespace = kwargs.get('namespace')
         pod = kwargs.get('pod')  # get_log_cli and exec_cli specific
@@ -246,7 +245,7 @@ def _extract_telemetry_data(func_name: str, *args, **kwargs) -> str:
             telemetry_data.append(f"all_pods_mode=true")
     
     # Job patch metrics
-    elif func_name == "patch_job_cli": # DONE
+    elif func_name == "patch_job_cli":
         patch_type = kwargs.get('patch_type')  # First positional arg
         job_name = kwargs.get('job_name')
         namespace = kwargs.get('namespace')
@@ -267,8 +266,6 @@ def _extract_telemetry_data(func_name: str, *args, **kwargs) -> str:
             telemetry_data.append(f"cluster_name_provided=true")
         if namespace:
             telemetry_data.append(f"namespace_provided=true")
-    
-
     
     return "&" + "&".join(telemetry_data) if telemetry_data else ""
 
