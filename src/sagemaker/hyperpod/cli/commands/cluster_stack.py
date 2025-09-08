@@ -18,14 +18,13 @@ from sagemaker.hyperpod.common.telemetry import _hyperpod_telemetry_emitter
 from sagemaker.hyperpod.common.telemetry.constants import Feature
 from sagemaker.hyperpod.common.utils import setup_logging
 from sagemaker.hyperpod.cli.utils import convert_datetimes
-from sagemaker.hyperpod import create_boto3_client
 from sagemaker.hyperpod.cli.cluster_stack_utils import (
-    CloudFormationResourceManager,
-    DeletionConfirmationHandler,
-    CloudFormationErrorHandler,
     StackNotFoundError,
-    parse_retain_resources,
-    perform_stack_deletion
+    perform_stack_deletion,
+    handle_deletion_error,
+    handle_partial_deletion_failure,
+    get_stack_resources_and_validate_retention,
+    display_deletion_confirmation
 )
 
 logger = logging.getLogger(__name__)
@@ -325,31 +324,13 @@ def delete_cluster_stack(stack_name: str, retain_resources: str, region: str, de
     logger = setup_logging(logging.getLogger(__name__), debug)
     
     try:
-        # Initialize utility classes
-        resource_manager = CloudFormationResourceManager(region)
-        confirmation_handler = DeletionConfirmationHandler()
-        error_handler = CloudFormationErrorHandler(region)
-        
-        # 1. Get and validate resources
-        resources = resource_manager.get_stack_resources(stack_name)
-        if not resources:
-            click.secho(f"❌ No resources found in stack '{stack_name}'", fg='red')
-            return
-        
-        retain_list = parse_retain_resources(retain_resources)
-        valid_retain, invalid_retain = resource_manager.validate_retain_resources(retain_list, resources)
-        
-        # Show warning for invalid retain resources
-        confirmation_handler.display_invalid_resources_warning(invalid_retain)
+        # 1. Get and validate resources using new function-based interface
+        resources, valid_retain, invalid_retain = get_stack_resources_and_validate_retention(
+            stack_name, region, retain_resources
+        )
         
         # 2. Display warnings and get confirmation
-        resource_categories = resource_manager.categorize_resources(resources)
-        total_resources = sum(len(category) for category in resource_categories.values())
-        
-        confirmation_handler.display_deletion_warning(resource_categories)
-        confirmation_handler.display_retention_info(valid_retain)
-        
-        if not confirmation_handler.confirm_deletion():
+        if not display_deletion_confirmation(resources, valid_retain, invalid_retain):
             click.echo("Operation cancelled.")
             return
         
@@ -365,13 +346,13 @@ def delete_cluster_stack(stack_name: str, retain_resources: str, region: str, de
         
         try:
             # Handle deletion errors with detailed feedback
-            error_handler.handle_deletion_error(e, stack_name, retain_resources)
+            handle_deletion_error(e, stack_name, region, retain_resources)
         except click.ClickException:
             # Re-raise ClickException for proper CLI error handling
             raise
         except Exception:
             # Handle partial deletion failures
-            error_handler.handle_partial_deletion_failure(stack_name, resources, valid_retain)
+            handle_partial_deletion_failure(stack_name, region, resources, valid_retain)
             raise click.ClickException(str(e))
 
 @click.command("cluster")
