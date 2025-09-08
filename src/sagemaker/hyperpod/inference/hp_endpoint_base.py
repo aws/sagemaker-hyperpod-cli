@@ -63,6 +63,7 @@ class HPEndpointBase:
         kind: str,
         namespace: str,
         spec: Union[_HPJumpStartEndpoint, _HPEndpoint],
+        debug: bool = False,
     ):
         """Create an inference endpoint using Kubernetes API.
 
@@ -104,7 +105,7 @@ class HPEndpointBase:
         cls.verify_kube_config()
 
         logger = cls.get_logger()
-        logger = setup_logging(logger)
+        logger = setup_logging(logger, debug)
 
         custom_api = client.CustomObjectsApi()
 
