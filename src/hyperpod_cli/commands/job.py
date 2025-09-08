@@ -50,6 +50,8 @@ from hyperpod_cli.constants.command_constants import (
     Volume,
     USER_NAME_LABEL_KEY,
 )
+from hyperpod_cli.telemetry import _hyperpod_telemetry_emitter
+from hyperpod_cli.telemetry.constants import Feature
 from hyperpod_cli.clients.kubernetes_client import (
     KubernetesClient,
 )
@@ -124,6 +126,7 @@ logger = setup_logger(__name__)
     is_flag=True,
     help="Enable debug mode",
 )
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "hyperpod_v2.get_job_cli")
 def get_job(
     job_name: str,
     namespace: Optional[str],
@@ -144,9 +147,8 @@ def get_job(
         result = get_training_job_service.get_training_job(job_name, namespace, verbose)
         click.echo(result)
     except Exception as e:
-        sys.exit(
-            f"Unexpected error happens when trying to get training job {job_name} : {e}"
-        )
+        logger.error(f"Unexpected error happens when trying to get training job {job_name} : {e}")
+        raise
 
 
 @click.command()
@@ -186,6 +188,7 @@ def get_job(
     is_flag=True,
     help="Enable debug mode",
 )
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "hyperpod_v2.list_jobs_cli")
 def list_jobs(
     namespace: Optional[str],
     all_namespaces: Optional[bool],
@@ -205,7 +208,8 @@ def list_jobs(
         )
         click.echo(result)
     except Exception as e:
-        sys.exit(f"Unexpected error happens when trying to list training job : {e}")
+        logger.error(f"Unexpected error happens when trying to list training job : {e}")
+        raise
 
 
 @click.command()
@@ -228,6 +232,7 @@ def list_jobs(
     is_flag=True,
     help="Enable debug mode",
 )
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "hyperpod_v2.list_pods_cli")
 def list_pods(
     job_name: str,
     namespace: Optional[str],
@@ -246,9 +251,8 @@ def list_pods(
         result = list_pods_service.list_pods_for_training_job(job_name, namespace, True)
         click.echo(result)
     except Exception as e:
-        sys.exit(
-            f"Unexpected error happens when trying to list pods for training job {job_name} : {e}"
-        )
+        logger.error(f"Unexpected error happens when trying to list pods for training job {job_name} : {e}")
+        raise
 
 
 @click.command()
@@ -271,6 +275,7 @@ def list_pods(
     is_flag=True,
     help="Enable debug mode",
 )
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "hyperpod_v2.cancel_job_cli")
 def cancel_job(
     job_name: str,
     namespace: Optional[str],
@@ -287,9 +292,8 @@ def cancel_job(
         result = cancel_training_job_service.cancel_training_job(job_name, namespace)
         click.echo(result)
     except Exception as e:
-        sys.exit(
-            f"Unexpected error happens when trying to cancel training job {job_name} : {e}"
-        )
+        logger.error(f"Unexpected error happens when trying to cancel training job {job_name} : {e}")
+        raise
 
 
 @click.command()
@@ -536,6 +540,7 @@ fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_70b_seq16k_gpu_lora \n
     is_flag=True,
     help="Enable debug mode",
 )
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "hyperpod_v2.start_job_cli")
 def start_job(
     config_file: Optional[str],
     job_name: Optional[str],
@@ -876,6 +881,7 @@ def start_job(
     help="Optional. The namespace to use. If not specified, this command will first use the namespace wh connecting the cluster."
     "Otherwise if namespace is not configured when connecting to the cluster, a namespace that is managed by SageMaker will be auto discovered.",
 )
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "hyperpod_v2.patch_job_cli")
 def patch_job(patch_type: str, job_name: str, namespace: Optional[str]):
 
     if patch_type not in JobPatchType.get_values():

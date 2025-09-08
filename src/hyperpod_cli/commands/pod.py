@@ -24,6 +24,8 @@ from hyperpod_cli.utils import (
     setup_logger,
     set_logging_level,
 )
+from hyperpod_cli.telemetry import _hyperpod_telemetry_emitter
+from hyperpod_cli.telemetry.constants import Feature
 
 logger = setup_logger(__name__)
 
@@ -54,6 +56,7 @@ logger = setup_logger(__name__)
     is_flag=True,
     help="Enable debug mode",
 )
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "hyperpod_v2.get_log_cli")
 def get_log(
     job_name: str,
     pod: str,
@@ -73,9 +76,8 @@ def get_log(
         )
         click.echo(result)
     except Exception as e:
-        sys.exit(
-            f"Unexpected error happens when trying to get logs for training job {job_name} : {e}"
-        )
+        logger.error(f"Unexpected error happens when trying to get logs for training job {job_name} : {e}")
+        raise
     
     try:
         cloudwatch_link = get_logs_service.generate_cloudwatch_link(pod, namespace=namespace)
@@ -148,6 +150,7 @@ def _exec_command_required_option_pod_and_all_pods():
     is_flag=True,
     help="Enable debug mode",
 )
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "hyperpod_v2.exec_cli")
 def exec(
     job_name: str,
     namespace: Optional[str],
@@ -173,6 +176,5 @@ def exec(
         )
         click.echo(result)
     except Exception as e:
-        sys.exit(
-            f"Unexpected error happens when trying to exec command for pod {pod} : {e}"
-        )
+        logger.error(f"Unexpected error happens when trying to exec command for pod {pod} : {e}")
+        raise
