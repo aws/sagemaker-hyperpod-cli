@@ -26,6 +26,7 @@ from sagemaker.hyperpod.training.quota_allocation_util import (
     _get_resources_from_instance,
     _get_limits,
     _set_default_accelerators_values,
+    _validate_memory_limit,
     _validate_accelerators_values
 )
 
@@ -131,8 +132,9 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             # Sets accelerators proportional to given value ratios or max if no other values are given
             requests_value = (_get_resources_from_compute_quotas(instance_type, vcpu, memory, accelerators)
                               or _get_resources_from_instance(instance_type, node_count=1))
-            limits_value = _get_limits(instance_type, vcpu_limit, memory_limit, accelerators_limit)
-
+            memory_request = requests_value.get("memory")
+            limits_value = _get_limits(instance_type, vcpu_limit, memory_limit, accelerators_limit, memory_request)
+            _validate_memory_limit(instance_type, requests_value, limits_value)
             aclr_count, aclr_lim = _set_default_accelerators_values(instance_type, requests_value, limits_value, node_count)
             _validate_accelerators_values(aclr_count, aclr_lim)
 
@@ -142,8 +144,8 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
 
             # For testing
             # data['replicas'] = None
-            print("\n====DEBUG_2====")
-            print(data)
+            # print("\n====DEBUG_FINAL====")
+            # print(data)
 
             return data
         except KeyError as e:

@@ -279,11 +279,6 @@
       "description": "Queue name for job scheduling",
       "title": "Queue Name"
     },
-    "accelerators": {
-        "type": "integer",
-        "minimum": 0,
-        "description": "Number of accelerators (GPUs/TPUs)"
-    },
     "vcpu": {
       "type": "float",
       "minimum": 0,
