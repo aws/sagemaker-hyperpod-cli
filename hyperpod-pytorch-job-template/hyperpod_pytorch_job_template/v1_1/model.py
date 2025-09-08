@@ -12,6 +12,8 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config impo
     HostPath, 
     PersistentVolumeClaim
 )
+from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob
+
 
 # Constants
 ALLOWED_TOPOLOGY_LABELS = {
@@ -282,167 +284,103 @@ class PyTorchJobConfig(BaseModel):
         return v
 
     def to_domain(self) -> Dict:
-        """
-        Convert flat config to domain model (HyperPodPytorchJobSpec)
-        """
-
-        # Create container with required fields
+        """Convert flat config to domain model (HyperPodPytorchJobSpec)"""
+        
+        # Helper function to build dict with non-None values
+        def build_dict(**kwargs):
+            return {k: v for k, v in kwargs.items() if v is not None}
+        
+        # Build resources
         if self.instance_type is None:
-            requests_value = {"nvidia.com/gpu": "0"}
-            limits_value = {"nvidia.com/gpu": "0"}
+            requests_value = limits_value = {"nvidia.com/gpu": "0"}
         else:
-            requests_value = {}
-            if self.accelerators is not None:
-                requests_value["accelerators"] = str(self.accelerators)
-            if self.vcpu is not None:
-                requests_value["vcpu"] = str(self.vcpu)
-            if self.memory is not None:
-                requests_value["memory"] = str(self.memory)
+            requests_value = build_dict(
+                accelerators=str(self.accelerators) if self.accelerators else None,
+                vcpu=str(self.vcpu) if self.vcpu else None,
+                memory=str(self.memory) if self.memory else None
+            )
+            limits_value = build_dict(
+                accelerators=str(self.accelerators_limit) if self.accelerators_limit else None,
+                vcpu=str(self.vcpu_limit) if self.vcpu_limit else None,
+                memory=str(self.memory_limit) if self.memory_limit else None
+            )
 
-            limits_value = {}
-            if self.accelerators_limit is not None:
-                limits_value["accelerators"] = str(self.accelerators_limit)
-            if self.vcpu_limit is not None:
-                limits_value["vcpu"] = str(self.vcpu_limit)
-            if self.memory_limit is not None:
-                limits_value["memory"] = str(self.memory_limit)
+        # Build container
+        container_kwargs = build_dict(
+            name="pytorch-job-container",
+            image=self.image,
+            resources=Resources(requests=requests_value, limits=limits_value),
+            command=self.command,
+            args=self.args,
+            image_pull_policy=self.pull_policy,
+            env=[{"name": k, "value": v} for k, v in self.environment.items()] if self.environment else None,
+            volume_mounts=[{"name": vol.name, "mount_path": vol.mount_path} for vol in self.volume] if self.volume else None
+        )
+        
+        container = Containers(**container_kwargs)
 
-        # Create container with required fields
-        container_kwargs = {
-            "name": "pytorch-job-container",
-            "image": self.image,
-            "resources": Resources(
-                requests=requests_value,
-                limits=limits_value,
-            ),
-        }
-
-        # Add optional container fields
-        if self.command is not None:
-            container_kwargs["command"] = self.command
-        if self.args is not None:
-            container_kwargs["args"] = self.args
-        if self.pull_policy is not None:
-            container_kwargs["image_pull_policy"] = self.pull_policy
-        if self.environment is not None:
-            container_kwargs["env"] = [
-                {"name": k, "value": v} for k, v in self.environment.items()
-            ]
-
-        if self.volume is not None:
-            volume_mounts = []
-            for i, vol in enumerate(self.volume):
-                volume_mount = {"name": vol.name, "mount_path": vol.mount_path}
-                volume_mounts.append(volume_mount)
-            
-            container_kwargs["volume_mounts"] = volume_mounts
-
-
-        # Create container object
-        try:
-            container = Containers(**container_kwargs)
-        except Exception as e:
-            raise
-
-        # Create pod spec kwargs
-        spec_kwargs = {"containers": list([container])}
-
-        # Add volumes to pod spec if present
-        if self.volume is not None:
+        # Build volumes
+        volumes = None
+        if self.volume:
             volumes = []
-            for i, vol in enumerate(self.volume):
+            for vol in self.volume:
                 if vol.type == "hostPath":
-                    host_path = HostPath(path=vol.path)
-                    volume_obj = Volumes(name=vol.name, host_path=host_path)
+                    volume_obj = Volumes(name=vol.name, host_path=HostPath(path=vol.path))
                 elif vol.type == "pvc":
-                    pvc_config = PersistentVolumeClaim(
-                         claim_name=vol.claim_name,
-                         read_only=vol.read_only == "true" if vol.read_only else False
-                    )
-                    volume_obj = Volumes(name=vol.name, persistent_volume_claim=pvc_config)
+                    volume_obj = Volumes(name=vol.name, persistent_volume_claim=PersistentVolumeClaim(
+                        claim_name=vol.claim_name,
+                        read_only=vol.read_only == "true" if vol.read_only else False
+                    ))
                 volumes.append(volume_obj)
-            
-            spec_kwargs["volumes"] = volumes
+
+        # Build node selector
+        node_selector = build_dict(
+            **{"node.kubernetes.io/instance-type": self.instance_type} if self.instance_type else {},
+            **self.label_selector if self.label_selector else {},
+            **{"deep-health-check-passed": "true"} if self.deep_health_check_passed_nodes_only else {}
+        )
+
+        # Build spec
+        spec_kwargs = build_dict(
+            containers=[container],
+            volumes=volumes,
+            node_selector=node_selector if node_selector else None,
+            service_account_name=self.service_account_name,
+            scheduler_name=self.scheduler_type
+        )
+
+        # Build metadata
+        metadata_labels = build_dict(
+            **{"kueue.x-k8s.io/queue-name": self.queue_name} if self.queue_name else {},
+            **{"kueue.x-k8s.io/priority-class": self.priority} if self.priority else {}
+        )
         
-        # Add node selector if any selector fields are present
-        node_selector = {}
-        if self.instance_type is not None:
-            map = {"node.kubernetes.io/instance-type": self.instance_type}
-            node_selector.update(map)
-        if self.label_selector is not None:
-            node_selector.update(self.label_selector)
-        if self.deep_health_check_passed_nodes_only:
-            map = {"deep-health-check-passed": "true"}
-            node_selector.update(map)
-        if node_selector:
-            spec_kwargs.update({"node_selector": node_selector})
+        annotations = build_dict(
+            **{"kueue.x-k8s.io/podset-preferred-topology": self.preferred_topology} if self.preferred_topology else {},
+            **{"kueue.x-k8s.io/podset-required-topology": self.required_topology} if self.required_topology else {}
+        )
 
-        # Add other optional pod spec fields
-        if self.service_account_name is not None:
-            map = {"service_account_name": self.service_account_name}
-            spec_kwargs.update(map)
+        metadata_kwargs = build_dict(
+            name=self.job_name,
+            namespace=self.namespace,
+            labels=metadata_labels if metadata_labels else None,
+            annotations=annotations if annotations else None
+        )
 
-        if self.scheduler_type is not None:
-            map = {"scheduler_name": self.scheduler_type}
-            spec_kwargs.update(map)
+        # Build replica spec
+        replica_kwargs = build_dict(
+            name="pod",
+            template=Template(metadata=Metadata(**metadata_kwargs), spec=Spec(**spec_kwargs)),
+            replicas=self.node_count
+        )
 
-        # Build metadata labels only if relevant fields are present
-        metadata_kwargs = {"name": self.job_name}
-        if self.namespace is not None:
-            metadata_kwargs["namespace"] = self.namespace
+        # Build job
+        job_kwargs = build_dict(
+            metadata=metadata_kwargs,
+            replica_specs=[ReplicaSpec(**replica_kwargs)],
+            nproc_per_node=str(self.tasks_per_node) if self.tasks_per_node else None,
+            run_policy=RunPolicy(clean_pod_policy="None", job_max_retry_count=self.max_retry) if self.max_retry else None
+        )
 
-        metadata_labels = {}
-        if self.queue_name is not None:
-            metadata_labels["kueue.x-k8s.io/queue-name"] = self.queue_name
-        if self.priority is not None:
-            metadata_labels["kueue.x-k8s.io/priority-class"] = self.priority
-        
-        annotations = {}
-        if self.preferred_topology is not None:
-            annotations["kueue.x-k8s.io/podset-preferred-topology"] = (
-                self.preferred_topology
-            )
-        if self.required_topology is not None:
-            annotations["kueue.x-k8s.io/podset-required-topology"] = (
-                self.required_topology
-            )
-
-        if metadata_labels:
-            metadata_kwargs["labels"] = metadata_labels
-        if annotations:
-            metadata_kwargs["annotations"] = annotations
-
-        # Create replica spec with only non-None values
-        replica_kwargs = {
-            "name": "pod",
-            "template": Template(
-                metadata=Metadata(**metadata_kwargs), spec=Spec(**spec_kwargs)
-            ),
-        }
-
-        if self.node_count is not None:
-            replica_kwargs["replicas"] = self.node_count
-
-        replica_spec = ReplicaSpec(**replica_kwargs)
-
-        replica_specs = list([replica_spec])
-
-        job_kwargs = {"replica_specs": replica_specs}
-        # Add optional fields only if they exist
-        if self.tasks_per_node is not None:
-            job_kwargs["nproc_per_node"] = str(self.tasks_per_node)
-
-        if self.max_retry is not None:
-            job_kwargs["run_policy"] = RunPolicy(
-                clean_pod_policy="None", job_max_retry_count=self.max_retry
-            )
-
-        # Create base return dictionary
-        result = {
-            "name": self.job_name,
-            "namespace": self.namespace,
-            "labels": metadata_labels,
-            "annotations": annotations,
-            "spec": job_kwargs,
-        }
+        result = HyperPodPytorchJob(**job_kwargs)
         return result
