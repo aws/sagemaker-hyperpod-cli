@@ -29,7 +29,7 @@ class TestTelemetryLogging(unittest.TestCase):
     def test_extract_telemetry_data_start_job_cli(self):
         """Test telemetry data extraction for start_job_cli"""
         result = _extract_telemetry_data(
-            "start_job_cli",
+            "hyperpod_v2.start_job_cli",
             recipe="training/llama/hf_llama3_8b_seq8k_gpu_p5x16_pretrain",
             instance_type="ml.p5.48xlarge",
             node_count=2,
@@ -49,7 +49,7 @@ class TestTelemetryLogging(unittest.TestCase):
     def test_extract_telemetry_data_start_job_cli_no_config_file(self):
         """Test telemetry data extraction for start_job_cli without config file"""
         result = _extract_telemetry_data(
-            "start_job_cli",
+            "hyperpod_v2.start_job_cli",
             recipe="fine-tuning/llama/hf_llama3_70b_seq8k_gpu_lora",
             instance_type="ml.g5.2xlarge"
         )
@@ -61,7 +61,7 @@ class TestTelemetryLogging(unittest.TestCase):
     def test_extract_telemetry_data_get_clusters_cli(self):
         """Test telemetry data extraction for get_clusters_cli"""
         result = _extract_telemetry_data(
-            "get_clusters_cli",
+            "hyperpod_v2.get_clusters_cli",
             clusters="cluster1,cluster2,cluster3",
             namespace=["ns1", "ns2"]
         )
@@ -74,7 +74,7 @@ class TestTelemetryLogging(unittest.TestCase):
     def test_extract_telemetry_data_list_jobs_cli(self):
         """Test telemetry data extraction for list_jobs_cli"""
         result = _extract_telemetry_data(
-            "list_jobs_cli",
+            "hyperpod_v2.list_jobs_cli",
             job_name="test-job",
             namespace="test-ns",
             all_namespaces=True,
@@ -89,7 +89,7 @@ class TestTelemetryLogging(unittest.TestCase):
     def test_extract_telemetry_data_get_log_cli(self):
         """Test telemetry data extraction for get_log_cli"""
         result = _extract_telemetry_data(
-            "get_log_cli",
+            "hyperpod_v2.get_log_cli",
             job_name="test-job",
             pod="test-pod",
             namespace="test-ns"
@@ -102,7 +102,7 @@ class TestTelemetryLogging(unittest.TestCase):
     def test_extract_telemetry_data_patch_job_cli(self):
         """Test telemetry data extraction for patch_job_cli"""
         result = _extract_telemetry_data(
-            "patch_job_cli",
+            "hyperpod_v2.patch_job_cli",
             patch_type="suspend",
             job_name="test-job",
             namespace="test-ns"
@@ -115,7 +115,7 @@ class TestTelemetryLogging(unittest.TestCase):
     def test_extract_telemetry_data_connect_cluster_cli(self):
         """Test telemetry data extraction for connect_cluster_cli"""
         result = _extract_telemetry_data(
-            "connect_cluster_cli",
+            "hyperpod_v2.connect_cluster_cli",
             cluster_name="test-cluster",
             namespace="test-ns"
         )
@@ -228,7 +228,7 @@ class TestTelemetryLogging(unittest.TestCase):
     def test_recipe_parsing_sequence_length(self):
         """Test recipe parsing for sequence length extraction"""
         result = _extract_telemetry_data(
-            "start_job_cli",
+            "hyperpod_v2.start_job_cli",
             recipe="training/llama/hf_llama3_8b_seq16k_gpu_p5x16_pretrain"
         )
         
@@ -237,7 +237,7 @@ class TestTelemetryLogging(unittest.TestCase):
     def test_recipe_parsing_gpu_type(self):
         """Test recipe parsing for GPU type extraction"""
         result = _extract_telemetry_data(
-            "start_job_cli",
+            "hyperpod_v2.start_job_cli",
             recipe="training/llama/hf_llama3_8b_seq8k_trn1x4_pretrain"
         )
         
@@ -246,7 +246,7 @@ class TestTelemetryLogging(unittest.TestCase):
     def test_recipe_parsing_model_size(self):
         """Test recipe parsing for model size extraction"""
         result = _extract_telemetry_data(
-            "start_job_cli",
+            "hyperpod_v2.start_job_cli",
             recipe="training/llama/hf_llama3_70b_seq8k_gpu_p5x32_pretrain"
         )
         
@@ -255,7 +255,7 @@ class TestTelemetryLogging(unittest.TestCase):
     def test_advanced_job_parameters(self):
         """Test extraction of advanced job parameters"""
         result = _extract_telemetry_data(
-            "start_job_cli",
+            "hyperpod_v2.start_job_cli",
             job_kind="kubeflow/PyTorchJob",
             pull_policy="Always",
             restart_policy="OnFailure",

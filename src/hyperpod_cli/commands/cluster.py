@@ -109,7 +109,7 @@ logger = setup_logger(__name__)
     multiple=True,
     help="Optional. The namespace that you want to check the capacity for. Only SageMaker managed namespaces are supported.",
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "get_clusters_cli")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "hyperpod_v2.get_clusters_cli")
 def get_clusters(
     region: Optional[str],
     orchestrator: Optional[str],
@@ -466,7 +466,7 @@ def _aggregate_nodes_info(
     is_flag=True,
     help="Enable debug mode",
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "connect_cluster_cli")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "hyperpod_v2.connect_cluster_cli")
 def connect_cluster(
     cluster_name: str,
     region: Optional[str],

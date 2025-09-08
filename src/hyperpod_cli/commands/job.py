@@ -126,7 +126,7 @@ logger = setup_logger(__name__)
     is_flag=True,
     help="Enable debug mode",
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "get_job_cli")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "hyperpod_v2.get_job_cli")
 def get_job(
     job_name: str,
     namespace: Optional[str],
@@ -188,7 +188,7 @@ def get_job(
     is_flag=True,
     help="Enable debug mode",
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "list_jobs_cli")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "hyperpod_v2.list_jobs_cli")
 def list_jobs(
     namespace: Optional[str],
     all_namespaces: Optional[bool],
@@ -232,7 +232,7 @@ def list_jobs(
     is_flag=True,
     help="Enable debug mode",
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "list_pods_cli")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "hyperpod_v2.list_pods_cli")
 def list_pods(
     job_name: str,
     namespace: Optional[str],
@@ -275,7 +275,7 @@ def list_pods(
     is_flag=True,
     help="Enable debug mode",
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "cancel_job_cli")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "hyperpod_v2.cancel_job_cli")
 def cancel_job(
     job_name: str,
     namespace: Optional[str],
@@ -540,7 +540,7 @@ fine-tuning/deepseek/hf_deepseek_r1_distilled_llama_70b_seq16k_gpu_lora \n
     is_flag=True,
     help="Enable debug mode",
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "start_job_cli")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "hyperpod_v2.start_job_cli")
 def start_job(
     config_file: Optional[str],
     job_name: Optional[str],
@@ -881,7 +881,7 @@ def start_job(
     help="Optional. The namespace to use. If not specified, this command will first use the namespace wh connecting the cluster."
     "Otherwise if namespace is not configured when connecting to the cluster, a namespace that is managed by SageMaker will be auto discovered.",
 )
-@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "patch_job_cli")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_V2, "hyperpod_v2.patch_job_cli")
 def patch_job(patch_type: str, job_name: str, namespace: Optional[str]):
 
     if patch_type not in JobPatchType.get_values():

@@ -112,7 +112,7 @@ def _extract_telemetry_data(func_name: str, *args, **kwargs) -> str:
     telemetry_data = []
     
     # Recipe metrics for start_job_cli
-    if func_name == "start_job_cli":
+    if func_name == "hyperpod_v2.start_job_cli":
         # Existing high-value parameters
         recipe = kwargs.get('recipe')
         override_parameters = kwargs.get('override_parameters')
@@ -199,7 +199,7 @@ def _extract_telemetry_data(func_name: str, *args, **kwargs) -> str:
             telemetry_data.append(f"auto_resume={auto_resume}")
     
     # Cluster metrics (get_clusters_cli only - no create/delete found)
-    elif func_name == "get_clusters_cli":
+    elif func_name == "hyperpod_v2.get_clusters_cli":
         clusters = kwargs.get('clusters')  # Comma-separated cluster names filter
         namespace = kwargs.get('namespace')  # List of namespaces
         
@@ -213,7 +213,7 @@ def _extract_telemetry_data(func_name: str, *args, **kwargs) -> str:
             telemetry_data.append(f"namespace_count={ns_count}")
     
     # Job metrics
-    elif func_name in ["list_jobs_cli", "get_job_cli", "cancel_job_cli"]:
+    elif func_name in ["hyperpod_v2.list_jobs_cli", "hyperpod_v2.get_job_cli", "hyperpod_v2.cancel_job_cli"]:
         job_name = kwargs.get('job_name')
         namespace = kwargs.get('namespace')
         all_namespaces = kwargs.get('all_namespaces')  # list_jobs specific
@@ -229,7 +229,7 @@ def _extract_telemetry_data(func_name: str, *args, **kwargs) -> str:
             telemetry_data.append(f"label_selector_provided=true")
     
     # Pod metrics (list_pods_cli from job.py, get_log_cli and exec_cli from pod.py)
-    elif func_name in ["list_pods_cli", "get_log_cli", "exec_cli"]:
+    elif func_name in ["hyperpod_v2.list_pods_cli", "hyperpod_v2.get_log_cli", "hyperpod_v2.exec_cli"]:
         job_name = kwargs.get('job_name')
         namespace = kwargs.get('namespace')
         pod = kwargs.get('pod')  # get_log_cli and exec_cli specific
@@ -245,7 +245,7 @@ def _extract_telemetry_data(func_name: str, *args, **kwargs) -> str:
             telemetry_data.append(f"all_pods_mode=true")
     
     # Job patch metrics
-    elif func_name == "patch_job_cli":
+    elif func_name == "hyperpod_v2.patch_job_cli":
         patch_type = kwargs.get('patch_type')  # First positional arg
         job_name = kwargs.get('job_name')
         namespace = kwargs.get('namespace')
@@ -258,7 +258,7 @@ def _extract_telemetry_data(func_name: str, *args, **kwargs) -> str:
             telemetry_data.append(f"namespace_provided=true")
     
     # Cluster connection metrics
-    elif func_name == "connect_cluster_cli":
+    elif func_name == "hyperpod_v2.connect_cluster_cli":
         cluster_name = kwargs.get('cluster_name')
         namespace = kwargs.get('namespace')
         
