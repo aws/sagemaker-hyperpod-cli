@@ -386,7 +386,7 @@ def _default_create(region):
             data, template, version = load_config(dir_path)
             namespace = data.get("namespace", "default")
             registry = TEMPLATES[template]["registry"]
-            model = registry.get(version)
+            model = registry.get(str(version))
             if model:
                 # Filter out CLI metadata fields before passing to model
                 from sagemaker.hyperpod.cli.init_utils import filter_cli_metadata_fields

@@ -13,27 +13,27 @@ from hyperpod_pytorch_job_template.registry import SCHEMA_REGISTRY as P_REG
 CRD = "crd"
 CFN = "cfn"
 TEMPLATES = {
-    # "hyp-jumpstart-endpoint": {
-    #     "registry": JS_REG,
-    #     "schema_pkg": "hyperpod_jumpstart_inference_template",
-    #     "schema_type": CRD,
-    #     'template': KUBERNETES_JS_ENDPOINT_TEMPLATE,
-    #     'type': "jinja"
-    # },
-    # "hyp-custom-endpoint": {
-    #     "registry": C_REG,
-    #     "schema_pkg": "hyperpod_custom_inference_template",
-    #     "schema_type": CRD,
-    #     'template': KUBERNETES_CUSTOM_ENDPOINT_TEMPLATE,
-    #     'type': "jinja"
-    # },
-    # "hyp-pytorch-job": {
-    #     "registry": P_REG,
-    #     "schema_pkg": "hyperpod_pytorch_job_template",
-    #     "schema_type": CRD,
-    #     'template': KUBERNETES_PYTORCH_JOB_TEMPLATE,
-    #     'type': "jinja"
-    # },
+    "hyp-jumpstart-endpoint": {
+        "registry": JS_REG,
+        "schema_pkg": "hyperpod_jumpstart_inference_template",
+        "schema_type": CRD,
+        'template': KUBERNETES_JS_ENDPOINT_TEMPLATE,
+        'type': "jinja"
+    },
+    "hyp-custom-endpoint": {
+        "registry": C_REG,
+        "schema_pkg": "hyperpod_custom_inference_template",
+        "schema_type": CRD,
+        'template': KUBERNETES_CUSTOM_ENDPOINT_TEMPLATE,
+        'type': "jinja"
+    },
+    "hyp-pytorch-job": {
+        "registry": P_REG,
+        "schema_pkg": "hyperpod_pytorch_job_template",
+        "schema_type": CRD,
+        'template': KUBERNETES_PYTORCH_JOB_TEMPLATE,
+        'type': "jinja"
+    },
     "cluster-stack": {
         "schema_pkg": "hyperpod_cluster_stack_template",
         "schema_type": CFN,
