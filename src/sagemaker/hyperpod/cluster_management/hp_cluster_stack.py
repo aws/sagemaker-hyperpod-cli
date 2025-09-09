@@ -538,7 +538,6 @@ class HpClusterStack(ClusterStackBase):
         return HpClusterStack._get_stack_status_helper(stack_name, region)
 
     @staticmethod
-    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "delete_cluster_stack")
     def delete(stack_name: str, region: Optional[str] = None, retain_resources: Optional[List[str]] = None, 
                logger: Optional[logging.Logger] = None) -> None:
         """Deletes a HyperPod cluster CloudFormation stack.

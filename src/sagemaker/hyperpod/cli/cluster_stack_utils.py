@@ -420,8 +420,6 @@ def delete_stack_with_confirmation(stack_name: str, region: str, retain_resource
                                  success_callback: Optional[SuccessCallback] = None,
                                  logger: Optional[logging.Logger] = None) -> None:
     """
-    High-level function that orchestrates the entire stack deletion workflow.
-    
     This is the main public interface for stack deletion, supporting both CLI and SDK
     usage through customizable callback functions. It handles resource validation,
     user confirmation, deletion execution, and comprehensive error handling.
