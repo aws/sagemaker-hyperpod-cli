@@ -12,7 +12,6 @@ from botocore.exceptions import ClientError
 from sagemaker.hyperpod.cli.cluster_stack_utils import (
     StackNotFoundError,
     delete_stack_with_confirmation,
-    perform_stack_deletion,
     MessageCallback,
     ConfirmCallback,
     SuccessCallback
@@ -287,64 +286,6 @@ class TestStackDeletionWorkflow:
             
             # Verify logger was used
             assert logger.info.called
-
-
-class TestPerformStackDeletion:
-    """Test suite for the low-level stack deletion function."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.region = 'us-west-2'
-        self.stack_name = 'test-stack'
-
-    @patch('boto3.client')
-    def test_perform_stack_deletion_success(self, mock_boto3_client):
-        """Test successful stack deletion."""
-        mock_cf_client = Mock()
-        mock_boto3_client.return_value = mock_cf_client
-        
-        perform_stack_deletion(self.stack_name, self.region, [])
-        
-        mock_cf_client.delete_stack.assert_called_once_with(StackName=self.stack_name)
-
-    @patch('boto3.client')
-    def test_perform_stack_deletion_with_retention(self, mock_boto3_client):
-        """Test stack deletion with resource retention."""
-        mock_cf_client = Mock()
-        mock_boto3_client.return_value = mock_cf_client
-        retain_list = ['Resource1', 'Resource2']
-        
-        perform_stack_deletion(self.stack_name, self.region, retain_list)
-        
-        mock_cf_client.delete_stack.assert_called_once_with(
-            StackName=self.stack_name,
-            RetainResources=retain_list
-        )
-
-    @patch('boto3.client')
-    def test_perform_stack_deletion_with_logger(self, mock_boto3_client):
-        """Test stack deletion with logger."""
-        mock_cf_client = Mock()
-        mock_boto3_client.return_value = mock_cf_client
-        logger = Mock(spec=logging.Logger)
-        
-        perform_stack_deletion(self.stack_name, self.region, [], logger)
-        
-        # Verify logger was used
-        assert logger.debug.called
-        assert logger.info.called
-        
-        mock_cf_client.delete_stack.assert_called_once_with(StackName=self.stack_name)
-
-    @patch('boto3.client')
-    def test_perform_stack_deletion_error(self, mock_boto3_client):
-        """Test stack deletion error handling."""
-        mock_cf_client = Mock()
-        mock_boto3_client.return_value = mock_cf_client
-        mock_cf_client.delete_stack.side_effect = Exception("Deletion failed")
-        
-        with pytest.raises(Exception, match="Deletion failed"):
-            perform_stack_deletion(self.stack_name, self.region, [])
 
 
 class TestCallbackTypes:

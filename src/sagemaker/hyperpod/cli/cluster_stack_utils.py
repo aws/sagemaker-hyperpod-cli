@@ -6,7 +6,6 @@ with support for both CLI and SDK interfaces through a callback pattern.
 
 Public Interface:
     delete_stack_with_confirmation() - Main orchestration function for stack deletion
-    perform_stack_deletion() - Low-level stack deletion operation
     StackNotFoundError - Exception raised when stack is not found
 
 All other functions are private implementation details and should not be used directly.
@@ -252,12 +251,12 @@ def _parse_retain_resources(retain_resources_str: str) -> List[str]:
     return parse_comma_separated_list(retain_resources_str)
 
 
-def perform_stack_deletion(stack_name: str, region: str, retain_list: List[str], 
-                          logger: Optional[logging.Logger] = None) -> None:
+def _perform_stack_deletion(stack_name: str, region: str, retain_list: List[str], 
+                           logger: Optional[logging.Logger] = None) -> None:
     """Perform the actual CloudFormation stack deletion.
     
-    This is a low-level function that directly calls the CloudFormation delete_stack API.
-    For most use cases, use delete_stack_with_confirmation() instead.
+    This is a private low-level function that directly calls the CloudFormation delete_stack API.
+    Use delete_stack_with_confirmation() for the public interface.
     
     Args:
         stack_name: Name of the stack to delete
@@ -477,7 +476,7 @@ def delete_stack_with_confirmation(stack_name: str, region: str, retain_resource
     
     # 3. Perform deletion
     try:
-        perform_stack_deletion(stack_name, region, valid_retain, logger)
+        _perform_stack_deletion(stack_name, region, valid_retain, logger)
         success_callback(f"Stack '{stack_name}' deletion initiated successfully")
     except Exception as e:
         # Handle deletion errors
