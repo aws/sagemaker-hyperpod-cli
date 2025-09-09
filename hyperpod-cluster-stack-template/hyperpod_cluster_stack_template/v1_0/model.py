@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Literal, List, Any, Union
 
 class ClusterStackBase(BaseModel):
@@ -51,3 +51,9 @@ class ClusterStackBase(BaseModel):
     storage_capacity: Optional[int] = Field(1200, description="Storage capacity for the FSx file system in GiB")
     fsx_file_system_id: Optional[str] = Field("", description="Existing FSx file system ID")
 
+    @field_validator('kubernetes_version', mode='before')
+    @classmethod
+    def validate_kubernetes_version(cls, v):
+        if v is not None:
+            return str(v)
+        return v

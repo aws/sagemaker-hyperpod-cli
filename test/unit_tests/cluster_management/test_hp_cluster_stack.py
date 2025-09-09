@@ -482,61 +482,8 @@ class TestHpClusterStackGetTemplate(unittest.TestCase):
         self.assertIn("Failed to load template from package", str(context.exception))
 
 
-class TestHpClusterStackValidators(unittest.TestCase):
+class TestHpClusterStackList(unittest.TestCase):
     """Test HpClusterStack field validators"""
-    
-    def test_validate_kubernetes_version_float_to_string(self):
-        """Test kubernetes_version validator converts float to string"""
-        stack = HpClusterStack(kubernetes_version=1.31)
-        self.assertEqual(stack.kubernetes_version, "1.31")
-    
-    def test_validate_kubernetes_version_string_unchanged(self):
-        """Test kubernetes_version validator keeps string unchanged"""
-        stack = HpClusterStack(kubernetes_version="1.31")
-        self.assertEqual(stack.kubernetes_version, "1.31")
-    
-    def test_validate_kubernetes_version_none_unchanged(self):
-        """Test kubernetes_version validator keeps None unchanged"""
-        stack = HpClusterStack(kubernetes_version=None)
-        self.assertIsNone(stack.kubernetes_version)
-    
-    def test_validate_list_fields_rejects_empty_list(self):
-        """Test list field validators reject empty lists"""
-        with self.assertRaises(ValueError) as context:
-            HpClusterStack(eks_private_subnet_ids=[])
-        
-        self.assertIn("Empty lists [] are not allowed", str(context.exception))
-    
-    def test_validate_list_fields_accepts_populated_list(self):
-        """Test list field validators accept populated lists"""
-        stack = HpClusterStack(eks_private_subnet_ids=["subnet-123", "subnet-456"])
-        self.assertEqual(stack.eks_private_subnet_ids, ["subnet-123", "subnet-456"])
-    
-    def test_validate_list_fields_accepts_none(self):
-        """Test list field validators accept None values"""
-        stack = HpClusterStack(eks_private_subnet_ids=None)
-        self.assertIsNone(stack.eks_private_subnet_ids)
-    
-    def test_validate_availability_zone_ids_empty_list(self):
-        """Test availability_zone_ids validator rejects empty list"""
-        with self.assertRaises(ValueError) as context:
-            HpClusterStack(availability_zone_ids=[])
-        
-        self.assertIn("Empty lists [] are not allowed", str(context.exception))
-    
-    def test_validate_tags_empty_list(self):
-        """Test tags validator rejects empty list"""
-        with self.assertRaises(ValueError) as context:
-            HpClusterStack(tags=[])
-        
-        self.assertIn("Empty lists [] are not allowed", str(context.exception))
-    
-    def test_validate_instance_group_settings_empty_list(self):
-        """Test instance_group_settings validator rejects empty list"""
-        with self.assertRaises(ValueError) as context:
-            HpClusterStack(instance_group_settings=[])
-        
-        self.assertIn("Empty lists [] are not allowed", str(context.exception))
 
     @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.create_boto3_client')
     def test_list_default_filters_delete_complete(self, mock_create_client):

@@ -6,6 +6,9 @@ from sagemaker.hyperpod.cli.templates.k8s_pytorch_job_template import KUBERNETES
 from hyperpod_jumpstart_inference_template.registry import SCHEMA_REGISTRY as JS_REG
 from hyperpod_custom_inference_template.registry import SCHEMA_REGISTRY as C_REG
 from hyperpod_pytorch_job_template.registry import SCHEMA_REGISTRY as P_REG
+from hyperpod_cluster_stack_template.registry import SCHEMA_REGISTRY as CLUSTER_REG
+
+import sys
 
 # Here is the list of existing templates supported
 # You can onboard new template by adding the mapping here
@@ -35,11 +38,42 @@ TEMPLATES = {
         'type': "jinja"
     },
     "cluster-stack": {
+        "registry": CLUSTER_REG,
         "schema_pkg": "hyperpod_cluster_stack_template",
         "schema_type": CFN,
         'template': CLOUDFORMATION_CLUSTER_CREATION_TEMPLATE,
         'type': "jinja"
     }
+}
+
+
+def _get_handler_from_latest_template(template_name, handler_name):
+    """Dynamically import handler from the latest version of a template"""
+    try:
+        template_info = TEMPLATES[template_name]
+        registry = template_info["registry"]
+
+        # Get latest version using same logic as _get_latest_class
+        available_versions = list(registry.keys())
+        def version_key(v):
+            try:
+                return tuple(map(int, v.split('.')))
+            except ValueError:
+                return (0, 0)
+
+        latest_version = max(available_versions, key=version_key)
+        latest_model = registry[latest_version]
+        
+        # Get handler from module
+        module = sys.modules[latest_model.__module__]
+        return getattr(module, handler_name)
+    except (ImportError, AttributeError):
+        return None
+
+
+# Template.field to handler mapping - avoids conflicts and works reliably
+SPECIAL_FIELD_HANDLERS = {
+    'hyp-pytorch-job.volume': _get_handler_from_latest_template("hyp-pytorch-job", "VOLUME_TYPE_HANDLER"),
 }
 
 

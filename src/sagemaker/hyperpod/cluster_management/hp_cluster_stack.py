@@ -52,32 +52,6 @@ class HpClusterStack(ClusterStackBase):
     def __init__(self, **data):
         super().__init__(**data)
 
-    @field_validator('kubernetes_version', mode='before')
-    @classmethod
-    def validate_kubernetes_version(cls, v):
-        if v is not None:
-            return str(v)
-        return v
-
-    @field_validator('availability_zone_ids', 'nat_gateway_ids', 'eks_private_subnet_ids', 'security_group_ids', 'private_route_table_ids', 'private_subnet_ids', 'instance_group_settings', 'rig_settings', 'tags', mode='before')
-    @classmethod
-    def validate_list_fields(cls, v):
-        # Convert JSON string to list if needed
-        if isinstance(v, str) and v.startswith('['):
-            try:
-                import json
-                v = json.loads(v)
-            except (json.JSONDecodeError, TypeError):
-                try:
-                    # Try Python literal eval (single quotes)
-                    v = ast.literal_eval(v)
-                except:
-                    pass  # Keep original value if parsing fails
-
-        if isinstance(v, list) and len(v) == 0:
-            raise ValueError('Empty lists [] are not allowed. Use proper YAML array format or leave field empty.')
-        return v
-
     @staticmethod
     def get_template() -> str:
         try:

@@ -5,33 +5,33 @@ import json
 import click
 from unittest.mock import Mock, patch, mock_open
 from pathlib import Path
-from sagemaker.hyperpod.cli.init_utils import load_schema_for_version, save_template, generate_click_command, save_cfn_jinja
+from sagemaker.hyperpod.cli.init_utils import _load_schema_for_version, save_template, generate_click_command, _save_cfn_jinja
 from sagemaker.hyperpod.cli.constants.init_constants import CFN
 from unittest.mock import Mock, patch, mock_open
 from pathlib import Path
 from pydantic import ValidationError
 
 from sagemaker.hyperpod.cli.init_utils import (
-    load_schema_for_version, 
+    _load_schema_for_version, 
     save_template, 
     generate_click_command, 
-    save_k8s_jinja,
+    _save_k8s_jinja,
     save_config_yaml,
     load_config_and_validate,
     validate_config_against_model,
     filter_validation_errors_for_user_input,
     display_validation_results,
     build_config_from_schema,
-    pascal_to_kebab
+    _pascal_to_kebab
 )
 from sagemaker.hyperpod.cli.constants.init_constants import CFN, CRD
 import tempfile
 import os
-from sagemaker.hyperpod.cli.init_utils import update_field_in_config, update_list_field_in_config
+from sagemaker.hyperpod.cli.init_utils import _update_field_in_config, _update_list_field_in_config
 
 
 class TestSaveK8sJinja:
-    """Test cases for save_k8s_jinja function"""
+    """Test cases for _save_k8s_jinja function"""
     
     @patch('builtins.open', new_callable=mock_open)
     @patch('sagemaker.hyperpod.cli.init_utils.Path')
@@ -44,7 +44,7 @@ class TestSaveK8sJinja:
         mock_join.return_value = "/test/dir/k8s.jinja"
         mock_path.return_value.mkdir = Mock()
         
-        result = save_k8s_jinja(directory, content)
+        result = _save_k8s_jinja(directory, content)
         
         # Verify directory creation
         mock_path.assert_called_once_with(directory)
@@ -61,10 +61,21 @@ class TestSaveK8sJinja:
         assert result == "/test/dir/k8s.jinja"
 
 
+def create_mock_template(schema_type, registry=None):
+    """Helper to create properly structured mock template"""
+    return {
+        'schema_type': schema_type,
+        'registry': registry or {'1.0': Mock()},
+        'schema_pkg': 'mock_schema_pkg',
+        'template': 'mock_template',
+        'type': 'jinja'
+    }
+
+
 class TestSaveTemplate:
     """Test cases for save_template function"""
     
-    @patch('sagemaker.hyperpod.cli.init_utils.save_k8s_jinja')
+    @patch('sagemaker.hyperpod.cli.init_utils._save_k8s_jinja')
     def test_save_template_crd_success(self, mock_save_k8s):
         """Test save_template with CRD template type"""
         mock_templates = {
@@ -83,7 +94,7 @@ class TestSaveTemplate:
                 content='crd template content'
             )
     
-    @patch('sagemaker.hyperpod.cli.init_utils.save_cfn_jinja')
+    @patch('sagemaker.hyperpod.cli.init_utils._save_cfn_jinja')
     def test_save_template_cfn_success(self, mock_save_cfn):
         """Test save_template with CFN template type"""
         mock_templates = {
@@ -103,7 +114,7 @@ class TestSaveTemplate:
             )
     
     
-    @patch('sagemaker.hyperpod.cli.init_utils.save_k8s_jinja')
+    @patch('sagemaker.hyperpod.cli.init_utils._save_k8s_jinja')
     @patch('sagemaker.hyperpod.cli.init_utils.click.secho')
     def test_save_template_exception_handling(self, mock_secho, mock_save_k8s):
         """Test save_template handles exceptions gracefully"""
@@ -114,7 +125,7 @@ class TestSaveTemplate:
             }
         }
         
-        # Make save_k8s_jinja raise an exception
+        # Make _save_k8s_jinja raise an exception
         mock_save_k8s.side_effect = Exception("Test exception")
         
         with patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates):
@@ -202,7 +213,7 @@ version: 1.0
 namespace: test-namespace
 """
         mock_templates = {
-            'hyp-cluster-stack': {'schema_type': CFN}
+            'hyp-cluster-stack': create_mock_template(CFN)
         }
         
         with patch('pathlib.Path.is_file', return_value=True), \
@@ -224,7 +235,7 @@ template: hyp-cluster-stack
 namespace: test-namespace
 """
         mock_templates = {
-            'hyp-cluster-stack': {'schema_type': CFN}
+            'hyp-cluster-stack': create_mock_template(CFN)
         }
         
         with patch('pathlib.Path.is_file', return_value=True), \
@@ -243,7 +254,7 @@ template: unknown-template
 version: 1.0
 """
         mock_templates = {
-            'hyp-cluster-stack': {'schema_type': CFN}
+            'hyp-cluster-stack': create_mock_template(CFN)
         }
         
         with patch('pathlib.Path.is_file', return_value=True), \
@@ -273,21 +284,23 @@ class TestValidateConfigAgainstModel:
             'version': '1.0',
             'namespace': 'test-namespace'
         }
+        mock_registry = {'1.0': Mock()}
         mock_templates = {
-            'hyp-cluster-stack': {'schema_type': CFN}
+            'hyp-cluster-stack': {
+                'schema_type': CFN,
+                'registry': mock_registry
+            }
         }
         
-        with patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack, \
-             patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates):
-            
-            # Mock successful validation
-            mock_cluster_stack.return_value = Mock()
+        with patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates):
+            # Mock successful validation - the registry model should be called
+            mock_registry['1.0'].return_value = Mock()
             
             errors = validate_config_against_model(config_data, 'hyp-cluster-stack', '1.0')
             
             assert errors == []
-            # Verify HpClusterStack was called with filtered config (no template/version)
-            mock_cluster_stack.assert_called_once_with(namespace='test-namespace')
+            # Verify the registry model was called with filtered config (no template/version)
+            mock_registry['1.0'].assert_called_once_with(namespace='test-namespace')
     
     def test_validate_config_cfn_validation_error(self):
         """Test validation error handling for CFN template"""
@@ -296,13 +309,15 @@ class TestValidateConfigAgainstModel:
             'version': '1.0',
             'invalid_field': 'invalid_value'
         }
+        mock_registry = {'1.0': Mock()}
         mock_templates = {
-            'hyp-cluster-stack': {'schema_type': CFN}
+            'hyp-cluster-stack': {
+                'schema_type': CFN,
+                'registry': mock_registry
+            }
         }
         
-        with patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack, \
-             patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates):
-            
+        with patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates):
             # Mock validation error
             mock_error = ValidationError.from_exception_data('TestModel', [
                 {
@@ -312,7 +327,7 @@ class TestValidateConfigAgainstModel:
                     'input': {}
                 }
             ])
-            mock_cluster_stack.side_effect = mock_error
+            mock_registry['1.0'].side_effect = mock_error
             
             errors = validate_config_against_model(config_data, 'hyp-cluster-stack', '1.0')
             
@@ -326,18 +341,27 @@ class TestValidateConfigAgainstModel:
             'version': '1.0',
             'tags': ['tag1', 'tag2']
         }
+        mock_registry = {'1.0': Mock()}
         mock_templates = {
-            'hyp-cluster-stack': {'schema_type': CFN}
+            'hyp-cluster-stack': {
+                'schema_type': CFN,
+                'registry': mock_registry
+            }
         }
         
-        with patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack, \
-             patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates):
+        with patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates), \
+             patch('sagemaker.hyperpod.cli.init_utils._get_handler_for_field') as mock_get_handler:
+            
+            # Mock handler
+            mock_from_dicts = Mock(return_value=['tag1', 'tag2'])
+            mock_handler = {'from_dicts': mock_from_dicts}
+            mock_get_handler.return_value = mock_handler
             
             validate_config_against_model(config_data, 'hyp-cluster-stack', '1.0')
             
-            # Verify tags were converted to JSON string
-            call_args = mock_cluster_stack.call_args[1]
-            assert call_args['tags'] == ["tag1", "tag2"]
+            # Verify handler was called
+            mock_get_handler.assert_called_with('hyp-cluster-stack', 'tags')
+            mock_from_dicts.assert_called_with(['tag1', 'tag2'])
 
 
 class TestFilterValidationErrorsForUserInput:
@@ -442,25 +466,25 @@ class TestBuildConfigFromSchema:
     
     def test_build_config_cfn_template(self):
         """Test building config for CFN template"""
+        mock_registry = {'1.0': Mock()}
         mock_templates = {
-            'hyp-cluster-stack': {'schema_type': CFN}
+            'hyp-cluster-stack': {
+                'schema_type': CFN,
+                'registry': mock_registry,
+                'schema_pkg': 'test_pkg'
+            }
         }
         
-        with patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack, \
-             patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates):
+        with patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates), \
+             patch('sagemaker.hyperpod.cli.init_utils._load_schema_for_version') as mock_load_schema:
             
-            # Mock HpClusterStack model fields and JSON schema
-            mock_field_info = Mock()
-            mock_field_info.description = "Test field description"
-            mock_cluster_stack.model_fields = {
-                'namespace': mock_field_info,
-                'instance_type': mock_field_info
-            }
-            mock_cluster_stack.model_json_schema.return_value = {
+            # Mock schema
+            mock_load_schema.return_value = {
                 'properties': {
-                    'namespace': {'examples': ['default']},
-                    'instance_type': {'examples': ['ml.g5.xlarge']}
-                }
+                    'namespace': {'description': 'Test field description', 'examples': ['default']},
+                    'instance_type': {'description': 'Test field description', 'examples': ['ml.g5.xlarge']}
+                },
+                'required': ['namespace']
             }
             
             config, comment_map = build_config_from_schema('hyp-cluster-stack', '1.0')
@@ -468,12 +492,17 @@ class TestBuildConfigFromSchema:
             assert config['template'] == 'hyp-cluster-stack'
             assert 'namespace' in config
             assert 'instance_type' in config
-            assert comment_map['namespace'] == "Test field description"
+            assert comment_map['namespace'] == "[Required] Test field description"
     
     def test_build_config_with_model_config(self):
         """Test building config with user-provided model config"""
+        mock_registry = {'1.0': Mock()}
         mock_templates = {
-            'hyp-cluster-stack': {'schema_type': CFN}
+            'hyp-cluster-stack': {
+                'schema_type': CFN,
+                'registry': mock_registry,
+                'schema_pkg': 'test_pkg'
+            }
         }
         
         # Mock model config
@@ -483,37 +512,44 @@ class TestBuildConfigFromSchema:
             'instance_type': 'ml.p4d.24xlarge'
         }
         
-        mock_field_info = Mock()
-        mock_field_info.description = "Test description"
-        
-        # Mock the model class to have model_fields
-        mock_model_class = Mock()
-        mock_model_class.model_fields = {
-            'namespace': mock_field_info,
-            'instance_type': mock_field_info
-        }
-        mock_model.__class__ = mock_model_class
-        
         with patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates), \
-             patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack:
+             patch('sagemaker.hyperpod.cli.init_utils._load_schema_for_version') as mock_load_schema, \
+             patch('sagemaker.hyperpod.cli.init_utils._get_handler_for_field') as mock_get_handler:
             
-            mock_cluster_stack.model_fields = {
-                'namespace': mock_field_info,
-                'instance_type': mock_field_info
+            # Mock schema
+            mock_load_schema.return_value = {
+                'properties': {
+                    'namespace': {'description': 'Test description'},
+                    'instance_type': {'description': 'Test description'}
+                },
+                'required': []
             }
-            mock_cluster_stack.model_json_schema.return_value = {'properties': {}}
+            
+            # Mock handler
+            mock_to_dicts = Mock(return_value=['user-namespace'])
+            mock_merge_dicts = Mock(return_value='user-namespace')
+            mock_handler = {
+                'to_dicts': mock_to_dicts,
+                'merge_dicts': mock_merge_dicts
+            }
+            mock_get_handler.return_value = mock_handler
             
             config, comment_map = build_config_from_schema(
                 'hyp-cluster-stack', '1.0', model_config=mock_model
             )
             
             assert config['namespace'] == 'user-namespace'
-            assert config['instance_type'] == 'ml.p4d.24xlarge'
+            assert config['instance_type'] == 'user-namespace'  # Both will be processed by handler
     
     def test_build_config_with_existing_config(self):
         """Test building config with existing configuration"""
+        mock_registry = {'1.0': Mock()}
         mock_templates = {
-            'hyp-cluster-stack': {'schema_type': CFN}
+            'hyp-cluster-stack': {
+                'schema_type': CFN,
+                'registry': mock_registry,
+                'schema_pkg': 'test_pkg'
+            }
         }
         existing_config = {
             'template': 'hyp-cluster-stack',
@@ -521,17 +557,17 @@ class TestBuildConfigFromSchema:
             'version': '1.0'
         }
         
-        mock_field_info = Mock()
-        mock_field_info.description = "Test description"
-        
         with patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates), \
-             patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack:
+             patch('sagemaker.hyperpod.cli.init_utils._load_schema_for_version') as mock_load_schema:
             
-            mock_cluster_stack.model_fields = {
-                'namespace': mock_field_info,
-                'instance_type': mock_field_info
+            # Mock schema
+            mock_load_schema.return_value = {
+                'properties': {
+                    'namespace': {'description': 'Test description'},
+                    'instance_type': {'description': 'Test description'}
+                },
+                'required': []
             }
-            mock_cluster_stack.model_json_schema.return_value = {'properties': {}}
             
             config, comment_map = build_config_from_schema(
                 'hyp-cluster-stack', '1.0', existing_config=existing_config
@@ -543,20 +579,20 @@ class TestBuildConfigFromSchema:
 
 
 class TestPascalToKebab:
-    """Test cases for pascal_to_kebab function"""
+    """Test cases for _pascal_to_kebab function"""
     
     def test_pascal_to_kebab_basic(self):
         """Test basic PascalCase to kebab-case conversion"""
-        assert pascal_to_kebab('PascalCase') == 'pascal-case'
-        assert pascal_to_kebab('SimpleWord') == 'simple-word'
-        assert pascal_to_kebab('XMLHttpRequest') == 'x-m-l-http-request'
+        assert _pascal_to_kebab('PascalCase') == 'pascal-case'
+        assert _pascal_to_kebab('SimpleWord') == 'simple-word'
+        assert _pascal_to_kebab('XMLHttpRequest') == 'x-m-l-http-request'
     
     def test_pascal_to_kebab_edge_cases(self):
-        """Test edge cases for pascal_to_kebab"""
-        assert pascal_to_kebab('') == ''
-        assert pascal_to_kebab('A') == 'a'
-        assert pascal_to_kebab('lowercase') == 'lowercase'
-        assert pascal_to_kebab('UPPERCASE') == 'u-p-p-e-r-c-a-s-e'
+        """Test edge cases for _pascal_to_kebab"""
+        assert _pascal_to_kebab('') == ''
+        assert _pascal_to_kebab('A') == 'a'
+        assert _pascal_to_kebab('lowercase') == 'lowercase'
+        assert _pascal_to_kebab('UPPERCASE') == 'u-p-p-e-r-c-a-s-e'
 
 
 class TestGenerateClickCommandEnhanced:
@@ -565,8 +601,8 @@ class TestGenerateClickCommandEnhanced:
     def test_generate_click_command_union_building_priority(self):
         """Test that CFN templates override CRD templates in union building"""
         # Use context managers to ensure proper cleanup
-        with patch('sagemaker.hyperpod.cli.init_utils.load_schema_for_version') as mock_load_schema, \
-             patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack, \
+        with patch('sagemaker.hyperpod.cli.init_utils._load_schema_for_version') as mock_load_schema, \
+             patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.HpClusterStack') as mock_cluster_stack, \
              patch('sys.argv', ['hyp', 'configure']), \
              patch('sagemaker.hyperpod.cli.init_utils.load_config') as mock_load_config, \
              patch('sagemaker.hyperpod.cli.init_utils.Path') as mock_path:
@@ -629,13 +665,13 @@ class TestGenerateClickCommandEnhanced:
                 # The decorator should be created successfully
                 assert callable(decorator)
                 
-                # Verify that load_schema_for_version was called for CRD template
+                # Verify that _load_schema_for_version was called for CRD template
                 mock_load_schema.assert_called_with('1.0', 'test.pkg')
     
     def test_generate_click_command_handles_list_descriptions(self):
         """Test that generate_click_command handles list descriptions properly"""
-        with patch('sagemaker.hyperpod.cli.init_utils.load_schema_for_version') as mock_load_schema, \
-             patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack:
+        with patch('sagemaker.hyperpod.cli.init_utils._load_schema_for_version') as mock_load_schema, \
+             patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.HpClusterStack') as mock_cluster_stack:
             
             # Mock schema with list description (the bug we fixed)
             schema_with_list_desc = {
@@ -687,7 +723,7 @@ namespace: test-namespace
         with patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates), \
              patch('pathlib.Path.is_file', return_value=True), \
              patch('pathlib.Path.read_text', return_value=config_content), \
-             patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack:
+             patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.HpClusterStack') as mock_cluster_stack:
             
             # Set up HpClusterStack mock properly
             mock_cluster_stack.model_fields = {}
@@ -715,13 +751,13 @@ version: 1.0
 namespace: test-namespace
 """
         mock_templates = {
-            'hyp-cluster-stack': {'schema_type': CFN}
+            'hyp-cluster-stack': create_mock_template(CFN)
         }
         
         with patch('pathlib.Path.is_file', return_value=True), \
              patch('pathlib.Path.read_text', return_value=config_content), \
              patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates), \
-             patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack:
+             patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.HpClusterStack') as mock_cluster_stack:
             
             # Mock successful validation
             mock_cluster_stack.return_value = Mock()
@@ -741,26 +777,20 @@ template: hyp-cluster-stack
 version: 1.0
 namespace: test-namespace
 """
+        mock_registry = {'1.0': Mock()}
         mock_templates = {
-            'hyp-cluster-stack': {'schema_type': CFN}
+            'hyp-cluster-stack': {
+                'schema_type': CFN,
+                'registry': mock_registry
+            }
         }
         
         with patch('pathlib.Path.is_file', return_value=True), \
              patch('pathlib.Path.read_text', return_value=config_content), \
              patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates), \
-             patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack') as mock_cluster_stack:
+             patch('sagemaker.hyperpod.cli.init_utils.display_validation_results', return_value=False):
             
-            # Mock validation failure
-            mock_error = ValidationError.from_exception_data('TestModel', [
-                {
-                    'type': 'missing',
-                    'loc': ('required_field',),
-                    'msg': 'Field required',
-                    'input': {}
-                }
-            ])
-            mock_cluster_stack.side_effect = mock_error
-            
+            # Mock validation failure by making display_validation_results return False
             # This should raise SystemExit due to validation failure
             with pytest.raises(SystemExit) as exc_info:
                 load_config_and_validate()
@@ -772,7 +802,7 @@ namespace: test-namespace
     def test_success(self, mock_get_data):
         data = {"properties": {"x": {"type": "string"}}}
         mock_get_data.return_value = json.dumps(data).encode()
-        result = load_schema_for_version('1.2', 'pkg')
+        result = _load_schema_for_version('1.2', 'pkg')
         assert result == data
         mock_get_data.assert_called_once_with('pkg.v1_2', 'schema.json')
 
@@ -780,20 +810,20 @@ namespace: test-namespace
     def test_not_found(self, mock_get_data):
         mock_get_data.return_value = None
         with pytest.raises(click.ClickException) as exc:
-            load_schema_for_version('3.0', 'mypkg')
+            _load_schema_for_version('3.0', 'mypkg')
         assert "Could not load schema.json for version 3.0" in str(exc.value)
 
     @patch('sagemaker.hyperpod.cli.init_utils.pkgutil.get_data')
     def test_invalid_json(self, mock_get_data):
         mock_get_data.return_value = b'invalid'
         with pytest.raises(json.JSONDecodeError):
-            load_schema_for_version('1.0', 'pkg')
+            _load_schema_for_version('1.0', 'pkg')
 
 
 @patch('builtins.open', new_callable=mock_open)
 @patch('sagemaker.hyperpod.cli.init_utils.Path')
 @patch('sagemaker.hyperpod.cli.init_utils.os.path.join')
-@patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack.get_template')
+@patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.HpClusterStack.get_template')
 def test_save_cfn_jinja_called(mock_get_template,
                                mock_join,
                                mock_path,
@@ -847,7 +877,7 @@ class TestUpdateConfig:
     """Test cases for update config functions"""
     
     def test_update_field_in_config(self):
-        """Test update_field_in_config preserves format and updates value."""
+        """Test _update_field_in_config preserves format and updates value."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = os.path.join(temp_dir, "config.yaml")
             
@@ -868,7 +898,7 @@ hyperpod_cluster_name: test-cluster
                 f.write(original_content)
             
             # Update field
-            update_field_in_config(temp_dir, 'availability_zone_ids', 'use1-az1')
+            _update_field_in_config(temp_dir, 'availability_zone_ids', 'use1-az1')
             
             # Read updated content
             with open(config_path, 'r') as f:
@@ -914,7 +944,7 @@ field2: value2
                 f.write(initial_content)
             
             # Update the list field
-            update_list_field_in_config(temp_dir, "availability_zone_ids", ["use2-az1", "use2-az2", "use2-az3"])
+            _update_list_field_in_config(temp_dir, "availability_zone_ids", ["use2-az1", "use2-az2", "use2-az3"])
             
             # Read and verify the updated content
             with open(config_path, 'r') as f:
@@ -945,7 +975,7 @@ field2: value2
                 f.write(initial_content)
             
             # Update with empty list
-            update_list_field_in_config(temp_dir, "availability_zone_ids", [])
+            _update_list_field_in_config(temp_dir, "availability_zone_ids", [])
             
             # Read and verify the updated content
             with open(config_path, 'r') as f:
@@ -973,7 +1003,7 @@ field2: value2
                 f.write(initial_content)
             
             # Update with single item
-            update_list_field_in_config(temp_dir, "availability_zone_ids", ["use2-az1"])
+            _update_list_field_in_config(temp_dir, "availability_zone_ids", ["use2-az1"])
             
             # Read and verify the updated content
             with open(config_path, 'r') as f:

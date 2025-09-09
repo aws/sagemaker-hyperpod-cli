@@ -297,7 +297,7 @@ class TestParseStatusList:
 
 
 @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.importlib.resources.read_text')
-@patch('sagemaker.hyperpod.cli.init_utils.HpClusterStack.get_template')
+@patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.HpClusterStack.get_template')
 class TestCreateClusterStackHelper(unittest.TestCase):
     """Test create_cluster_stack_helper function"""
     
