@@ -76,9 +76,9 @@ class TestHyperPodSDKQuotaAllocation:
         created_job = HyperPodPytorchJob.get(test_job_name, NAMESPACE)
         assert created_job is not None
 
-        # # Clean up
-        # pytorch_job.delete()
-        # logger.info(f"Successfully deleted job: {test_job_name}")
+        # Clean up
+        pytorch_job.delete()
+        logger.info(f"Successfully deleted job: {test_job_name}")
 
     def test_create_job_with_only_replicas_parameters(self, test_job_name, image_uri):
         """Test creating a job with quota allocation parameters."""

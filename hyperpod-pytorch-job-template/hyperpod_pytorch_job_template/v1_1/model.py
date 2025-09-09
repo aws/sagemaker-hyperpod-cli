@@ -149,10 +149,10 @@ class PyTorchJobConfig(BaseModel):
         description="Priority class for job scheduling",
         min_length=1
     )
-    # accelerators: Optional[int] = Field(
-    #     default=None,
-    #     description="Number of accelerators a.k.a GPUs or Trainium Chips",
-    # )
+    accelerators: Optional[int] = Field(
+        default=None,
+        description="Number of accelerators a.k.a GPUs or Trainium Chips",
+    )
     vcpu: Optional[float] = Field(
         default=None,
         description="Number of vCPUs",
@@ -292,8 +292,8 @@ class PyTorchJobConfig(BaseModel):
             limits_value = {"nvidia.com/gpu": "0"}
         else:
             requests_value = {}
-            # if self.accelerators is not None:
-            #     requests_value["accelerators"] = str(self.accelerators)
+            if self.accelerators is not None:
+                requests_value["accelerators"] = str(self.accelerators)
             if self.vcpu is not None:
                 requests_value["vcpu"] = str(self.vcpu)
             if self.memory is not None:

@@ -191,7 +191,6 @@ def _get_resources_from_compute_quotas(instance_type: str,
 
     result["cpu"] = f"{result['cpu']}"
     result["memory"] = f"{result['memory']}Gi"
-    # result["memory"] = str(_set_default_memory_values(instance_type, memory_value)) + "Gi"
     return result
 
 
@@ -228,10 +227,6 @@ def _get_limits(instance_type: str, vcpu_limit: Optional[float], memory_in_gib_l
         else: 
             # user specified accelerator limit but the instance type wasn't found, set limit to 0 as a precaution 
             result["nvidia.com/gpu"] = 0
-    
-    # if memory_in_gib_limit is not None:
-    #     result["memory"] = memory_in_gib_limit
-    #     result["memory"] = f"{result['memory']}Gi"
 
     if memory_in_gib_limit is not None:
         result["memory"] = str(memory_in_gib_limit) + "Gi"
@@ -250,7 +245,7 @@ def _set_default_cpu_limit(requests_values: dict, limits_values: dict) -> None:
     limits_values["cpu"] = cpu_limit
 
 
-def _validate_memory_limit(instance_type: str, requests_values: dict, limits_values: dict) -> None:
+def _set_default_memory_limit(instance_type: str, requests_values: dict, limits_values: dict) -> None:
 
     instance = INSTANCE_RESOURCES.get(instance_type, {})
     total_available_memory = instance.get("memory", 0)
@@ -265,11 +260,10 @@ def _validate_memory_limit(instance_type: str, requests_values: dict, limits_val
     except (AttributeError, ValueError):
         raise ValueError("Invalid memory format")
 
+    # Let Kubernetes handle unsupportable values errors
     if memory_limit > total_available_memory:
-        # raise ValueError(f"Memory limit {memory_limit}Gi exceeds instance capacity {total_available_memory}Gi")
         return
     if memory_request > total_available_memory:
-        # raise ValueError(f"Memory request {memory_request}Gi exceeds instance capacity {total_available_memory}Gi")
         return
 
     recommended_max = total_available_memory * MAX_MEMORY_PROPORTION
@@ -279,13 +273,10 @@ def _validate_memory_limit(instance_type: str, requests_values: dict, limits_val
     if memory_request > recommended_max:
         memory_request = recommended_max
 
-    if memory_request > memory_limit:
-        memory_request = memory_limit
-
     limits_values["memory"] = str(memory_limit) + "Gi"
     requests_values["memory"] = str(memory_request) + "Gi"
 
-
+# Kubernetes does not validate accelerators values - validation must occur in CLI
 def _validate_accelerators_values(accelerators_count: int|None, accelerators_limit: int|None) -> bool:
     if accelerators_count is not None and accelerators_limit is not None:
         if accelerators_count != accelerators_limit:
@@ -293,11 +284,8 @@ def _validate_accelerators_values(accelerators_count: int|None, accelerators_lim
                 f"Accelerator count ({accelerators_count}) must equal "
                 f"accelerator limit ({accelerators_limit})"
             )
-    return True
-
 
 def _set_default_accelerators_values(instance_type: str, requests_values: dict, limits_values: dict, node_count: int) -> tuple[int, int]:
-    # type_of_accelerator will be 'nvidia.com/gpu' or 'aws.amazon.com/neuron' or None
     type_of_accelerator, _max_accelerator_per_instance = _get_accelerator_type_and_count(instance_type)
 
     if type_of_accelerator is not None:
