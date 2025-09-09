@@ -252,20 +252,16 @@ class TestStackDeletionWorkflow:
         confirm_callback = Mock(return_value=True)
         success_callback = Mock()
         
-        # Should not raise exception, just display message and return
-        delete_stack_with_confirmation(
-            stack_name=self.stack_name,
-            region=self.region,
-            retain_resources_str="S3Bucket1",
-            message_callback=message_callback,
-            confirm_callback=confirm_callback,
-            success_callback=success_callback
-        )
-        
-        # Verify limitation message was displayed
-        limitation_calls = [call for call in message_callback.call_args_list 
-                           if 'only works on failed deletions' in str(call)]
-        assert len(limitation_calls) > 0
+        # Should raise exception
+        with pytest.raises(Exception, match="specify which resources to retain only when the stack is in the DELETE_FAILED state"):
+            delete_stack_with_confirmation(
+                stack_name=self.stack_name,
+                region=self.region,
+                retain_resources_str="S3Bucket1",
+                message_callback=message_callback,
+                confirm_callback=confirm_callback,
+                success_callback=success_callback
+            )
 
     def test_delete_stack_with_logger(self):
         """Test stack deletion with logger parameter."""
