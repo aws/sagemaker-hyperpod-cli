@@ -137,6 +137,8 @@ INSTANCE_RESOURCES = {
     "ml.i3en.24xlarge": {"cpu": 96, "gpu": 0, "trainium": 0, "memory": 768}
 }
 
+MAX_MEMORY_PROPORTION = 0.93
+
 def _has_compute_resource_quota_allocation_resources(memory_in_gib: Optional[float], vcpu: Optional[float], accelerators: Optional[int]) -> bool:
     return (
         (memory_in_gib is not None) or
@@ -189,12 +191,12 @@ def _get_resources_from_compute_quotas(instance_type: str,
 
     result["cpu"] = f"{result['cpu']}"
     result["memory"] = f"{result['memory']}Gi"
+    # result["memory"] = str(_set_default_memory_values(instance_type, memory_value)) + "Gi"
     return result
 
 
 # Gets resources from instance type.
 def _get_resources_from_instance(instance_type: str, node_count: int) -> dict:
-
     instance = INSTANCE_RESOURCES.get(instance_type, {})
     cpu = instance.get("cpu", 0)
     memory = instance.get("memory", 0)
@@ -205,8 +207,8 @@ def _get_resources_from_instance(instance_type: str, node_count: int) -> dict:
     }
 
     type_of_accelerator, max_accelerator_per_instance = _get_accelerator_type_and_count(instance_type)
-    # if type_of_accelerator is not None:
-    #     result[type_of_accelerator] = max_accelerator_per_instance * node_count
+    if type_of_accelerator is not None:
+        result[type_of_accelerator] = max_accelerator_per_instance * node_count
 
     result["cpu"] = f"{result['cpu']}"
     result["memory"] = f"{result['memory']}Gi"
@@ -238,6 +240,16 @@ def _get_limits(instance_type: str, vcpu_limit: Optional[float], memory_in_gib_l
 
     return result
 
+def _set_default_cpu_limit(requests_values: dict, limits_values: dict) -> None:
+    cpu_limit = limits_values.get("cpu")
+    cpu_request = requests_values.get("cpu")
+    if not cpu_request:
+        raise ValueError("CPU value must be provided")
+    if cpu_limit is None:
+        cpu_limit = cpu_request
+    limits_values["cpu"] = cpu_limit
+
+
 def _validate_memory_limit(instance_type: str, requests_values: dict, limits_values: dict) -> None:
 
     instance = INSTANCE_RESOURCES.get(instance_type, {})
@@ -254,35 +266,28 @@ def _validate_memory_limit(instance_type: str, requests_values: dict, limits_val
         raise ValueError("Invalid memory format")
 
     if memory_limit > total_available_memory:
-        raise ValueError(f"Memory limit {memory_limit}Gi exceeds instance capacity {total_available_memory}Gi")
+        # raise ValueError(f"Memory limit {memory_limit}Gi exceeds instance capacity {total_available_memory}Gi")
+        return
     if memory_request > total_available_memory:
-        raise ValueError(f"Memory request {memory_request}Gi exceeds instance capacity {total_available_memory}Gi")
+        # raise ValueError(f"Memory request {memory_request}Gi exceeds instance capacity {total_available_memory}Gi")
+        return
 
-    recommended_max = total_available_memory * 0.93
+    recommended_max = total_available_memory * MAX_MEMORY_PROPORTION
 
     if memory_limit > recommended_max:
-        logger.setLevel(logging.WARNING)
-        logger.warning(
-            f"Memory limit {memory_limit}Gi is high for instance capacity {total_available_memory}Gi. "
-            f"Pod may fail to schedule if cluster reserves significant memory."
-        )
         memory_limit = recommended_max
     if memory_request > recommended_max:
-        logger.setLevel(logging.WARNING)
-        logger.warning(
-            f"Memory request {memory_request}Gi is high for instance capacity {total_available_memory}Gi. "
-            f"Pod may fail to schedule if cluster reserves significant memory."
-        )
         memory_request = recommended_max
+
+    if memory_request > memory_limit:
+        memory_request = memory_limit
 
     limits_values["memory"] = str(memory_limit) + "Gi"
     requests_values["memory"] = str(memory_request) + "Gi"
 
 
 def _validate_accelerators_values(accelerators_count: int|None, accelerators_limit: int|None) -> bool:
-    # If user has provided both accelerator count and accelerator limit
     if accelerators_count is not None and accelerators_limit is not None:
-        # If they are not the same value then raise a ValueError
         if accelerators_count != accelerators_limit:
             raise ValueError(
                 f"Accelerator count ({accelerators_count}) must equal "
@@ -330,9 +335,6 @@ def _is_valid(vcpu: Optional[float], memory_in_gib: Optional[float], accelerator
     if instance_type is None and has_gpu_quota_allocation:
         return False, "Instance-type must be specified when accelerators, vcpu, or memory-in-gib specified"
 
-    # This is needed to alleviate a bug possibly in model mapping
-    node_count = None
-
     node_specified = node_count is not None and node_count > 0
     
     # Check if instance_type is valid only when it's provided
@@ -342,7 +344,7 @@ def _is_valid(vcpu: Optional[float], memory_in_gib: Optional[float], accelerator
     if instance_type is not None:
         #both resources and node count specified
         if (has_gpu_quota_allocation and node_specified):
-            return False, f"Either node-count or a combination of accelerators, vcpu, memory-in-gib must be specified for instance-type {instance_type}"
+            return False, f"Either node-count OR a combination of accelerators, vcpu, memory-in-gib must be specified for instance-type {instance_type}"
     return True, ""
 
 
