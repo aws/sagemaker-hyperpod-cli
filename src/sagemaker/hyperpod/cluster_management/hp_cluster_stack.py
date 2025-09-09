@@ -624,11 +624,12 @@ class HpClusterStack(ClusterStackBase):
         except Exception as e:
             error_str = str(e)
             
-            # Handle CloudFormation retain-resources limitation gracefully for SDK
+            # Handle CloudFormation retain-resources limitation with clear exception for SDK
             if retain_resources and "specify which resources to retain only when the stack is in the DELETE_FAILED state" in error_str:
                 error_msg = (
                     f"CloudFormation limitation: retain_resources can only be used on stacks in DELETE_FAILED state. "
-                    f"Try deleting without retain_resources first, then retry with retain_resources if deletion fails."
+                    f"Current stack state allows normal deletion. Try deleting without retain_resources first, "
+                    f"then retry with retain_resources if deletion fails."
                 )
                 logger.error(error_msg)
                 raise ValueError(error_msg)

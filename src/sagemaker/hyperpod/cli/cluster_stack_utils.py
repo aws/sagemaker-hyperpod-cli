@@ -347,9 +347,10 @@ def _handle_stack_deletion_error(error: Exception, stack_name: str, region: str,
         return False  # Should re-raise
     
     # Handle CloudFormation retain-resources limitation
+    # Always re-raise for SDK usage to ensure clear exceptions
     if retain_resources and "specify which resources to retain only when the stack is in the DELETE_FAILED state" in error_str:
         _handle_retention_limitation_error(stack_name, retain_resources, region, message_callback)
-        return True  # Handle gracefully, don't re-raise
+        return False  # ensure SDK gets the exception
     
     # Handle other deletion errors
     _handle_generic_deletion_error(error_str, message_callback)
