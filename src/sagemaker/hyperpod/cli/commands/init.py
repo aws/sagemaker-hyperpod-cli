@@ -47,7 +47,7 @@ def init(
     
     1. Checks if the directory already contains a config.yaml and handles existing configurations
     2. Creates the target directory if it doesn't exist
-    3. Generates a config.yaml file with schema-based default values and user-provided inputs
+    3. Generates a config.yaml file with schema-based default values
     4. Creates a template file (.jinja) for the specified template type
     5. Adds a README.md with usage instructions
     
@@ -389,40 +389,15 @@ def _default_create(region):
             model = registry.get(str(version))
             if model:
                 # Filter out CLI metadata fields before passing to model
-                from sagemaker.hyperpod.cli.init_utils import filter_cli_metadata_fields
-                filtered_config = filter_cli_metadata_fields(data)
+                from sagemaker.hyperpod.cli.init_utils import _filter_cli_metadata_fields
+                filtered_config = _filter_cli_metadata_fields(data)
                 flat = model(**filtered_config)
                 domain = flat.to_domain()
+                # TODO: update inference SDK to include name and namespace in the call
                 if template == "hyp-custom-endpoint" or template == "hyp-jumpstart-endpoint":
                     domain.create(namespace=namespace)
                 elif template == "hyp-pytorch-job":
-                    # Currently algin with pytorch_create. Open for refactor and simplify              
-                    # Prepare metadata
-                    job_name = domain.get("name")
-                    namespace = domain.get("namespace")
-                    spec = domain.get("spec")
-
-                    # Prepare metadata
-                    metadata_kwargs = {"name": job_name}
-                    if namespace:
-                        metadata_kwargs["namespace"] = namespace
-                    
-                        # Prepare job kwargs
-                    job_kwargs = {
-                        "metadata": Metadata(**metadata_kwargs),
-                        "replica_specs": spec.get("replica_specs"),
-                    }
-
-                    # Add nproc_per_node if present
-                    if "nproc_per_node" in spec:
-                        job_kwargs["nproc_per_node"] = spec.get("nproc_per_node")
-
-                    # Add run_policy if present
-                    if "run_policy" in spec:
-                        job_kwargs["run_policy"] = spec.get("run_policy")
-
-                    job = HyperPodPytorchJob(**job_kwargs)
-                    job.create()
+                    domain.create()
 
 
     except Exception as e:

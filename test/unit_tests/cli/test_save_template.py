@@ -8,7 +8,7 @@ from sagemaker.hyperpod.cli.constants.init_constants import CFN
 
 class TestSaveTemplate:
     @patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES')
-    @patch('sagemaker.hyperpod.cli.init_utils.save_cfn_jinja')
+    @patch('sagemaker.hyperpod.cli.init_utils._save_cfn_jinja')
     def test_save_cfn_jinja_called(self, mock_save_cfn_jinja, mock_templates):
         # Setup
         mock_templates = {

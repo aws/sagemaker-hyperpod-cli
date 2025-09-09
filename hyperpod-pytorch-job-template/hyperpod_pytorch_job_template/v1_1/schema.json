@@ -62,11 +62,7 @@
         "read_only": {
           "anyOf": [
             {
-              "enum": [
-                "true",
-                "false"
-              ],
-              "type": "string"
+              "type": "boolean"
             },
             {
               "type": "null"

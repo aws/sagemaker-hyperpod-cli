@@ -1,5 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing import Optional, List, Dict, Union, Literal
+import click
+from sagemaker.hyperpod.cli.type_handler_utils import DEFAULT_TYPE_HANDLER
 from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config import (
     Containers,
     ReplicaSpec,
@@ -308,3 +310,83 @@ class PyTorchJobConfig(BaseModel):
 
         result = HyperPodPytorchJob(**job_kwargs)
         return result
+
+# Volume-specific type handlers - only override what's needed
+def volume_parse_strings(ctx_or_strings, param=None, value=None):
+    """Parse volume strings into VolumeConfig objects. Can be used as Click callback."""
+    # Handle dual usage pattern (inlined)
+    if param is not None and value is not None:
+        volume_strings, is_click_callback = value, True
+    else:
+        volume_strings, is_click_callback = ctx_or_strings, False
+
+    if not volume_strings:
+        return None
+    if not isinstance(volume_strings, (list, tuple)):
+        volume_strings = [volume_strings]
+
+    # Core parsing logic
+    volumes = []
+    for vol_str in volume_strings:
+        vol_dict = {}
+        for pair in vol_str.split(','):
+            if '=' in pair:
+                key, val = pair.split('=', 1)
+                key = key.strip()
+                val = val.strip()
+                vol_dict[key] = val.lower() == 'true' if key == 'read_only' else val
+
+        try:
+            volumes.append(VolumeConfig(**vol_dict))
+        except Exception as e:
+            error_msg = f"Invalid volume configuration '{vol_str}': {e}"
+            if is_click_callback:
+                raise click.BadParameter(error_msg)
+            else:
+                raise ValueError(error_msg)
+
+    return volumes
+
+
+def volume_from_dicts(volume_dicts):
+    """Convert list of volume dictionaries to VolumeConfig objects."""
+    if volume_dicts is None:
+        return None
+    return [VolumeConfig(**vol_dict) for vol_dict in volume_dicts if isinstance(vol_dict, dict)]
+
+
+def volume_write_to_yaml(key, volumes, file_handle):
+    """Write VolumeConfig objects to YAML format."""
+    if volumes:
+        file_handle.write(f"{key}:\n")
+        for vol in volumes:
+            file_handle.write(f"  - name: {vol.name}\n")
+            file_handle.write(f"    type: {vol.type}\n")
+            file_handle.write(f"    mount_path: {vol.mount_path}\n")
+            if vol.path:
+                file_handle.write(f"    path: {vol.path}\n")
+            if vol.claim_name:
+                file_handle.write(f"    claim_name: {vol.claim_name}\n")
+            if vol.read_only is not None:
+                file_handle.write(f"    read_only: {vol.read_only}\n")
+            file_handle.write("\n")
+    else:
+        file_handle.write(f"{key}: []\n\n")
+
+
+def volume_merge_dicts(existing_volumes, new_volumes):
+    """Merge volume configurations, updating existing volumes by name or adding new ones."""
+    merged = {vol.get('name'): vol for vol in existing_volumes}
+    merged.update({vol.get('name'): vol for vol in new_volumes})
+    return list(merged.values())
+
+
+# Handler definition - merge with defaults, only override specific functions
+VOLUME_TYPE_HANDLER = {
+    **DEFAULT_TYPE_HANDLER,  # Start with all defaults
+    'parse_strings': volume_parse_strings,  # Override only these
+    'from_dicts': volume_from_dicts,
+    'write_to_yaml': volume_write_to_yaml,
+    'merge_dicts': volume_merge_dicts,
+    'needs_multiple_option': True
+}
