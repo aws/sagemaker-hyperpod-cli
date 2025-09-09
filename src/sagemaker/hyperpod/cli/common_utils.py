@@ -71,60 +71,6 @@ def load_schema_for_version(
     return json.loads(raw)
 
 
-# Generic confirmation utilities that can be reused across commands
-class GenericConfirmationHandler:
-    """Generic handler for user confirmations in CLI operations."""
-    
-    def confirm_action(self, action_description: str, auto_confirm: bool = False) -> bool:
-        """
-        Generic confirmation prompt for any CLI action.
-        
-        Args:
-            action_description: Description of what will happen
-            auto_confirm: If True, skip confirmation (for testing/automation)
-            
-        Returns:
-            True if user confirms, False otherwise
-        """
-        if auto_confirm:
-            return True
-            
-        click.echo(action_description)
-        return click.confirm("Continue?", default=False)
-    
-    def display_warning_list(self, title: str, items: Dict[str, List[str]], 
-                           warning_symbol: str = "⚠") -> None:
-        """
-        Display a categorized list of items with a warning.
-        
-        Args:
-            title: Main warning title
-            items: Dictionary of category -> list of items
-            warning_symbol: Symbol to use for warning
-        """
-        total_count = sum(len(item_list) for item_list in items.values())
-        click.echo(f"\n{warning_symbol} {title} {total_count} resources:\n")
-        
-        for category, item_list in items.items():
-            if item_list:
-                click.echo(f"{category} ({len(item_list)}):")
-                for item in item_list:
-                    click.echo(f" - {item}")
-                click.echo()
-    
-    def display_retention_info(self, retained_items: List[str]) -> None:
-        """
-        Display information about items that will be retained.
-        
-        Args:
-            retained_items: List of items that will be retained
-        """
-        if retained_items:
-            click.echo(f"\nThe following {len(retained_items)} resources will be RETAINED:")
-            for item in retained_items:
-                click.echo(f" ✓ {item} (retained)")
-
-
 def parse_comma_separated_list(value: str) -> List[str]:
     """
     Parse a comma-separated string into a list of strings.

@@ -20,11 +20,7 @@ from sagemaker.hyperpod.common.utils import setup_logging
 from sagemaker.hyperpod.cli.utils import convert_datetimes
 from sagemaker.hyperpod.cli.cluster_stack_utils import (
     StackNotFoundError,
-    perform_stack_deletion,
-    handle_deletion_error,
-    handle_partial_deletion_failure,
-    get_stack_resources_and_validate_retention,
-    display_deletion_confirmation
+    delete_stack_with_confirmation
 )
 
 logger = logging.getLogger(__name__)
@@ -324,36 +320,26 @@ def delete_cluster_stack(stack_name: str, retain_resources: str, region: str, de
     logger = setup_logging(logging.getLogger(__name__), debug)
     
     try:
-        # 1. Get and validate resources using new function-based interface
-        resources, valid_retain, invalid_retain = get_stack_resources_and_validate_retention(
-            stack_name, region, retain_resources
+        # Use the high-level orchestration function with CLI-specific callbacks
+        delete_stack_with_confirmation(
+            stack_name=stack_name,
+            region=region,
+            retain_resources_str=retain_resources or "",
+            message_callback=click.echo,
+            confirm_callback=lambda msg: click.confirm("Continue?", default=False),
+            success_callback=lambda msg: click.echo(f"✓ {msg}")
         )
-        
-        # 2. Display warnings and get confirmation
-        if not display_deletion_confirmation(resources, valid_retain, invalid_retain):
-            click.echo("Operation cancelled.")
-            return
-        
-        # 3. Perform deletion
-        perform_stack_deletion(stack_name, region, valid_retain)
         
     except StackNotFoundError:
         click.secho(f"❌ Stack '{stack_name}' not found", fg='red')
+    except click.ClickException:
+        # Re-raise ClickException for proper CLI error handling
+        raise
     except Exception as e:
         logger.error(f"Failed to delete stack: {e}")
         if debug:
             logger.exception("Detailed error information:")
-        
-        try:
-            # Handle deletion errors with detailed feedback
-            handle_deletion_error(e, stack_name, region, retain_resources)
-        except click.ClickException:
-            # Re-raise ClickException for proper CLI error handling
-            raise
-        except Exception:
-            # Handle partial deletion failures
-            handle_partial_deletion_failure(stack_name, region, resources, valid_retain)
-            raise click.ClickException(str(e))
+        raise click.ClickException(str(e))
 
 @click.command("cluster")
 @click.option("--cluster-name", required=True, help="The name of the cluster to update")

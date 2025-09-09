@@ -1,35 +1,35 @@
 """
-Unit tests for cluster stack utility classes.
+Unit tests for cluster stack utility functions.
 Tests the modular components for CloudFormation operations.
 """
 
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 import click
+import logging
 from botocore.exceptions import ClientError
 
 from sagemaker.hyperpod.cli.cluster_stack_utils import (
-    CloudFormationResourceManager,
-    DeletionConfirmationHandler,
-    CloudFormationErrorHandler,
     StackNotFoundError,
-    parse_retain_resources,
-    perform_stack_deletion
+    delete_stack_with_confirmation,
+    perform_stack_deletion,
+    MessageCallback,
+    ConfirmCallback,
+    SuccessCallback
 )
 from sagemaker.hyperpod.cli.common_utils import (
-    GenericConfirmationHandler,
     parse_comma_separated_list,
     categorize_resources_by_type
 )
 
 
-class TestCloudFormationResourceManager:
-    """Test suite for CloudFormationResourceManager class."""
+class TestStackDeletionWorkflow:
+    """Test suite for the main stack deletion workflow."""
 
     def setup_method(self):
         """Set up test fixtures."""
         self.region = 'us-west-2'
-        self.mock_cf_client = Mock()
+        self.stack_name = 'test-stack'
         
         # Sample resources for testing
         self.sample_resources = [
@@ -56,304 +56,331 @@ class TestCloudFormationResourceManager:
         ]
 
     @patch('boto3.client')
-    def test_get_stack_resources_success(self, mock_boto3_client):
-        """Test successful retrieval of stack resources."""
-        mock_boto3_client.return_value = self.mock_cf_client
-        self.mock_cf_client.list_stack_resources.return_value = {
+    def test_delete_stack_with_confirmation_success(self, mock_boto3_client):
+        """Test successful stack deletion with confirmation."""
+        mock_cf_client = Mock()
+        mock_boto3_client.return_value = mock_cf_client
+        mock_cf_client.list_stack_resources.return_value = {
             'StackResourceSummaries': self.sample_resources
         }
         
-        manager = CloudFormationResourceManager(self.region)
-        resources = manager.get_stack_resources('test-stack')
+        # Mock callbacks
+        message_callback = Mock()
+        confirm_callback = Mock(return_value=True)
+        success_callback = Mock()
         
-        assert resources == self.sample_resources
-        self.mock_cf_client.list_stack_resources.assert_called_once_with(StackName='test-stack')
+        delete_stack_with_confirmation(
+            stack_name=self.stack_name,
+            region=self.region,
+            retain_resources_str="",
+            message_callback=message_callback,
+            confirm_callback=confirm_callback,
+            success_callback=success_callback
+        )
+        
+        # Verify CloudFormation calls
+        mock_cf_client.list_stack_resources.assert_called_once_with(StackName=self.stack_name)
+        mock_cf_client.delete_stack.assert_called_once_with(StackName=self.stack_name)
+        
+        # Verify callbacks were called
+        assert message_callback.called
+        assert confirm_callback.called
+        assert success_callback.called
 
     @patch('boto3.client')
-    def test_get_stack_resources_not_found(self, mock_boto3_client):
+    def test_delete_stack_with_confirmation_cancelled(self, mock_boto3_client):
+        """Test stack deletion cancelled by user."""
+        mock_cf_client = Mock()
+        mock_boto3_client.return_value = mock_cf_client
+        mock_cf_client.list_stack_resources.return_value = {
+            'StackResourceSummaries': self.sample_resources
+        }
+        
+        # Mock callbacks - user cancels
+        message_callback = Mock()
+        confirm_callback = Mock(return_value=False)
+        success_callback = Mock()
+        
+        delete_stack_with_confirmation(
+            stack_name=self.stack_name,
+            region=self.region,
+            retain_resources_str="",
+            message_callback=message_callback,
+            confirm_callback=confirm_callback,
+            success_callback=success_callback
+        )
+        
+        # Verify deletion was not called
+        mock_cf_client.delete_stack.assert_not_called()
+        
+        # Verify cancellation message
+        message_callback.assert_any_call("Operation cancelled.")
+        assert not success_callback.called
+
+    @patch('boto3.client')
+    def test_delete_stack_with_confirmation_stack_not_found(self, mock_boto3_client):
         """Test handling when stack doesn't exist."""
-        mock_boto3_client.return_value = self.mock_cf_client
+        mock_cf_client = Mock()
+        mock_boto3_client.return_value = mock_cf_client
         error = ClientError(
             {'Error': {'Code': 'ValidationError', 'Message': 'Stack does not exist'}},
             'ListStackResources'
         )
-        self.mock_cf_client.list_stack_resources.side_effect = error
+        mock_cf_client.list_stack_resources.side_effect = error
         
-        manager = CloudFormationResourceManager(self.region)
+        message_callback = Mock()
+        confirm_callback = Mock()
+        success_callback = Mock()
         
-        with pytest.raises(StackNotFoundError, match="Stack 'test-stack' not found"):
-            manager.get_stack_resources('test-stack')
+        with pytest.raises(StackNotFoundError):
+            delete_stack_with_confirmation(
+                stack_name=self.stack_name,
+                region=self.region,
+                retain_resources_str="",
+                message_callback=message_callback,
+                confirm_callback=confirm_callback,
+                success_callback=success_callback
+            )
 
-    def test_validate_retain_resources_valid(self):
-        """Test validation of retain resources that exist in stack."""
-        manager = CloudFormationResourceManager(self.region)
-        retain_list = ['EC2Instance1', 'VPCStack']
-        
-        valid, invalid = manager.validate_retain_resources(retain_list, self.sample_resources)
-        
-        assert valid == ['EC2Instance1', 'VPCStack']
-        assert invalid == []
-
-    def test_validate_retain_resources_invalid(self):
-        """Test validation of retain resources that don't exist in stack."""
-        manager = CloudFormationResourceManager(self.region)
-        retain_list = ['NonExistentResource', 'VPCStack', 'AnotherFakeResource']
-        
-        valid, invalid = manager.validate_retain_resources(retain_list, self.sample_resources)
-        
-        assert valid == ['VPCStack']
-        assert invalid == ['NonExistentResource', 'AnotherFakeResource']
-
-    def test_validate_retain_resources_empty(self):
-        """Test validation with empty retain list."""
-        manager = CloudFormationResourceManager(self.region)
-        
-        valid, invalid = manager.validate_retain_resources([], self.sample_resources)
-        
-        assert valid == []
-        assert invalid == []
-
-    def test_categorize_resources(self):
-        """Test resource categorization by type."""
-        manager = CloudFormationResourceManager(self.region)
-        
-        categories = manager.categorize_resources(self.sample_resources)
-        
-        assert 'EC2 Instances' in categories
-        assert 'Networking' in categories
-        assert 'IAM' in categories
-        assert 'Storage' in categories
-        assert len(categories['EC2 Instances']) == 1
-        assert len(categories['Networking']) == 1
-        assert len(categories['IAM']) == 1
-        assert len(categories['Storage']) == 1
-
-    def test_compare_resource_states(self):
-        """Test comparison of resource states before and after deletion."""
-        manager = CloudFormationResourceManager(self.region)
-        
-        # Simulate some resources being deleted
-        current_resources = [
-            {'LogicalResourceId': 'VPCStack'},
-            {'LogicalResourceId': 'IAMRole1'}
-        ]
-        
-        deleted, remaining = manager.compare_resource_states(self.sample_resources, current_resources)
-        
-        assert deleted == {'EC2Instance1', 'S3Bucket1'}
-        assert remaining == {'VPCStack', 'IAMRole1'}
-
-
-class TestDeletionConfirmationHandler:
-    """Test suite for DeletionConfirmationHandler class."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.handler = DeletionConfirmationHandler()
-
-    def test_display_deletion_warning(self, capsys):
-        """Test display of deletion warning."""
-        resource_categories = {
-            'EC2 Instances': ['Instance1'],
-            'Networking': ['VPC1', 'SecurityGroup1'],
-            'Storage': ['Bucket1']
+    @patch('boto3.client')
+    def test_delete_stack_with_retain_resources(self, mock_boto3_client):
+        """Test stack deletion with resource retention."""
+        mock_cf_client = Mock()
+        mock_boto3_client.return_value = mock_cf_client
+        mock_cf_client.list_stack_resources.return_value = {
+            'StackResourceSummaries': self.sample_resources
         }
         
-        self.handler.display_deletion_warning(resource_categories)
+        message_callback = Mock()
+        confirm_callback = Mock(return_value=True)
+        success_callback = Mock()
         
-        captured = capsys.readouterr()
-        assert "⚠ WARNING: This will delete the following 4 resources:" in captured.out
-        assert "EC2 Instances (1):" in captured.out
-        assert "Networking (2):" in captured.out
-        assert "Storage (1):" in captured.out
+        delete_stack_with_confirmation(
+            stack_name=self.stack_name,
+            region=self.region,
+            retain_resources_str="S3Bucket1,VPCStack",
+            message_callback=message_callback,
+            confirm_callback=confirm_callback,
+            success_callback=success_callback
+        )
+        
+        # Verify deletion was called with retention
+        mock_cf_client.delete_stack.assert_called_once_with(
+            StackName=self.stack_name,
+            RetainResources=['S3Bucket1', 'VPCStack']
+        )
 
-    def test_display_retention_info(self, capsys):
-        """Test display of retention information."""
-        retained_resources = ['S3Bucket1', 'VPCStack']
+    @patch('boto3.client')
+    def test_delete_stack_with_invalid_retain_resources(self, mock_boto3_client):
+        """Test handling of invalid retain resources."""
+        mock_cf_client = Mock()
+        mock_boto3_client.return_value = mock_cf_client
+        mock_cf_client.list_stack_resources.return_value = {
+            'StackResourceSummaries': self.sample_resources
+        }
         
-        self.handler.display_retention_info(retained_resources)
+        message_callback = Mock()
+        confirm_callback = Mock(return_value=True)
+        success_callback = Mock()
         
-        captured = capsys.readouterr()
-        assert "The following 2 resources will be RETAINED:" in captured.out
-        assert "✓ S3Bucket1 (retained)" in captured.out
-        assert "✓ VPCStack (retained)" in captured.out
+        delete_stack_with_confirmation(
+            stack_name=self.stack_name,
+            region=self.region,
+            retain_resources_str="S3Bucket1,NonExistentResource",
+            message_callback=message_callback,
+            confirm_callback=confirm_callback,
+            success_callback=success_callback
+        )
+        
+        # Verify warning about invalid resources was displayed
+        warning_calls = [call for call in message_callback.call_args_list 
+                        if 'don\'t exist in the stack' in str(call)]
+        assert len(warning_calls) > 0
+        
+        # Verify deletion was called with only valid resources
+        mock_cf_client.delete_stack.assert_called_once_with(
+            StackName=self.stack_name,
+            RetainResources=['S3Bucket1']
+        )
 
-    def test_display_retention_info_empty(self, capsys):
-        """Test display of retention info with empty list."""
-        self.handler.display_retention_info([])
+    @patch('boto3.client')
+    def test_delete_stack_termination_protection_error(self, mock_boto3_client):
+        """Test handling of termination protection error."""
+        mock_cf_client = Mock()
+        mock_boto3_client.return_value = mock_cf_client
+        mock_cf_client.list_stack_resources.return_value = {
+            'StackResourceSummaries': self.sample_resources
+        }
         
-        captured = capsys.readouterr()
-        assert captured.out == ""  # Should not display anything
+        # Mock termination protection error
+        error = Exception("Stack cannot be deleted while TerminationProtection is enabled")
+        mock_cf_client.delete_stack.side_effect = error
+        
+        message_callback = Mock()
+        confirm_callback = Mock(return_value=True)
+        success_callback = Mock()
+        
+        with pytest.raises(Exception):
+            delete_stack_with_confirmation(
+                stack_name=self.stack_name,
+                region=self.region,
+                retain_resources_str="",
+                message_callback=message_callback,
+                confirm_callback=confirm_callback,
+                success_callback=success_callback
+            )
+        
+        # Verify termination protection message was displayed
+        protection_calls = [call for call in message_callback.call_args_list 
+                           if 'Termination Protection is enabled' in str(call)]
+        assert len(protection_calls) > 0
 
-    def test_display_invalid_resources_warning(self, capsys):
-        """Test display of invalid resources warning."""
-        invalid_resources = ['NonExistent1', 'NonExistent2']
+    @patch('boto3.client')
+    def test_delete_stack_retention_limitation_error(self, mock_boto3_client):
+        """Test handling of CloudFormation retention limitation error."""
+        mock_cf_client = Mock()
+        mock_boto3_client.return_value = mock_cf_client
+        mock_cf_client.list_stack_resources.return_value = {
+            'StackResourceSummaries': self.sample_resources
+        }
         
-        self.handler.display_invalid_resources_warning(invalid_resources)
+        # Mock retention limitation error
+        error = Exception("specify which resources to retain only when the stack is in the DELETE_FAILED state")
+        mock_cf_client.delete_stack.side_effect = error
         
-        captured = capsys.readouterr()
-        assert "⚠️  Warning: The following 2 resources don't exist in the stack:" in captured.out
-        assert "- NonExistent1 (not found)" in captured.out
-        assert "- NonExistent2 (not found)" in captured.out
+        message_callback = Mock()
+        confirm_callback = Mock(return_value=True)
+        success_callback = Mock()
+        
+        # Should not raise exception, just display message and return
+        delete_stack_with_confirmation(
+            stack_name=self.stack_name,
+            region=self.region,
+            retain_resources_str="S3Bucket1",
+            message_callback=message_callback,
+            confirm_callback=confirm_callback,
+            success_callback=success_callback
+        )
+        
+        # Verify limitation message was displayed
+        limitation_calls = [call for call in message_callback.call_args_list 
+                           if 'only works on failed deletions' in str(call)]
+        assert len(limitation_calls) > 0
 
-    @patch('click.confirm')
-    def test_confirm_deletion_yes(self, mock_confirm):
-        """Test deletion confirmation when user says yes."""
-        mock_confirm.return_value = True
+    def test_delete_stack_with_logger(self):
+        """Test stack deletion with logger parameter."""
+        logger = Mock(spec=logging.Logger)
+        message_callback = Mock()
+        confirm_callback = Mock(return_value=False)  # Cancel to avoid actual deletion
         
-        result = self.handler.confirm_deletion()
-        
-        assert result is True
-        mock_confirm.assert_called_once_with("Continue?", default=False)
+        with patch('boto3.client') as mock_boto3_client:
+            mock_cf_client = Mock()
+            mock_boto3_client.return_value = mock_cf_client
+            mock_cf_client.list_stack_resources.return_value = {
+                'StackResourceSummaries': self.sample_resources
+            }
+            
+            delete_stack_with_confirmation(
+                stack_name=self.stack_name,
+                region=self.region,
+                retain_resources_str="",
+                message_callback=message_callback,
+                confirm_callback=confirm_callback,
+                logger=logger
+            )
+            
+            # Verify logger was used
+            assert logger.info.called
 
-    @patch('click.confirm')
-    def test_confirm_deletion_no(self, mock_confirm):
-        """Test deletion confirmation when user says no."""
-        mock_confirm.return_value = False
-        
-        result = self.handler.confirm_deletion()
-        
-        assert result is False
-        mock_confirm.assert_called_once_with("Continue?", default=False)
 
-
-class TestCloudFormationErrorHandler:
-    """Test suite for CloudFormationErrorHandler class."""
+class TestPerformStackDeletion:
+    """Test suite for the low-level stack deletion function."""
 
     def setup_method(self):
         """Set up test fixtures."""
         self.region = 'us-west-2'
-        self.mock_cf_client = Mock()
+        self.stack_name = 'test-stack'
 
     @patch('boto3.client')
-    def test_handle_termination_protection_error(self, mock_boto3_client, capsys):
-        """Test handling of termination protection error."""
-        mock_boto3_client.return_value = self.mock_cf_client
-        handler = CloudFormationErrorHandler(self.region)
-        
-        error = Exception("Stack cannot be deleted while TerminationProtection is enabled")
-        
-        with pytest.raises(click.ClickException, match="Termination protection must be disabled"):
-            handler.handle_deletion_error(error, 'test-stack')
-        
-        captured = capsys.readouterr()
-        assert "❌ Stack deletion blocked: Termination Protection is enabled" in captured.out
-        assert "aws cloudformation update-termination-protection" in captured.out
-
-    @patch('boto3.client')
-    def test_handle_retention_limitation_error(self, mock_boto3_client, capsys):
-        """Test handling of CloudFormation retention limitation error."""
-        mock_boto3_client.return_value = self.mock_cf_client
-        handler = CloudFormationErrorHandler(self.region)
-        
-        error = Exception("specify which resources to retain only when the stack is in the DELETE_FAILED state")
-        
-        # Should not raise exception, just display message and return
-        handler.handle_deletion_error(error, 'test-stack', 'S3Bucket1,VPC1')
-        
-        captured = capsys.readouterr()
-        assert "❌ CloudFormation limitation: --retain-resources only works on failed deletions" in captured.out
-        assert "💡 Recommended workflow:" in captured.out
-
-    @patch('boto3.client')
-    def test_handle_generic_error(self, mock_boto3_client, capsys):
-        """Test handling of generic errors."""
-        mock_boto3_client.return_value = self.mock_cf_client
-        handler = CloudFormationErrorHandler(self.region)
-        
-        error = Exception("Some generic error")
-        
-        with pytest.raises(click.ClickException, match="Some generic error"):
-            handler.handle_deletion_error(error, 'test-stack')
-        
-        captured = capsys.readouterr()
-        assert "❌ Error deleting stack: Some generic error" in captured.out
-
-    @patch('boto3.client')
-    def test_handle_partial_deletion_failure(self, mock_boto3_client, capsys):
-        """Test handling of partial deletion failures."""
-        mock_boto3_client.return_value = self.mock_cf_client
-        handler = CloudFormationErrorHandler(self.region)
-        
-        original_resources = [
-            {'LogicalResourceId': 'Resource1'},
-            {'LogicalResourceId': 'Resource2'},
-            {'LogicalResourceId': 'Resource3'}
-        ]
-        
-        # Mock current resources after partial deletion
-        self.mock_cf_client.list_stack_resources.return_value = {
-            'StackResourceSummaries': [
-                {'LogicalResourceId': 'Resource2'},
-                {'LogicalResourceId': 'Resource3'}
-            ]
-        }
-        
-        handler.handle_partial_deletion_failure('test-stack', original_resources, [])
-        
-        captured = capsys.readouterr()
-        assert "✗ Stack deletion failed" in captured.out
-        assert "Successfully deleted (1):" in captured.out
-        assert "✓ Resource1" in captured.out
-        assert "Failed to delete (2):" in captured.out
-        assert "✗ Resource2" in captured.out
-        assert "✗ Resource3" in captured.out
-
-
-class TestUtilityFunctions:
-    """Test suite for utility functions."""
-
-    def test_parse_retain_resources_valid(self):
-        """Test parsing of valid retain resources string."""
-        result = parse_retain_resources("Resource1,Resource2,Resource3")
-        assert result == ['Resource1', 'Resource2', 'Resource3']
-
-    def test_parse_retain_resources_with_spaces(self):
-        """Test parsing with spaces around resource names."""
-        result = parse_retain_resources(" Resource1 , Resource2 , Resource3 ")
-        assert result == ['Resource1', 'Resource2', 'Resource3']
-
-    def test_parse_retain_resources_empty(self):
-        """Test parsing of empty or None string."""
-        assert parse_retain_resources(None) == []
-        assert parse_retain_resources("") == []
-        assert parse_retain_resources("   ") == []
-
-    def test_parse_retain_resources_single(self):
-        """Test parsing of single resource."""
-        result = parse_retain_resources("SingleResource")
-        assert result == ['SingleResource']
-
-    @patch('boto3.client')
-    @patch('click.echo')
-    def test_perform_stack_deletion_success(self, mock_echo, mock_boto3_client):
+    def test_perform_stack_deletion_success(self, mock_boto3_client):
         """Test successful stack deletion."""
         mock_cf_client = Mock()
         mock_boto3_client.return_value = mock_cf_client
         
-        perform_stack_deletion('test-stack', 'us-west-2', [])
+        perform_stack_deletion(self.stack_name, self.region, [])
         
-        mock_cf_client.delete_stack.assert_called_once_with(StackName='test-stack')
-        mock_echo.assert_called_with("✓ Stack 'test-stack' deletion initiated successfully")
+        mock_cf_client.delete_stack.assert_called_once_with(StackName=self.stack_name)
 
     @patch('boto3.client')
-    @patch('click.echo')
-    def test_perform_stack_deletion_with_retention(self, mock_echo, mock_boto3_client):
+    def test_perform_stack_deletion_with_retention(self, mock_boto3_client):
         """Test stack deletion with resource retention."""
         mock_cf_client = Mock()
         mock_boto3_client.return_value = mock_cf_client
         retain_list = ['Resource1', 'Resource2']
         
-        perform_stack_deletion('test-stack', 'us-west-2', retain_list)
+        perform_stack_deletion(self.stack_name, self.region, retain_list)
         
         mock_cf_client.delete_stack.assert_called_once_with(
-            StackName='test-stack',
+            StackName=self.stack_name,
             RetainResources=retain_list
         )
+
+    @patch('boto3.client')
+    def test_perform_stack_deletion_with_logger(self, mock_boto3_client):
+        """Test stack deletion with logger."""
+        mock_cf_client = Mock()
+        mock_boto3_client.return_value = mock_cf_client
+        logger = Mock(spec=logging.Logger)
         
-        # Verify success message was displayed
-        success_calls = [call for call in mock_echo.call_args_list if 'deletion initiated successfully' in str(call)]
-        assert len(success_calls) == 1
+        perform_stack_deletion(self.stack_name, self.region, [], logger)
+        
+        # Verify logger was used
+        assert logger.debug.called
+        assert logger.info.called
+        
+        mock_cf_client.delete_stack.assert_called_once_with(StackName=self.stack_name)
+
+    @patch('boto3.client')
+    def test_perform_stack_deletion_error(self, mock_boto3_client):
+        """Test stack deletion error handling."""
+        mock_cf_client = Mock()
+        mock_boto3_client.return_value = mock_cf_client
+        mock_cf_client.delete_stack.side_effect = Exception("Deletion failed")
+        
+        with pytest.raises(Exception, match="Deletion failed"):
+            perform_stack_deletion(self.stack_name, self.region, [])
+
+
+class TestCallbackTypes:
+    """Test suite for callback type definitions."""
+
+    def test_message_callback_type(self):
+        """Test MessageCallback type works correctly."""
+        def test_callback(message: str) -> None:
+            pass
+        
+        # Should not raise type errors
+        callback: MessageCallback = test_callback
+        callback("test message")
+
+    def test_confirm_callback_type(self):
+        """Test ConfirmCallback type works correctly."""
+        def test_callback(message: str) -> bool:
+            return True
+        
+        # Should not raise type errors
+        callback: ConfirmCallback = test_callback
+        result = callback("test message")
+        assert result is True
+
+    def test_success_callback_type(self):
+        """Test SuccessCallback type works correctly."""
+        def test_callback(message: str) -> None:
+            pass
+        
+        # Should not raise type errors
+        callback: SuccessCallback = test_callback
+        callback("test message")
 
 
 class TestGenericUtilities:
@@ -396,19 +423,20 @@ class TestGenericUtilities:
             "Compute": ["MyInstance", "MyFunction"],
             "Storage": ["MyBucket"]
         }
-    
-    def test_generic_confirmation_handler(self, capsys):
-        """Test generic confirmation handler."""
-        handler = GenericConfirmationHandler()
-        
-        # Test display_warning_list
-        items = {"Category1": ["item1", "item2"], "Category2": ["item3"]}
-        handler.display_warning_list("Test warning", items)
-        captured = capsys.readouterr()
-        
-        assert "⚠ Test warning 3 resources:" in captured.out
-        assert "Category1 (2):" in captured.out
-        assert " - item1" in captured.out
+
+
+class TestStackNotFoundError:
+    """Test suite for StackNotFoundError exception."""
+
+    def test_stack_not_found_error_creation(self):
+        """Test StackNotFoundError can be created and raised."""
+        with pytest.raises(StackNotFoundError, match="Test stack not found"):
+            raise StackNotFoundError("Test stack not found")
+
+    def test_stack_not_found_error_inheritance(self):
+        """Test StackNotFoundError inherits from Exception."""
+        error = StackNotFoundError("Test error")
+        assert isinstance(error, Exception)
 
 
 if __name__ == '__main__':
