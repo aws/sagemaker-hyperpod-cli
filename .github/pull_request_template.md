@@ -21,8 +21,8 @@
 
 
 ## Reviewer Guidelines
-‼️ **Integration Test Policy**: PRs with failing integration tests cannot be merged without justification
-‼️ **Merge Requirements** - One of the following must be true:
+
+‼️ **Merge Requirements**: PRs with failing integration tests cannot be merged without justification. One of the following must be true:
 - [ ] All automated PR checks pass
 - [ ] Failed tests include local run results/screenshots proving they work
 - [ ] Changes are documentation-only
