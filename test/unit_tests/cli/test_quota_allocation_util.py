@@ -365,27 +365,13 @@ class TestQuotaAllocationUtil:
         limits_values = {}
         _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
         assert requests_values["cpu"] == "2.0"
-        assert limits_values["cpu"] == "2.0"
-
-    def test_resolve_default_cpu_values_limit_only(self):
-        requests_values = {}
-        limits_values = {"cpu": "4.0"}
-        _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
-        assert requests_values["cpu"] == "4.0"
-        assert limits_values["cpu"] == "4.0"
+        assert "cpu" not in limits_values
 
     def test_resolve_default_cpu_values_both_provided(self):
         requests_values = {"cpu": "2.0"}
         limits_values = {"cpu": "4.0"}
         _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
         assert requests_values["cpu"] == "2.0"
-        assert limits_values["cpu"] == "4.0"
-
-    def test_resolve_default_cpu_values_request_exceeds_limit(self):
-        requests_values = {"cpu": "6.0"}
-        limits_values = {"cpu": "4.0"}
-        _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
-        assert requests_values["cpu"] == "4.0"  # Clamped to limit
         assert limits_values["cpu"] == "4.0"
 
     def test_resolve_default_cpu_values_exceeds_instance_capacity(self):
@@ -409,7 +395,7 @@ class TestQuotaAllocationUtil:
         limits_values = {}
         _resolve_default_cpu_values("invalid-instance", requests_values, limits_values)
         assert requests_values["cpu"] == "2.0"
-        assert limits_values["cpu"] == "2.0"
+        assert "cpu" not in limits_values
 
     def test_resolve_default_cpu_values_none_values_in_dict(self):
         requests_values = {"cpu": None}

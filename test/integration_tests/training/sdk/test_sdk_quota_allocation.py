@@ -69,16 +69,16 @@ class TestHyperPodSDKQuotaAllocation:
         pytorch_job.create()
         logger.info(f"Created job with quota parameters: {test_job_name}")
 
-        # # Wait for job to be created
-        # time.sleep(10)
-        #
-        # # Verify the job was created with correct resource allocation
-        # created_job = HyperPodPytorchJob.get(test_job_name, NAMESPACE)
-        # assert created_job is not None
-        #
-        # # Clean up
-        # pytorch_job.delete()
-        # logger.info(f"Successfully deleted job: {test_job_name}")
+        # Wait for job to be created
+        time.sleep(10)
+
+        # Verify the job was created with correct resource allocation
+        created_job = HyperPodPytorchJob.get(test_job_name, NAMESPACE)
+        assert created_job is not None
+
+        # Clean up
+        pytorch_job.delete()
+        logger.info(f"Successfully deleted job: {test_job_name}")
 
     def test_create_job_with_only_replicas_parameters(self, test_job_name, image_uri):
         """Test creating a job with quota allocation parameters."""
@@ -112,16 +112,16 @@ class TestHyperPodSDKQuotaAllocation:
         pytorch_job.create()
         logger.info(f"Created job with quota parameters: {test_job_name}")
 
-        # # Wait for job to be created
-        # time.sleep(10)
-        #
-        # # Verify the job was created with correct resource allocation
-        # created_job = HyperPodPytorchJob.get(test_job_name, NAMESPACE)
-        # assert created_job is not None
-        #
-        # # Clean up
-        # pytorch_job.delete()
-        # logger.info(f"Successfully deleted job: {test_job_name}")
+        # Wait for job to be created
+        time.sleep(10)
+
+        # Verify the job was created with correct resource allocation
+        created_job = HyperPodPytorchJob.get(test_job_name, NAMESPACE)
+        assert created_job is not None
+
+        # Clean up
+        pytorch_job.delete()
+        logger.info(f"Successfully deleted job: {test_job_name}")
 
     def test_create_job_with_float_quota_parameters(self, test_job_name, image_uri):
         """Test creating a job with float quota parameters."""
@@ -158,16 +158,16 @@ class TestHyperPodSDKQuotaAllocation:
         pytorch_job.create()
         logger.info(f"Created job with float quota parameters: {test_job_name}")
 
-        # # Wait for job to be created
-        # time.sleep(10)
-        #
-        # # Verify the job was created
-        # created_job = HyperPodPytorchJob.get(test_job_name, NAMESPACE)
-        # assert created_job is not None
-        #
-        # # Clean up
-        # pytorch_job.delete()
-        # logger.info(f"Successfully deleted job: {test_job_name}")
+        # Wait for job to be created
+        time.sleep(10)
+
+        # Verify the job was created
+        created_job = HyperPodPytorchJob.get(test_job_name, NAMESPACE)
+        assert created_job is not None
+
+        # Clean up
+        pytorch_job.delete()
+        logger.info(f"Successfully deleted job: {test_job_name}")
 
     def test_create_job_with_only_accelerators(self, test_job_name, image_uri):
         """Test creating a job with only accelerators parameter."""
@@ -204,16 +204,16 @@ class TestHyperPodSDKQuotaAllocation:
         pytorch_job.create()
         logger.info(f"Created job with only accelerators: {test_job_name}")
 
-        # # Wait for job to be created
-        # time.sleep(10)
-        #
-        # # Verify the job was created
-        # created_job = HyperPodPytorchJob.get(test_job_name, NAMESPACE)
-        # assert created_job is not None
-        #
-        # # Clean up
-        # pytorch_job.delete()
-        # logger.info(f"Successfully deleted job: {test_job_name}")
+        # Wait for job to be created
+        time.sleep(10)
+
+        # Verify the job was created
+        created_job = HyperPodPytorchJob.get(test_job_name, NAMESPACE)
+        assert created_job is not None
+
+        # Clean up
+        pytorch_job.delete()
+        logger.info(f"Successfully deleted job: {test_job_name}")
 
     def test_quota_allocation_validation(self, test_job_name, image_uri):
         """Test that quota allocation validation works correctly."""
@@ -287,16 +287,16 @@ class TestHyperPodSDKQuotaAllocation:
         pytorch_job.create()
         logger.info(f"Created job with 0 replicas (should default to 1): {test_job_name}")
 
-        # # Wait for job to be created
-        # time.sleep(10)
-        #
-        # # Verify the job was created
-        # created_job = HyperPodPytorchJob.get(test_job_name, NAMESPACE)
-        # assert created_job is not None
-        #
-        # # Clean up
-        # pytorch_job.delete()
-        # logger.info(f"Successfully deleted job: {test_job_name}")
+        # Wait for job to be created
+        time.sleep(10)
+
+        # Verify the job was created
+        created_job = HyperPodPytorchJob.get(test_job_name, NAMESPACE)
+        assert created_job is not None
+
+        # Clean up
+        pytorch_job.delete()
+        logger.info(f"Successfully deleted job: {test_job_name}")
 
     def test_set_default_memory_limit_caps_at_93_percent(self, test_job_name, image_uri):
         """Test that _set_default_memory_limit caps memory at 93% of instance capacity."""
@@ -332,16 +332,16 @@ class TestHyperPodSDKQuotaAllocation:
         pytorch_job.create()
         logger.info(f"Created job memory should be set to 93% max capacity: {test_job_name}")
 
-        # # Wait for job to be created
-        # time.sleep(10)
-        #
-        # # Verify the job was created
-        # created_job = HyperPodPytorchJob.get(test_job_name, NAMESPACE)
-        # assert created_job is not None
-        #
-        # # Clean up
-        # pytorch_job.delete()
-        # logger.info(f"Successfully deleted job: {test_job_name}")
+        # Wait for job to be created
+        time.sleep(10)
+
+        # Verify the job was created
+        created_job = HyperPodPytorchJob.get(test_job_name, NAMESPACE)
+        assert created_job is not None
+
+        # Clean up
+        pytorch_job.delete()
+        logger.info(f"Successfully deleted job: {test_job_name}")
 
     def test_validate_accelerators_values_enforces_equality(self, test_job_name, image_uri):
         """Test that _validate_accelerators_values enforces request/limit equality.
@@ -419,16 +419,16 @@ class TestHyperPodSDKQuotaAllocation:
         pytorch_job.create()
         logger.info(f"Created job accelerators should be set to (1): {test_job_name}")
 
-        # # Wait for job to be created
-        # time.sleep(10)
-        #
-        # # Verify the job was created
-        # created_job = HyperPodPytorchJob.get(test_job_name, NAMESPACE)
-        # assert created_job is not None
-        #
-        # # Clean up
-        # pytorch_job.delete()
-        # logger.info(f"Successfully deleted job: {test_job_name}")
+        # Wait for job to be created
+        time.sleep(10)
+
+        # Verify the job was created
+        created_job = HyperPodPytorchJob.get(test_job_name, NAMESPACE)
+        assert created_job is not None
+
+        # Clean up
+        pytorch_job.delete()
+        logger.info(f"Successfully deleted job: {test_job_name}")
 
     def test_resolve_default_memory_values_request_exceeds_limit(self, test_job_name, image_uri):
         """Test that _resolve_default_memory_values reduces request when it exceeds limit."""
@@ -464,16 +464,16 @@ class TestHyperPodSDKQuotaAllocation:
         pytorch_job.create()
         logger.info(f"Created job memory should be set to '8Gi': {test_job_name}")
 
-        # # Wait for job to be created
-        # time.sleep(10)
-        #
-        # # Verify the job was created
-        # created_job = HyperPodPytorchJob.get(test_job_name, NAMESPACE)
-        # assert created_job is not None
-        #
-        # # Clean up
-        # pytorch_job.delete()
-        # logger.info(f"Successfully deleted job: {test_job_name}")
+        # Wait for job to be created
+        time.sleep(10)
+
+        # Verify the job was created
+        created_job = HyperPodPytorchJob.get(test_job_name, NAMESPACE)
+        assert created_job is not None
+
+        # Clean up
+        pytorch_job.delete()
+        logger.info(f"Successfully deleted job: {test_job_name}")
 
     def test_validate_accelerators_inputs_exceeds_capacity(self, test_job_name, image_uri):
         """Test that _validate_accelerators_inputs validates capacity limits."""
@@ -543,14 +543,14 @@ class TestHyperPodSDKQuotaAllocation:
         pytorch_job.create()
         logger.info(f"Created job memory should be set to '8Gi': {test_job_name}")
 
-        # # Wait for job to be created
-        # time.sleep(10)
-        #
-        # # Verify the job was created
-        # created_job = HyperPodPytorchJob.get(test_job_name, NAMESPACE)
-        # assert created_job is not None
-        #
-        # # Clean up
-        # pytorch_job.delete()
-        # logger.info(f"Successfully deleted job: {test_job_name}")
+        # Wait for job to be created
+        time.sleep(10)
+
+        # Verify the job was created
+        created_job = HyperPodPytorchJob.get(test_job_name, NAMESPACE)
+        assert created_job is not None
+
+        # Clean up
+        pytorch_job.delete()
+        logger.info(f"Successfully deleted job: {test_job_name}")
 
