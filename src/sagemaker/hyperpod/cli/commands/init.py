@@ -393,11 +393,7 @@ def _default_create(region):
                 filtered_config = _filter_cli_metadata_fields(data)
                 flat = model(**filtered_config)
                 domain = flat.to_domain()
-                # TODO: update inference SDK to include name and namespace in the call
-                if template == "hyp-custom-endpoint" or template == "hyp-jumpstart-endpoint":
-                    domain.create(namespace=namespace)
-                elif template == "hyp-pytorch-job":
-                    domain.create()
+                domain.create()
 
 
     except Exception as e:

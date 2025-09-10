@@ -30,9 +30,7 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_js_endpoint")
     def create(
         self,
-        name=None,
-        namespace=None,
-        debug=False,
+        debug=False
     ) -> None:
         logger = self.get_logger()
         logger = setup_logging(logger, debug)
@@ -40,6 +38,9 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         spec = _HPJumpStartEndpoint(**self.model_dump(by_alias=True, exclude_none=True))
 
         endpoint_name = ""
+        name = self.metadata.name if self.metadata else None
+        namespace = self.metadata.namespace if self.metadata else None
+
         if spec.sageMakerEndpoint and spec.sageMakerEndpoint.name:
             endpoint_name = spec.sageMakerEndpoint.name
 
@@ -75,8 +76,6 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
     def create_from_dict(
         self,
         input: Dict,
-        name: str = None,
-        namespace: str = None,
         debug = False
     ) -> None:
         logger = self.get_logger()
@@ -85,6 +84,9 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         spec = _HPJumpStartEndpoint.model_validate(input, by_name=True)
 
         endpoint_name = ""
+        name = self.metadata.name if self.metadata else None
+        namespace = self.metadata.namespace if self.metadata else None
+
         if spec.sageMakerEndpoint and spec.sageMakerEndpoint.name:
             endpoint_name = spec.sageMakerEndpoint.name
 

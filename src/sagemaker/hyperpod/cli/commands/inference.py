@@ -20,50 +20,38 @@ from sagemaker.hyperpod.common.utils import display_formatted_logs
 
 # CREATE
 @click.command("hyp-jumpstart-endpoint")
-@click.option(
-    "--namespace",
-    type=click.STRING,
-    required=False,
-    default="default",
-    help="Optional. The namespace of the jumpstart model endpoint to create. Default set to 'default'",
-)
 @click.option("--version", default="1.0", help="Schema version to use")
+@click.option("--debug", default=False, help="Enable debug mode")
 @generate_click_command(
     schema_pkg="hyperpod_jumpstart_inference_template",
     registry=JS_REG,
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "create_js_endpoint_cli")
 @handle_cli_exceptions()
-def js_create(name, namespace, version, js_endpoint):
+def js_create(version, debug, js_endpoint):
     """
     Create a jumpstart model endpoint.
     """
-
-    js_endpoint.create(name=name, namespace=namespace)
+    click.echo(f"Using version: {version}")
+    js_endpoint.create(debug=debug)
 
 
 @click.command("hyp-custom-endpoint")
-@click.option(
-    "--namespace",
-    type=click.STRING,
-    required=False,
-    default="default",
-    help="Optional. The namespace of the jumpstart model endpoint to create. Default set to 'default'",
-)
 @click.option("--version", default="1.0", help="Schema version to use")
+@click.option("--debug", default=False, help="Enable debug mode")
 @generate_click_command(
     schema_pkg="hyperpod_custom_inference_template",
     registry=C_REG,
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "create_custom_endpoint_cli")
 @handle_cli_exceptions()
-def custom_create(name, namespace, version, custom_endpoint):
+def custom_create(version, debug, custom_endpoint):
     """
     Create a custom model endpoint.
     """
-
-    custom_endpoint.create(name=name, namespace=namespace)
-
+    click.echo(f"Using version: {version}")
+    custom_endpoint.create(debug=debug)
+    
 
 # INVOKE
 @click.command("hyp-custom-endpoint")

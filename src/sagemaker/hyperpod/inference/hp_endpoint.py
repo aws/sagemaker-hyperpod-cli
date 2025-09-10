@@ -29,14 +29,15 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_endpoint")
     def create(
         self,
-        name=None,
-        namespace=None,
-        debug=False,
+        debug=False
     ) -> None:
         logger = self.get_logger()
         logger = setup_logging(logger, debug)
 
         spec = _HPEndpoint(**self.model_dump(by_alias=True, exclude_none=True))
+
+        name = self.metadata.name if self.metadata else None
+        namespace = self.metadata.namespace if self.metadata else None
 
         if not spec.endpointName and not name:
             raise Exception('Either metadata name or endpoint name must be provided')
@@ -70,14 +71,15 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
     def create_from_dict(
         self,
         input: Dict,
-        name: str = None,
-        namespace: str = None,
         debug=False
     ) -> None:
         logger = self.get_logger()
         logger = setup_logging(logger, debug)
 
         spec = _HPEndpoint.model_validate(input, by_name=True)
+
+        name = self.metadata.name if self.metadata else None
+        namespace = self.metadata.namespace if self.metadata else None
 
         if not namespace:
             namespace = get_default_namespace()
