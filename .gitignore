@@ -31,3 +31,4 @@ doc/_build/
 .idea/
 
 .venv
+venv/
