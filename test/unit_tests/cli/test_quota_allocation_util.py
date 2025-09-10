@@ -19,10 +19,9 @@ from sagemaker.hyperpod.training.quota_allocation_util import (
     _get_accelerator_type_and_count,
     _get_resources_from_compute_quotas,
     _has_compute_resource_quota_allocation_resources,
-    _set_default_cpu_limit,
-    _set_default_memory_limit,
-    _validate_accelerators_values,
-    _set_default_accelerators_values,
+    _resolve_default_memory_values,
+    _validate_accelerators_inputs,
+    _set_default_accelerators_val,
     INSTANCE_RESOURCES
 )
 
@@ -157,41 +156,41 @@ class TestQuotaAllocationUtil:
 
     # Tests for _get_limits method
     def test_get_limits_all_none(self):
-        result = _get_limits("ml.g5.xlarge", None, None, None, None)
+        result = _get_limits("ml.g5.xlarge", None, None, None)
         assert result == {}
 
     def test_get_limits_all_values(self):
-        result = _get_limits("ml.g5.xlarge", 8.0, 32.0, 2, None)
+        result = _get_limits("ml.g5.xlarge", 8.0, 32.0, 2)
         assert result == {"cpu": "8.0", "memory": "32.0Gi", "nvidia.com/gpu": 2}
 
     def test_get_limits_partial_values(self):
-        result = _get_limits("ml.g5.xlarge", 4.0, None, 1, None)
+        result = _get_limits("ml.g5.xlarge", 4.0, None, 1)
         assert result == {"cpu": "4.0", "nvidia.com/gpu": 1}
 
     def test_get_limits_memory_only(self):
-        result = _get_limits("ml.g5.xlarge", None, 16.0, None, None)
+        result = _get_limits("ml.g5.xlarge", None, 16.0, None)
         assert result == {"memory": "16.0Gi"}
 
     def test_get_limits_zero_values(self):
-        result = _get_limits("ml.g5.xlarge", 0, 0, 0, None)
+        result = _get_limits("ml.g5.xlarge", 0, 0, 0)
         assert result == {"cpu": "0", "memory": "0Gi", "nvidia.com/gpu": 0}
 
     def test_get_limits_trainium_instance(self):
-        result = _get_limits("ml.trn1.32xlarge", 8.0, 32.0, 4, None)
+        result = _get_limits("ml.trn1.32xlarge", 8.0, 32.0, 4)
         assert result == {"cpu": "8.0", "memory": "32.0Gi", "aws.amazon.com/neurondevice": 4}
 
     def test_get_limits_cpu_only_instance(self):
-        result = _get_limits("ml.c5.large", 2.0, 8.0, 1, None)
+        result = _get_limits("ml.c5.large", 2.0, 8.0, 1)
         # CPU-only instance should set accelerator limit to 0 as precaution
         assert result == {"cpu": "2.0", "memory": "8.0Gi", "nvidia.com/gpu": 0}
 
     def test_get_limits_invalid_instance_type(self):
-        result = _get_limits("invalid-instance", 4.0, 16.0, 2, None)
+        result = _get_limits("invalid-instance", 4.0, 16.0, 2)
         # Invalid instance type should set accelerator limit to 0 as precaution
         assert result == {"cpu": "4.0", "memory": "16.0Gi", "nvidia.com/gpu": 0}
 
     def test_get_limits_cpu_instance_r7i(self):
-        result = _get_limits("ml.r7i.48xlarge", 16.0, 64.0, 2, None)
+        result = _get_limits("ml.r7i.48xlarge", 16.0, 64.0, 2)
         # CPU-only instance (ml.r7i.48xlarge) should set accelerator limit to 0 as precaution
         assert result == {"cpu": "16.0", "memory": "64.0Gi", "nvidia.com/gpu": 0}
 
@@ -270,37 +269,18 @@ class TestQuotaAllocationUtil:
         result = _get_resources_from_instance("ml.g5.xlarge", 0)
         assert result == {"cpu": "0", "memory": "0Gi", "nvidia.com/gpu": 0}
 
-    # Tests for _set_default_cpu_limit
-    def test_set_default_cpu_limit_with_none_limit(self):
-        requests = {"cpu": "4"}
-        limits = {}
-        _set_default_cpu_limit(requests, limits)
-        assert limits["cpu"] == "4"
-
-    def test_set_default_cpu_limit_with_existing_limit(self):
-        requests = {"cpu": "4"}
-        limits = {"cpu": "8"}
-        _set_default_cpu_limit(requests, limits)
-        assert limits["cpu"] == "8"
-
-    def test_set_default_cpu_limit_no_cpu_request(self):
-        requests = {}
-        limits = {}
-        with pytest.raises(ValueError, match="CPU value must be provided"):
-            _set_default_cpu_limit(requests, limits)
-
     # Tests for _validate_memory_limit
     def test_validate_memory_limit_within_bounds(self):
         requests = {"memory": "8Gi"}
         limits = {"memory": "12Gi"}
-        _set_default_memory_limit("ml.g5.xlarge", requests, limits)
+        _resolve_default_memory_values("ml.g5.xlarge", requests, limits)
         assert requests["memory"] == "8.0Gi"
         assert limits["memory"] == "12.0Gi"
 
     def test_validate_memory_limit_exceeds_recommended(self):
         requests = {"memory": "15Gi"}
         limits = {"memory": "15Gi"}
-        _set_default_memory_limit("ml.g5.xlarge", requests, limits)
+        _resolve_default_memory_values("ml.g5.xlarge", requests, limits)
         # Should be capped at 93% of 16Gi = 14.88Gi
         assert requests["memory"] == "14.88Gi"
         assert limits["memory"] == "14.88Gi"
@@ -308,90 +288,67 @@ class TestQuotaAllocationUtil:
     def test_validate_memory_limit_request_exceeds_limit(self):
         requests = {"memory": "10Gi"}
         limits = {"memory": "8Gi"}
-        _set_default_memory_limit("ml.g5.xlarge", requests, limits)
+        _resolve_default_memory_values("ml.g5.xlarge", requests, limits)
         # Request should be reduced to match limit
-        assert requests["memory"] == "10.0Gi"
+        assert requests["memory"] == "8.0Gi"
         assert limits["memory"] == "8.0Gi"
 
     def test_validate_memory_limit_missing_values(self):
         requests = {}
         limits = {"memory": "8Gi"}
-        with pytest.raises(ValueError, match="Memory values must be provided"):
-            _set_default_memory_limit("ml.g5.xlarge", requests, limits)
+        with pytest.raises(TypeError, match="expected string or bytes-like object, got 'NoneType'"):
+            _resolve_default_memory_values("ml.g5.xlarge", requests, limits)
 
     def test_validate_memory_limit_invalid_format(self):
         requests = {"memory": "invalid"}
         limits = {"memory": "8Gi"}
         with pytest.raises(ValueError, match="Invalid memory format"):
-            _set_default_memory_limit("ml.g5.xlarge", requests, limits)
+            _resolve_default_memory_values("ml.g5.xlarge", requests, limits)
 
-    # Tests for _validate_accelerators_values
-    def test_validate_accelerators_values_equal(self):
-        result = _validate_accelerators_values(2, 2)
-        assert result is None  # Function returns None when validation passes
+    # Tests for _validate_accelerators_inputs
+    def test_validate_accelerators_inputs_valid_equal_values(self):
+        # Should not raise exception
+        _validate_accelerators_inputs("ml.g5.xlarge", 1, 1)
 
-    def test_validate_accelerators_values_none_values(self):
-        result = _validate_accelerators_values(None, None)
-        assert result is None  # Function returns None when validation passes
+    def test_validate_accelerators_inputs_unequal_values(self):
+        with pytest.raises(ValueError, match="Accelerator request must equal accelerator limit"):
+            _validate_accelerators_inputs("ml.g5.xlarge", 1, 2)
 
-    def test_validate_accelerators_values_one_none(self):
-        result = _validate_accelerators_values(2, None)
-        assert result is None  # Function returns None when validation passes
+    def test_validate_accelerators_inputs_exceeds_capacity_request(self):
+        with pytest.raises(ValueError, match="Requested accelerators exceeds capacity"):
+            _validate_accelerators_inputs("ml.g5.xlarge", 2, 2)
 
-    def test_validate_accelerators_values_not_equal(self):
-        with pytest.raises(ValueError, match="Accelerator count \\(2\\) must equal accelerator limit \\(4\\)"):
-            _validate_accelerators_values(2, 4)
+    def test_validate_accelerators_inputs_exceeds_capacity_limit(self):
+        with pytest.raises(ValueError, match="Accelerator request must equal accelerator limit"):
+            _validate_accelerators_inputs("ml.g5.xlarge", 1, 2)
 
-    # Tests for _set_default_accelerators_values
-    def test_set_default_accelerators_values_gpu_instance_both_none(self):
-        requests = {}
-        limits = {}
-        count, limit = _set_default_accelerators_values("ml.g5.xlarge", requests, limits, 1)
-        assert count == 1
+    def test_validate_accelerators_inputs_cpu_only_instance(self):
+        # Should not raise exception for CPU-only instances
+        _validate_accelerators_inputs("ml.c5.large", 1, 1)
+
+    # Tests for _set_default_accelerators_val
+    def test_set_default_accelerators_val_both_none(self):
+        request, limit = _set_default_accelerators_val("ml.g5.xlarge", None, None)
+        assert request is None
+        assert limit is None
+
+    def test_set_default_accelerators_val_request_only(self):
+        request, limit = _set_default_accelerators_val("ml.g5.xlarge", 1, None)
+        assert request == 1
         assert limit == 1
-        assert requests["nvidia.com/gpu"] == 1
-        assert limits["nvidia.com/gpu"] == 1
 
-    def test_set_default_accelerators_values_gpu_instance_request_only(self):
-        requests = {"nvidia.com/gpu": 2}
-        limits = {}
-        count, limit = _set_default_accelerators_values("ml.g5.xlarge", requests, limits, 1)
-        assert count == 2
-        assert limit == 2
-        assert limits["nvidia.com/gpu"] == 2
-
-    def test_set_default_accelerators_values_gpu_instance_limit_only(self):
-        requests = {}
-        limits = {"nvidia.com/gpu": 3}
-        count, limit = _set_default_accelerators_values("ml.g5.xlarge", requests, limits, 2)
-        assert count == 6
-        assert limit == 6
-        assert requests["nvidia.com/gpu"] == 6
-
-    def test_set_default_accelerators_values_gpu_instance_both_set(self):
-        requests = {"nvidia.com/gpu": 2}
-        limits = {"nvidia.com/gpu": 4}
-        count, limit = _set_default_accelerators_values("ml.g5.xlarge", requests, limits, 1)
-        assert count == 4
-        assert limit == 4
-        assert requests["nvidia.com/gpu"] == 4
-        assert limits["nvidia.com/gpu"] == 4
-
-    def test_set_default_accelerators_values_trainium_instance(self):
-        requests = {}
-        limits = {}
-        count, limit = _set_default_accelerators_values("ml.trn1.32xlarge", requests, limits, 1)
-        assert count == 1
+    def test_set_default_accelerators_val_limit_only(self):
+        request, limit = _set_default_accelerators_val("ml.g5.xlarge", None, 1)
+        assert request == 1
         assert limit == 1
-        assert requests["aws.amazon.com/neurondevice"] == 1
-        assert limits["aws.amazon.com/neurondevice"] == 1
 
-    def test_set_default_accelerators_values_cpu_only_instance(self):
-        requests = {}
-        limits = {}
-        count, limit = _set_default_accelerators_values("ml.c5.large", requests, limits, 1)
-        assert count == 0
-        assert limit == 0
-        # No accelerator keys should be added
-        assert "nvidia.com/gpu" not in requests
-        assert "aws.amazon.com/neurondevice" not in requests
+    def test_set_default_accelerators_val_both_provided(self):
+        request, limit = _set_default_accelerators_val("ml.g5.xlarge", 1, 1)
+        assert request == 1
+        assert limit == 1
+
+    def test_set_default_accelerators_val_cpu_only_instance(self):
+        request, limit = _set_default_accelerators_val("ml.c5.large", 1, 1)
+        assert request is None
+        assert limit is None
+

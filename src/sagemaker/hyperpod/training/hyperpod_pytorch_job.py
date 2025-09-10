@@ -1,6 +1,7 @@
 from pydantic import ConfigDict, Field
 
-from sagemaker.hyperpod.cli.constants.command_constants import INSTANCE_TYPE_LABEL
+from sagemaker.hyperpod.cli.constants.command_constants import INSTANCE_TYPE_LABEL, NEURON_RESOURCE_LIMIT_KEY, \
+    NVIDIA_GPU_RESOURCE_LIMIT_KEY
 from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config import (
     _HyperPodPytorchJob, HyperPodPytorchJobStatus
 )
@@ -25,12 +26,7 @@ from sagemaker.hyperpod.training.quota_allocation_util import (
     _get_resources_from_compute_quotas,
     _get_resources_from_instance,
     _get_limits,
-    # _set_default_accelerators_values,
-    _resolve_request_and_limits,
-    _set_default_memory_limit,
-    _set_default_cpu_limit,
-    # _validate_accelerators_values,
-    _get_accelerator_type_and_count,
+    _resolve_default_memory_values,
     _set_default_accelerators_val,
     _validate_accelerators_inputs
 )
@@ -41,7 +37,8 @@ PLURAL = "hyperpodpytorchjobs"
 KIND = "HyperPodPyTorchJob"
 TRAINING_OPERATOR_NAMESPACE = "aws-hyperpod"
 TRAINING_OPERATOR_LABEL = "hp-training-control-plane"
-
+NVIDIA_RESOURCE_KEY = NVIDIA_GPU_RESOURCE_LIMIT_KEY
+NEURON_RESOURCE_KEY = NEURON_RESOURCE_LIMIT_KEY
 
 class HyperPodPytorchJob(_HyperPodPytorchJob):
     """HyperPod PyTorch job for distributed training on Amazon SageMaker HyperPod clusters.
@@ -110,18 +107,18 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             accelerators = None
             if requests.get('accelerators'):
                 accelerators = int(requests.get('accelerators'))
-            elif requests.get('nvidia.com/gpu'):
-                accelerators = int(requests.get('nvidia.com/gpu'))
+            elif requests.get(NVIDIA_RESOURCE_KEY):
+                accelerators = int(requests.get(NVIDIA_RESOURCE_KEY))
+            elif requests.get(NEURON_RESOURCE_KEY):
+                accelerators = int(requests.get(NEURON_RESOURCE_KEY))
 
             # Extract resource values
-            # vcpu = float(requests.get('vcpu')) if requests.get('vcpu') else None
             vcpu = None
             if requests.get('cpu'):
                 vcpu = float(requests.get('cpu'))
             elif requests.get('vcpu'):
                 vcpu = float(requests.get('vcpu'))
 
-            # vcpu_limit = float(limits.get('vcpu')) if limits.get('vcpu') else None
             vcpu_limit = None
             if limits.get('cpu'):
                 vcpu_limit = float(limits.get('cpu'))
@@ -134,33 +131,28 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             accelerators_limit = None
             if limits.get('accelerators'):
                 accelerators_limit = int(limits.get('accelerators'))
-            elif limits.get('nvidia.com/gpu'):
-                accelerators_limit = int(limits.get('nvidia.com/gpu'))
+            elif limits.get(NVIDIA_RESOURCE_KEY):
+                accelerators_limit = int(limits.get(NVIDIA_RESOURCE_KEY))
+            elif limits.get(NEURON_RESOURCE_KEY):
+                accelerators_limit = int(limits.get(NEURON_RESOURCE_KEY))
 
             acc_req, acc_lim = _set_default_accelerators_val(instance_type, accelerators, accelerators_limit)
             _validate_accelerators_inputs(instance_type, acc_req, acc_lim)
-            # _validate_accelerators_values(accelerators_limit, accelerators)
+
             # Validate configuration
             valid, error = _is_valid(vcpu, memory, acc_req, node_count, instance_type)
             if not valid:
                 raise ValueError(error)
 
             # Calculate resource values
-            requests_value = (_get_resources_from_compute_quotas(instance_type, vcpu, memory, acc_req)
+            requests_values = (_get_resources_from_compute_quotas(instance_type, vcpu, memory, acc_req)
                               or _get_resources_from_instance(instance_type, node_count=1))
-            memory_request = requests_value.get("memory")
-            # accelerator_key, count = _get_accelerator_type_and_count(instance_type)
-            # derived_accelerator_limit = requests_value.get(accelerator_key)
-            limits_value = _get_limits(instance_type, vcpu_limit, memory_limit, acc_lim, memory_request)
-            _set_default_memory_limit(instance_type, requests_value, limits_value)
-            # aclr_count, aclr_lim = _set_default_accelerators_values(instance_type, requests_value, limits_value, node_count)
-            # _validate_accelerators_values(aclr_count, aclr_lim)
-            _set_default_cpu_limit(requests_value, limits_value)
-            _resolve_request_and_limits(requests_value, limits_value)
+            limits_values = _get_limits(instance_type, vcpu_limit, memory_limit, acc_lim)
+            _resolve_default_memory_values(instance_type, requests_values, limits_values)
 
             # Update data with calculated values
-            data['template']['spec']['containers'][0]['resources']['requests'] = requests_value
-            data['template']['spec']['containers'][0]['resources']['limits'] = limits_value
+            data['template']['spec']['containers'][0]['resources']['requests'] = requests_values
+            data['template']['spec']['containers'][0]['resources']['limits'] = limits_values
 
             return data
         except KeyError as e:
@@ -243,10 +235,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             "metadata": self.metadata.model_dump(exclude_none=True),
             "spec": spec.model_dump(exclude_none=True),
         }
-        print("\n======DEBUG======")
-        print(spec.replicaSpecs[0].template.spec.containers[0].resources)
-        print('\n')
-        return
+
         custom_api = client.CustomObjectsApi()
         logger.debug(
             "Deploying HyperPodPytorchJob with config:\n%s",

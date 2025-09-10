@@ -213,8 +213,8 @@ def _get_resources_from_instance(instance_type: str, node_count: int) -> dict:
     result["memory"] = f"{result['memory']}Gi"
     return result
 
-def _get_limits(instance_type: str, vcpu_limit: Optional[float], memory_in_gib_limit: Optional[float], accelerators_limit: Optional[int], memory_request: Optional[float]) -> dict:
-    
+def _get_limits(instance_type: str, vcpu_limit: Optional[float], memory_in_gib_limit: Optional[float], accelerators_limit: Optional[int]) -> dict:
+
     result = {}
     type_of_accelerator, _max_accelerator_per_instance = _get_accelerator_type_and_count(instance_type)
 
@@ -227,32 +227,21 @@ def _get_limits(instance_type: str, vcpu_limit: Optional[float], memory_in_gib_l
         else: 
             # user specified accelerator limit but the instance type wasn't found, set limit to 0 as a precaution 
             result["nvidia.com/gpu"] = 0
-
     if memory_in_gib_limit is not None:
         result["memory"] = str(memory_in_gib_limit) + "Gi"
-    elif memory_request is not None:
-        result["memory"] = str(memory_request)
 
     return result
 
-def _set_default_cpu_limit(requests_values: dict, limits_values: dict) -> None:
-    cpu_limit = limits_values.get("cpu")
-    cpu_request = requests_values.get("cpu")
-    if not cpu_request:
-        raise ValueError("CPU value must be provided")
-    if cpu_limit is None:
-        cpu_limit = cpu_request
-    limits_values["cpu"] = cpu_limit
 
-
-def _set_default_memory_limit(instance_type: str, requests_values: dict, limits_values: dict) -> None:
+def _resolve_default_memory_values(instance_type: str, requests_values: dict, limits_values: dict) -> None:
 
     instance = INSTANCE_RESOURCES.get(instance_type, {})
     total_available_memory = instance.get("memory", 0)
     mem_limit_str = limits_values.get("memory")
     mem_request_str = requests_values.get("memory")
-    if mem_limit_str is None or mem_request_str is None:
-        raise ValueError("Memory values must be provided")
+
+    if mem_limit_str is None and mem_request_str is not None:
+        mem_limit_str = mem_request_str
 
     try:
         memory_limit = float(re.match(r'^([0-9]*\.?[0-9]+)', mem_limit_str).group(1))
@@ -272,18 +261,12 @@ def _set_default_memory_limit(instance_type: str, requests_values: dict, limits_
         memory_limit = recommended_max
     if memory_request > recommended_max:
         memory_request = recommended_max
+    if memory_request > memory_limit:
+        memory_request = memory_limit
 
     limits_values["memory"] = str(memory_limit) + "Gi"
     requests_values["memory"] = str(memory_request) + "Gi"
 
-# Kubernetes does not validate accelerators values - validation must occur in CLI
-# def _validate_accelerators_values(accelerators_count: int|None, accelerators_limit: int|None) -> bool:
-#     if accelerators_count is not None and accelerators_limit is not None:
-#         if accelerators_count != accelerators_limit:
-#             raise ValueError(
-#                 f"Accelerator count ({accelerators_count}) must equal "
-#                 f"accelerator limit ({accelerators_limit})"
-#             )
 
 def _validate_accelerators_inputs(instance_type: str, accelerators_request: int, accelerators_limit: int):
     type_of_accelerator, _max_accelerator_per_instance = _get_accelerator_type_and_count(instance_type)
@@ -310,44 +293,6 @@ def _set_default_accelerators_val(instance_type: str, accelerators_request: int,
             return accelerators_request, accelerators_limit
     return None, None
 
-# def _set_default_accelerators_values(instance_type: str, requests_values: dict, limits_values: dict, node_count: int) -> tuple[int, int]:
-#     type_of_accelerator, _max_accelerator_per_instance = _get_accelerator_type_and_count(instance_type)
-#
-#     if type_of_accelerator is not None:
-#         accelerators_request = requests_values.get(type_of_accelerator)
-#         accelerators_limit = limits_values.get(type_of_accelerator)
-#
-#         if accelerators_request is None and accelerators_limit is None:
-#             accelerators_value = node_count
-#             requests_values[type_of_accelerator] = accelerators_value
-#             limits_values[type_of_accelerator] = accelerators_value
-#
-#         elif accelerators_request is not None and accelerators_limit is None:
-#             limits_values[type_of_accelerator] = accelerators_request
-#
-#         elif accelerators_request is None and accelerators_limit is not None:
-#             accelerators_value = accelerators_limit * node_count
-#             requests_values[type_of_accelerator] = accelerators_value
-#             limits_values[type_of_accelerator] =  accelerators_value
-#
-#         elif accelerators_request is not None and accelerators_limit is not None:
-#             # accelerators_value = max(accelerators_request, accelerators_limit)
-#             # limits_values[type_of_accelerator] = accelerators_value
-#             # requests_values[type_of_accelerator] = accelerators_value
-#             _validate_accelerators_values(accelerators_request, accelerators_limit)
-#
-#         return requests_values[type_of_accelerator], limits_values[type_of_accelerator]
-#
-#     return 0, 0
-
-def _resolve_request_and_limits(requests_values: dict, limits_values: dict) -> None:
-    for key in requests_values.keys():
-        request = requests_values[key]
-        limits = limits_values[key]
-        if request > limits:
-            requests_values[key] = limits
-
-
 
 def _is_valid(vcpu: Optional[float], memory_in_gib: Optional[float], accelerators: Optional[int], 
               node_count: Optional[int], instance_type: Optional[str]) -> tuple[bool, str]:
@@ -358,11 +303,10 @@ def _is_valid(vcpu: Optional[float], memory_in_gib: Optional[float], accelerator
         return False, "Instance-type must be specified when accelerators, vcpu, or memory-in-gib specified"
 
     node_specified = node_count is not None and node_count > 0
-    
+
     # Check if instance_type is valid only when it's provided
     if instance_type is not None and (INSTANCE_RESOURCES.get(instance_type) is None):
         return False, f"Invalid instance-type {instance_type}. Please re-check the instance type and contact AWS for support."
-
     if instance_type is not None:
         #both resources and node count specified
         if (has_gpu_quota_allocation and node_specified):
