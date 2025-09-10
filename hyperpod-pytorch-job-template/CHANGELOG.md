@@ -1,3 +1,9 @@
+## v1.1.2 (2025-09-10)
+
+### Features
+
+ * Revert node-count val
+
 ## v1.1.1 (2025-08-27)
 
 ### Features
