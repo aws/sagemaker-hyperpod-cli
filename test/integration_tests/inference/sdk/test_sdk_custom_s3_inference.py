@@ -9,6 +9,7 @@ from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
 )
 import sagemaker_core.main.code_injection.codec as codec
 from test.integration_tests.utils import get_time_str
+from sagemaker.hyperpod.common.config.metadata import Metadata
 
 # --------- Test Configuration ---------
 NAMESPACE = "integration"
@@ -69,7 +70,10 @@ def custom_endpoint():
         environment_variables=env_vars
     )
 
+    metadata = Metadata(name=ENDPOINT_NAME, namespace=NAMESPACE)
+
     return HPEndpoint(
+        metadata=metadata,
         endpoint_name=ENDPOINT_NAME,
         instance_type="ml.c5.2xlarge",
         model_name=MODEL_NAME,
@@ -79,7 +83,7 @@ def custom_endpoint():
 
 @pytest.mark.dependency(name="create")
 def test_create_endpoint(custom_endpoint):
-    custom_endpoint.create(namespace=NAMESPACE)
+    custom_endpoint.create()
     assert custom_endpoint.metadata.name == ENDPOINT_NAME
 
 
@@ -127,7 +131,6 @@ def test_wait_until_inservice():
 
 
 @pytest.mark.dependency(depends=["create"])
-@pytest.mark.skip
 def test_invoke_endpoint(monkeypatch):
     original_transform = codec.transform
 
