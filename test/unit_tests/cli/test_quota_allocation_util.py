@@ -22,6 +22,7 @@ from sagemaker.hyperpod.training.quota_allocation_util import (
     _resolve_default_memory_values,
     _validate_accelerators_inputs,
     _set_default_accelerators_val,
+    _resolve_default_cpu_values,
     INSTANCE_RESOURCES
 )
 
@@ -351,4 +352,70 @@ class TestQuotaAllocationUtil:
         request, limit = _set_default_accelerators_val("ml.c5.large", 1, 1)
         assert request is None
         assert limit is None
+
+    def test_resolve_default_cpu_values_both_none(self):
+        requests_values = {}
+        limits_values = {}
+        _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
+        assert "cpu" not in requests_values
+        assert "cpu" not in limits_values
+
+    def test_resolve_default_cpu_values_request_only(self):
+        requests_values = {"cpu": "2.0"}
+        limits_values = {}
+        _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
+        assert requests_values["cpu"] == "2.0"
+        assert limits_values["cpu"] == "2.0"
+
+    def test_resolve_default_cpu_values_limit_only(self):
+        requests_values = {}
+        limits_values = {"cpu": "4.0"}
+        _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
+        assert requests_values["cpu"] == "4.0"
+        assert limits_values["cpu"] == "4.0"
+
+    def test_resolve_default_cpu_values_both_provided(self):
+        requests_values = {"cpu": "2.0"}
+        limits_values = {"cpu": "4.0"}
+        _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
+        assert requests_values["cpu"] == "2.0"
+        assert limits_values["cpu"] == "4.0"
+
+    def test_resolve_default_cpu_values_request_exceeds_limit(self):
+        requests_values = {"cpu": "6.0"}
+        limits_values = {"cpu": "4.0"}
+        _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
+        assert requests_values["cpu"] == "4.0"  # Clamped to limit
+        assert limits_values["cpu"] == "4.0"
+
+    def test_resolve_default_cpu_values_exceeds_instance_capacity(self):
+        requests_values = {"cpu": "10.0"}  # ml.c5.large has 2 CPU
+        limits_values = {}
+        _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
+        # Should return early, no changes
+        assert requests_values["cpu"] == "10.0"
+        assert "cpu" not in limits_values
+
+    def test_resolve_default_cpu_values_limit_exceeds_capacity(self):
+        requests_values = {}
+        limits_values = {"cpu": "10.0"}  # ml.c5.large has 2 CPU
+        _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
+        # Should return early, no changes
+        assert limits_values["cpu"] == "10.0"
+        assert "cpu" not in requests_values
+
+    def test_resolve_default_cpu_values_invalid_instance_type(self):
+        requests_values = {"cpu": "2.0"}
+        limits_values = {}
+        _resolve_default_cpu_values("invalid-instance", requests_values, limits_values)
+        assert requests_values["cpu"] == "2.0"
+        assert limits_values["cpu"] == "2.0"
+
+    def test_resolve_default_cpu_values_none_values_in_dict(self):
+        requests_values = {"cpu": None}
+        limits_values = {"cpu": None}
+        _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
+        # Should handle None values gracefully
+        assert "cpu" not in requests_values or requests_values["cpu"] is None
+        assert "cpu" not in limits_values or limits_values["cpu"] is None
 

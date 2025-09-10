@@ -31,3 +31,5 @@ doc/_build/
 
 .venv
 venv
+
+/hyperpod-cluster-stack-template/build

@@ -28,7 +28,8 @@ from sagemaker.hyperpod.training.quota_allocation_util import (
     _get_limits,
     _resolve_default_memory_values,
     _set_default_accelerators_val,
-    _validate_accelerators_inputs
+    _validate_accelerators_inputs,
+    _resolve_default_cpu_values
 )
 
 TRAINING_GROUP = "sagemaker.amazonaws.com"
@@ -149,6 +150,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
                               or _get_resources_from_instance(instance_type, node_count=1))
             limits_values = _get_limits(instance_type, vcpu_limit, memory_limit, acc_lim)
             _resolve_default_memory_values(instance_type, requests_values, limits_values)
+            _resolve_default_cpu_values(instance_type, requests_values, limits_values)
 
             # Update data with calculated values
             data['template']['spec']['containers'][0]['resources']['requests'] = requests_values
@@ -161,6 +163,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
     @classmethod
     def _get_container_resources(cls, replica_spec):
         """Extract container resources from replica spec."""
+        print('replica_spec', replica_spec['template']['spec']['containers'][0]['resources'])
         container_resources = replica_spec['template']['spec']['containers'][0]['resources']
         return container_resources['requests'], container_resources['limits']
 
@@ -235,6 +238,10 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             "metadata": self.metadata.model_dump(exclude_none=True),
             "spec": spec.model_dump(exclude_none=True),
         }
+        print('\n======DEBUG======')
+        print(spec.replicaSpecs[0].template.spec.containers[0].resources)
+        print('\n')
+        return
 
         custom_api = client.CustomObjectsApi()
         logger.debug(

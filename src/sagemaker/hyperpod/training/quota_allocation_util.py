@@ -233,6 +233,34 @@ def _get_limits(instance_type: str, vcpu_limit: Optional[float], memory_in_gib_l
     return result
 
 
+def _resolve_default_cpu_values(instance_type: str,requests_values: dict, limits_values: dict) -> None:
+
+    instance = INSTANCE_RESOURCES.get(instance_type, {})
+    total_available_cpu = instance.get('cpu')
+    cpu_limit = float(limits_values.get('cpu')) if limits_values.get('cpu') is not None else None
+    cpu_request = float(requests_values.get('cpu')) if requests_values.get('cpu') is not None else None
+
+    # if cpu_limit is None and cpu_request is not None:
+    #     cpu_limit = cpu_request
+    if cpu_request is None and cpu_limit is not None:
+        cpu_request = cpu_limit
+
+    if cpu_limit is not None:
+        # Let Kubernetes handle unsupportable values errors
+        if cpu_limit > total_available_cpu:
+            return
+        if cpu_request > total_available_cpu:
+            return
+
+        if cpu_request > cpu_limit:
+            cpu_request = cpu_limit
+
+        if cpu_limit is not None:
+            limits_values["cpu"] = str(cpu_limit)
+        requests_values["cpu"] = str(cpu_request)
+
+
+
 def _resolve_default_memory_values(instance_type: str, requests_values: dict, limits_values: dict) -> None:
 
     instance = INSTANCE_RESOURCES.get(instance_type, {})
@@ -247,7 +275,7 @@ def _resolve_default_memory_values(instance_type: str, requests_values: dict, li
         memory_limit = float(re.match(r'^([0-9]*\.?[0-9]+)', mem_limit_str).group(1))
         memory_request = float(re.match(r'^([0-9]*\.?[0-9]+)', mem_request_str).group(1))
     except (AttributeError, ValueError):
-        raise ValueError("Invalid memory format")
+        raise ValueError(f"Invalid memory format: {mem_limit_str or mem_request_str}")
 
     # Let Kubernetes handle unsupportable values errors
     if memory_limit > total_available_memory:
@@ -268,7 +296,7 @@ def _resolve_default_memory_values(instance_type: str, requests_values: dict, li
     requests_values["memory"] = str(memory_request) + "Gi"
 
 
-def _validate_accelerators_inputs(instance_type: str, accelerators_request: int, accelerators_limit: int):
+def _validate_accelerators_inputs(instance_type: str, accelerators_request: int, accelerators_limit: int) -> None:
     type_of_accelerator, _max_accelerator_per_instance = _get_accelerator_type_and_count(instance_type)
     if type_of_accelerator is not None:
         if accelerators_request is not None and accelerators_limit is not None:
@@ -280,7 +308,7 @@ def _validate_accelerators_inputs(instance_type: str, accelerators_request: int,
                 raise ValueError('Requested accelerators exceeds capacity')
 
 
-def _set_default_accelerators_val(instance_type: str, accelerators_request: int, accelerators_limit: int):
+def _set_default_accelerators_val(instance_type: Optional[str], accelerators_request: Optional[int], accelerators_limit: int|None) -> Tuple[Optional[int], Optional[int]]:
     type_of_accelerator, _max_accelerator_per_instance = _get_accelerator_type_and_count(instance_type)
     if type_of_accelerator is not None:
         if accelerators_request is None and accelerators_limit is None:
