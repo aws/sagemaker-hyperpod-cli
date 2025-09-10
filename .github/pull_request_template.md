@@ -20,8 +20,6 @@
 ## Are integration tests added?
 
 
----
-
 ## Reviewer Guidelines
 ‼️ **Integration Test Policy**: PRs with failing integration tests cannot be merged without justification
 ‼️ **Merge Requirements** - One of the following must be true:
