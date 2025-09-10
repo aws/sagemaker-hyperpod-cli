@@ -54,6 +54,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace=namespace,
             spec=spec,
+            debug=debug,
         )
 
         self.metadata = Metadata(
@@ -71,9 +72,10 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         input: Dict,
         name: str = None,
         namespace: str = None,
+        debug=False
     ) -> None:
         logger = self.get_logger()
-        logger = setup_logging(logger)
+        logger = setup_logging(logger, debug)
 
         spec = _HPEndpoint.model_validate(input, by_name=True)
 
@@ -93,6 +95,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
             namespace=namespace,
             spec=spec,
+            debug=debug,
         )
 
         self.metadata = Metadata(

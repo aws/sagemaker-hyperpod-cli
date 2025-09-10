@@ -1,5 +1,12 @@
 # Changelog
 
+## v.3.2.2 (2025-09-10)
+
+### Features
+
+  * Fix for production canary failures caused by bad training job template.
+  * New version for Health Monitoring Agent (1.0.790.0_1.0.266.0) with minor improvements and bug fixes.
+
 ## v3.2.1 (2025-08-27)
 
 ### Features
