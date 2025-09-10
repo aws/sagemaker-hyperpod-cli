@@ -106,7 +106,7 @@ hyp list-cluster
 |--------|------|-------------|
 | `--region <region>` | Optional | The region that the SageMaker HyperPod and EKS clusters are located. If not specified, it will be set to the region from the current AWS account credentials. |
 | `--namespace <namespace>` | Optional | The namespace that users want to check the quota with. Only the SageMaker managed namespaces are supported. |
-| `--output <json|table>` | Optional | The output format. Available values are `table` and `json`. The default value is `json`. |
+| `--output <json\|table>` | Optional | The output format. Available values are `table` and `json`. The default value is `json`. |
 | `--debug` | Optional | Enable debug mode for detailed logging. |
 
 ### Connecting to a Cluster
