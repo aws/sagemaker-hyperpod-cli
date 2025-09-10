@@ -31,17 +31,27 @@ def create_test_stack(cfn_client, stack_name):
         "AWSTemplateFormatVersion": "2010-09-09",
         "Description": "Test stack for SDK deletion integration tests",
         "Resources": {
-            "TestBucket": {
-                "Type": "AWS::S3::Bucket",
+            "TestRole": {
+                "Type": "AWS::IAM::Role",
                 "Properties": {
-                    "BucketName": f"{stack_name.lower()}-sdk-test-bucket"
+                    "RoleName": f"{stack_name}-sdk-test-role",
+                    "AssumeRolePolicyDocument": {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Effect": "Allow",
+                                "Principal": {"Service": "lambda.amazonaws.com"},
+                                "Action": "sts:AssumeRole"
+                            }
+                        ]
+                    }
                 }
             }
         },
         "Outputs": {
-            "BucketName": {
-                "Description": "Name of the test bucket",
-                "Value": {"Ref": "TestBucket"}
+            "RoleName": {
+                "Description": "Name of the test role",
+                "Value": {"Ref": "TestRole"}
             }
         }
     }
@@ -50,6 +60,7 @@ def create_test_stack(cfn_client, stack_name):
     cfn_client.create_stack(
         StackName=stack_name,
         TemplateBody=json.dumps(template),
+        Capabilities=['CAPABILITY_NAMED_IAM'],
         Tags=[
             {"Key": "Purpose", "Value": "SDKIntegrationTest"},
             {"Key": "Component", "Value": "SDK-Delete-Test"}
