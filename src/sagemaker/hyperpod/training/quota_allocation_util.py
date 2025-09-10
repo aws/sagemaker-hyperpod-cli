@@ -277,42 +277,76 @@ def _set_default_memory_limit(instance_type: str, requests_values: dict, limits_
     requests_values["memory"] = str(memory_request) + "Gi"
 
 # Kubernetes does not validate accelerators values - validation must occur in CLI
-def _validate_accelerators_values(accelerators_count: int|None, accelerators_limit: int|None) -> bool:
-    if accelerators_count is not None and accelerators_limit is not None:
-        if accelerators_count != accelerators_limit:
-            raise ValueError(
-                f"Accelerator count ({accelerators_count}) must equal "
-                f"accelerator limit ({accelerators_limit})"
-            )
+# def _validate_accelerators_values(accelerators_count: int|None, accelerators_limit: int|None) -> bool:
+#     if accelerators_count is not None and accelerators_limit is not None:
+#         if accelerators_count != accelerators_limit:
+#             raise ValueError(
+#                 f"Accelerator count ({accelerators_count}) must equal "
+#                 f"accelerator limit ({accelerators_limit})"
+#             )
 
-def _set_default_accelerators_values(instance_type: str, requests_values: dict, limits_values: dict, node_count: int) -> tuple[int, int]:
+def _validate_accelerators_inputs(instance_type: str, accelerators_request: int, accelerators_limit: int):
     type_of_accelerator, _max_accelerator_per_instance = _get_accelerator_type_and_count(instance_type)
-
     if type_of_accelerator is not None:
-        accelerators_request = requests_values.get(type_of_accelerator)
-        accelerators_limit = limits_values.get(type_of_accelerator)
+        if accelerators_request is not None and accelerators_limit is not None:
+            if accelerators_request !=  accelerators_limit:
+                raise ValueError('Accelerator request must equal accelerator limit')
+            if accelerators_limit > _max_accelerator_per_instance:
+                raise ValueError('Requested accelerators exceeds capacity')
+            if accelerators_request > _max_accelerator_per_instance:
+                raise ValueError('Requested accelerators exceeds capacity')
 
+
+def _set_default_accelerators_val(instance_type: str, accelerators_request: int, accelerators_limit: int):
+    type_of_accelerator, _max_accelerator_per_instance = _get_accelerator_type_and_count(instance_type)
+    if type_of_accelerator is not None:
         if accelerators_request is None and accelerators_limit is None:
-            accelerators_value = node_count
-            requests_values[type_of_accelerator] = accelerators_value
-            limits_values[type_of_accelerator] = accelerators_value
-
+            return None, None
         elif accelerators_request is not None and accelerators_limit is None:
-            limits_values[type_of_accelerator] = accelerators_request
-
+            return accelerators_request, accelerators_request
         elif accelerators_request is None and accelerators_limit is not None:
-            accelerators_value = accelerators_limit * node_count
-            requests_values[type_of_accelerator] = accelerators_value
-            limits_values[type_of_accelerator] =  accelerators_value
+            return accelerators_limit, accelerators_limit
+        else:
+            return accelerators_request, accelerators_limit
+    return None, None
 
-        elif accelerators_request is not None and accelerators_limit is not None:
-            accelerators_value = max(accelerators_request, accelerators_limit)
-            limits_values[type_of_accelerator] = accelerators_value
-            requests_values[type_of_accelerator] = accelerators_value
+# def _set_default_accelerators_values(instance_type: str, requests_values: dict, limits_values: dict, node_count: int) -> tuple[int, int]:
+#     type_of_accelerator, _max_accelerator_per_instance = _get_accelerator_type_and_count(instance_type)
+#
+#     if type_of_accelerator is not None:
+#         accelerators_request = requests_values.get(type_of_accelerator)
+#         accelerators_limit = limits_values.get(type_of_accelerator)
+#
+#         if accelerators_request is None and accelerators_limit is None:
+#             accelerators_value = node_count
+#             requests_values[type_of_accelerator] = accelerators_value
+#             limits_values[type_of_accelerator] = accelerators_value
+#
+#         elif accelerators_request is not None and accelerators_limit is None:
+#             limits_values[type_of_accelerator] = accelerators_request
+#
+#         elif accelerators_request is None and accelerators_limit is not None:
+#             accelerators_value = accelerators_limit * node_count
+#             requests_values[type_of_accelerator] = accelerators_value
+#             limits_values[type_of_accelerator] =  accelerators_value
+#
+#         elif accelerators_request is not None and accelerators_limit is not None:
+#             # accelerators_value = max(accelerators_request, accelerators_limit)
+#             # limits_values[type_of_accelerator] = accelerators_value
+#             # requests_values[type_of_accelerator] = accelerators_value
+#             _validate_accelerators_values(accelerators_request, accelerators_limit)
+#
+#         return requests_values[type_of_accelerator], limits_values[type_of_accelerator]
+#
+#     return 0, 0
 
-        return requests_values[type_of_accelerator], limits_values[type_of_accelerator]
+def _resolve_request_and_limits(requests_values: dict, limits_values: dict) -> None:
+    for key in requests_values.keys():
+        request = requests_values[key]
+        limits = limits_values[key]
+        if request > limits:
+            requests_values[key] = limits
 
-    return 0, 0
 
 
 def _is_valid(vcpu: Optional[float], memory_in_gib: Optional[float], accelerators: Optional[int], 
