@@ -146,8 +146,14 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
                 raise ValueError(error)
 
             # Calculate resource values
-            requests_values = (_get_resources_from_compute_quotas(instance_type, vcpu, memory, acc_req)
-                              or _get_resources_from_instance(instance_type, node_count=1))
+            requests_values = _get_resources_from_compute_quotas(instance_type, vcpu, memory, acc_req)
+            if requests_values is None:
+                requests_values = _get_resources_from_instance(instance_type, node_count=1)
+                if NVIDIA_RESOURCE_KEY in requests_values:
+                    acc_lim = requests_values[NVIDIA_RESOURCE_KEY]
+                elif NEURON_RESOURCE_KEY in requests_values:
+                    acc_lim = requests_values[NEURON_RESOURCE_KEY]
+
             limits_values = _get_limits(instance_type, vcpu_limit, memory_limit, acc_lim)
             _resolve_default_memory_values(instance_type, requests_values, limits_values)
             _resolve_default_cpu_values(instance_type, requests_values, limits_values)
@@ -163,7 +169,6 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
     @classmethod
     def _get_container_resources(cls, replica_spec):
         """Extract container resources from replica spec."""
-        print('replica_spec', replica_spec['template']['spec']['containers'][0]['resources'])
         container_resources = replica_spec['template']['spec']['containers'][0]['resources']
         return container_resources['requests'], container_resources['limits']
 
@@ -239,6 +244,10 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             "spec": spec.model_dump(exclude_none=True),
         }
 
+        # print('\n===========DEBUG===========')
+        # print(spec.replicaSpecs[0].template.spec.containers[0].resources)
+        #
+        # return
         custom_api = client.CustomObjectsApi()
         logger.debug(
             "Deploying HyperPodPytorchJob with config:\n%s",

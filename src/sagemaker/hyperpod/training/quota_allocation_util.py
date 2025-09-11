@@ -199,7 +199,6 @@ def _get_resources_from_instance(instance_type: str, node_count: int) -> dict:
     instance = INSTANCE_RESOURCES.get(instance_type, {})
     cpu = instance.get("cpu", 0)
     memory = instance.get("memory", 0)
-
     result = {
         "cpu": cpu * node_count,
         "memory": memory * node_count
@@ -239,24 +238,19 @@ def _resolve_default_cpu_values(instance_type: str,requests_values: dict, limits
     total_available_cpu = instance.get('cpu')
     cpu_limit = float(limits_values.get('cpu')) if limits_values.get('cpu') is not None else None
     cpu_request = float(requests_values.get('cpu')) if requests_values.get('cpu') is not None else None
-
-    # if cpu_limit is None and cpu_request is not None:
-    #     cpu_limit = cpu_request
-    if cpu_request is None and cpu_limit is not None:
-        cpu_request = cpu_limit
-
+    # if cpu_request is None and cpu_limit is not None:
     if cpu_limit is not None:
+        if cpu_request is None:
+            cpu_request = cpu_limit
         # Let Kubernetes handle unsupportable values errors
         if cpu_limit > total_available_cpu:
             return
         if cpu_request > total_available_cpu:
             return
-
         if cpu_request > cpu_limit:
             cpu_request = cpu_limit
-
-        if cpu_limit is not None:
-            limits_values["cpu"] = str(cpu_limit)
+        # if cpu_limit is not None:
+        limits_values["cpu"] = str(cpu_limit)
         requests_values["cpu"] = str(cpu_request)
 
 
