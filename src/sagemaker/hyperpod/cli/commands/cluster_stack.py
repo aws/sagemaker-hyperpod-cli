@@ -8,6 +8,7 @@ import click
 import json
 import os
 from typing import Optional
+from sagemaker.hyperpod.cli.parsers import parse_list_parameter
 
 from sagemaker_core.main.resources import Cluster
 from sagemaker_core.main.shapes import ClusterInstanceGroupSpecification
@@ -26,23 +27,7 @@ from sagemaker.hyperpod.cli.cluster_stack_utils import (
 logger = logging.getLogger(__name__)
 
 
-def parse_status_list(ctx, param, value):
-    """Parse status list from string format like "['CREATE_COMPLETE', 'UPDATE_COMPLETE']" """
-    if not value:
-        return None
-    
-    try:
-        # Handle both string representation and direct list
-        if isinstance(value, str):
-            # Parse string like "['item1', 'item2']" 
-            parsed = ast.literal_eval(value)
-            if isinstance(parsed, list):
-                return parsed
-            else:
-                raise click.BadParameter(f"Expected list format, got: {type(parsed).__name__}")
-        return value
-    except (ValueError, SyntaxError) as e:
-        raise click.BadParameter(f"Invalid list format. Use: \"['STATUS1', 'STATUS2']\". Error: {e}")
+# Use unified parser for consistent behavior - no need for custom function
 
 
 @click.command("cluster-stack")
@@ -227,8 +212,8 @@ def describe_cluster_stack(stack_name: str, debug: bool, region: str) -> None:
 @click.option("--region", help="AWS region")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 @click.option("--status", 
-              callback=parse_status_list,
-              help="Filter by stack status. Format: \"['CREATE_COMPLETE', 'UPDATE_COMPLETE']\"")
+              callback=parse_list_parameter,
+              help="Filter by stack status. Supports JSON format: '[\"CREATE_COMPLETE\", \"UPDATE_COMPLETE\"]' or simple format: '[CREATE_COMPLETE, UPDATE_COMPLETE]'")
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_cluster_stack_cli")
 def list_cluster_stacks(region, debug, status):
     """List all HyperPod cluster stacks.
