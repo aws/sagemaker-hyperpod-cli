@@ -22,12 +22,10 @@ from sagemaker.hyperpod.cli.init_utils import (
     filter_validation_errors_for_user_input,
     display_validation_results,
     build_config_from_schema,
-    _pascal_to_kebab
 )
 from sagemaker.hyperpod.cli.constants.init_constants import CFN, CRD
 import tempfile
 import os
-from sagemaker.hyperpod.cli.init_utils import _update_field_in_config, _update_list_field_in_config
 
 
 class TestSaveK8sJinja:
@@ -578,23 +576,6 @@ class TestBuildConfigFromSchema:
             assert config['template'] == 'hyp-cluster-stack'
 
 
-class TestPascalToKebab:
-    """Test cases for _pascal_to_kebab function"""
-    
-    def test_pascal_to_kebab_basic(self):
-        """Test basic PascalCase to kebab-case conversion"""
-        assert _pascal_to_kebab('PascalCase') == 'pascal-case'
-        assert _pascal_to_kebab('SimpleWord') == 'simple-word'
-        assert _pascal_to_kebab('XMLHttpRequest') == 'x-m-l-http-request'
-    
-    def test_pascal_to_kebab_edge_cases(self):
-        """Test edge cases for _pascal_to_kebab"""
-        assert _pascal_to_kebab('') == ''
-        assert _pascal_to_kebab('A') == 'a'
-        assert _pascal_to_kebab('lowercase') == 'lowercase'
-        assert _pascal_to_kebab('UPPERCASE') == 'u-p-p-e-r-c-a-s-e'
-
-
 class TestGenerateClickCommandEnhanced:
     """Enhanced test cases for generate_click_command function focusing on union building"""
     
@@ -870,143 +851,3 @@ def test_generate_click_command_cfn_case():
         
         # Assert that the decorator was created successfully
         assert callable(dummy_func)
-
-
-
-class TestUpdateConfig:
-    """Test cases for update config functions"""
-    
-    def test_update_field_in_config(self):
-        """Test _update_field_in_config preserves format and updates value."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            config_path = os.path.join(temp_dir, "config.yaml")
-            
-            # Create test config file
-            original_content = """# Template type
-template: hyp-cluster-stack
-
-# Schema version
-version: 1.0
-
-# List of AZs to deploy subnets in
-availability_zone_ids: 
-
-# Name of SageMaker HyperPod Cluster
-hyperpod_cluster_name: test-cluster
-"""
-            with open(config_path, 'w') as f:
-                f.write(original_content)
-            
-            # Update field
-            _update_field_in_config(temp_dir, 'availability_zone_ids', 'use1-az1')
-            
-            # Read updated content
-            with open(config_path, 'r') as f:
-                updated_content = f.read()
-            
-            # Verify field was updated and format preserved
-            assert 'availability_zone_ids: use1-az1' in updated_content
-            assert '# List of AZs to deploy subnets in' in updated_content
-            assert 'template: hyp-cluster-stack' in updated_content
-
-    def test_update_list_field_in_config_success(self):
-        """Test successful update of list field in config.yaml"""
-        initial_content = """# Test config
-field1: value1
-
-# List field comment
-availability_zone_ids:
-  - old-az-1
-  - old-az-2
-
-# Another field
-field2: value2
-"""
-        
-        expected_content = """# Test config
-field1: value1
-
-# List field comment
-availability_zone_ids:
-  - use2-az1
-  - use2-az2
-  - use2-az3
-
-# Another field
-field2: value2
-"""
-        
-        with tempfile.TemporaryDirectory() as temp_dir:
-            config_path = os.path.join(temp_dir, "config.yaml")
-            
-            # Write initial content
-            with open(config_path, 'w') as f:
-                f.write(initial_content)
-            
-            # Update the list field
-            _update_list_field_in_config(temp_dir, "availability_zone_ids", ["use2-az1", "use2-az2", "use2-az3"])
-            
-            # Read and verify the updated content
-            with open(config_path, 'r') as f:
-                updated_content = f.read()
-            
-            assert updated_content == expected_content
-    
-    def test_update_list_field_in_config_empty_list(self):
-        """Test update with empty list"""
-        initial_content = """# Test config
-availability_zone_ids:
-  - old-az-1
-
-field2: value2
-"""
-        
-        expected_content = """# Test config
-availability_zone_ids:
-
-field2: value2
-"""
-        
-        with tempfile.TemporaryDirectory() as temp_dir:
-            config_path = os.path.join(temp_dir, "config.yaml")
-            
-            # Write initial content
-            with open(config_path, 'w') as f:
-                f.write(initial_content)
-            
-            # Update with empty list
-            _update_list_field_in_config(temp_dir, "availability_zone_ids", [])
-            
-            # Read and verify the updated content
-            with open(config_path, 'r') as f:
-                updated_content = f.read()
-            
-            assert updated_content == expected_content
-    
-    def test_update_list_field_in_config_single_item(self):
-        """Test update with single item list"""
-        initial_content = """availability_zone_ids:
-  - old-az-1
-  - old-az-2
-"""
-        
-        expected_content = """availability_zone_ids:
-  - use2-az1
-
-"""
-        
-        with tempfile.TemporaryDirectory() as temp_dir:
-            config_path = os.path.join(temp_dir, "config.yaml")
-            
-            # Write initial content
-            with open(config_path, 'w') as f:
-                f.write(initial_content)
-            
-            # Update with single item
-            _update_list_field_in_config(temp_dir, "availability_zone_ids", ["use2-az1"])
-            
-            # Read and verify the updated content
-            with open(config_path, 'r') as f:
-                updated_content = f.read()
-            
-            assert updated_content == expected_content

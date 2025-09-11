@@ -71,7 +71,7 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
     def create_from_dict(
         self,
         input: Dict,
-        debug=False
+            debug=False
     ) -> None:
         logger = self.get_logger()
         logger = setup_logging(logger, debug)

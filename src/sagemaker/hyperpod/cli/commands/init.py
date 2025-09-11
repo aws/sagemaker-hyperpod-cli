@@ -8,11 +8,8 @@ import shutil
 from sagemaker.hyperpod.cli.constants.init_constants import (
     USAGE_GUIDE_TEXT_CFN,
     USAGE_GUIDE_TEXT_CRD,
-    CFN,
-    CRD
+    CFN
 )
-from sagemaker.hyperpod.common.config import Metadata
-from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob
 from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack
 from sagemaker.hyperpod.cli.init_utils import (
     generate_click_command,
@@ -25,8 +22,7 @@ from sagemaker.hyperpod.cli.init_utils import (
     display_validation_results,
     build_config_from_schema,
     save_template,
-    get_default_version_for_template,
-    add_default_az_ids_to_config,
+    get_default_version_for_template
 )
 from sagemaker.hyperpod.common.utils import get_aws_default_region
 
@@ -265,7 +261,7 @@ def validate():
 
 
 @click.command(name="_default_create")
-@click.option("--region", "-r", default=None, help="Region, default to your region in aws configure")
+@click.option("--region", "-r", default=None, help="Region to create cluster stack for, default to your region in aws configure. Not available for other templates.")
 def _default_create(region):
     """
     Validate configuration and render template files for deployment.
@@ -300,6 +296,11 @@ def _default_create(region):
     # 1) Load config to determine template type
     data, template, version = load_config_and_validate(dir_path)
     
+    # Check if region flag is used for non-cluster-stack templates
+    if region and template != "cluster-stack":
+        click.secho(f"❌  --region flag is only available for cluster-stack template, not for {template}.", fg="red")
+        sys.exit(1)
+    
     # 2) Determine correct jinja file based on template type
     info = TEMPLATES[template]
     schema_type = info["schema_type"]
@@ -327,27 +328,7 @@ def _default_create(region):
     try:
         template_source = jinja_file.read_text()
         tpl = Template(template_source)
-        
-        # For CFN templates, prepare arrays for Jinja template
-        if schema_type == CFN:
-            # Prepare instance_group_settings array
-            instance_group_settings = []
-            rig_settings = []
-            for i in range(1, 21):
-                ig_key = f'instance_group_settings{i}'
-                rig_key = f'rig_settings{i}'
-                if ig_key in data:
-                    instance_group_settings.append(data[ig_key])
-                if rig_key in data:
-                    rig_settings.append(data[rig_key])
-            
-            # Add arrays to template context
-            template_data = dict(data)
-            template_data['instance_group_settings'] = instance_group_settings
-            template_data['rig_settings'] = rig_settings
-            rendered = tpl.render(**template_data)
-        else:
-            rendered = tpl.render(**data)
+        rendered = tpl.render(**data)
     except Exception as e:
         click.secho(f"❌  Failed to render template: {e}", fg="red")
         sys.exit(1)
@@ -375,23 +356,22 @@ def _default_create(region):
             region = get_aws_default_region()
             click.secho(f"Submitting to default region: {region}.", fg="yellow")
 
-        if schema_type == CFN:
-            add_default_az_ids_to_config(out_dir, region)
-
-            from sagemaker.hyperpod.cli.commands.cluster_stack import create_cluster_stack_helper
-            create_cluster_stack_helper(config_file=f"{out_dir}/config.yaml",
-                                        region=region)
-        else:
-            dir_path = Path(".").resolve()
-            data, template, version = load_config(dir_path)
-            namespace = data.get("namespace", "default")
-            registry = TEMPLATES[template]["registry"]
-            model = registry.get(str(version))
-            if model:
-                # Filter out CLI metadata fields before passing to model
-                from sagemaker.hyperpod.cli.init_utils import _filter_cli_metadata_fields
-                filtered_config = _filter_cli_metadata_fields(data)
-                flat = model(**filtered_config)
+        # Unified pattern for all templates
+        dir_path = Path(".").resolve()
+        data, template, version = load_config(dir_path)
+        registry = TEMPLATES[template]["registry"]
+        model = registry.get(str(version))
+        if model:
+            # Filter out CLI metadata fields before passing to model
+            from sagemaker.hyperpod.cli.init_utils import _filter_cli_metadata_fields
+            filtered_config = _filter_cli_metadata_fields(data)
+            flat = model(**filtered_config)
+            
+            # Pass region to to_domain for cluster stack template
+            if template == "cluster-stack":
+                config = flat.to_config(region=region)
+                HpClusterStack(**config).create(region)
+            else:
                 domain = flat.to_domain()
                 domain.create()
 

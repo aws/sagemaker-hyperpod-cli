@@ -34,7 +34,7 @@ from test.integration_tests.utils import get_time_str
 NAMESPACE = "default"
 VERSION = "1.0"
 REGION = "us-east-2"
-TIMEOUT_MINUTES = 15
+TIMEOUT_MINUTES = 20
 POLL_INTERVAL_SECONDS = 30
 
 @pytest.fixture(scope="module")
@@ -114,7 +114,7 @@ def test_validate_jumpstart(runner, js_endpoint_name, test_directory):
 @pytest.mark.dependency(name="create", depends=["validate", "configure", "init"])
 def test_create_jumpstart(runner, js_endpoint_name, test_directory):
     """Create JumpStart endpoint for deployment and verify template rendering."""
-    result = runner.invoke(create, ["--region", REGION], catch_exceptions=False)
+    result = runner.invoke(create, [], catch_exceptions=False)
     assert_command_succeeded(result)
 
     assert "Configuration is valid!" in result.output
