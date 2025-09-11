@@ -3,6 +3,7 @@
 import json
 import click
 from typing import get_origin
+import ast
 
 
 # Utility functions
@@ -111,19 +112,23 @@ def parse_strings(ctx_or_value, param=None, value=None):
     try:
         return json.loads(actual_value)
     except json.JSONDecodeError:
-        # Try to fix unquoted list items: [python, train.py] -> ["python", "train.py"]
-        if actual_value.strip().startswith('[') and actual_value.strip().endswith(']'):
-            try:
-                # Remove brackets and split by comma
-                inner = actual_value.strip()[1:-1]
-                items = [item.strip().strip('"').strip("'") for item in inner.split(',')]
-                return items
-            except:
-                pass
+        # Try ast.literal_eval for Python-style strings with single quotes
+        try:
+            return ast.literal_eval(actual_value)
+        except (ValueError, SyntaxError):
+            # Try to fix unquoted list items: [python, train.py] -> ["python", "train.py"]
+            if actual_value.strip().startswith('[') and actual_value.strip().endswith(']'):
+                try:
+                    # Remove brackets and split by comma
+                    inner = actual_value.strip()[1:-1]
+                    items = [item.strip().strip('"').strip("'") for item in inner.split(',')]
+                    return items
+                except:
+                    pass
 
-        if is_click_callback:
-            raise click.BadParameter(f"{param.name!r} must be valid JSON or a list like [item1, item2]")
-        return actual_value
+            if is_click_callback:
+                raise click.BadParameter(f"{param.name!r} must be valid JSON or a list like [item1, item2]")
+            return actual_value
 
 
 def write_to_yaml(key, value, file_handle):

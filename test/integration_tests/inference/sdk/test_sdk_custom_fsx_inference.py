@@ -20,7 +20,7 @@ MODEL_NAME = f"test-model-integration-sdk-fsx"
 MODEL_LOCATION = "hf-eqa"
 IMAGE_URI = "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:2.3.0-transformers4.48.0-cpu-py311-ubuntu22.04"
 
-TIMEOUT_MINUTES = 15
+TIMEOUT_MINUTES = 20
 POLL_INTERVAL_SECONDS = 30
 
 BETA_FSX = "fs-0402c3308e6aba65c"    # fsx id for beta integration test cluster

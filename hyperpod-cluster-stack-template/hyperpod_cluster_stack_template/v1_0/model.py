@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Literal, List, Any, Union
+from sagemaker.hyperpod.common.utils import region_to_az_ids
 
 class ClusterStackBase(BaseModel):
     resource_name_prefix: Optional[str] = Field("hyp-eks-stack", description="Prefix to be used for all resources. A 4-digit UUID will be added to prefix during submission")
@@ -57,3 +58,76 @@ class ClusterStackBase(BaseModel):
         if v is not None:
             return str(v)
         return v
+
+    def to_config(self, region: str = None):
+        """Convert CLI model to SDK configuration for cluster stack creation.
+        
+        Transforms the CLI model instance into a configuration dictionary that can be used
+        to instantiate the HpClusterStack SDK class. Applies necessary transformations
+        including AZ configuration, UUID generation, and field restructuring.
+        
+        Args:
+            region (str, optional): AWS region for AZ configuration. If provided,
+                automatically sets availability_zone_ids and fsx_availability_zone_id
+                when not already specified.
+        
+        Returns:
+            dict: Configuration dictionary ready for HpClusterStack instantiation.
+                Contains all transformed parameters with defaults applied.
+        
+        Example:
+            >>> cli_model = ClusterStackBase(hyperpod_cluster_name="my-cluster")
+            >>> config = cli_model.to_config(region="us-west-2")
+            >>> sdk_instance = HpClusterStack(**config)
+        """
+        import uuid
+        
+        # Convert model to dict and apply transformations
+        config = self.model_dump(exclude_none=True)
+        
+        # Prepare CFN arrays from numbered fields
+        instance_group_settings = []
+        rig_settings = []
+        for i in range(1, 21):
+            ig_key = f'instance_group_settings{i}'
+            rig_key = f'rig_settings{i}'
+            if ig_key in config:
+                instance_group_settings.append(config.pop(ig_key))
+            if rig_key in config:
+                rig_settings.append(config.pop(rig_key))
+        
+        # Add arrays to config
+        if instance_group_settings:
+            config['instance_group_settings'] = instance_group_settings
+        if rig_settings:
+            config['rig_settings'] = rig_settings
+        
+        # Add default AZ configuration if not provided
+        if region and (not config.get('availability_zone_ids') or not config.get('fsx_availability_zone_id')):
+            all_az_ids = region_to_az_ids(region)
+            default_az_config =     {
+                'availability_zone_ids': all_az_ids[:2],  # First 2 AZs
+                'fsx_availability_zone_id': all_az_ids[0]  # First AZ
+            }
+            if not config.get('availability_zone_ids'):
+                config['availability_zone_ids'] = default_az_config['availability_zone_ids']
+            if not config.get('fsx_availability_zone_id'):
+                config['fsx_availability_zone_id'] = default_az_config['fsx_availability_zone_id']
+        
+        # Append 4-digit UUID to resource_name_prefix
+        if config.get('resource_name_prefix'):
+            config['resource_name_prefix'] = f"{config['resource_name_prefix']}-{str(uuid.uuid4())[:4]}"
+        
+        # Set fixed defaults
+        defaults = {
+            'custom_bucket_name': 'sagemaker-hyperpod-cluster-stack-bucket',
+            'github_raw_url': 'https://raw.githubusercontent.com/aws-samples/awsome-distributed-training/refs/heads/main/1.architectures/7.sagemaker-hyperpod-eks/LifecycleScripts/base-config/on_create.sh',
+            'helm_repo_url': 'https://github.com/aws/sagemaker-hyperpod-cli.git',
+            'helm_repo_path': 'helm_chart/HyperPodHelmChart'
+        }
+        
+        for key, default_value in defaults.items():
+            if key not in config:
+                config[key] = default_value
+        
+        return config
