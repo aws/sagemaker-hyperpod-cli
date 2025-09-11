@@ -244,10 +244,6 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             "spec": spec.model_dump(exclude_none=True),
         }
 
-        # print('\n===========DEBUG===========')
-        # print(spec.replicaSpecs[0].template.spec.containers[0].resources)
-        #
-        # return
         custom_api = client.CustomObjectsApi()
         logger.debug(
             "Deploying HyperPodPytorchJob with config:\n%s",

@@ -238,7 +238,7 @@ def _resolve_default_cpu_values(instance_type: str,requests_values: dict, limits
     total_available_cpu = instance.get('cpu')
     cpu_limit = float(limits_values.get('cpu')) if limits_values.get('cpu') is not None else None
     cpu_request = float(requests_values.get('cpu')) if requests_values.get('cpu') is not None else None
-    # if cpu_request is None and cpu_limit is not None:
+
     if cpu_limit is not None:
         if cpu_request is None:
             cpu_request = cpu_limit
