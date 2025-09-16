@@ -13,9 +13,25 @@ from hyperpod_pytorch_job_template.v1_1.model import ALLOWED_TOPOLOGY_LABELS
 import sys
 import os
 import importlib
+import pytest
 
 # Add the hyperpod-pytorch-job-template to the path for testing
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'hyperpod-pytorch-job-template'))
+
+# Mock Kubernetes connectivity for all tests in this module
+@pytest.fixture(autouse=True)
+def mock_kubernetes_connectivity():
+    """Mock Kubernetes connectivity checks for all tests in this module."""
+    with patch('sagemaker.hyperpod.common.cli_decorators._check_kubernetes_connectivity') as mock_connectivity, \
+         patch('sagemaker.hyperpod.common.cli_decorators._is_kubernetes_operation') as mock_is_k8s_op, \
+         patch('sagemaker.hyperpod.common.cli_decorators._check_training_operator_exists') as mock_training_op:
+        # Always return successful connectivity
+        mock_connectivity.return_value = (True, "")
+        # Let the operation detection work normally
+        mock_is_k8s_op.side_effect = lambda func, **kwargs: True
+        # Always return that training operator exists
+        mock_training_op.return_value = True
+        yield
 
 try:
     from hyperpod_pytorch_job_template.v1_1.model import PyTorchJobConfig, VolumeConfig

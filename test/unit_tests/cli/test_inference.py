@@ -7,6 +7,18 @@ import importlib
 import hyperpod_jumpstart_inference_template.registry as jreg
 import hyperpod_custom_inference_template.registry as creg
 
+# Mock Kubernetes connectivity for all tests in this module
+@pytest.fixture(autouse=True)
+def mock_kubernetes_connectivity():
+    """Mock Kubernetes connectivity checks for all tests in this module."""
+    with patch('sagemaker.hyperpod.common.cli_decorators._check_kubernetes_connectivity') as mock_connectivity, \
+         patch('sagemaker.hyperpod.common.cli_decorators._is_kubernetes_operation') as mock_is_k8s_op:
+        # Always return successful connectivity
+        mock_connectivity.return_value = (True, "")
+        # Let the operation detection work normally
+        mock_is_k8s_op.side_effect = lambda func, **kwargs: True
+        yield
+
 # Import the non-create commands that don't need special handling
 from sagemaker.hyperpod.cli.commands.inference import (
     js_create, custom_create, custom_invoke,

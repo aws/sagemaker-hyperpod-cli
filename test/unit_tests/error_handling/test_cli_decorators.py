@@ -21,6 +21,18 @@ from sagemaker.hyperpod.common.cli_decorators import (
     _is_get_logs_operation
 )
 
+# Mock Kubernetes connectivity for all tests in this module
+@pytest.fixture(autouse=True)
+def mock_kubernetes_connectivity():
+    """Mock Kubernetes connectivity checks for all tests in this module."""
+    with patch('sagemaker.hyperpod.common.cli_decorators._check_kubernetes_connectivity') as mock_connectivity, \
+         patch('sagemaker.hyperpod.common.cli_decorators._is_kubernetes_operation') as mock_is_k8s_op:
+        # Always return successful connectivity
+        mock_connectivity.return_value = (True, "")
+        # Let the operation detection work normally
+        mock_is_k8s_op.side_effect = lambda func, **kwargs: True
+        yield
+
 
 class TestHandleCliExceptions:
     """Test template-agnostic handle_cli_exceptions decorator."""
