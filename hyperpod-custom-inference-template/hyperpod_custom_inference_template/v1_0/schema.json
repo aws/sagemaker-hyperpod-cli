@@ -11,7 +11,7 @@
           "type": "null"
         }
       ],
-      "default": "default",
+      "default": null,
       "description": "Kubernetes namespace",
       "title": "Namespace"
     },

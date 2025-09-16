@@ -150,7 +150,6 @@ def test_create_custom(runner, custom_endpoint_name, test_directory):
     assert_command_succeeded(result)
 
     # Verify expected submission messages appear  
-    assert "Configuration is valid!" in result.output
     assert "Submitted!" in result.output
     assert "Creating sagemaker model and endpoint" in result.output
     assert custom_endpoint_name in result.output

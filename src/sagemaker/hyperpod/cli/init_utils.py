@@ -20,15 +20,29 @@ from sagemaker.hyperpod.cli.constants.init_constants import (
 
 log = logging.getLogger()
 
-def save_template(template: str, directory_path: Path) -> bool:
+def save_template(template: str, directory_path: Path, version: str = None) -> bool:
     """
-    Save the appropriate k8s template based on the template type.
+    Save the appropriate template based on the template type and version.
+    Template content is loaded directly from the template registry.
     """
     try:
-        if TEMPLATES[template]["schema_type"] == CRD:
-            _save_k8s_jinja(directory=str(directory_path), content=TEMPLATES[template]["template"])
-        elif TEMPLATES[template]["schema_type"] == CFN:
-            _save_cfn_jinja(directory=str(directory_path), content=TEMPLATES[template]["template"])
+        template_info = TEMPLATES[template]
+        
+        # Use provided version or get latest
+        if version is None:
+            version = _get_latest_version_from_registry(template)
+        
+        # Get template content from registry
+        template_registry = template_info["template_registry"]
+        template_content = template_registry.get(str(version))
+        
+        if not template_content:
+            raise Exception(f"No template found for version {version}")
+        
+        if template_info["schema_type"] == CRD:
+            _save_k8s_jinja(directory=str(directory_path), content=template_content)
+        elif template_info["schema_type"] == CFN:
+            _save_cfn_jinja(directory=str(directory_path), content=template_content)
         return True
     except Exception as e:
         click.secho(f"⚠️ Template generation failed: {e}", fg="yellow")
@@ -40,7 +54,6 @@ def _save_cfn_jinja(directory: str, content: str):
     
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
-    click.secho(f"Cloudformation Parameters Jinja template saved to: {path}")
     return path
 
 def _save_k8s_jinja(directory: str, content: str):
@@ -48,7 +61,6 @@ def _save_k8s_jinja(directory: str, content: str):
     path = os.path.join(directory, "k8s.jinja")
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
-    print(f"K8s Jinja template saved to: {path}")
     return path
 
 
@@ -144,6 +156,11 @@ def _get_handler_for_field(template_name, field_name):
 
 def _get_click_option_config(handler, field_type, default=None, required=False, help_text=""):
     """Get Click option configuration for any handler."""
+    # Handle PydanticUndefined for Click compatibility
+    from pydantic_core import PydanticUndefined
+    if default is PydanticUndefined:
+        default = None
+
     config = {
         "multiple": handler.get('needs_multiple_option', False),
         "help": help_text,
@@ -153,9 +170,6 @@ def _get_click_option_config(handler, field_type, default=None, required=False, 
     if default is not None:
         config["default"] = default
         config["show_default"] = True
-    if required:
-        config["required"] = required
-
     # Always set type, callback overrides when needed
     config["type"] = to_click_type(field_type)
 
@@ -218,22 +232,22 @@ def generate_click_command() -> Callable:
             # Filter and convert CLI arguments 
             filtered_kwargs = {}
             for k, v in kwargs.items():
-                if v is not None and k in model.__fields__:
-                    field = model.__fields__[k]
-                    field_type = getattr(field, 'outer_type_', getattr(field, 'type_', str))
+                if v is not None and k in model.model_fields:
+                    field = model.model_fields[k]
+                    field_type = getattr(field, 'annotation', str)
                     filtered_kwargs[k] = convert_cli_value(v, field_type)
             
             model_config = model.model_construct(**filtered_kwargs)
             return func(model_config=model_config, *args)
 
         # Generate Click options directly from model fields
-        for field_name, field in reversed(list(model.__fields__.items())):
+        for field_name, field in reversed(list(model.model_fields.items())):
             if field_name == "version":
                 continue
 
             flag_name = field_name.replace('_', '-')
-            field_type = getattr(field, 'outer_type_', getattr(field, 'type_', str))
-            required = getattr(field, 'required', False)
+            field_type = getattr(field, 'annotation', str)
+            required = field.is_required()
             default = getattr(field, 'default', None)
             help_text = getattr(getattr(field, 'field_info', None), 'description', field_name) or field_name
 
@@ -265,9 +279,6 @@ def save_config_yaml(prefill: dict, comment_map: dict, directory: str):
             val = prefill.get(key)
             handler = _get_handler_for_field(template, key)
             handler['write_to_yaml'](key, handler['from_dicts'](val) if val is not None else val, f)    
-
-
-    print(f"Configuration saved to: {path}")
 
 
 def load_config(dir_path: Path = None) -> Tuple[dict, str, str]:
@@ -486,6 +497,16 @@ def build_config_from_schema(template: str, version: str, model_config=None, exi
             else:
                 new_configs = val  # Keep single str/bool/int as-is
             values[key] = handler['merge_dicts'](existing_configs, new_configs)
+    
+    # If namespace is None or not set, use get_default_namespace()
+    if "namespace" in props and (values.get("namespace") is None):
+        from sagemaker.hyperpod.common.utils import get_default_namespace
+        default_namespace = get_default_namespace()
+        if default_namespace:
+            values["namespace"] = default_namespace
+        else:
+            values["namespace"] = "default"
+
     
     # Fields that should not appear in config.yaml (fixed defaults)
     # TODO: remove hardcoded exclueded fields or decouple

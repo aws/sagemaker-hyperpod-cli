@@ -11,7 +11,12 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from hyperpod_jumpstart_inference_template.v1_0 import model as v1
+from hyperpod_jumpstart_inference_template.v1_0.template import TEMPLATE_CONTENT as v1_template
 
 SCHEMA_REGISTRY = {
     "1.0": v1.FlatHPJumpStartEndpoint,
+}
+
+TEMPLATE_REGISTRY = {
+    "1.0": v1_template
 }

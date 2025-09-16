@@ -1,3 +1,11 @@
+import warnings
+# Reset warnings and show all except Pydantic serialization warnings
+warnings.resetwarnings()
+warnings.simplefilter("always")
+# Suppress specific Pydantic serialization warnings globally
+warnings.filterwarnings("ignore", message=".*PydanticSerializationUnexpectedValue.*", category=UserWarning)
+warnings.filterwarnings("ignore", message=".*serializer.*", category=UserWarning, module="pydantic")
+
 import click
 import yaml
 import json

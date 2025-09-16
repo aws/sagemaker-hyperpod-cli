@@ -194,7 +194,6 @@ def test_create_cluster(runner, cluster_name, create_time):
     assert_command_succeeded(result)
     
     # Verify expected submission messages appear
-    assert "Configuration is valid!" in result.output
     assert "Submitted!" in result.output
     assert "Stack creation initiated" in result.output
     assert "Stack ID:" in result.output

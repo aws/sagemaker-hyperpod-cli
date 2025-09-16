@@ -1,7 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing import Optional, List, Dict, Union, Literal
 import click
-from sagemaker.hyperpod.cli.type_handler_utils import DEFAULT_TYPE_HANDLER
 from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config import (
     Containers,
     ReplicaSpec,
@@ -382,11 +381,15 @@ def volume_merge_dicts(existing_volumes, new_volumes):
 
 
 # Handler definition - merge with defaults, only override specific functions
-VOLUME_TYPE_HANDLER = {
-    **DEFAULT_TYPE_HANDLER,  # Start with all defaults
-    'parse_strings': volume_parse_strings,  # Override only these
-    'from_dicts': volume_from_dicts,
-    'write_to_yaml': volume_write_to_yaml,
-    'merge_dicts': volume_merge_dicts,
-    'needs_multiple_option': True
-}
+def _get_volume_type_handler():
+    from sagemaker.hyperpod.cli.type_handler_utils import DEFAULT_TYPE_HANDLER
+    return {
+        **DEFAULT_TYPE_HANDLER,  # Start with all defaults
+        'parse_strings': volume_parse_strings,  # Override only these
+        'from_dicts': volume_from_dicts,
+        'write_to_yaml': volume_write_to_yaml,
+        'merge_dicts': volume_merge_dicts,
+        'needs_multiple_option': True
+    }
+
+VOLUME_TYPE_HANDLER = _get_volume_type_handler()

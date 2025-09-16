@@ -27,7 +27,7 @@ class FlatHPJumpStartEndpoint(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     namespace: Optional[str] = Field(
-        default="default", 
+        default=None, 
         description="Kubernetes namespace",
         min_length=1
     )
@@ -87,6 +87,7 @@ class FlatHPJumpStartEndpoint(BaseModel):
     def validate_name(self):
         if not self.metadata_name and not self.endpoint_name:
             raise ValueError("Either metadata_name or endpoint_name must be provided")
+        return self
 
 
     def to_domain(self) -> HPJumpStartEndpoint:
