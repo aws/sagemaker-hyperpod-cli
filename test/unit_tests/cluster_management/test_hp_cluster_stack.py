@@ -623,3 +623,290 @@ class TestHpClusterStackValidators(unittest.TestCase):
         
         # Assert
         mock_create_client.assert_called_once_with('cloudformation', region_name='us-east-1')
+
+
+class TestHpClusterStackDelete(unittest.TestCase):
+    """Test suite for HpClusterStack delete functionality."""
+
+    @patch('sagemaker.hyperpod.cli.cluster_stack_utils.delete_stack_with_confirmation')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.boto3.session.Session')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.logging.getLogger')
+    def test_delete_successful_without_retention(self, mock_get_logger, mock_session, mock_delete_stack):
+        """Test successful stack deletion without resource retention."""
+        # Setup mocks
+        mock_logger = MagicMock()
+        mock_get_logger.return_value = mock_logger
+        mock_session.return_value.region_name = 'us-west-2'
+        
+        # Execute delete
+        HpClusterStack.delete('test-stack', region='us-west-2')
+        
+        # Verify function calls
+        mock_delete_stack.assert_called_once()
+        call_args = mock_delete_stack.call_args
+        assert call_args[1]['stack_name'] == 'test-stack'
+        assert call_args[1]['region'] == 'us-west-2'
+        assert call_args[1]['retain_resources_str'] == ""
+
+    @patch('sagemaker.hyperpod.cli.cluster_stack_utils.delete_stack_with_confirmation')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.boto3.session.Session')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.logging.getLogger')
+    def test_delete_successful_with_retention(self, mock_get_logger, mock_session, mock_delete_stack):
+        """Test successful stack deletion with resource retention."""
+        # Setup mocks
+        mock_logger = MagicMock()
+        mock_get_logger.return_value = mock_logger
+        mock_session.return_value.region_name = 'us-west-2'
+        
+        # Execute delete with retention
+        HpClusterStack.delete('test-stack', region='us-west-2', retain_resources=['S3Bucket', 'EFSFileSystem'])
+        
+        # Verify function calls
+        mock_delete_stack.assert_called_once()
+        call_args = mock_delete_stack.call_args
+        assert call_args[1]['stack_name'] == 'test-stack'
+        assert call_args[1]['region'] == 'us-west-2'
+        assert call_args[1]['retain_resources_str'] == 'S3Bucket,EFSFileSystem'
+
+    @patch('sagemaker.hyperpod.cli.cluster_stack_utils.delete_stack_with_confirmation')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.boto3.session.Session')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.logging.getLogger')
+    def test_delete_with_auto_confirm(self, mock_get_logger, mock_session, mock_delete_stack):
+        """Test delete with automatic confirmation (always enabled)."""
+        # Setup mocks
+        mock_logger = MagicMock()
+        mock_get_logger.return_value = mock_logger
+        mock_session.return_value.region_name = 'us-west-2'
+        
+        # Execute delete (auto-confirm is always enabled now)
+        HpClusterStack.delete('test-stack', region='us-west-2')
+        
+        # Verify function calls
+        mock_delete_stack.assert_called_once()
+        call_args = mock_delete_stack.call_args
+        
+        # Test the confirm callback - should always auto-confirm
+        confirm_callback = call_args[1]['confirm_callback']
+        result = confirm_callback("Test confirmation message")
+        assert result is True
+        
+        # Verify logger was called for auto-confirmation
+        mock_logger.info.assert_called_with("Auto-confirming: Test confirmation message")
+
+    @patch('sagemaker.hyperpod.cli.cluster_stack_utils.delete_stack_with_confirmation')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.boto3.session.Session')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.logging.getLogger')
+    def test_delete_with_custom_logger(self, mock_get_logger, mock_session, mock_delete_stack):
+        """Test delete with custom logger."""
+        # Setup mocks
+        custom_logger = MagicMock()
+        mock_session.return_value.region_name = 'us-west-2'
+        
+        # Execute delete with custom logger
+        HpClusterStack.delete('test-stack', region='us-west-2', logger=custom_logger)
+        
+        # Verify function calls
+        mock_delete_stack.assert_called_once()
+        call_args = mock_delete_stack.call_args
+        
+        # Verify custom logger is used in callbacks
+        message_callback = call_args[1]['message_callback']
+        success_callback = call_args[1]['success_callback']
+        
+        message_callback("Test message")
+        success_callback("Test success")
+        
+        custom_logger.info.assert_any_call("Test message")
+        custom_logger.info.assert_any_call("Test success")
+
+    @patch('sagemaker.hyperpod.cli.cluster_stack_utils.delete_stack_with_confirmation')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.boto3.session.Session')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.logging.getLogger')
+    def test_delete_uses_default_region(self, mock_get_logger, mock_session, mock_delete_stack):
+        """Test delete uses default region when none provided."""
+        # Setup mocks
+        mock_logger = MagicMock()
+        mock_get_logger.return_value = mock_logger
+        mock_session.return_value.region_name = 'us-east-1'
+        
+        # Execute delete without region
+        HpClusterStack.delete('test-stack')
+        
+        # Verify function calls
+        mock_delete_stack.assert_called_once()
+        call_args = mock_delete_stack.call_args
+        assert call_args[1]['region'] == 'us-east-1'
+
+    @patch('sagemaker.hyperpod.cli.cluster_stack_utils.delete_stack_with_confirmation')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.boto3.session.Session')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.logging.getLogger')
+    def test_delete_stack_not_found(self, mock_get_logger, mock_session, mock_delete_stack):
+        """Test delete handles stack not found error."""
+        from sagemaker.hyperpod.cli.cluster_stack_utils import StackNotFoundError
+        
+        # Setup mocks
+        mock_logger = MagicMock()
+        mock_get_logger.return_value = mock_logger
+        mock_session.return_value.region_name = 'us-west-2'
+        mock_delete_stack.side_effect = StackNotFoundError("Stack 'non-existent-stack' not found")
+        
+        # Execute delete and expect ValueError
+        with self.assertRaises(ValueError) as context:
+            HpClusterStack.delete('non-existent-stack', region='us-west-2')
+        
+        assert "Stack 'non-existent-stack' not found" in str(context.exception)
+        mock_logger.error.assert_called_with("Stack 'non-existent-stack' not found")
+
+    @patch('sagemaker.hyperpod.cli.cluster_stack_utils.delete_stack_with_confirmation')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.boto3.session.Session')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.logging.getLogger')
+    def test_delete_termination_protection_enabled(self, mock_get_logger, mock_session, mock_delete_stack):
+        """Test delete handles termination protection error."""
+        # Setup mocks
+        mock_logger = MagicMock()
+        mock_get_logger.return_value = mock_logger
+        mock_session.return_value.region_name = 'us-west-2'
+        
+        # Mock termination protection error
+        from botocore.exceptions import ClientError
+        error = ClientError(
+            {'Error': {'Code': 'ValidationError', 'Message': 'Stack cannot be deleted while TerminationProtection is enabled'}},
+            'DeleteStack'
+        )
+        mock_delete_stack.side_effect = error
+        
+        # Execute delete and expect RuntimeError
+        with self.assertRaises(RuntimeError) as context:
+            HpClusterStack.delete('protected-stack', region='us-west-2')
+        
+        assert "Termination Protection is enabled" in str(context.exception)
+        mock_logger.error.assert_called()
+
+    @patch('sagemaker.hyperpod.cli.cluster_stack_utils.delete_stack_with_confirmation')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.boto3.session.Session')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.logging.getLogger')
+    def test_delete_retention_limitation(self, mock_get_logger, mock_session, mock_delete_stack):
+        """Test delete handles CloudFormation retention limitation."""
+        # Setup mocks
+        mock_logger = MagicMock()
+        mock_get_logger.return_value = mock_logger
+        mock_session.return_value.region_name = 'us-west-2'
+        
+        # Mock retention limitation error
+        from botocore.exceptions import ClientError
+        error = ClientError(
+            {'Error': {'Code': 'ValidationError', 'Message': 'specify which resources to retain only when the stack is in the DELETE_FAILED state'}},
+            'DeleteStack'
+        )
+        mock_delete_stack.side_effect = error
+        
+        # Execute delete with retention and expect ValueError
+        with self.assertRaises(ValueError) as context:
+            HpClusterStack.delete('test-stack', region='us-west-2', retain_resources=['S3Bucket'])
+        
+        assert "retain_resources can only be used on stacks in DELETE_FAILED state" in str(context.exception)
+        mock_logger.error.assert_called()
+
+    @patch('sagemaker.hyperpod.cli.cluster_stack_utils.delete_stack_with_confirmation')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.boto3.session.Session')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.logging.getLogger')
+    def test_delete_access_denied_error(self, mock_get_logger, mock_session, mock_delete_stack):
+        """Test delete handles access denied error."""
+        # Setup mocks
+        mock_logger = MagicMock()
+        mock_get_logger.return_value = mock_logger
+        mock_session.return_value.region_name = 'us-west-2'
+        
+        # Mock access denied error
+        from botocore.exceptions import ClientError
+        error = ClientError(
+            {'Error': {'Code': 'AccessDenied', 'Message': 'Access denied'}},
+            'ListStackResources'
+        )
+        mock_delete_stack.side_effect = error
+        
+        # Execute delete and expect RuntimeError
+        with self.assertRaises(RuntimeError) as context:
+            HpClusterStack.delete('test-stack', region='us-west-2')
+        
+        assert "Stack deletion failed" in str(context.exception)
+        mock_logger.error.assert_called()
+
+    @patch('sagemaker.hyperpod.cli.cluster_stack_utils.delete_stack_with_confirmation')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.boto3.session.Session')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.logging.getLogger')
+    def test_delete_generic_error(self, mock_get_logger, mock_session, mock_delete_stack):
+        """Test delete handles generic errors."""
+        # Setup mocks
+        mock_logger = MagicMock()
+        mock_get_logger.return_value = mock_logger
+        mock_session.return_value.region_name = 'us-west-2'
+        
+        # Mock generic error
+        error = Exception("Unexpected error occurred")
+        mock_delete_stack.side_effect = error
+        
+        # Execute delete and expect RuntimeError
+        with self.assertRaises(RuntimeError) as context:
+            HpClusterStack.delete('test-stack', region='us-west-2')
+        
+        assert "Stack deletion failed: Unexpected error occurred" in str(context.exception)
+        mock_logger.error.assert_called_with("Failed to delete stack: Unexpected error occurred")
+
+    @patch('sagemaker.hyperpod.cli.cluster_stack_utils.delete_stack_with_confirmation')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.boto3.session.Session')
+    def test_delete_uses_default_logger_when_none_provided(self, mock_session, mock_delete_stack):
+        """Test delete uses default logger when none provided."""
+        # Setup mocks
+        mock_session.return_value.region_name = 'us-west-2'
+        
+        # Execute delete without logger
+        HpClusterStack.delete('test-stack', region='us-west-2')
+        
+        # Verify function calls
+        mock_delete_stack.assert_called_once()
+        call_args = mock_delete_stack.call_args
+        
+        # Verify message_callback and success_callback are logger.info methods
+        message_callback = call_args[1]['message_callback']
+        success_callback = call_args[1]['success_callback']
+        
+        # These should be bound methods of a logger instance
+        assert hasattr(message_callback, '__self__')
+        assert hasattr(success_callback, '__self__')
+
+    @patch('sagemaker.hyperpod.cli.cluster_stack_utils.delete_stack_with_confirmation')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.boto3.session.Session')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.logging.getLogger')
+    def test_delete_empty_retain_resources_list(self, mock_get_logger, mock_session, mock_delete_stack):
+        """Test delete handles empty retain_resources list."""
+        # Setup mocks
+        mock_logger = MagicMock()
+        mock_get_logger.return_value = mock_logger
+        mock_session.return_value.region_name = 'us-west-2'
+        
+        # Execute delete with empty retain_resources
+        HpClusterStack.delete('test-stack', region='us-west-2', retain_resources=[])
+        
+        # Verify function calls
+        mock_delete_stack.assert_called_once()
+        call_args = mock_delete_stack.call_args
+        assert call_args[1]['retain_resources_str'] == ""
+
+    @patch('sagemaker.hyperpod.cli.cluster_stack_utils.delete_stack_with_confirmation')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.boto3.session.Session')
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.logging.getLogger')
+    def test_delete_none_retain_resources(self, mock_get_logger, mock_session, mock_delete_stack):
+        """Test delete handles None retain_resources."""
+        # Setup mocks
+        mock_logger = MagicMock()
+        mock_get_logger.return_value = mock_logger
+        mock_session.return_value.region_name = 'us-west-2'
+        
+        # Execute delete with None retain_resources
+        HpClusterStack.delete('test-stack', region='us-west-2', retain_resources=None)
+        
+        # Verify function calls
+        mock_delete_stack.assert_called_once()
+        call_args = mock_delete_stack.call_args
+        assert call_args[1]['retain_resources_str'] == ""

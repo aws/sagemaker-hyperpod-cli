@@ -18,6 +18,10 @@ from sagemaker.hyperpod.common.telemetry import _hyperpod_telemetry_emitter
 from sagemaker.hyperpod.common.telemetry.constants import Feature
 from sagemaker.hyperpod.common.utils import setup_logging
 from sagemaker.hyperpod.cli.utils import convert_datetimes
+from sagemaker.hyperpod.cli.cluster_stack_utils import (
+    StackNotFoundError,
+    delete_stack_with_confirmation
+)
 
 logger = logging.getLogger(__name__)
 
@@ -292,8 +296,11 @@ def list_cluster_stacks(region, debug, status):
     
 @click.command("cluster-stack")
 @click.argument("stack-name", required=True)
+@click.option("--retain-resources", help="Comma-separated list of logical resource IDs to retain during deletion (only works on DELETE_FAILED stacks). Resource names are shown in failed deletion output, or use AWS CLI: 'aws cloudformation list-stack-resources --stack-name STACK_NAME --region REGION'")
+@click.option("--region", required=True, help="AWS region (required)")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
-def delete(stack_name: str, debug: bool) -> None:
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "delete_cluster_stack_cli")
+def delete_cluster_stack(stack_name: str, retain_resources: str, region: str, debug: bool) -> None:
     """Delete a HyperPod cluster stack.
 
     Removes the specified CloudFormation stack and all associated AWS resources.
@@ -305,12 +312,34 @@ def delete(stack_name: str, debug: bool) -> None:
        .. code-block:: bash
 
           # Delete a cluster stack
-          hyp delete hyp-cluster my-stack-name
+          hyp delete cluster-stack my-stack-name --region us-west-2
+
+          # Delete with retained resources (only works on DELETE_FAILED stacks)
+          hyp delete cluster-stack my-stack-name --retain-resources S3Bucket-TrainingData,EFSFileSystem-Models --region us-west-2
     """
     logger = setup_logging(logging.getLogger(__name__), debug)
     
-    logger.info(f"Deleting stack: {stack_name}")
-    logger.info("This feature is not yet implemented.")
+    try:
+        # Use the high-level orchestration function with CLI-specific callbacks
+        delete_stack_with_confirmation(
+            stack_name=stack_name,
+            region=region,
+            retain_resources_str=retain_resources or "",
+            message_callback=click.echo,
+            confirm_callback=lambda msg: click.confirm("Continue?", default=False),
+            success_callback=lambda msg: click.echo(f"✓ {msg}")
+        )
+        
+    except StackNotFoundError:
+        click.secho(f"❌ Stack '{stack_name}' not found", fg='red')
+    except click.ClickException:
+        # Re-raise ClickException for proper CLI error handling
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete stack: {e}")
+        if debug:
+            logger.exception("Detailed error information:")
+        raise click.ClickException(str(e))
 
 @click.command("cluster")
 @click.option("--cluster-name", required=True, help="The name of the cluster to update")
@@ -376,4 +405,3 @@ def update_cluster(
 
     logger.info("Cluster has been updated")
     click.secho(f"Cluster {cluster_name} has been updated")
-
