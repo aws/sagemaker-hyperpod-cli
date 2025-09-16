@@ -1,4 +1,4 @@
-KUBERNETES_CUSTOM_ENDPOINT_TEMPLATE = """### Please keep template file unchanged ###
+TEMPLATE_CONTENT = """### Please keep template file unchanged ###
 apiVersion: hyperpod.sagemaker.aws/v1
 kind: HPEndpoint
 metadata:

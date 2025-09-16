@@ -1,4 +1,4 @@
-CLOUDFORMATION_CLUSTER_CREATION_TEMPLATE = """### Please keep template file unchanged ###
+TEMPLATE_CONTENT = """### Please keep template file unchanged ###
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:

@@ -36,7 +36,7 @@ class FlatHPEndpoint(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     namespace: Optional[str] = Field(
-        default="default", 
+        default=None, 
         description="Kubernetes namespace",
         min_length=1
     )

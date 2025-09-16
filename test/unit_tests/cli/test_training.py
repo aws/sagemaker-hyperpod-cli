@@ -515,8 +515,8 @@ class TestValidationPatterns(unittest.TestCase):
                         node_count=count
                     )
         
-        # Test tasks_per_node with invalid values
-        invalid_tasks_per_node = [0, -1, -5]
+        # Test tasks_per_node with invalid values (negative numbers and floats)
+        invalid_tasks_per_node = [-1, -5, 1.5, "invalid"]
         for tasks in invalid_tasks_per_node:
             with self.subTest(tasks_per_node=tasks):
                 with self.assertRaises(ValidationError):

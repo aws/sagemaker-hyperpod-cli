@@ -52,9 +52,6 @@ class TestSaveK8sJinja:
         mock_file.assert_called_once_with("/test/dir/k8s.jinja", "w", encoding="utf-8")
         mock_file().write.assert_called_once_with(content)
         
-        # Verify print message
-        mock_print.assert_called_once_with("K8s Jinja template saved to: /test/dir/k8s.jinja")
-        
         # Verify return value
         assert result == "/test/dir/k8s.jinja"
 
@@ -73,13 +70,15 @@ def create_mock_template(schema_type, registry=None):
 class TestSaveTemplate:
     """Test cases for save_template function"""
     
+    @patch('sagemaker.hyperpod.cli.init_utils._get_latest_version_from_registry')
     @patch('sagemaker.hyperpod.cli.init_utils._save_k8s_jinja')
-    def test_save_template_crd_success(self, mock_save_k8s):
+    def test_save_template_crd_success(self, mock_save_k8s, mock_get_version):
         """Test save_template with CRD template type"""
+        mock_get_version.return_value = '1.0'
         mock_templates = {
             'test-crd': {
                 'schema_type': CRD,
-                'template': 'crd template content'
+                'template_registry': {'1.0': 'crd template content'}
             }
         }
         
@@ -92,13 +91,15 @@ class TestSaveTemplate:
                 content='crd template content'
             )
     
+    @patch('sagemaker.hyperpod.cli.init_utils._get_latest_version_from_registry')
     @patch('sagemaker.hyperpod.cli.init_utils._save_cfn_jinja')
-    def test_save_template_cfn_success(self, mock_save_cfn):
+    def test_save_template_cfn_success(self, mock_save_cfn, mock_get_version):
         """Test save_template with CFN template type"""
+        mock_get_version.return_value = '1.0'
         mock_templates = {
             'test-cfn': {
                 'schema_type': CFN,
-                'template': 'cfn template content'
+                'template_registry': {'1.0': 'cfn template content'}
             }
         }
         
@@ -173,9 +174,6 @@ class TestSaveConfigYaml:
         assert '# [Required] Kubernetes namespace' in written_content
         assert 'namespace: test-namespace' in written_content
         
-        # Verify print message
-        mock_print.assert_called_once_with('Configuration saved to: /test/dir/config.yaml')
-    
     def test_save_config_yaml_handles_none_values(self):
         """Test that None values are converted to empty strings"""
         prefill = {
@@ -474,7 +472,8 @@ class TestBuildConfigFromSchema:
         }
         
         with patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES', mock_templates), \
-             patch('sagemaker.hyperpod.cli.init_utils._load_schema_for_version') as mock_load_schema:
+             patch('sagemaker.hyperpod.cli.init_utils._load_schema_for_version') as mock_load_schema, \
+             patch('sagemaker.hyperpod.common.utils.get_default_namespace', return_value='test-namespace'):
             
             # Mock schema
             mock_load_schema.return_value = {
@@ -803,17 +802,20 @@ namespace: test-namespace
 
 @patch('builtins.open', new_callable=mock_open)
 @patch('sagemaker.hyperpod.cli.init_utils.Path')
+@patch('sagemaker.hyperpod.cli.init_utils._get_latest_version_from_registry')
 @patch('sagemaker.hyperpod.cli.init_utils.os.path.join')
 @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.HpClusterStack.get_template')
 def test_save_cfn_jinja_called(mock_get_template,
                                mock_join,
+                               mock_get_version,
                                mock_path,
                                mock_file):
     # Setup
+    mock_get_version.return_value = '1.0'
     mock_templates = {
         'test-template': {
             'schema_type': CFN,
-            'template': 'test template content'
+            'template_registry': {'1.0': 'test template content'}
         }
     }
     mock_join.return_value = '/test/dir/cfn_params.jinja'

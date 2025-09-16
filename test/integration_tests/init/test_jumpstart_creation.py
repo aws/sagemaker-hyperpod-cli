@@ -117,7 +117,6 @@ def test_create_jumpstart(runner, js_endpoint_name, test_directory):
     result = runner.invoke(create, [], catch_exceptions=False)
     assert_command_succeeded(result)
 
-    assert "Configuration is valid!" in result.output
     assert "Submitted!" in result.output
 
 

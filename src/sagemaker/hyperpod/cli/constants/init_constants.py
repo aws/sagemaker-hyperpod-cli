@@ -1,12 +1,7 @@
-from sagemaker.hyperpod.cli.templates.cfn_cluster_creation import CLOUDFORMATION_CLUSTER_CREATION_TEMPLATE
-from sagemaker.hyperpod.cli.templates.k8s_js_endpoint_template import KUBERNETES_JS_ENDPOINT_TEMPLATE
-from sagemaker.hyperpod.cli.templates.k8s_custom_endpoint_template import KUBERNETES_CUSTOM_ENDPOINT_TEMPLATE
-from sagemaker.hyperpod.cli.templates.k8s_pytorch_job_template import KUBERNETES_PYTORCH_JOB_TEMPLATE
-
-from hyperpod_jumpstart_inference_template.registry import SCHEMA_REGISTRY as JS_REG
-from hyperpod_custom_inference_template.registry import SCHEMA_REGISTRY as C_REG
-from hyperpod_pytorch_job_template.registry import SCHEMA_REGISTRY as P_REG
-from hyperpod_cluster_stack_template.registry import SCHEMA_REGISTRY as CLUSTER_REG
+from hyperpod_jumpstart_inference_template.registry import SCHEMA_REGISTRY as JS_EP_REG, TEMPLATE_REGISTRY as JS_EP_TEMPLATE_REG
+from hyperpod_custom_inference_template.registry import SCHEMA_REGISTRY as CUSTOM_EP_REG, TEMPLATE_REGISTRY as CUSTOM_EP_TEMPLATE_REG
+from hyperpod_pytorch_job_template.registry import SCHEMA_REGISTRY as PYTORCH_JOB_REG, TEMPLATE_REGISTRY as PYTORCH_JOB_TEMPLATE_REG
+from hyperpod_cluster_stack_template.registry import SCHEMA_REGISTRY as CLUSTER_REG, TEMPLATE_REGISTRY as CLUSTER_TEMPLATE_REG
 
 import sys
 
@@ -17,31 +12,31 @@ CRD = "crd"
 CFN = "cfn"
 TEMPLATES = {
     "hyp-jumpstart-endpoint": {
-        "registry": JS_REG,
+        "registry": JS_EP_REG,
+        "template_registry": JS_EP_TEMPLATE_REG,
         "schema_pkg": "hyperpod_jumpstart_inference_template",
         "schema_type": CRD,
-        'template': KUBERNETES_JS_ENDPOINT_TEMPLATE,
         'type': "jinja"
     },
     "hyp-custom-endpoint": {
-        "registry": C_REG,
+        "registry": CUSTOM_EP_REG,
+        "template_registry": CUSTOM_EP_TEMPLATE_REG,
         "schema_pkg": "hyperpod_custom_inference_template",
         "schema_type": CRD,
-        'template': KUBERNETES_CUSTOM_ENDPOINT_TEMPLATE,
         'type': "jinja"
     },
     "hyp-pytorch-job": {
-        "registry": P_REG,
+        "registry": PYTORCH_JOB_REG,
+        "template_registry": PYTORCH_JOB_TEMPLATE_REG,
         "schema_pkg": "hyperpod_pytorch_job_template",
         "schema_type": CRD,
-        'template': KUBERNETES_PYTORCH_JOB_TEMPLATE,
         'type': "jinja"
     },
     "cluster-stack": {
         "registry": CLUSTER_REG,
+        "template_registry": CLUSTER_TEMPLATE_REG,
         "schema_pkg": "hyperpod_cluster_stack_template",
         "schema_type": CFN,
-        'template': CLOUDFORMATION_CLUSTER_CREATION_TEMPLATE,
         'type': "jinja"
     }
 }

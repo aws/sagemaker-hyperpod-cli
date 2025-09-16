@@ -119,7 +119,6 @@ def test_create_pytorch_job(runner, pytorch_job_name, test_directory):
     assert_command_succeeded(result)
                              
     # Verify expected submission messages appear
-    assert "Configuration is valid!" in result.output
     assert "Submitted!" in result.output
     assert "Successfully submitted HyperPodPytorchJob" in result.output
     assert pytorch_job_name in result.output

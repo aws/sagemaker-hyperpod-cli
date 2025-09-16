@@ -108,13 +108,12 @@ def init(
             directory=str(dir_path),
         )
 
-    except Exception as e:
-        click.secho(f"💥  Could not write config.yaml: {e}", fg="red")
-        sys.exit(1)
+        # 4) Generate template
+        save_template(template, dir_path, version)
 
-    # 4) Generate  template
-    if not save_template(template, dir_path):
-        click.secho("⚠️ Template generation failed", fg="yellow")
+    except Exception as e:
+        click.secho(f"💥  Could not write config.yaml or template: {e}", fg="red")
+        sys.exit(1)
 
     # 5) Write README.md
     if not skip_readme:
@@ -128,14 +127,17 @@ def init(
         except Exception as e:
             click.secho("⚠️  README.md generation failed: %s", e, fg="yellow")
 
+    # Convert to relative path for cleaner display
+    relative_path = Path(directory) if directory != "." else Path("./")
+    
     click.secho(
-        f"✔️  {template} for schema version={version!r} is initialized in {dir_path}",
+        f"✔️ {template} for schema version={version!r} is initialized in {relative_path}",
         fg="green",
     )
     click.echo(
         click.style(
             "🚀 Welcome!\n"
-            f"📘 See {dir_path}/README.md for usage.\n",
+            f"📘 See {relative_path}/README.md for usage.\n",
             fg="green",
         )
     )
@@ -168,7 +170,7 @@ def reset():
 
     # 4) Regenerate the k8s Jinja template
     if save_template(template, dir_path):
-        click.secho(f"✔️ {template} is regenerated.", fg="green")
+        click.secho(f"✔️  {template} is regenerated.", fg="green")
 
 
 @click.command("configure")
@@ -230,7 +232,7 @@ def configure(ctx, model_config):
     
     is_valid = display_validation_results(
         user_input_errors,
-        success_message="User input is valid!" if user_input_errors else "Configuration updated successfully!",
+        success_message="User input is valid!" if user_input_errors else "config.yaml updated successfully.",
         error_prefix="Invalid input arguments:"
     )
     
@@ -245,7 +247,6 @@ def configure(ctx, model_config):
             comment_map=comment_map,
             directory=str(dir_path),
         )
-        click.secho("✔️  config.yaml updated successfully.", fg="green")
     except Exception as e:
         click.secho(f"💥 Could not update config.yaml: {e}", fg="red")
         sys.exit(1)
@@ -313,17 +314,6 @@ def _default_create(region):
     if not config_file.is_file() or not jinja_file.is_file():
         click.secho(f"❌  Missing config.yaml or {jinja_file.name}. Run `hyp init` first.", fg="red")
         sys.exit(1)
-    
-    # 4) Validate config using consolidated function
-    validation_errors = validate_config_against_model(data, template, version)
-    is_valid = display_validation_results(
-        validation_errors,
-        success_message="Configuration is valid!",
-        error_prefix="Validation errors:"
-    )
-    
-    if not is_valid:
-        sys.exit(1)
 
     try:
         template_source = jinja_file.read_text()
@@ -345,7 +335,9 @@ def _default_create(region):
         output_file = 'cfn_params.yaml' if schema_type == CFN else 'k8s.yaml'
         with open(out_dir / output_file, 'w', encoding='utf-8') as f:
             f.write(rendered)
-        click.secho(f"✔️  Submitted! Files written to {out_dir}", fg="green")
+        # Use relative path for cleaner display
+        relative_out_dir = Path("run") / timestamp
+        click.secho(f"✔️  Submitted! Files written to {relative_out_dir}", fg="green")
     except Exception as e:
         click.secho(f"❌  Failed to write run files: {e}", fg="red")
         sys.exit(1)
@@ -354,7 +346,9 @@ def _default_create(region):
     try :
         if region is None:
             region = get_aws_default_region()
-            click.secho(f"Submitting to default region: {region}.", fg="yellow")
+            # Only show region message for cluster-stack template
+            if template == "cluster-stack":
+                click.secho(f"Submitting to default region: {region}.", fg="yellow")
 
         # Unified pattern for all templates
         dir_path = Path(".").resolve()
