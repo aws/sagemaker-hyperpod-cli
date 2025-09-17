@@ -159,7 +159,7 @@ def setup_logging(logger, debug=False):
 
 def is_eks_orchestrator(sagemaker_client, cluster_name: str):
     response = sagemaker_client.describe_cluster(ClusterName=cluster_name)
-    return "Eks" in response["Orchestrator"]
+    return response.get("Orchestrator", {}).get("Eks") is not None
 
 
 def update_kube_config(
@@ -250,6 +250,9 @@ def set_cluster_context(
 
     client = boto3.client("sagemaker", region_name=region)
 
+    if not is_eks_orchestrator(client, cluster_name):
+        raise ValueError(f"Cluster '{cluster_name}' is not EKS-orchestrated. HyperPod CLI only supports EKS-orchestrated clusters.")
+    
     response = client.describe_cluster(ClusterName=cluster_name)
     eks_cluster_arn = response["Orchestrator"]["Eks"]["ClusterArn"]
     eks_name = get_eks_name_from_arn(eks_cluster_arn)
@@ -300,6 +303,8 @@ def get_current_cluster():
     client = boto3.client("sagemaker", region_name=region)
 
     for cluster_name in hyperpod_clusters:
+        if not is_eks_orchestrator(client, cluster_name):
+            continue
         response = client.describe_cluster(ClusterName=cluster_name)
         if response["Orchestrator"]["Eks"]["ClusterArn"] == current_context:
             return cluster_name
