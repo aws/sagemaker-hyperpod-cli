@@ -26,6 +26,7 @@ from botocore.client import BaseClient
 from kubernetes import client
 from ratelimit import limits, sleep_and_retry
 from tabulate import tabulate
+from sagemaker.hyperpod.cli.parsers import parse_list_parameter
 
 from sagemaker.hyperpod.cli.clients.kubernetes_client import (
     KubernetesClient,
@@ -100,9 +101,10 @@ logger = setup_logger(__name__)
 )
 @click.option(
     "--clusters",
+    callback=parse_list_parameter,
     type=click.STRING,
     required=False,
-    help="Optional. A list of HyperPod cluster names that users want to check the capacity for. This is useful for users who know some of their most commonly used clusters and want to check the capacity status of the clusters in the AWS account.",
+    help="Optional. List of HyperPod cluster names to check capacity for. Supports JSON format: '[\"cluster1\", \"cluster2\"]' or simple format: '[cluster1, cluster2]'",
 )
 @click.option(
     "--debug",
@@ -186,7 +188,7 @@ def list_cluster(
         sys.exit(1)
 
     if clusters:
-        cluster_names = clusters.split(",")
+        cluster_names = clusters
     else:
         try:
             cluster_names = _get_hyperpod_clusters(sm_client)
