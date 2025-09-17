@@ -389,7 +389,12 @@ class TestUtilityFunctions(unittest.TestCase):
         
         set_cluster_context("my-cluster", "us-west-2", "test-namespace")
         
-        mock_client.describe_cluster.assert_called_once_with(ClusterName="my-cluster")
+        # Expect 2 calls: one for is_eks_orchestrator validation, one for getting cluster details
+        self.assertEqual(mock_client.describe_cluster.call_count, 2)
+        mock_client.describe_cluster.assert_has_calls([
+            call(ClusterName="my-cluster"),
+            call(ClusterName="my-cluster")
+        ])
         mock_get_name.assert_called_once()
         mock_update_config.assert_called_once()
         mock_set_context_func.assert_called_once()
