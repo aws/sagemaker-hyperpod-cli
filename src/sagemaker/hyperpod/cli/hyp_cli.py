@@ -1,11 +1,3 @@
-import warnings
-# Reset warnings and show all except Pydantic serialization warnings
-warnings.resetwarnings()
-warnings.simplefilter("always")
-# Suppress specific Pydantic serialization warnings globally
-warnings.filterwarnings("ignore", message=".*PydanticSerializationUnexpectedValue.*", category=UserWarning)
-warnings.filterwarnings("ignore", message=".*serializer.*", category=UserWarning, module="pydantic")
-
 import click
 import yaml
 import json
@@ -56,7 +48,6 @@ from sagemaker.hyperpod.cli.commands.init import (
 )
 
 
-@click.group(context_settings={'max_content_width': 200})
 def get_package_version(package_name):
     try:
         return version(package_name)
