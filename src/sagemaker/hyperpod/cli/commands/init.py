@@ -25,11 +25,16 @@ from sagemaker.hyperpod.cli.init_utils import (
     get_default_version_for_template
 )
 from sagemaker.hyperpod.common.utils import get_aws_default_region
+from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
+    _hyperpod_telemetry_emitter,
+)
+from sagemaker.hyperpod.common.telemetry.constants import Feature
 
 @click.command("init")
 @click.argument("template", type=click.Choice(list(TEMPLATES.keys())))
 @click.argument("directory", type=click.Path(file_okay=False), default=".")
 @click.option("--version", "-v", default=None, help="Schema version")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "init_template_cli")
 def init(
     template: str,
     directory: str,
@@ -144,6 +149,7 @@ def init(
 
 
 @click.command("reset")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "init_reset_cli")
 def reset():
     """
     Reset the current directory's config.yaml to an "empty" scaffold:
@@ -176,6 +182,7 @@ def reset():
 @click.command("configure")
 @generate_click_command()
 @click.pass_context
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "init_configure_cli")
 def configure(ctx, model_config):
     """
     Update any subset of fields in ./config.yaml by passing --<field> flags.
@@ -253,6 +260,7 @@ def configure(ctx, model_config):
 
 
 @click.command("validate")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "init_validate_cli")
 def validate():
     """
     Validate this directory's config.yaml against the appropriate schema.
@@ -263,6 +271,7 @@ def validate():
 
 @click.command(name="_default_create")
 @click.option("--region", "-r", default=None, help="Region to create cluster stack for, default to your region in aws configure. Not available for other templates.")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "init_create_cli")
 def _default_create(region):
     """
     Validate configuration and render template files for deployment.

@@ -17,7 +17,7 @@ class ClusterStackBase(BaseModel):
     helm_release: Optional[str] = Field("dependencies", description="The name used for Helm chart release")
     node_provisioning_mode: Optional[str] = Field("Continuous", description="Enable or disable the continuous provisioning mode. Valid values: \"Continuous\" or leave empty")
     node_recovery: Optional[str] = Field("Automatic", description="Specifies whether to enable or disable the automatic node recovery feature. Valid values: \"Automatic\", \"None\"")
-    instance_group_settings: Union[List[Any], None] = Field([{"InstanceCount":1,"InstanceGroupName":"controller-group","InstanceType":"ml.t3.medium","TargetAvailabilityZoneId":"use2-az2","ThreadsPerCore":1,"InstanceStorageConfigs":[{"EbsVolumeConfig":{"VolumeSizeInGB":500}}]}], description="List of string containing instance group configurations")
+    instance_group_settings: Union[List[Any], None] = Field([{"InstanceCount":1,"InstanceGroupName":"default","InstanceType":"ml.t3.medium","TargetAvailabilityZoneId":"use2-az2","ThreadsPerCore":1,"InstanceStorageConfigs":[{"EbsVolumeConfig":{"VolumeSizeInGB":500}}]}], description="List of string containing instance group configurations")
     rig_settings: Union[List[Any], None] = Field(None, description="List of string containing restricted instance group configurations")
     rig_s3_bucket_name: Optional[str] = Field(None, description="The name of the S3 bucket used to store the RIG resources")
     tags: Union[List[Any], None] = Field(None, description="Custom tags for managing the SageMaker HyperPod cluster as an AWS resource")

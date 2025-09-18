@@ -181,7 +181,7 @@
       "default": [
         {
           "InstanceCount": 1,
-          "InstanceGroupName": "controller-group",
+          "InstanceGroupName": "default",
           "InstanceType": "ml.t3.medium",
           "TargetAvailabilityZoneId": "use2-az2",
           "ThreadsPerCore": 1,

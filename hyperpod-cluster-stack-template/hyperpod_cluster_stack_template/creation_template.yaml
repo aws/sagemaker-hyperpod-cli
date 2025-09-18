@@ -320,7 +320,7 @@ Parameters:
   InstanceGroupSettings1:
     Type: String
     Default: >-
-      [{"InstanceCount":1,"InstanceGroupName":"controller-group","InstanceType":"ml.t3.medium","TargetAvailabilityZoneId":"use2-az2","ThreadsPerCore":1,"InstanceStorageConfigs":[{"EbsVolumeConfig":{"VolumeSizeInGB":500}}]}]
+      [{"InstanceCount":1,"InstanceGroupName":"default","InstanceType":"ml.t3.medium","TargetAvailabilityZoneId":"use2-az2","ThreadsPerCore":1,"InstanceStorageConfigs":[{"EbsVolumeConfig":{"VolumeSizeInGB":500}}]}]
     Description: JSON array string containing instance group configurations.
   RigS3BucketName:
     Type: String
