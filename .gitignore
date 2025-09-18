@@ -29,7 +29,7 @@ doc/_build/
 
 .idea/
 
-.venv
+.venv*
 venv
 
 /hyperpod-cluster-stack-template/build

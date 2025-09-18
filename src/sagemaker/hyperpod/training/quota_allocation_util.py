@@ -137,7 +137,8 @@ INSTANCE_RESOURCES = {
     "ml.i3en.24xlarge": {"cpu": 96, "gpu": 0, "trainium": 0, "memory": 768}
 }
 
-MAX_MEMORY_PROPORTION = 0.93
+MAX_MEMORY_PROPORTION = 0.85
+MAX_CPU_PROPORTION = 0.92
 
 def _has_compute_resource_quota_allocation_resources(memory_in_gib: Optional[float], vcpu: Optional[float], accelerators: Optional[int]) -> bool:
     return (
@@ -232,27 +233,28 @@ def _get_limits(instance_type: str, vcpu_limit: Optional[float], memory_in_gib_l
     return result
 
 
-def _resolve_default_cpu_values(instance_type: str,requests_values: dict, limits_values: dict) -> None:
-
+def _resolve_default_cpu_values(instance_type: str, requests_values: dict, limits_values: dict) -> None:
     instance = INSTANCE_RESOURCES.get(instance_type, {})
     total_available_cpu = instance.get('cpu')
+
     cpu_limit = float(limits_values.get('cpu')) if limits_values.get('cpu') is not None else None
     cpu_request = float(requests_values.get('cpu')) if requests_values.get('cpu') is not None else None
 
+    max_allocatable_cpu = int(total_available_cpu * MAX_CPU_PROPORTION)
+
     if cpu_limit is not None:
+        cpu_limit = min(cpu_limit, max_allocatable_cpu)
+
         if cpu_request is None:
             cpu_request = cpu_limit
-        # Let Kubernetes handle unsupportable values errors
-        if cpu_limit > total_available_cpu:
-            return
-        if cpu_request > total_available_cpu:
-            return
-        if cpu_request > cpu_limit:
-            cpu_request = cpu_limit
-        # if cpu_limit is not None:
-        limits_values["cpu"] = str(cpu_limit)
-        requests_values["cpu"] = str(cpu_request)
+        else:
+            cpu_request = min(cpu_request, cpu_limit)
 
+        limits_values["cpu"] = str(cpu_limit)
+
+    if cpu_request is not None:
+        cpu_request = min(cpu_request, max_allocatable_cpu)
+        requests_values["cpu"] = str(cpu_request)
 
 
 def _resolve_default_memory_values(instance_type: str, requests_values: dict, limits_values: dict) -> None:
@@ -277,12 +279,12 @@ def _resolve_default_memory_values(instance_type: str, requests_values: dict, li
     if memory_request > total_available_memory:
         return
 
-    recommended_max = total_available_memory * MAX_MEMORY_PROPORTION
+    max_allocatable_memory = int(total_available_memory * MAX_MEMORY_PROPORTION)
 
-    if memory_limit > recommended_max:
-        memory_limit = recommended_max
-    if memory_request > recommended_max:
-        memory_request = recommended_max
+    if memory_limit > max_allocatable_memory:
+        memory_limit = max_allocatable_memory
+    if memory_request > max_allocatable_memory:
+        memory_request = max_allocatable_memory
     if memory_request > memory_limit:
         memory_request = memory_limit
 
