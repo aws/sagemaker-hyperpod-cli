@@ -13,6 +13,7 @@ Complete reference for SageMaker HyperPod cluster management parameters and conf
 * [Update Cluster](#hyp-update-cluster)
 * [List Cluster Stacks](#hyp-list-cluster-stack)
 * [Describe Cluster Stack](#hyp-describe-cluster-stack)
+* [Delete Cluster Stack](#hyp-delete-cluster-stack)
 * [List HyperPod Clusters](#hyp-list-cluster)
 * [Set Cluster Context](#hyp-set-cluster-context)
 * [Get Cluster Context](#hyp-get-cluster-context)
@@ -127,6 +128,22 @@ hyp describe cluster-stack STACK-NAME [OPTIONS]
 | `STACK-NAME` | TEXT | Yes | Name of the CloudFormation stack to describe |
 | `--region` | TEXT | No | AWS region of the stack |
 | `--debug` | FLAG | No | Enable debug logging |
+
+
+#### Delete Cluster Stack
+
+Delete a HyperPod cluster stack. Removes the specified CloudFormation stack and all associated AWS resources. This operation cannot be undone.
+
+```bash
+ hyp delete cluster-stack <stack-name>
+```
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `--region <region>` | Required | The AWS region where the stack exists. |
+| `--retain-resources  S3Bucket-TrainingData,EFSFileSystem-Models` | Optional | Comma-separated list of logical resource IDs to retain during deletion (only works on DELETE_FAILED stacks). Resource names are shown in failed deletion output, or use AWS CLI: `aws cloudformation list-stack-resources STACK_NAME --region REGION`. |
+| `--debug` | Optional | Enable debug mode for detailed logging. |
+
 
 ## hyp list-cluster
 

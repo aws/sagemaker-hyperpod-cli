@@ -5,16 +5,50 @@
 
 Complete reference for SageMaker HyperPod PyTorch training job parameters and configuration options.
 
-```{note}
-**Region Configuration**: For commands that accept the `--region` option, if no region is explicitly provided, the command will use the default region from your AWS credentials configuration.
-```
-
+* [Initialize Configuration](#hyp-init)
+* [Create with Configuration](#hyp-create)
 * [Create PyTorch Job](#hyp-create-hyp-pytorch-job)
 * [List Jobs](#hyp-list-hyp-pytorch-job)
 * [Describe Job](#hyp-describe-hyp-pytorch-job)
 * [Delete Job](#hyp-delete-hyp-pytorch-job)
 * [List Pods](#hyp-list-pods-hyp-pytorch-job)
 * [Get Logs](#hyp-get-logs-hyp-pytorch-job)
+
+
+## hyp init
+
+Initialize a template scaffold in the current directory.
+
+#### Syntax
+
+```bash
+hyp init TEMPLATE [DIRECTORY] [OPTIONS]
+```
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `TEMPLATE` | CHOICE | Yes | Template type (cluster-stack, hyp-pytorch-job, hyp-custom-endpoint, hyp-jumpstart-endpoint) |
+| `DIRECTORY` | PATH | No | Target directory (default: current directory) |
+| `--version` | TEXT | No | Schema version to use |
+
+
+## hyp create
+
+Create a new HyperPod training job using the provided configuration.
+
+#### Syntax
+
+```bash
+hyp create [OPTIONS]
+```
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `--debug` | FLAG | No | Enable debug logging |
 
 
 ## hyp create hyp-pytorch-job

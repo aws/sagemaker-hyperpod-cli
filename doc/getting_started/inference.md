@@ -15,11 +15,95 @@ SageMaker HyperPod inference endpoints allow you to:
 - Invoke endpoints for real-time predictions
 - Monitor endpoint performance
 
-```{note}
-**Region Configuration**: For commands that accept the `--region` option, if no region is explicitly provided, the command will use the default region from your AWS credentials configuration.
+
+## Creating Inference Endpoints -- CLI Init Experience
+
+The following is a step-by-step guide of creating a jumpstart endpoint with `hyp-jumpstart-endpoint` template for init experience. In order to create a custom endpoint, you can use `hyp-custom-endpoint` template during the init command call. The init experience is the same across templates.
+
+### 1. Start with a Clean Directory
+
+It\'s recommended to start with a new and clean directory for each
+endpoint configuration:
+
+``` bash
+mkdir my-endpoint
+cd my-endpoint
 ```
 
-## Creating Inference Endpoints
+### 2. Initialize a New Endpoint Configuration
+
+
+`````{tab-set}
+````{tab-item} CLI
+``` bash
+hyp init hyp-jumpstart-endpoint
+```
+````
+`````
+
+```{note}
+In order to create custom endpoint, you can simply use `hyp init hyp-custom-endpoint`.
+```
+
+This creates three files:
+
+- `config.yaml`: The main configuration file you\'ll use to customize
+  your endpoint
+- `k8s.jinja`: A reference template for parameters mapping in kubernetes payload
+- `README.md`: Usage guide with instructions and examples
+
+
+
+### 3. Configure Your Endpoint
+
+You can configure your endpoint in two ways:
+
+**Option 1: Edit config.yaml directly**
+
+The config.yaml file contains key parameters like:
+
+``` yaml
+template: hyp-jumpstart-endpoint
+version: 1.0
+model_id:
+instance_type: 
+endpoint_name:
+```
+
+**Option 2: Use CLI command (Pre-Deployment)**
+
+`````{tab-set}
+````{tab-item} CLI
+``` bash
+hyp configure --endpoint-name your-endpoint-name
+```
+````
+`````
+
+```{note}
+The `hyp configure` command only modifies local configuration files. It
+does not affect existing deployed endpoints.
+```
+
+### 4. Create the Endpoint
+
+`````{tab-set}
+````{tab-item} CLI
+``` bash
+hyp create
+```
+````
+`````
+
+This will:
+
+- Validate your configuration
+- Create a timestamped folder in the `run` directory
+- Initialize the endpoint creation process
+
+
+
+## Creating Inference Endpoints -- CLI/SDK
 
 You can create inference endpoints using either JumpStart models or custom models:
 
@@ -80,48 +164,48 @@ hyp create hyp-custom-endpoint \
 
 ````{tab-item} SDK
 ```python
-from sagemaker.hyperpod.inference.config.hp_custom_endpoint_config import Model, Server, SageMakerEndpoint, TlsConfig, EnvironmentVariables
+from sagemaker.hyperpod.inference.config.hp_endpoint_config import CloudWatchTrigger, Dimensions, AutoScalingSpec, Metrics, S3Storage, ModelSourceConfig, TlsConfig, EnvironmentVariables, ModelInvocationPort, ModelVolumeMount, Resources, Worker
 from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
 
-model = Model(
-    model_source_type="s3",
-    model_location="test-pytorch-job",
-    s3_bucket_name="my-bucket",
-    s3_region="us-east-2",
-    prefetch_enabled=True
+model_source_config = ModelSourceConfig(
+    model_source_type='s3',
+    model_location="<my-model-folder-in-s3>",
+    s3_storage=S3Storage(
+        bucket_name='<my-model-artifacts-bucket>',
+        region='us-east-2',
+    ),
 )
 
-server = Server(
-    instance_type="ml.g5.8xlarge",
-    image_uri="763104351884.dkr.ecr.us-east-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.4.0-tgi2.3.1-gpu-py311-cu124-ubuntu22.04-v2.0",
-    container_port=8080,
-    model_volume_mount_name="model-weights"
+environment_variables = [
+    EnvironmentVariables(name="HF_MODEL_ID", value="/opt/ml/model"),
+    EnvironmentVariables(name="SAGEMAKER_PROGRAM", value="inference.py"),
+    EnvironmentVariables(name="SAGEMAKER_SUBMIT_DIRECTORY", value="/opt/ml/model/code"),
+    EnvironmentVariables(name="MODEL_CACHE_ROOT", value="/opt/ml/model"),
+    EnvironmentVariables(name="SAGEMAKER_ENV", value="1"),
+]
+
+worker = Worker(
+    image='763104351884.dkr.ecr.us-east-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.4.0-tgi2.3.1-gpu-py311-cu124-ubuntu22.04-v2.0',
+    model_volume_mount=ModelVolumeMount(
+        name='model-weights',
+    ),
+    model_invocation_port=ModelInvocationPort(container_port=8080),
+    resources=Resources(
+            requests={"cpu": "30000m", "nvidia.com/gpu": 1, "memory": "100Gi"},
+            limits={"nvidia.com/gpu": 1}
+    ),
+    environment_variables=environment_variables,
 )
 
-resources = {
-    "requests": {"cpu": "30000m", "nvidia.com/gpu": 1, "memory": "100Gi"},
-    "limits": {"nvidia.com/gpu": 1}
-}
-
-env = EnvironmentVariables(
-    HF_MODEL_ID="/opt/ml/model",
-    SAGEMAKER_PROGRAM="inference.py",
-    SAGEMAKER_SUBMIT_DIRECTORY="/opt/ml/model/code",
-    MODEL_CACHE_ROOT="/opt/ml/model",
-    SAGEMAKER_ENV="1"
-)
-
-endpoint_name = SageMakerEndpoint(name="endpoint-custom-pytorch")
-
-tls_config = TlsConfig(tls_certificate_output_s3_uri="s3://sample-bucket")
+tls_config=TlsConfig(tls_certificate_output_s3_uri='s3://<my-tls-bucket-name>')
 
 custom_endpoint = HPEndpoint(
-    model=model,
-    server=server,
-    resources=resources,
-    environment=env,
-    sage_maker_endpoint=endpoint_name,
+    endpoint_name='<my-endpoint-name>',
+    instance_type='ml.g5.8xlarge',
+    model_name='deepseek15b-test-model-name',  
     tls_config=tls_config,
+    model_source_config=model_source_config,
+    worker=worker,
 )
 
 custom_endpoint.create()
