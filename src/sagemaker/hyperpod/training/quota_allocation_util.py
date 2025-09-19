@@ -240,21 +240,20 @@ def _resolve_default_cpu_values(instance_type: str, requests_values: dict, limit
     cpu_limit = float(limits_values.get('cpu')) if limits_values.get('cpu') is not None else None
     cpu_request = float(requests_values.get('cpu')) if requests_values.get('cpu') is not None else None
 
+    if cpu_request is not None and cpu_request > total_available_cpu:
+        raise ValueError(
+            f"Specified CPU request ({cpu_request}) exceeds instance capacity. "
+            f"Maximum available CPU for {instance_type} is {total_available_cpu}."
+        )
+
     max_allocatable_cpu = int(total_available_cpu * MAX_CPU_PROPORTION)
 
     if cpu_limit is not None:
-        cpu_limit = min(cpu_limit, max_allocatable_cpu)
-
-        if cpu_request is None:
-            cpu_request = cpu_limit
-        else:
-            cpu_request = min(cpu_request, cpu_limit)
-
+        cpu_request = min(cpu_request, cpu_limit)
         limits_values["cpu"] = str(cpu_limit)
 
-    if cpu_request is not None:
-        cpu_request = min(cpu_request, max_allocatable_cpu)
-        requests_values["cpu"] = str(cpu_request)
+    cpu_request = min(cpu_request, max_allocatable_cpu)
+    requests_values["cpu"] = str(cpu_request)
 
 
 def _resolve_default_memory_values(instance_type: str, requests_values: dict, limits_values: dict) -> None:
@@ -273,21 +272,15 @@ def _resolve_default_memory_values(instance_type: str, requests_values: dict, li
     except (AttributeError, ValueError):
         raise ValueError(f"Invalid memory format: {mem_limit_str or mem_request_str}")
 
-    # Let Kubernetes handle unsupportable values errors
-    if memory_limit > total_available_memory:
-        return
     if memory_request > total_available_memory:
-        return
+        raise ValueError(
+            f"Specified memory request ({memory_request}Gi) exceeds instance capacity. "
+            f"Maximum available memory for {instance_type} is {total_available_memory}Gi."
+        )
 
     max_allocatable_memory = int(total_available_memory * MAX_MEMORY_PROPORTION)
-
-    if memory_limit > max_allocatable_memory:
-        memory_limit = max_allocatable_memory
-    if memory_request > max_allocatable_memory:
-        memory_request = max_allocatable_memory
-    if memory_request > memory_limit:
-        memory_request = memory_limit
-
+    memory_limit = min(memory_limit, max_allocatable_memory)
+    memory_request = min(memory_request, max_allocatable_memory, memory_limit)
     limits_values["memory"] = str(memory_limit) + "Gi"
     requests_values["memory"] = str(memory_request) + "Gi"
 

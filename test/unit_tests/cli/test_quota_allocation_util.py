@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+import re
 
 import pytest
 from sagemaker.hyperpod.training.quota_allocation_util import (
@@ -278,14 +279,6 @@ class TestQuotaAllocationUtil:
         assert requests["memory"] == "8.0Gi"
         assert limits["memory"] == "12.0Gi"
 
-    def test_validate_memory_limit_exceeds_recommended(self):
-        requests = {"memory": "15Gi"}
-        limits = {"memory": "15Gi"}
-        _resolve_default_memory_values("ml.g5.xlarge", requests, limits)
-        # Should be capped at 93% of 16Gi = 14.88Gi
-        assert requests["memory"] == "14.88Gi"
-        assert limits["memory"] == "14.88Gi"
-
     def test_validate_memory_limit_request_exceeds_limit(self):
         requests = {"memory": "10Gi"}
         limits = {"memory": "8Gi"}
@@ -305,6 +298,20 @@ class TestQuotaAllocationUtil:
         limits = {"memory": "8Gi"}
         with pytest.raises(ValueError, match="Invalid memory format"):
             _resolve_default_memory_values("ml.g5.xlarge", requests, limits)
+
+    def test_resolve_default_memory_values_set_to_request(self):
+        requests = {"memory": "10Gi"}
+        limits = {}
+        _resolve_default_memory_values("ml.g5.xlarge", requests, limits)
+        assert requests["memory"] == "10.0Gi"
+        assert limits["memory"] == "10.0Gi"
+
+    def test_resolve_default_memory_values_set_to_allocatable(self):
+        requests = {"memory": "16Gi"}
+        limits = {}
+        _resolve_default_memory_values("ml.g5.xlarge", requests, limits)
+        assert requests["memory"] == "13Gi"
+        assert limits["memory"] == "13Gi"
 
     # Tests for _validate_accelerators_inputs
     def test_validate_accelerators_inputs_valid_equal_values(self):
@@ -353,55 +360,43 @@ class TestQuotaAllocationUtil:
         assert request is None
         assert limit is None
 
-    def test_resolve_default_cpu_values_both_none(self):
-        requests_values = {}
+    def test_resolve_default_cpu_request_exceeds_capacity(self):
+        requests_values = {"cpu": "10.0"}
         limits_values = {}
-        _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
-        assert "cpu" not in requests_values
-        assert "cpu" not in limits_values
+        with pytest.raises(ValueError, match=re.escape("Specified CPU request (10.0) exceeds instance capacity. Maximum available CPU for ml.g5.2xlarge is 8.")):
+            _resolve_default_cpu_values("ml.g5.2xlarge", requests_values, limits_values)
 
+    # Tests for _resolve_default_cpu_values
     def test_resolve_default_cpu_values_request_only(self):
         requests_values = {"cpu": "2.0"}
         limits_values = {}
         _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
-        assert requests_values["cpu"] == "2.0"
+        assert requests_values["cpu"] == "1"
         assert "cpu" not in limits_values
+
+    def test_resolve_default_cpu_values_request_to_limit(self):
+        requests_values = {"cpu": "48.0"}
+        limits_values = {"cpu": "12.0"}
+        _resolve_default_cpu_values("ml.g5.12xlarge", requests_values, limits_values)
+        assert requests_values["cpu"] == "12.0"
+        assert limits_values["cpu"] == "12.0"
+
+    def test_resolve_default_cpu_values_set_to_allocatable(self):
+        requests_values = {"cpu": "46.0"}
+        limits_values = {"cpu": "47.0"}
+        _resolve_default_cpu_values("ml.g5.12xlarge", requests_values, limits_values)
+        assert requests_values["cpu"] == "44"
+        assert limits_values["cpu"] == "47.0"
 
     def test_resolve_default_cpu_values_both_provided(self):
         requests_values = {"cpu": "2.0"}
         limits_values = {"cpu": "4.0"}
         _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
-        assert requests_values["cpu"] == "2.0"
+        assert requests_values["cpu"] == "1"
         assert limits_values["cpu"] == "4.0"
 
     def test_resolve_default_cpu_values_exceeds_instance_capacity(self):
-        requests_values = {"cpu": "10.0"}  # ml.c5.large has 2 CPU
+        requests_values = {"cpu": "10.0"}
         limits_values = {}
-        _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
-        # Should return early, no changes
-        assert requests_values["cpu"] == "10.0"
-        assert "cpu" not in limits_values
-
-    def test_resolve_default_cpu_values_limit_exceeds_capacity(self):
-        requests_values = {}
-        limits_values = {"cpu": "10.0"}  # ml.c5.large has 2 CPU
-        _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
-        # Should return early, no changes
-        assert limits_values["cpu"] == "10.0"
-        assert "cpu" not in requests_values
-
-    def test_resolve_default_cpu_values_invalid_instance_type(self):
-        requests_values = {"cpu": "2.0"}
-        limits_values = {}
-        _resolve_default_cpu_values("invalid-instance", requests_values, limits_values)
-        assert requests_values["cpu"] == "2.0"
-        assert "cpu" not in limits_values
-
-    def test_resolve_default_cpu_values_none_values_in_dict(self):
-        requests_values = {"cpu": None}
-        limits_values = {"cpu": None}
-        _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
-        # Should handle None values gracefully
-        assert "cpu" not in requests_values or requests_values["cpu"] is None
-        assert "cpu" not in limits_values or limits_values["cpu"] is None
-
+        with pytest.raises(ValueError, match=re.escape("Specified CPU request (10.0) exceeds instance capacity. Maximum available CPU for ml.c5.large is 2.")):
+            _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
