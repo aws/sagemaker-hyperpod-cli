@@ -130,7 +130,7 @@ hyp describe cluster-stack STACK-NAME [OPTIONS]
 | `--debug` | FLAG | No | Enable debug logging |
 
 
-#### Delete Cluster Stack
+#### hyp delete cluster-stack
 
 Delete a HyperPod cluster stack. Removes the specified CloudFormation stack and all associated AWS resources. This operation cannot be undone.
 
