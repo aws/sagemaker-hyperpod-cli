@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 dynamic = ["dependencies"]
 name = "sagemaker-hyperpod"
-version = "3.2.2"
+version = "3.3.0"
 description = "Amazon SageMaker HyperPod SDK and CLI"
 readme = "README.md"
 requires-python = ">=3.8"
