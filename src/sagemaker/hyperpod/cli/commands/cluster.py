@@ -57,6 +57,9 @@ from sagemaker.hyperpod.cli.utils import (
     set_logging_level,
     store_current_hyperpod_context,
 )
+from sagemaker.hyperpod.cli.cluster_utils import (
+    validate_eks_access_before_kubeconfig_update,
+)
 from sagemaker.hyperpod.cli.validators.cluster_validator import (
     ClusterValidator,
 )
@@ -584,6 +587,11 @@ def set_cluster_context(
         sm_client = get_sagemaker_client(session, botocore_config)
         hp_cluster_details = sm_client.describe_cluster(ClusterName=cluster_name)
         logger.debug("Fetched hyperpod cluster details")
+        
+        # Check if cluster is EKS-orchestrated
+        if "Orchestrator" not in hp_cluster_details or "Eks" not in hp_cluster_details.get("Orchestrator", {}):
+            raise ValueError(f"Cluster '{cluster_name}' is not EKS-orchestrated. HyperPod CLI only supports EKS-orchestrated clusters.")
+        
         store_current_hyperpod_context(hp_cluster_details)
         eks_cluster_arn = hp_cluster_details["Orchestrator"]["Eks"]["ClusterArn"]
         logger.debug(
@@ -591,6 +599,29 @@ def set_cluster_context(
         )
 
         eks_name = get_name_from_arn(eks_cluster_arn)
+        
+        # Proactively validate EKS access before attempting kubeconfig update
+        logger.debug("Validating EKS access entries before kubeconfig update...")
+        try:
+            has_access, message = validate_eks_access_before_kubeconfig_update(
+                session, cluster_name, eks_name
+            )
+            
+            if has_access:
+                logger.debug(message)
+            else:
+                # Access validation failed - provide clear error message
+                logger.error(message)
+                sys.exit(1)
+                
+        except Exception as validation_error:
+            # If access validation fails unexpectedly, log warning but continue
+            # This ensures backward compatibility if the validation has issues
+            logger.warning(
+                f"Could not validate EKS access entries: {validation_error}. "
+                f"Proceeding with kubeconfig update..."
+            )
+        
         _update_kube_config(eks_name, region, None)
         k8s_client = KubernetesClient()
         k8s_client.set_context(eks_cluster_arn, namespace)

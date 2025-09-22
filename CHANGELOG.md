@@ -1,5 +1,15 @@
 # Changelog
 
+## v.3.3.0 (2025-09-19)
+
+### Features
+
+  * Init Experience
+    * Init, Validate, and Create JumpStart endpoint, Custom endpoint, and PyTorch Training Job with local configuration
+  * Cluster management 
+    * Bug fixes for cluster creation
+    
+
 ## v.3.2.2 (2025-09-10)
 
 ### Features

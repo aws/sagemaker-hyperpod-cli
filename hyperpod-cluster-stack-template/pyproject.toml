@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hyperpod-cluster-stack-template"
-version = "1.0"
+version = "1.0.1"
 readme = "README.md"
 authors = [{name = "Amazon Web Services"}]
 license = {text = "Apache-2.0"}
