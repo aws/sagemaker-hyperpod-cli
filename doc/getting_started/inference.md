@@ -449,9 +449,13 @@ custom_endpoint.delete()
 For detailed examples of inference with HyperPod, explore these interactive Jupyter notebooks:
 
 CLI Examples:
-- <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/inference/CLI/inference-fsx-model-e2e-cli.ipynb" target="_blank">CLI Inference FSX Model Example</a>
+- <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/inference/CLI/inference-jumpstart-init-experience.ipynb" target="_blank">CLI Inference JumpStart Model Init Experience Example</a>
 - <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/inference/CLI/inference-jumpstart-e2e-cli.ipynb" target="_blank">CLI Inference JumpStart Model Example</a>
+
+- <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/inference/CLI/inference-s3-model-init-experience.ipynb" target="_blank">CLI Inference S3 Model Init Experience Example</a>
 - <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/inference/CLI/inference-s3-model-e2e-cli.ipynb" target="_blank">CLI Inference S3 Model Example</a>
+
+- <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/inference/CLI/inference-fsx-model-e2e-cli.ipynb" target="_blank">CLI Inference FSX Model Example</a>
 
 SDK Examples:
 - <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/inference/SDK/inference-fsx-model-e2e.ipynb" target="_blank">SDK Inference FSX Model Example</a>

@@ -416,6 +416,19 @@ status = stack.get_status(region="us-west-2")
 print(status)
 ```
 
+#### Deleting a Cluster Stack
+
+```python
+# Delete with custom logger
+import logging
+logger = logging.getLogger(__name__)
+HpClusterStack.delete("my-stack-name", region="us-west-2", logger=logger)
+
+# Delete with retained resources (only works on DELETE_FAILED stacks)
+HpClusterStack.delete("my-stack-name", retain_resources=["S3Bucket", "EFSFileSystem"])
+
+```
+
 ### Training SDK
 
 #### Creating a Training Job 

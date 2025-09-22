@@ -237,3 +237,14 @@ For more detailed information on specific commands, use the ``--help`` flag:
 .. code-block:: bash
 
    hyp <command> --help
+
+
+Cluster Management Example Notebooks
+--------------------------
+
+For detailed examples of training with HyperPod, see:
+
+- `CLI Cluster Management Example <https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/cluster_management/cluster_creation_init_experience.ipynb>`_
+- `SDK Cluster Management Example <https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/cluster_management/cluster_creation_sdk_experience.ipynb>`_
+
+These examples demonstrate end-to-end workflows for creating and managing cluster stacks using both the CLI and SDK approaches.
