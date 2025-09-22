@@ -97,7 +97,7 @@ class TestQuotaAllocationUtil:
     def test_get_resources_from_compute_quotas_gpu_instance_with_accelerators_ratio_1(self):
         result = _get_resources_from_compute_quotas("ml.g5.xlarge", None, None, 1)
         # ml.g5.xlarge has 1 GPU, 4 CPUs, 16GiB memory
-        assert result == {"cpu": "4.0", "memory": "16.0Gi", "nvidia.com/gpu": 1}
+        assert result == {"cpu": "3.68", "memory": "13.6Gi", "nvidia.com/gpu": 1}
 
     def test_get_resources_from_compute_quotas_gpu_instance_with_accelerators_ratio_half(self):
         result = _get_resources_from_compute_quotas("ml.g6e.48xlarge", None, None, 4)
@@ -127,7 +127,7 @@ class TestQuotaAllocationUtil:
     def test_get_resources_from_compute_quotas_accelerators_and_cpu_only(self):
         result = _get_resources_from_compute_quotas("ml.g5.xlarge", 2.0, None, 1)
         # ml.g5.xlarge has 1 gpu, 4 CPUs and 16GB memory, and memory calculated as accelerator ratio
-        assert result == {"cpu": "2.0", "memory": "16.0Gi", "nvidia.com/gpu": 1}
+        assert result == {"cpu": "2.0", "memory": "13.6Gi", "nvidia.com/gpu": 1}
 
     # Tests for _get_resources_from_instance method
     @pytest.mark.parametrize(
@@ -279,14 +279,6 @@ class TestQuotaAllocationUtil:
         assert requests["memory"] == "8.0Gi"
         assert limits["memory"] == "12.0Gi"
 
-    def test_validate_memory_limit_request_exceeds_limit(self):
-        requests = {"memory": "10Gi"}
-        limits = {"memory": "8Gi"}
-        _resolve_default_memory_values("ml.g5.xlarge", requests, limits)
-        # Request should be reduced to match limit
-        assert requests["memory"] == "8.0Gi"
-        assert limits["memory"] == "8.0Gi"
-
     def test_validate_memory_limit_missing_values(self):
         requests = {}
         limits = {"memory": "8Gi"}
@@ -331,8 +323,8 @@ class TestQuotaAllocationUtil:
             _validate_accelerators_inputs("ml.g5.xlarge", 1, 2)
 
     def test_validate_accelerators_inputs_cpu_only_instance(self):
-        # Should not raise exception for CPU-only instances
-        _validate_accelerators_inputs("ml.c5.large", 1, 1)
+        with pytest.raises(ValueError, match="Instance type ml.c5.large does not support accelerators, but accelerator values were provided."):
+            _validate_accelerators_inputs("ml.c5.large", 1, 1)
 
     # Tests for _set_default_accelerators_val
     def test_set_default_accelerators_val_both_none(self):
@@ -364,34 +356,21 @@ class TestQuotaAllocationUtil:
         requests_values = {"cpu": "10.0"}
         limits_values = {}
         with pytest.raises(ValueError, match=re.escape("Specified CPU request (10.0) exceeds instance capacity. Maximum available CPU for ml.g5.2xlarge is 8.")):
-            _resolve_default_cpu_values("ml.g5.2xlarge", requests_values, limits_values)
+            _resolve_default_cpu_values("ml.g5.2xlarge", requests_values)
 
     # Tests for _resolve_default_cpu_values
     def test_resolve_default_cpu_values_request_only(self):
         requests_values = {"cpu": "2.0"}
         limits_values = {}
-        _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
+        _resolve_default_cpu_values("ml.c5.large", requests_values)
         assert requests_values["cpu"] == "1"
         assert "cpu" not in limits_values
 
-    def test_resolve_default_cpu_values_request_to_limit(self):
-        requests_values = {"cpu": "48.0"}
-        limits_values = {"cpu": "12.0"}
-        _resolve_default_cpu_values("ml.g5.12xlarge", requests_values, limits_values)
-        assert requests_values["cpu"] == "12.0"
-        assert limits_values["cpu"] == "12.0"
-
-    def test_resolve_default_cpu_values_set_to_allocatable(self):
-        requests_values = {"cpu": "46.0"}
-        limits_values = {"cpu": "47.0"}
-        _resolve_default_cpu_values("ml.g5.12xlarge", requests_values, limits_values)
-        assert requests_values["cpu"] == "44"
-        assert limits_values["cpu"] == "47.0"
 
     def test_resolve_default_cpu_values_both_provided(self):
         requests_values = {"cpu": "2.0"}
         limits_values = {"cpu": "4.0"}
-        _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
+        _resolve_default_cpu_values("ml.c5.large", requests_values)
         assert requests_values["cpu"] == "1"
         assert limits_values["cpu"] == "4.0"
 
@@ -399,4 +378,4 @@ class TestQuotaAllocationUtil:
         requests_values = {"cpu": "10.0"}
         limits_values = {}
         with pytest.raises(ValueError, match=re.escape("Specified CPU request (10.0) exceeds instance capacity. Maximum available CPU for ml.c5.large is 2.")):
-            _resolve_default_cpu_values("ml.c5.large", requests_values, limits_values)
+            _resolve_default_cpu_values("ml.c5.large", requests_values)

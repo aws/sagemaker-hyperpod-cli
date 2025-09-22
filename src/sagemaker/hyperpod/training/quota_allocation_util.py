@@ -192,6 +192,7 @@ def _get_resources_from_compute_quotas(instance_type: str,
 
     result["cpu"] = f"{result['cpu']}"
     result["memory"] = f"{result['memory']}Gi"
+    _trim_resource_requests(instance_type, result)
     return result
 
 
@@ -213,6 +214,27 @@ def _get_resources_from_instance(instance_type: str, node_count: int) -> dict:
     result["memory"] = f"{result['memory']}Gi"
     return result
 
+
+def _trim_resource_requests(instance_type: str, requests_values: dict):
+    instance = INSTANCE_RESOURCES.get(instance_type, {})
+    allocatable_cpu = float(instance.get("cpu", 0) * MAX_CPU_PROPORTION)
+    allocatable_memory = float(instance.get("memory", 0) * MAX_MEMORY_PROPORTION)
+
+    cpu_request_str = requests_values.get('cpu', '0')
+    cpu_request = float(''.join(filter(lambda x: x.isdigit() or x == '.', cpu_request_str)))
+
+    mem_request_str = requests_values.get('memory', '0Gi')
+    mem_request = float(mem_request_str.replace('Gi', ''))
+
+    final_cpu = min(allocatable_cpu, cpu_request)
+    final_memory = min(allocatable_memory, mem_request)
+
+    requests_values['cpu'] = str(final_cpu)
+    requests_values['memory'] = f"{final_memory}Gi"
+
+    return requests_values
+
+
 def _get_limits(instance_type: str, vcpu_limit: Optional[float], memory_in_gib_limit: Optional[float], accelerators_limit: Optional[int]) -> dict:
 
     result = {}
@@ -233,11 +255,10 @@ def _get_limits(instance_type: str, vcpu_limit: Optional[float], memory_in_gib_l
     return result
 
 
-def _resolve_default_cpu_values(instance_type: str, requests_values: dict, limits_values: dict) -> None:
+def _resolve_default_cpu_values(instance_type: str, requests_values: dict) -> None:
     instance = INSTANCE_RESOURCES.get(instance_type, {})
     total_available_cpu = instance.get('cpu')
 
-    cpu_limit = float(limits_values.get('cpu')) if limits_values.get('cpu') is not None else None
     cpu_request = float(requests_values.get('cpu')) if requests_values.get('cpu') is not None else None
 
     if cpu_request is not None and cpu_request > total_available_cpu:
@@ -247,11 +268,6 @@ def _resolve_default_cpu_values(instance_type: str, requests_values: dict, limit
         )
 
     max_allocatable_cpu = int(total_available_cpu * MAX_CPU_PROPORTION)
-
-    if cpu_limit is not None:
-        cpu_request = min(cpu_request, cpu_limit)
-        limits_values["cpu"] = str(cpu_limit)
-
     cpu_request = min(cpu_request, max_allocatable_cpu)
     requests_values["cpu"] = str(cpu_request)
 
@@ -263,6 +279,7 @@ def _resolve_default_memory_values(instance_type: str, requests_values: dict, li
     mem_limit_str = limits_values.get("memory")
     mem_request_str = requests_values.get("memory")
 
+    user_set_limit = True if mem_limit_str is not None else False
     if mem_limit_str is None and mem_request_str is not None:
         mem_limit_str = mem_request_str
 
@@ -279,14 +296,19 @@ def _resolve_default_memory_values(instance_type: str, requests_values: dict, li
         )
 
     max_allocatable_memory = int(total_available_memory * MAX_MEMORY_PROPORTION)
-    memory_limit = min(memory_limit, max_allocatable_memory)
-    memory_request = min(memory_request, max_allocatable_memory, memory_limit)
+    if not user_set_limit:
+        memory_limit = min(memory_limit, max_allocatable_memory)
+    memory_request = min(memory_request, max_allocatable_memory)
     limits_values["memory"] = str(memory_limit) + "Gi"
     requests_values["memory"] = str(memory_request) + "Gi"
 
 
 def _validate_accelerators_inputs(instance_type: str, accelerators_request: int, accelerators_limit: int) -> None:
     type_of_accelerator, _max_accelerator_per_instance = _get_accelerator_type_and_count(instance_type)
+    if type_of_accelerator is None and (accelerators_request is not None or accelerators_limit is not None):
+        raise ValueError(
+            f"Instance type {instance_type} does not support accelerators, but accelerator values were provided.")
+
     if type_of_accelerator is not None:
         if accelerators_request is not None and accelerators_limit is not None:
             if accelerators_request !=  accelerators_limit:

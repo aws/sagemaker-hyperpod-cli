@@ -289,6 +289,11 @@
       "minimum": 0,
       "description": "Amount of memory in GiB"
     },
+      "accelerators": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Number of accelerators (GPUs/TPUs)"
+    },
     "accelerators-limit": {
       "type": "integer",
       "minimum": 0,

@@ -29,7 +29,8 @@ from sagemaker.hyperpod.training.quota_allocation_util import (
     _resolve_default_memory_values,
     _set_default_accelerators_val,
     _validate_accelerators_inputs,
-    _resolve_default_cpu_values
+    _resolve_default_cpu_values,
+    _trim_resource_requests
 )
 
 TRAINING_GROUP = "sagemaker.amazonaws.com"
@@ -149,6 +150,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             requests_values = _get_resources_from_compute_quotas(instance_type, vcpu, memory, acc_req)
             if requests_values is None:
                 requests_values = _get_resources_from_instance(instance_type, node_count=1)
+                _trim_resource_requests(instance_type, requests_values)
                 if NVIDIA_RESOURCE_KEY in requests_values:
                     acc_lim = requests_values[NVIDIA_RESOURCE_KEY]
                 elif NEURON_RESOURCE_KEY in requests_values:
@@ -156,7 +158,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
 
             limits_values = _get_limits(instance_type, vcpu_limit, memory_limit, acc_lim)
             _resolve_default_memory_values(instance_type, requests_values, limits_values)
-            _resolve_default_cpu_values(instance_type, requests_values, limits_values)
+            _resolve_default_cpu_values(instance_type, requests_values)
 
             # Update data with calculated values
             data['template']['spec']['containers'][0]['resources']['requests'] = requests_values
@@ -244,6 +246,8 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             "spec": spec.model_dump(exclude_none=True),
         }
 
+        # print(config['spec'])
+        # return
         custom_api = client.CustomObjectsApi()
         logger.debug(
             "Deploying HyperPodPytorchJob with config:\n%s",
