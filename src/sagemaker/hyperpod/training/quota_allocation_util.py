@@ -318,8 +318,7 @@ def _validate_accelerators_inputs(instance_type: str, accelerators_request: int,
             if accelerators_request > _max_accelerator_per_instance:
                 raise ValueError('Requested accelerators exceeds capacity')
 
-
-def _set_default_accelerators_val(instance_type: Optional[str], accelerators_request: Optional[int], accelerators_limit: int|None) -> Tuple[Optional[int], Optional[int]]:
+def _set_default_accelerators_val(instance_type: Optional[str], accelerators_request: Optional[int], accelerators_limit: Optional[int]) -> Tuple[Optional[int], Optional[int]]:
     type_of_accelerator, _max_accelerator_per_instance = _get_accelerator_type_and_count(instance_type)
     if type_of_accelerator is not None:
         if accelerators_request is None and accelerators_limit is None:

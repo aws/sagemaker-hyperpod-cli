@@ -24,8 +24,12 @@ from sagemaker.hyperpod.training.quota_allocation_util import (
     _validate_accelerators_inputs,
     _set_default_accelerators_val,
     _resolve_default_cpu_values,
+    _trim_resource_requests,
     INSTANCE_RESOURCES
 )
+
+MAX_MEMORY_PROPORTION = 0.85
+MAX_CPU_PROPORTION = 0.92
 
 class TestQuotaAllocationUtil:
     """Test suite for QuotaAllocationUtil functions"""
@@ -366,7 +370,6 @@ class TestQuotaAllocationUtil:
         assert requests_values["cpu"] == "1"
         assert "cpu" not in limits_values
 
-
     def test_resolve_default_cpu_values_both_provided(self):
         requests_values = {"cpu": "2.0"}
         limits_values = {"cpu": "4.0"}
@@ -379,3 +382,41 @@ class TestQuotaAllocationUtil:
         limits_values = {}
         with pytest.raises(ValueError, match=re.escape("Specified CPU request (10.0) exceeds instance capacity. Maximum available CPU for ml.c5.large is 2.")):
             _resolve_default_cpu_values("ml.c5.large", requests_values)
+
+    # Tests for trimming request values
+    def test_normal_case(self):
+        requests = {"cpu": "2", "memory": "8Gi"}
+        result = _trim_resource_requests("ml.g5.12xlarge", requests)
+        assert result["cpu"] == "2.0"
+        assert result["memory"] == "8.0Gi"
+
+    def test_exceeding_limits(self):
+        requests = {"cpu": "100", "memory": "200Gi"}
+        result = _trim_resource_requests("ml.g5.12xlarge", requests)
+        # Should be trimmed to 90% of instance capacity
+        assert result["cpu"] == str(48 * MAX_CPU_PROPORTION)
+        assert result["memory"] == f"{192 * MAX_MEMORY_PROPORTION}Gi"
+
+    def test_missing_instance_type(self):
+        requests = {"cpu": "2", "memory": "8Gi"}
+        result = _trim_resource_requests("nonexistent.instance", requests)
+        assert result["cpu"] == "0.0"
+        assert result["memory"] == "0.0Gi"
+
+    def test_missing_requests(self):
+        requests = {}
+        result = _trim_resource_requests("ml.g5.12xlarge", requests)
+        assert result["cpu"] == "0.0"
+        assert result["memory"] == "0.0Gi"
+
+    def test_decimal_values(self):
+        requests = {"cpu": "2.5", "memory": "8.5Gi"}
+        result = _trim_resource_requests("ml.g5.12xlarge", requests)
+        assert result["cpu"] == "2.5"
+        assert result["memory"] == "8.5Gi"
+
+    def test_request_modification(self):
+        requests = {"cpu": "2", "memory": "8Gi"}
+        original_id = id(requests)
+        result = _trim_resource_requests("ml.g5.12xlarge", requests)
+        assert id(result) == original_id  # Verify it's the same dict object
