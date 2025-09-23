@@ -709,7 +709,6 @@ def describe_cluster(cluster_name: str, debug: bool, region: str) -> None:
         set_logging_level(logger, logging.DEBUG)
     
     try:
-        # Create SageMaker client using the same pattern as other commands
         botocore_config = botocore.config.Config(
             user_agent_extra=get_user_agent_extra_suffix()
         )
