@@ -8,7 +8,7 @@ from typing import Optional, Union
 from importlib.metadata import version, PackageNotFoundError
 
 from sagemaker.hyperpod.cli.commands.cluster import list_cluster, set_cluster_context, get_cluster_context, \
-    get_monitoring
+    get_monitoring, describe_cluster
 from sagemaker.hyperpod.cli.commands.cluster_stack import create_cluster_stack, describe_cluster_stack, \
     list_cluster_stacks, update_cluster, delete_cluster_stack
 from sagemaker.hyperpod.cli.commands.training import (
@@ -184,6 +184,7 @@ describe.add_command(pytorch_describe)
 describe.add_command(js_describe)
 describe.add_command(custom_describe)
 describe.add_command(describe_cluster_stack)
+describe.add_command(describe_cluster)
 
 update.add_command(update_cluster)
 
