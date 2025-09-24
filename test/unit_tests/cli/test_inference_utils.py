@@ -53,7 +53,7 @@ class TestGenerateClickCommand:
 
         @click.command()
         @generate_click_command(registry=registry)
-        def cmd(name, namespace, version, domain):
+        def cmd(version, debug, domain):
             click.echo(json.dumps({
                 'env': domain.env, 'dimensions': domain.dimensions,
                 'limits': domain.resources_limits, 'reqs': domain.resources_requests
@@ -95,7 +95,7 @@ class TestGenerateClickCommand:
 
         @click.command()
         @generate_click_command(registry=registry)
-        def cmd(name, namespace, version, domain):
+        def cmd(version, debug, domain):
             click.echo(f"{domain.s},{domain.i},{domain.n},{domain.b},{domain.e},{domain.d}")
 
         res = self.runner.invoke(cmd, [
@@ -125,7 +125,7 @@ class TestGenerateClickCommand:
         # Create test command
         @click.command()
         @generate_click_command(schema_pkg='mypkg', registry=registry)
-        def cmd(name, namespace, version, domain):
+        def cmd(version, debug, domain):
             click.echo(f"version: {version}")
 
         # Test command execution

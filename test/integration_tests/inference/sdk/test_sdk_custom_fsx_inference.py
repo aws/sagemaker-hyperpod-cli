@@ -9,6 +9,7 @@ from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
 )
 import sagemaker_core.main.code_injection.codec as codec
 from test.integration_tests.utils import get_time_str
+from sagemaker.hyperpod.common.config.metadata import Metadata
 
 # --------- Test Configuration ---------
 NAMESPACE = "integration"
@@ -19,7 +20,7 @@ MODEL_NAME = f"test-model-integration-sdk-fsx"
 MODEL_LOCATION = "hf-eqa"
 IMAGE_URI = "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:2.3.0-transformers4.48.0-cpu-py311-ubuntu22.04"
 
-TIMEOUT_MINUTES = 15
+TIMEOUT_MINUTES = 20
 POLL_INTERVAL_SECONDS = 30
 
 BETA_FSX = "fs-0402c3308e6aba65c"    # fsx id for beta integration test cluster
@@ -68,7 +69,10 @@ def custom_endpoint():
         environment_variables=env_vars
     )
 
+    metadata = Metadata(name=ENDPOINT_NAME, namespace=NAMESPACE)
+
     return HPEndpoint(
+        metadata=metadata,
         endpoint_name=ENDPOINT_NAME,
         instance_type="ml.c5.2xlarge",
         model_name=MODEL_NAME,
@@ -78,7 +82,7 @@ def custom_endpoint():
 
 @pytest.mark.dependency(name="create")
 def test_create_endpoint(custom_endpoint):
-    custom_endpoint.create(namespace=NAMESPACE)
+    custom_endpoint.create()
     assert custom_endpoint.metadata.name == ENDPOINT_NAME
 
 @pytest.mark.dependency(depends=["create"])

@@ -10,11 +10,11 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-from hyperpod_custom_inference_template.v1_0 import model as v1
-from hyperpod_custom_inference_template.v1_0.template import TEMPLATE_CONTENT as v1_template
+from hyperpod_cluster_stack_template.v1_0 import model as v1
+from hyperpod_cluster_stack_template.v1_0.template import TEMPLATE_CONTENT as v1_template
 
 SCHEMA_REGISTRY = {
-    "1.0": v1.FlatHPEndpoint,
+    "1.0": v1.ClusterStackBase
 }
 
 TEMPLATE_REGISTRY = {

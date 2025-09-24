@@ -1,4 +1,4 @@
-KUBERNETES_JS_ENDPOINT_TEMPLATE = """### Please keep template file unchanged ###
+TEMPLATE_CONTENT = """### Please keep template file unchanged ###
 apiVersion: inference.sagemaker.aws.amazon.com/v1alpha1
 kind: JumpStartModel
 metadata:

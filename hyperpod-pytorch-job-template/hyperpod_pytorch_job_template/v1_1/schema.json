@@ -62,11 +62,7 @@
         "read_only": {
           "anyOf": [
             {
-              "enum": [
-                "true",
-                "false"
-              ],
-              "type": "string"
+              "type": "boolean"
             },
             {
               "type": "null"
@@ -279,6 +275,11 @@
       "description": "Queue name for job scheduling",
       "title": "Queue Name"
     },
+    "accelerators": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of accelerators (GPUs/TPUs)"
+    },
     "vcpu": {
       "type": "float",
       "minimum": 0,
@@ -289,22 +290,17 @@
       "minimum": 0,
       "description": "Amount of memory in GiB"
     },
-      "accelerators": {
-        "type": "integer",
-        "minimum": 0,
-        "description": "Number of accelerators (GPUs/TPUs)"
-    },
-    "accelerators-limit": {
+    "accelerators_limit": {
       "type": "integer",
       "minimum": 0,
       "description": "Limit for the number of accelerators (GPUs/TPUs)"
     },
-    "vcpu-limit": {
+    "vcpu_limit": {
       "type": "float",
       "minimum": 0,
       "description": "Limit for the number of vCPUs"
     },
-    "memory-limit": {
+    "memory_limit": {
       "type": "float",
       "minimum": 0,
       "description": "Limit for the amount of memory in GiB"

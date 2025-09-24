@@ -20,40 +20,10 @@ from sagemaker.hyperpod.common.utils import display_formatted_logs
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "create_pytorchjob_cli")
 @handle_cli_exceptions()
-def pytorch_create(version, debug, config):
+def pytorch_create(version, debug, job):
     """Create a PyTorch job."""
     click.echo(f"Using version: {version}")
-    job_name = config.get("name")
-    namespace = config.get("namespace")
-    spec = config.get("spec")
-    metadata_labels = config.get("labels")
-    annotations = config.get("annotations")
-
-    # Prepare metadata
-    metadata_kwargs = {"name": job_name}
-    if namespace:
-        metadata_kwargs["namespace"] = namespace
-    if metadata_labels:
-        metadata_kwargs["labels"] = metadata_labels
-    if annotations:
-        metadata_kwargs["annotations"] = annotations
-
-    # Prepare job kwargs
-    job_kwargs = {
-        "metadata": Metadata(**metadata_kwargs),
-        "replica_specs": spec.get("replica_specs"),
-    }
-
-    # Add nproc_per_node if present
-    if "nproc_per_node" in spec:
-        job_kwargs["nproc_per_node"] = spec.get("nproc_per_node")
-
-    # Add run_policy if present
-    if "run_policy" in spec:
-        job_kwargs["run_policy"] = spec.get("run_policy")
-
     # Create job
-    job = HyperPodPytorchJob(**job_kwargs)
     job.create(debug=debug)
 
 

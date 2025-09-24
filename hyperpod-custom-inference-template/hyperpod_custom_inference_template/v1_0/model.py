@@ -29,14 +29,22 @@ from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     CloudWatchTrigger
 )
 from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
+from sagemaker.hyperpod.common.config.metadata import Metadata
+
 
 class FlatHPEndpoint(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    namespace: Optional[str] = Field(
+        default=None, 
+        description="Kubernetes namespace",
+        min_length=1
+    )
+
     metadata_name: Optional[str]  = Field(
         None,
         alias="metadata_name",
-        description="Name of the jumpstart endpoint object",
+        description="Name of the custom endpoint object",
         max_length=63,
         pattern=r"^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$",
     )
@@ -255,7 +263,18 @@ class FlatHPEndpoint(BaseModel):
                 raise ValueError("fsx_file_system_id is required when model_source_type is 'fsx'")
         return self
 
+    @model_validator(mode='after')
+    def validate_name(self):
+        if not self.metadata_name and not self.endpoint_name:
+            raise ValueError("Either metadata_name or endpoint_name must be provided")
+        return self
+
     def to_domain(self) -> HPEndpoint:
+        if self.endpoint_name and not self.metadata_name:
+            self.metadata_name = self.endpoint_name
+            
+        metadata = Metadata(name=self.metadata_name, namespace=self.namespace)
+
         env_vars = None
         if self.env:
             env_vars = [
@@ -337,6 +356,7 @@ class FlatHPEndpoint(BaseModel):
             resources=resources,
         )
         return HPEndpoint(
+            metadata=metadata,
             endpoint_name=self.endpoint_name,
             instance_type=self.instance_type,
             metrics=metrics,

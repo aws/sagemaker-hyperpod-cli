@@ -319,3 +319,111 @@ def test_construct_url_all_parameters():
         "&x-extra=additional=info"
     )
     assert url == expected
+
+
+class TestHyperPodTelemetryEmitterWithTemplate:
+    """Test cases for enhanced _hyperpod_telemetry_emitter with template handling"""
+
+    @patch('sagemaker.hyperpod.common.telemetry.telemetry_logging._send_telemetry_request')
+    def test_template_success_telemetry(self, mock_send_request):
+        """Test successful function call with template parameter"""
+        
+        @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "init_cli")
+        def mock_init_function(template: str, version: str = None):
+            return f"initialized {template}"
+        
+        # Call the decorated function
+        result = mock_init_function(template="hyp-pytorch-job", version="1.0")
+        
+        # Verify function result
+        assert result == "initialized hyp-pytorch-job"
+        
+        # Verify telemetry was sent
+        mock_send_request.assert_called_once()
+        call_args = mock_send_request.call_args
+        
+        # Check status code (success)
+        assert call_args[0][0] == STATUS_TO_CODE[str(Status.SUCCESS)]
+        
+        # Check feature code
+        assert call_args[0][1] == [FEATURE_TO_CODE[str(Feature.HYPERPOD_CLI)]]
+        
+        # Check extra parameters - expect template-specific event name
+        extra = call_args[0][5]  # extra is the 6th positional argument
+        assert "init_cli_hyp_pytorch_job" in extra
+        assert "x-template=hyp-pytorch-job" in extra
+        assert "x-version=1.0" in extra
+        assert "x-latency=" in extra
+
+    @patch('sagemaker.hyperpod.common.telemetry.telemetry_logging._send_telemetry_request')
+    def test_template_failure_telemetry(self, mock_send_request):
+        """Test failed function call with template parameter"""
+        
+        @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "init_cli")
+        def mock_failing_function(template: str):
+            raise ValueError("Test error")
+        
+        # Call the decorated function and expect exception
+        with pytest.raises(ValueError, match="Test error"):
+            mock_failing_function(template="cluster-stack")
+        
+        # Verify telemetry was sent
+        mock_send_request.assert_called_once()
+        call_args = mock_send_request.call_args
+        
+        # Check status code (failure)
+        assert call_args[0][0] == STATUS_TO_CODE[str(Status.FAILURE)]
+        
+        # Check error details
+        assert call_args[0][3] == "Test error"  # failure_reason
+        assert call_args[0][4] == "ValueError"  # failure_type
+        
+        # Check extra parameters
+        extra = call_args[0][5]  # extra is the 6th positional argument
+        assert "init_cli_cluster_stack" in extra
+        assert "x-template=cluster-stack" in extra
+
+    @patch('sagemaker.hyperpod.common.telemetry.telemetry_logging._send_telemetry_request')
+    def test_no_template_parameter(self, mock_send_request):
+        """Test function without template parameter"""
+        
+        @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "test_cli")
+        def mock_function_no_template(other_param: str):
+            return "success"
+        
+        # Call the decorated function
+        result = mock_function_no_template(other_param="test")
+        
+        # Verify function result
+        assert result == "success"
+        
+        # Verify telemetry was sent with base event name
+        mock_send_request.assert_called_once()
+        call_args = mock_send_request.call_args
+        extra = call_args[0][5]  # extra is the 6th positional argument
+        assert "test_cli" in extra
+        assert "x-template=" not in extra  # No template metadata
+
+    @patch('sagemaker.hyperpod.common.telemetry.telemetry_logging._send_telemetry_request')
+    def test_template_no_version(self, mock_send_request):
+        """Test function with template but no version parameter"""
+        
+        @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "init_cli")
+        def mock_function_no_version(template: str):
+            return f"initialized {template}"
+        
+        # Call the decorated function
+        result = mock_function_no_version(template="hyp-custom-endpoint")
+        
+        # Verify function result
+        assert result == "initialized hyp-custom-endpoint"
+        
+        # Verify telemetry was sent
+        mock_send_request.assert_called_once()
+        call_args = mock_send_request.call_args
+        extra = call_args[0][5]
+        
+        # Should have template but no version
+        assert "init_cli_hyp_custom_endpoint" in extra
+        assert "x-template=hyp-custom-endpoint" in extra
+        assert "x-version=" not in extra

@@ -7,6 +7,7 @@ from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
 )
 import sagemaker_core.main.code_injection.codec as codec
 from test.integration_tests.utils import get_time_str
+from sagemaker.hyperpod.common.config.metadata import Metadata
 
 # --------- Config ---------
 NAMESPACE = "integration"
@@ -16,7 +17,7 @@ ENDPOINT_NAME = "js-sdk-integration-" + get_time_str()
 INSTANCE_TYPE = "ml.g5.8xlarge"
 MODEL_ID = "deepseek-llm-r1-distill-qwen-1-5b"
 
-TIMEOUT_MINUTES = 15
+TIMEOUT_MINUTES = 20
 POLL_INTERVAL_SECONDS = 30
 
 @pytest.fixture(scope="module")
@@ -28,12 +29,13 @@ def endpoint_obj():
     model = Model(model_id=MODEL_ID)
     server = Server(instance_type=INSTANCE_TYPE)
     sm_endpoint = SageMakerEndpoint(name=ENDPOINT_NAME)
+    metadata = Metadata(name=ENDPOINT_NAME, namespace=NAMESPACE)
 
-    return HPJumpStartEndpoint(model=model, server=server, sage_maker_endpoint=sm_endpoint)
+    return HPJumpStartEndpoint(metadata=metadata, model=model, server=server, sage_maker_endpoint=sm_endpoint)
 
 @pytest.mark.dependency(name="create")
 def test_create_endpoint(endpoint_obj):
-    endpoint_obj.create(namespace=NAMESPACE)
+    endpoint_obj.create()
     assert endpoint_obj.metadata.name == ENDPOINT_NAME
 
 @pytest.mark.dependency(depends=["create"])

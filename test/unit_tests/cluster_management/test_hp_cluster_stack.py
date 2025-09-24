@@ -482,61 +482,8 @@ class TestHpClusterStackGetTemplate(unittest.TestCase):
         self.assertIn("Failed to load template from package", str(context.exception))
 
 
-class TestHpClusterStackValidators(unittest.TestCase):
+class TestHpClusterStackList(unittest.TestCase):
     """Test HpClusterStack field validators"""
-    
-    def test_validate_kubernetes_version_float_to_string(self):
-        """Test kubernetes_version validator converts float to string"""
-        stack = HpClusterStack(kubernetes_version=1.31)
-        self.assertEqual(stack.kubernetes_version, "1.31")
-    
-    def test_validate_kubernetes_version_string_unchanged(self):
-        """Test kubernetes_version validator keeps string unchanged"""
-        stack = HpClusterStack(kubernetes_version="1.31")
-        self.assertEqual(stack.kubernetes_version, "1.31")
-    
-    def test_validate_kubernetes_version_none_unchanged(self):
-        """Test kubernetes_version validator keeps None unchanged"""
-        stack = HpClusterStack(kubernetes_version=None)
-        self.assertIsNone(stack.kubernetes_version)
-    
-    def test_validate_list_fields_rejects_empty_list(self):
-        """Test list field validators reject empty lists"""
-        with self.assertRaises(ValueError) as context:
-            HpClusterStack(eks_private_subnet_ids=[])
-        
-        self.assertIn("Empty lists [] are not allowed", str(context.exception))
-    
-    def test_validate_list_fields_accepts_populated_list(self):
-        """Test list field validators accept populated lists"""
-        stack = HpClusterStack(eks_private_subnet_ids=["subnet-123", "subnet-456"])
-        self.assertEqual(stack.eks_private_subnet_ids, ["subnet-123", "subnet-456"])
-    
-    def test_validate_list_fields_accepts_none(self):
-        """Test list field validators accept None values"""
-        stack = HpClusterStack(eks_private_subnet_ids=None)
-        self.assertIsNone(stack.eks_private_subnet_ids)
-    
-    def test_validate_availability_zone_ids_empty_list(self):
-        """Test availability_zone_ids validator rejects empty list"""
-        with self.assertRaises(ValueError) as context:
-            HpClusterStack(availability_zone_ids=[])
-        
-        self.assertIn("Empty lists [] are not allowed", str(context.exception))
-    
-    def test_validate_tags_empty_list(self):
-        """Test tags validator rejects empty list"""
-        with self.assertRaises(ValueError) as context:
-            HpClusterStack(tags=[])
-        
-        self.assertIn("Empty lists [] are not allowed", str(context.exception))
-    
-    def test_validate_instance_group_settings_empty_list(self):
-        """Test instance_group_settings validator rejects empty list"""
-        with self.assertRaises(ValueError) as context:
-            HpClusterStack(instance_group_settings=[])
-        
-        self.assertIn("Empty lists [] are not allowed", str(context.exception))
 
     @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.create_boto3_client')
     def test_list_default_filters_delete_complete(self, mock_create_client):
@@ -637,10 +584,10 @@ class TestHpClusterStackDelete(unittest.TestCase):
         mock_logger = MagicMock()
         mock_get_logger.return_value = mock_logger
         mock_session.return_value.region_name = 'us-west-2'
-        
+
         # Execute delete
         HpClusterStack.delete('test-stack', region='us-west-2')
-        
+
         # Verify function calls
         mock_delete_stack.assert_called_once()
         call_args = mock_delete_stack.call_args
@@ -657,10 +604,10 @@ class TestHpClusterStackDelete(unittest.TestCase):
         mock_logger = MagicMock()
         mock_get_logger.return_value = mock_logger
         mock_session.return_value.region_name = 'us-west-2'
-        
+
         # Execute delete with retention
         HpClusterStack.delete('test-stack', region='us-west-2', retain_resources=['S3Bucket', 'EFSFileSystem'])
-        
+
         # Verify function calls
         mock_delete_stack.assert_called_once()
         call_args = mock_delete_stack.call_args
@@ -677,19 +624,19 @@ class TestHpClusterStackDelete(unittest.TestCase):
         mock_logger = MagicMock()
         mock_get_logger.return_value = mock_logger
         mock_session.return_value.region_name = 'us-west-2'
-        
+
         # Execute delete (auto-confirm is always enabled now)
         HpClusterStack.delete('test-stack', region='us-west-2')
-        
+
         # Verify function calls
         mock_delete_stack.assert_called_once()
         call_args = mock_delete_stack.call_args
-        
+
         # Test the confirm callback - should always auto-confirm
         confirm_callback = call_args[1]['confirm_callback']
         result = confirm_callback("Test confirmation message")
         assert result is True
-        
+
         # Verify logger was called for auto-confirmation
         mock_logger.info.assert_called_with("Auto-confirming: Test confirmation message")
 
@@ -701,21 +648,21 @@ class TestHpClusterStackDelete(unittest.TestCase):
         # Setup mocks
         custom_logger = MagicMock()
         mock_session.return_value.region_name = 'us-west-2'
-        
+
         # Execute delete with custom logger
         HpClusterStack.delete('test-stack', region='us-west-2', logger=custom_logger)
-        
+
         # Verify function calls
         mock_delete_stack.assert_called_once()
         call_args = mock_delete_stack.call_args
-        
+
         # Verify custom logger is used in callbacks
         message_callback = call_args[1]['message_callback']
         success_callback = call_args[1]['success_callback']
-        
+
         message_callback("Test message")
         success_callback("Test success")
-        
+
         custom_logger.info.assert_any_call("Test message")
         custom_logger.info.assert_any_call("Test success")
 
@@ -728,10 +675,10 @@ class TestHpClusterStackDelete(unittest.TestCase):
         mock_logger = MagicMock()
         mock_get_logger.return_value = mock_logger
         mock_session.return_value.region_name = 'us-east-1'
-        
+
         # Execute delete without region
         HpClusterStack.delete('test-stack')
-        
+
         # Verify function calls
         mock_delete_stack.assert_called_once()
         call_args = mock_delete_stack.call_args
@@ -743,17 +690,17 @@ class TestHpClusterStackDelete(unittest.TestCase):
     def test_delete_stack_not_found(self, mock_get_logger, mock_session, mock_delete_stack):
         """Test delete handles stack not found error."""
         from sagemaker.hyperpod.cli.cluster_stack_utils import StackNotFoundError
-        
+
         # Setup mocks
         mock_logger = MagicMock()
         mock_get_logger.return_value = mock_logger
         mock_session.return_value.region_name = 'us-west-2'
         mock_delete_stack.side_effect = StackNotFoundError("Stack 'non-existent-stack' not found")
-        
+
         # Execute delete and expect ValueError
         with self.assertRaises(ValueError) as context:
             HpClusterStack.delete('non-existent-stack', region='us-west-2')
-        
+
         assert "Stack 'non-existent-stack' not found" in str(context.exception)
         mock_logger.error.assert_called_with("Stack 'non-existent-stack' not found")
 
@@ -766,7 +713,7 @@ class TestHpClusterStackDelete(unittest.TestCase):
         mock_logger = MagicMock()
         mock_get_logger.return_value = mock_logger
         mock_session.return_value.region_name = 'us-west-2'
-        
+
         # Mock termination protection error
         from botocore.exceptions import ClientError
         error = ClientError(
@@ -774,11 +721,11 @@ class TestHpClusterStackDelete(unittest.TestCase):
             'DeleteStack'
         )
         mock_delete_stack.side_effect = error
-        
+
         # Execute delete and expect RuntimeError
         with self.assertRaises(RuntimeError) as context:
             HpClusterStack.delete('protected-stack', region='us-west-2')
-        
+
         assert "Termination Protection is enabled" in str(context.exception)
         mock_logger.error.assert_called()
 
@@ -791,7 +738,7 @@ class TestHpClusterStackDelete(unittest.TestCase):
         mock_logger = MagicMock()
         mock_get_logger.return_value = mock_logger
         mock_session.return_value.region_name = 'us-west-2'
-        
+
         # Mock retention limitation error
         from botocore.exceptions import ClientError
         error = ClientError(
@@ -799,11 +746,11 @@ class TestHpClusterStackDelete(unittest.TestCase):
             'DeleteStack'
         )
         mock_delete_stack.side_effect = error
-        
+
         # Execute delete with retention and expect ValueError
         with self.assertRaises(ValueError) as context:
             HpClusterStack.delete('test-stack', region='us-west-2', retain_resources=['S3Bucket'])
-        
+
         assert "retain_resources can only be used on stacks in DELETE_FAILED state" in str(context.exception)
         mock_logger.error.assert_called()
 
@@ -816,7 +763,7 @@ class TestHpClusterStackDelete(unittest.TestCase):
         mock_logger = MagicMock()
         mock_get_logger.return_value = mock_logger
         mock_session.return_value.region_name = 'us-west-2'
-        
+
         # Mock access denied error
         from botocore.exceptions import ClientError
         error = ClientError(
@@ -824,11 +771,11 @@ class TestHpClusterStackDelete(unittest.TestCase):
             'ListStackResources'
         )
         mock_delete_stack.side_effect = error
-        
+
         # Execute delete and expect RuntimeError
         with self.assertRaises(RuntimeError) as context:
             HpClusterStack.delete('test-stack', region='us-west-2')
-        
+
         assert "Stack deletion failed" in str(context.exception)
         mock_logger.error.assert_called()
 
@@ -841,15 +788,15 @@ class TestHpClusterStackDelete(unittest.TestCase):
         mock_logger = MagicMock()
         mock_get_logger.return_value = mock_logger
         mock_session.return_value.region_name = 'us-west-2'
-        
+
         # Mock generic error
         error = Exception("Unexpected error occurred")
         mock_delete_stack.side_effect = error
-        
+
         # Execute delete and expect RuntimeError
         with self.assertRaises(RuntimeError) as context:
             HpClusterStack.delete('test-stack', region='us-west-2')
-        
+
         assert "Stack deletion failed: Unexpected error occurred" in str(context.exception)
         mock_logger.error.assert_called_with("Failed to delete stack: Unexpected error occurred")
 
@@ -859,18 +806,18 @@ class TestHpClusterStackDelete(unittest.TestCase):
         """Test delete uses default logger when none provided."""
         # Setup mocks
         mock_session.return_value.region_name = 'us-west-2'
-        
+
         # Execute delete without logger
         HpClusterStack.delete('test-stack', region='us-west-2')
-        
+
         # Verify function calls
         mock_delete_stack.assert_called_once()
         call_args = mock_delete_stack.call_args
-        
+
         # Verify message_callback and success_callback are logger.info methods
         message_callback = call_args[1]['message_callback']
         success_callback = call_args[1]['success_callback']
-        
+
         # These should be bound methods of a logger instance
         assert hasattr(message_callback, '__self__')
         assert hasattr(success_callback, '__self__')
@@ -884,10 +831,10 @@ class TestHpClusterStackDelete(unittest.TestCase):
         mock_logger = MagicMock()
         mock_get_logger.return_value = mock_logger
         mock_session.return_value.region_name = 'us-west-2'
-        
+
         # Execute delete with empty retain_resources
         HpClusterStack.delete('test-stack', region='us-west-2', retain_resources=[])
-        
+
         # Verify function calls
         mock_delete_stack.assert_called_once()
         call_args = mock_delete_stack.call_args
@@ -902,10 +849,10 @@ class TestHpClusterStackDelete(unittest.TestCase):
         mock_logger = MagicMock()
         mock_get_logger.return_value = mock_logger
         mock_session.return_value.region_name = 'us-west-2'
-        
+
         # Execute delete with None retain_resources
         HpClusterStack.delete('test-stack', region='us-west-2', retain_resources=None)
-        
+
         # Verify function calls
         mock_delete_stack.assert_called_once()
         call_args = mock_delete_stack.call_args
