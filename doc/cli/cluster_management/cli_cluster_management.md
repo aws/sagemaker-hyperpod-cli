@@ -9,18 +9,20 @@ Complete reference for SageMaker HyperPod cluster management parameters and conf
 ```
 
 * [Initialize Configuration](#hyp-init)
+* [Configure Parameters](#hyp-configure)
+* [Validate Configuration](#hyp-validate)
+* [Reset Configuration](#hyp-reset)
 * [Create Cluster Stack](#hyp-create)
+
 * [Update Cluster](#hyp-update-cluster)
 * [List Cluster Stacks](#hyp-list-cluster-stack)
 * [Describe Cluster Stack](#hyp-describe-cluster-stack)
+* [Delete Cluster Stack](#hyp-delete-cluster-stack)
 * [List HyperPod Clusters](#hyp-list-cluster)
 * [Set Cluster Context](#hyp-set-cluster-context)
 * [Get Cluster Context](#hyp-get-cluster-context)
 * [Get Monitoring](#hyp-get-monitoring)
 
-* [Configure Parameters](#hyp-configure)
-* [Validate Configuration](#hyp-validate)
-* [Reset Configuration](#hyp-reset)
 
 ## hyp init
 
@@ -45,6 +47,108 @@ The `resource_name_prefix` parameter in the generated `config.yaml` file serves 
 
 **Cluster stack names must be unique within each AWS region.** If you attempt to create a cluster stack with a name that already exists in the same region, the deployment will fail.
 ```
+
+## hyp configure
+
+Configure cluster parameters interactively or via command line.
+
+```{important}
+**Pre-Deployment Configuration**: This command modifies local `config.yaml` files **before** cluster creation. For updating **existing, deployed clusters**, use `hyp update cluster` instead.
+```
+
+#### Syntax
+
+```bash
+hyp configure [OPTIONS]
+```
+
+#### Parameters
+
+This command dynamically supports all configuration parameters available in the current template's schema. Common parameters include:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `--resource-name-prefix` | TEXT | No | Prefix for all AWS resources |
+| `--create-hyperpod-cluster-stack` | BOOLEAN | No | Create HyperPod Cluster Stack |
+| `--hyperpod-cluster-name` | TEXT | No | Name of SageMaker HyperPod Cluster |
+| `--create-eks-cluster-stack` | BOOLEAN | No | Create EKS Cluster Stack |
+| `--kubernetes-version` | TEXT | No | Kubernetes version |
+| `--eks-cluster-name` | TEXT | No | Name of the EKS cluster |
+| `--create-helm-chart-stack` | BOOLEAN | No | Create Helm Chart Stack |
+| `--namespace` | TEXT | No | Namespace to deploy HyperPod Helm chart |
+| `--node-provisioning-mode` | TEXT | No | Continuous provisioning mode |
+| `--node-recovery` | TEXT | No | Node recovery setting ("Automatic" or "None") |
+| `--create-vpc-stack` | BOOLEAN | No | Create VPC Stack |
+| `--vpc-id` | TEXT | No | Existing VPC ID |
+| `--vpc-cidr` | TEXT | No | VPC CIDR block |
+| `--create-security-group-stack` | BOOLEAN | No | Create Security Group Stack |
+| `--enable-hp-inference-feature` | BOOLEAN | No | Enable inference operator |
+| `--stage` | TEXT | No | Deployment stage ("gamma" or "prod") |
+| `--create-fsx-stack` | BOOLEAN | No | Create FSx Stack |
+| `--storage-capacity` | INTEGER | No | FSx storage capacity in GiB |
+| `--tags` | JSON | No | Resource tags as JSON object |
+
+**Note:** The exact parameters available depend on your current template type and version. Run `hyp configure --help` to see all available options for your specific configuration.
+
+## hyp validate
+
+Validate the current directory's configuration file syntax and structure.
+
+#### Syntax
+
+```bash
+# Validate current configuration syntax
+hyp validate
+
+# Example output on success
+✔️ config.yaml is valid!
+
+# Example output with syntax errors
+❌ Config validation errors:
+  – kubernetes_version: Field is required
+  – vpc_cidr: Expected string, got number
+```
+
+#### Parameters
+
+No parameters required.
+
+```{note}
+This command performs **syntactic validation only** of the `config.yaml` file against the appropriate schema. It checks:
+
+- **YAML syntax**: Ensures file is valid YAML
+- **Required fields**: Verifies all mandatory fields are present
+- **Data types**: Confirms field values match expected types (string, number, boolean, array)
+- **Schema structure**: Validates against the template's defined structure
+
+This command performs syntactic validation only and does **not** verify the actual validity of values (e.g., whether AWS regions exist, instance types are available, or resources can be created).
+
+**Prerequisites**
+
+- Must be run in a directory where `hyp init` has created configuration files
+- A `config.yaml` file must exist in the current directory
+
+**Output**
+
+- **Success**: Displays confirmation message if syntax is valid
+- **Errors**: Lists specific syntax errors with field names and descriptions
+```
+
+
+## hyp reset
+
+Reset the current directory's config.yaml to default values.
+
+#### Syntax
+
+```bash
+hyp reset
+```
+
+#### Parameters
+
+No parameters required.
+
 
 ## hyp create
 
@@ -128,6 +232,24 @@ hyp describe cluster-stack STACK-NAME [OPTIONS]
 | `--region` | TEXT | No | AWS region of the stack |
 | `--debug` | FLAG | No | Enable debug logging |
 
+
+## hyp delete cluster-stack
+
+Delete a HyperPod cluster stack. Removes the specified CloudFormation stack and all associated AWS resources. This operation cannot be undone.
+
+#### Syntax
+```bash
+ hyp delete cluster-stack <stack-name>
+```
+
+#### Parameters
+| Option | Type | Description |
+|--------|------|-------------|
+| `--region <region>` | Required | The AWS region where the stack exists. |
+| `--retain-resources <list>` | Optional | Comma-separated list of logical resource IDs to retain during deletion (only works on DELETE_FAILED stacks). Resource names are shown in failed deletion output, or use AWS CLI: `aws cloudformation list-stack-resources STACK_NAME --region REGION`. Example: `S3Bucket-TrainingData,EFSFileSystem-Models` |
+| `--debug` | Optional | Enable debug mode for detailed logging. |
+
+
 ## hyp list-cluster
 
 List SageMaker HyperPod clusters with capacity information.
@@ -200,114 +322,6 @@ hyp get-monitoring [OPTIONS]
 | `--grafana` | FLAG | No | Return Grafana dashboard URL |
 | `--prometheus` | FLAG | No | Return Prometheus workspace URL |
 | `--list` | FLAG | No | Return list of available metrics |
-
-## hyp configure
-
-Configure cluster parameters interactively or via command line.
-
-```{important}
-**Pre-Deployment Configuration**: This command modifies local `config.yaml` files **before** cluster creation. For updating **existing, deployed clusters**, use `hyp update cluster` instead.
-```
-
-#### Syntax
-
-```bash
-hyp configure [OPTIONS]
-```
-
-#### Parameters
-
-This command dynamically supports all configuration parameters available in the current template's schema. Common parameters include:
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `--resource-name-prefix` | TEXT | No | Prefix for all AWS resources |
-| `--create-hyperpod-cluster-stack` | BOOLEAN | No | Create HyperPod Cluster Stack |
-| `--hyperpod-cluster-name` | TEXT | No | Name of SageMaker HyperPod Cluster |
-| `--create-eks-cluster-stack` | BOOLEAN | No | Create EKS Cluster Stack |
-| `--kubernetes-version` | TEXT | No | Kubernetes version |
-| `--eks-cluster-name` | TEXT | No | Name of the EKS cluster |
-| `--create-helm-chart-stack` | BOOLEAN | No | Create Helm Chart Stack |
-| `--namespace` | TEXT | No | Namespace to deploy HyperPod Helm chart |
-| `--node-provisioning-mode` | TEXT | No | Continuous provisioning mode |
-| `--node-recovery` | TEXT | No | Node recovery setting ("Automatic" or "None") |
-| `--create-vpc-stack` | BOOLEAN | No | Create VPC Stack |
-| `--vpc-id` | TEXT | No | Existing VPC ID |
-| `--vpc-cidr` | TEXT | No | VPC CIDR block |
-| `--create-security-group-stack` | BOOLEAN | No | Create Security Group Stack |
-| `--enable-hp-inference-feature` | BOOLEAN | No | Enable inference operator |
-| `--stage` | TEXT | No | Deployment stage ("gamma" or "prod") |
-| `--create-fsx-stack` | BOOLEAN | No | Create FSx Stack |
-| `--storage-capacity` | INTEGER | No | FSx storage capacity in GiB |
-| `--tags` | JSON | No | Resource tags as JSON object |
-
-**Note:** The exact parameters available depend on your current template type and version. Run `hyp configure --help` to see all available options for your specific configuration.
-
-## hyp validate
-
-Validate the current directory's configuration file syntax and structure.
-
-#### Syntax
-
-```bash
-hyp validate
-```
-
-#### Parameters
-
-No parameters required.
-
-```{note}
-This command performs **syntactic validation only** of the `config.yaml` file against the appropriate schema. It checks:
-
-- **YAML syntax**: Ensures file is valid YAML
-- **Required fields**: Verifies all mandatory fields are present
-- **Data types**: Confirms field values match expected types (string, number, boolean, array)
-- **Schema structure**: Validates against the template's defined structure
-
-This command performs syntactic validation only and does **not** verify the actual validity of values (e.g., whether AWS regions exist, instance types are available, or resources can be created).
-
-**Prerequisites**
-
-- Must be run in a directory where `hyp init` has created configuration files
-- A `config.yaml` file must exist in the current directory
-
-**Output**
-
-- **Success**: Displays confirmation message if syntax is valid
-- **Errors**: Lists specific syntax errors with field names and descriptions
-```
-
-
-#### Syntax
-
-```bash
-# Validate current configuration syntax
-hyp validate
-
-# Example output on success
-✔️ config.yaml is valid!
-
-# Example output with syntax errors
-❌ Config validation errors:
-  – kubernetes_version: Field is required
-  – vpc_cidr: Expected string, got number
-```
-
-## hyp reset
-
-Reset the current directory's config.yaml to default values.
-
-#### Syntax
-
-```bash
-hyp reset
-```
-
-#### Parameters
-
-No parameters required.
-
 
 
 ## Parameter Reference

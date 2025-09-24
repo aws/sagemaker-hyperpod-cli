@@ -24,11 +24,87 @@ SageMaker HyperPod training jobs allow you to:
 - Manage job scheduling and priorities
 - Mount volumes and persistent volume claims
 
-```{note}
-**Region Configuration**: For commands that accept the `--region` option, if no region is explicitly provided, the command will use the default region from your AWS credentials configuration.
+
+## Creating Training Jobs -- CLI Init Experience
+
+
+### 1. Start with a Clean Directory
+
+It\'s recommended to start with a new and clean directory for each
+job configuration:
+
+``` bash
+mkdir my-pytorch-job
+cd my-pytorch-job
 ```
 
-## Creating Training Jobs
+### 2. Initialize a New Job Configuration
+
+`````{tab-set}
+````{tab-item} CLI
+``` bash
+hyp init hyp-pytorch-job
+```
+````
+`````
+
+This creates three files:
+
+- `config.yaml`: The main configuration file you\'ll use to customize
+  your job
+- `k8s.jinja`: A reference template for parameters mapping in kubernetes payload
+- `README.md`: Usage guide with instructions and examples
+
+
+### 3. Configure Your Job
+
+You can configure your job in two ways:
+
+**Option 1: Edit config.yaml directly**
+
+The config.yaml file contains key parameters like:
+
+``` yaml
+template: hyp-pytorch-job
+version: 1.1
+job_name:
+image: 
+```
+
+**Option 2: Use CLI command (Pre-Deployment)**
+
+`````{tab-set}
+````{tab-item} CLI
+``` bash
+hyp configure --job-name your-job-name
+```
+````
+`````
+
+```{note}
+The `hyp configure` command only modifies local configuration files. It
+does not affect existing deployed jobs.
+```
+
+### 4. Create the Job
+
+
+`````{tab-set}
+````{tab-item} CLI
+``` bash
+hyp create
+```
+````
+`````
+
+This will:
+
+- Validate your configuration
+- Create a timestamped folder in the `run` directory
+- Initialize the job creation process
+
+
+## Creating Training Jobs -- CLI/SDK
 
 You can create training jobs using either the CLI or SDK approach:
 
@@ -216,6 +292,7 @@ job.delete()
 
 For detailed examples of training with HyperPod, see:
 
+- <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/training/CLI/training-init-experience.ipynb" target="_blank">CLI Training Init Experience Example</a>
 - <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/training/CLI/training-e2e-cli.ipynb" target="_blank">CLI Training Example</a>
 - <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/training/SDK/training_sdk_example.ipynb" target="_blank">SDK Training Example</a>
 
