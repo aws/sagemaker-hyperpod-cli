@@ -217,8 +217,10 @@ def _get_resources_from_instance(instance_type: str, node_count: int) -> dict:
 
 def _trim_resource_requests(instance_type: str, requests_values: dict):
     instance = INSTANCE_RESOURCES.get(instance_type, {})
-    allocatable_cpu = float(instance.get("cpu", 0) * MAX_CPU_PROPORTION)
-    allocatable_memory = float(instance.get("memory", 0) * MAX_MEMORY_PROPORTION)
+    cpu_capacity = instance.get("cpu", 0)
+    max_allocatable_cpu = cpu_capacity - (_calculate_cpu_reservation(cpu_capacity))
+    memory_capacity = instance.get("memory", 0)
+    max_allocatable_memory = memory_capacity - (_calculate_memory_reservation(memory_capacity))
 
     cpu_request_str = requests_values.get('cpu', '0')
     cpu_request = float(''.join(filter(lambda x: x.isdigit() or x == '.', cpu_request_str)))
@@ -226,8 +228,8 @@ def _trim_resource_requests(instance_type: str, requests_values: dict):
     mem_request_str = requests_values.get('memory', '0Gi')
     mem_request = float(mem_request_str.replace('Gi', ''))
 
-    final_cpu = min(allocatable_cpu, cpu_request)
-    final_memory = min(allocatable_memory, mem_request)
+    final_cpu = min(max_allocatable_cpu, cpu_request)
+    final_memory = min(max_allocatable_memory, mem_request)
 
     requests_values['cpu'] = str(final_cpu)
     requests_values['memory'] = f"{final_memory}Gi"
@@ -318,6 +320,7 @@ def _validate_accelerators_inputs(instance_type: str, accelerators_request: int,
             if accelerators_request > _max_accelerator_per_instance:
                 raise ValueError('Requested accelerators exceeds capacity')
 
+
 def _set_default_accelerators_val(instance_type: Optional[str], accelerators_request: Optional[int], accelerators_limit: Optional[int]) -> Tuple[Optional[int], Optional[int]]:
     type_of_accelerator, _max_accelerator_per_instance = _get_accelerator_type_and_count(instance_type)
     if type_of_accelerator is not None:
@@ -375,3 +378,67 @@ def _get_accelerator_type_and_count(instance_type: str) -> Tuple[Optional[str], 
     else:
         # valid use-case for cpu-only machines, hence return None
         return None, 0
+
+
+def _calculate_memory_reservation(memory_gb):
+
+    static_memory_overhead = 0.5  # 500MB
+
+    reserved_memory = static_memory_overhead
+    remaining = memory_gb
+
+    # First 4 GB (25%)
+    first_4gb = min(4, remaining)
+    reserved_memory += first_4gb * 0.25
+    remaining -= first_4gb
+
+    # Next 4 GB (20%)
+    if remaining > 0:
+        next_4gb = min(4, remaining)
+        reserved_memory += next_4gb * 0.20
+        remaining -= next_4gb
+
+    # Next 8 GB (10%)
+    if remaining > 0:
+        next_8gb = min(8, remaining)
+        reserved_memory += next_8gb * 0.10
+        remaining -= next_8gb
+
+    # Next 112 GB (6%)
+    if remaining > 0:
+        next_112gb = min(112, remaining)
+        reserved_memory += next_112gb * 0.06
+        remaining -= next_112gb
+
+    # Remaining memory (2%)
+    if remaining > 0:
+        reserved_memory += remaining * 0.02
+
+    return reserved_memory
+
+
+def _calculate_cpu_reservation(cpu_count):
+
+    # Static overhead for observability tools and system processes
+    static_cpu_overhead = 0.1  # 0.1 cores
+
+    reserved_cpu = static_cpu_overhead
+
+    # First core (6%)
+    if cpu_count >= 1:
+        reserved_cpu += 0.06
+
+    # Second core (1%)
+    if cpu_count >= 2:
+        reserved_cpu += 0.01
+
+    # Cores 3-4 (0.5% each)
+    for _ in range(min(2, max(0, cpu_count - 2))):
+        reserved_cpu += 0.005
+
+    # Remaining cores (0.25% each)
+    if cpu_count > 4:
+        reserved_cpu += (cpu_count - 4) * 0.0025
+
+    return reserved_cpu
+
