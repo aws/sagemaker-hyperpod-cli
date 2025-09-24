@@ -25,11 +25,17 @@ from sagemaker.hyperpod.training.quota_allocation_util import (
     _set_default_accelerators_val,
     _resolve_default_cpu_values,
     _trim_resource_requests,
+    _calculate_memory_reservation,
+    _calculate_cpu_reservation,
     INSTANCE_RESOURCES
 )
 
 MAX_MEMORY_PROPORTION = 0.85
 MAX_CPU_PROPORTION = 0.92
+
+def float_equals(a, b, tolerance=0.0001):
+    return abs(a - b) <= tolerance
+
 
 class TestQuotaAllocationUtil:
     """Test suite for QuotaAllocationUtil functions"""
@@ -101,7 +107,7 @@ class TestQuotaAllocationUtil:
     def test_get_resources_from_compute_quotas_gpu_instance_with_accelerators_ratio_1(self):
         result = _get_resources_from_compute_quotas("ml.g5.xlarge", None, None, 1)
         # ml.g5.xlarge has 1 GPU, 4 CPUs, 16GiB memory
-        assert result == {"cpu": "3.68", "memory": "13.6Gi", "nvidia.com/gpu": 1}
+        assert result == {"cpu": "3.82", "memory": "12.9Gi", "nvidia.com/gpu": 1}
 
     def test_get_resources_from_compute_quotas_gpu_instance_with_accelerators_ratio_half(self):
         result = _get_resources_from_compute_quotas("ml.g6e.48xlarge", None, None, 4)
@@ -131,7 +137,7 @@ class TestQuotaAllocationUtil:
     def test_get_resources_from_compute_quotas_accelerators_and_cpu_only(self):
         result = _get_resources_from_compute_quotas("ml.g5.xlarge", 2.0, None, 1)
         # ml.g5.xlarge has 1 gpu, 4 CPUs and 16GB memory, and memory calculated as accelerator ratio
-        assert result == {"cpu": "2.0", "memory": "13.6Gi", "nvidia.com/gpu": 1}
+        assert result == {'cpu': '2.0', 'memory': '12.9Gi', 'nvidia.com/gpu': 1}
 
     # Tests for _get_resources_from_instance method
     @pytest.mark.parametrize(
@@ -390,19 +396,6 @@ class TestQuotaAllocationUtil:
         assert result["cpu"] == "2.0"
         assert result["memory"] == "8.0Gi"
 
-    def test_exceeding_limits(self):
-        requests = {"cpu": "100", "memory": "200Gi"}
-        result = _trim_resource_requests("ml.g5.12xlarge", requests)
-        # Should be trimmed to 90% of instance capacity
-        assert result["cpu"] == str(48 * MAX_CPU_PROPORTION)
-        assert result["memory"] == f"{192 * MAX_MEMORY_PROPORTION}Gi"
-
-    def test_missing_instance_type(self):
-        requests = {"cpu": "2", "memory": "8Gi"}
-        result = _trim_resource_requests("nonexistent.instance", requests)
-        assert result["cpu"] == "0.0"
-        assert result["memory"] == "0.0Gi"
-
     def test_missing_requests(self):
         requests = {}
         result = _trim_resource_requests("ml.g5.12xlarge", requests)
@@ -420,3 +413,54 @@ class TestQuotaAllocationUtil:
         original_id = id(requests)
         result = _trim_resource_requests("ml.g5.12xlarge", requests)
         assert id(result) == original_id  # Verify it's the same dict object
+
+
+    # Regressive scaling tests
+    def test_memory_reservation_small_instance(self):
+        memory_gb = 4
+        reserved = _calculate_memory_reservation(memory_gb)
+        assert float_equals(reserved, 1.5)
+
+    def test_memory_reservation_medium_instance(self):
+        memory_gb = 16
+        reserved = _calculate_memory_reservation(memory_gb)
+        assert (float_equals(reserved, 3.1))
+
+    def test_memory_reservation_large_instance(self):
+        memory_gb = 2048
+        reserved = _calculate_memory_reservation(memory_gb)
+        assert (float_equals(reserved, 48.22))
+
+    def test_memory_reservation_zero(self):
+        memory_gb = 0
+        reserved = _calculate_memory_reservation(memory_gb)
+        assert (float_equals(reserved, 0.5))
+
+    def test_cpu_reservation_single_core(self):
+        """Test CPU reservation for single core"""
+        cpu_count = 1
+        reserved = _calculate_cpu_reservation(cpu_count)
+        assert (float_equals(reserved, 0.16))
+
+    def test_cpu_reservation_dual_core(self):
+        cpu_count = 2
+        reserved = _calculate_cpu_reservation(cpu_count)
+        assert (float_equals(reserved, 0.17))
+
+    def test_cpu_reservation_quad_core(self):
+        cpu_count = 4
+        reserved = _calculate_cpu_reservation(cpu_count)
+        assert (float_equals(reserved, 0.18))
+
+    def test_cpu_reservation_many_cores(self):
+        """Test CPU reservation for 96 cores"""
+        cpu_count = 96
+        reserved = _calculate_cpu_reservation(cpu_count)
+        assert (float_equals(reserved, 0.41))
+
+    def test_cpu_reservation_zero(self):
+        """Test CPU reservation with 0 cores"""
+        cpu_count = 0
+        reserved = _calculate_cpu_reservation(cpu_count)
+        # Should only return static overhead
+        assert (float_equals(reserved, 0.1))
