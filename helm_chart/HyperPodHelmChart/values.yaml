@@ -286,3 +286,5 @@ job-auto-restart:
   enabled: true
 hyperpod-patching:
   enabled: true
+kuberay:
+  enabled: true
