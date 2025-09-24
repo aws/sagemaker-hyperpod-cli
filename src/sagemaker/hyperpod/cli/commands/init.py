@@ -375,8 +375,9 @@ def _default_create(region):
                 config = flat.to_config(region=region)
                 HpClusterStack(**config).create(region)
             else:
-                domain = flat.to_domain()
-                domain.create()
+                # Create from k8s.yaml
+                k8s_file = out_dir / 'k8s.yaml'
+                flat.create_from_k8s_yaml(str(k8s_file))
 
 
     except Exception as e:

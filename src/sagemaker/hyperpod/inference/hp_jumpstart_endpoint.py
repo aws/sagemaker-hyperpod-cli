@@ -53,20 +53,24 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         if not namespace:
             namespace = get_default_namespace()
 
+        # Create metadata object with labels and annotations if available
+        metadata = Metadata(
+            name=name,
+            namespace=namespace,
+            labels=self.metadata.labels if self.metadata else None,
+            annotations=self.metadata.annotations if self.metadata else None,
+        )
+
         self.validate_instance_type(spec.model.modelId, spec.server.instanceType)
 
         self.call_create_api(
-            name=name,  # use model name as metadata name
+            metadata=metadata,
             kind=JUMPSTART_MODEL_KIND,
-            namespace=namespace,
             spec=spec,
             debug=debug,
         )
 
-        self.metadata = Metadata(
-            name=name,
-            namespace=namespace,
-        )
+        self.metadata = metadata
 
         logger.info(
             f"Creating JumpStart model and sagemaker endpoint. Endpoint name: {endpoint_name}.\n The process may take a few minutes..."
@@ -99,20 +103,24 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         if not namespace:
             namespace = get_default_namespace()
 
+        # Create metadata object with labels and annotations if available
+        metadata = Metadata(
+            name=name,
+            namespace=namespace,
+            labels=self.metadata.labels if self.metadata else None,
+            annotations=self.metadata.annotations if self.metadata else None,
+        )
+
         self.validate_instance_type(spec.model.modelId, spec.server.instanceType)
 
         self.call_create_api(
-            name=name,  # use model name as metadata name
+            metadata=metadata,
             kind=JUMPSTART_MODEL_KIND,
-            namespace=namespace,
             spec=spec,
             debug=debug,
         )
 
-        self.metadata = Metadata(
-            name=name,
-            namespace=namespace,
-        )
+        self.metadata = metadata
 
         logger.info(
             f"Creating JumpStart model and sagemaker endpoint. Endpoint name: {endpoint_name}.\n The process may take a few minutes..."

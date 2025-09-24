@@ -1,68 +1,89 @@
-TEMPLATE_CONTENT = """### Please keep template file unchanged ###
-apiVersion: hyperpod.sagemaker.aws/v1
+TEMPLATE_CONTENT = """
+apiVersion: inference.sagemaker.aws.amazon.com/v1alpha1
 kind: HPEndpoint
 metadata:
-  name: "{{ endpoint_name }}"
-  namespace: "{{ namespace }}"
+  name: {{ metadata_name or endpoint_name }}
+  namespace: {{ namespace }}
 spec:
-  instanceType: "{{ instance_type }}"
-  modelName:    "{{ model_name }}"
-{% if model_version is not none %}  modelVersion: "{{ model_version }}"
-{% endif %}
+  endpointName: {{ endpoint_name }}
+  instanceType: {{ instance_type }}
+  modelName: {{ model_name }}
+  modelVersion: {{ model_version or "" }}
+  
   env:
-{% if env %}    
-{% for key, val in env.items() %}    - name:  "{{ key }}"
-      value: "{{ val }}"
-{% endfor %}{% else %}    []
-{% endif %}
+{%- if env %}
+{%- for key, val in env.items() %}
+    - name: {{ key }}
+      value: {{ val }}
+{%- endfor %}
+{%- else %}
+    []
+{%- endif %}
+  
   metrics:
-    enabled: {{ metrics_enabled }}
+    enabled: {{ metrics_enabled or False }}
+  
   modelSourceConfig:
-    modelSourceType: "{{ model_source_type }}"
-{% if model_location is not none %}    modelLocation:   "{{ model_location }}"
-{% endif %}    prefetchEnabled: {{ prefetch_enabled }}
-{% if model_source_type == "s3" %}    s3Storage:
-      bucketName: "{{ s3_bucket_name }}"
-      region:     "{{ s3_region }}"
-{% elif model_source_type == "fsx" %}    fsxStorage:
-      dnsName:       "{{ fsx_dns_name }}"
-      fileSystemId:  "{{ fsx_file_system_id }}"
-{% if fsx_mount_name is not none %}      mountName:     "{{ fsx_mount_name }}"
-{% endif %}{% endif %}
+    modelSourceType: {{ model_source_type }}
+    modelLocation: {{ model_location or "" }}
+    prefetchEnabled: {{ prefetch_enabled or False }}
+{%- if model_source_type == "s3" %}
+    s3Storage:
+      bucketName: {{ s3_bucket_name }}
+      region: {{ s3_region }}
+{%- elif model_source_type == "fsx" %}
+    fsxStorage:
+      dnsName: {{ fsx_dns_name }}
+      fileSystemId: {{ fsx_file_system_id }}
+      mountName: {{ fsx_mount_name or "" }}
+{%- endif %}
+  
   tlsConfig:
-{% if tls_certificate_output_s3_uri is not none %}    certificateOutputS3Uri: "{{ tls_certificate_output_s3_uri }}"
-{% else %}    {}
-{% endif %}
+    tlsCertificateOutputS3Uri: {{ tls_certificate_output_s3_uri or "" }}
+  
   worker:
-    image:         "{{ image_uri }}"
-    containerPort: {{ container_port }}
-    volumeMount:
-      name:       "{{ model_volume_mount_name }}"
-      mountPath:  "{{ model_volume_mount_path }}"
+    image: {{ image_uri }}
+    modelInvocationPort:
+      containerPort: {{ container_port }}
+    modelVolumeMount:
+      name: {{ model_volume_mount_name }}
+      mountPath: {{ model_volume_mount_path }}
     resources:
-{% if resources_limits %}      limits:
-{% for key, val in resources_limits.items() %}        {{ key }}: "{{ val }}"
-{% endfor %}{% else %}      {}
-{% endif %}{% if resources_requests %}
+{%- if resources_limits %}
+      limits:
+{%-   for key, val in resources_limits.items() %}
+        {{ key }}: {{ val }}
+{%-   endfor %}
+{%- else %}
+      {}
+{%- endif %}
+{%- if resources_requests %}
       requests:
-{% for key, val in resources_requests.items() %}        {{ key }}: "{{ val }}"
-{% endfor %}{% endif %}
+{%-   for key, val in resources_requests.items() %}
+        {{ key }}: {{ val }}
+{%-   endfor %}
+{%- endif %}
+  
   autoScalingSpec:
     cloudWatchTrigger:
-{% if dimensions %}      dimensions:
-{% for dim_key, dim_val in dimensions.items() %}        - name:  "{{ dim_key }}"
-          value: "{{ dim_val }}"
-{% endfor %}{% else %}      []
-{% endif %}      metricCollectionPeriod: {{ metric_collection_period }}
+{%- if dimensions %}
+      dimensions:
+{%-   for dim_key, dim_val in dimensions.items() %}
+        - name: {{ dim_key }}
+          value: {{ dim_val }}
+{%-   endfor %}
+{%- endif %}
+      metricCollectionPeriod: {{ metric_collection_period }}
       metricCollectionStartTime: {{ metric_collection_start_time }}
-      metricName: "{{ metric_name }}"
-      metricStat: "{{ metric_stat }}"
-      type:       "{{ metric_type }}"
-      minValue:   {{ min_value }}
-      name:       "{{ cloud_watch_trigger_name }}"
-      namespace:  "{{ cloud_watch_trigger_namespace }}"
-      targetValue: {{ target_value }}
-      useCachedMetrics: {{ use_cached_metrics }}
-  invocationEndpoint: "{{ invocation_endpoint }}"
+      metricName: {{ metric_name or "" }}
+      metricStat: {{ metric_stat }}
+      metricType: {{ metric_type }}
+      minValue: {{ min_value }}
+      name: {{ cloud_watch_trigger_name or "" }}
+      namespace: {{ cloud_watch_trigger_namespace or "" }}
+      targetValue: {{ target_value or "" }}
+      useCachedMetrics: {{ use_cached_metrics or False }}
+  
+  invocationEndpoint: {{ invocation_endpoint }}
 
 """

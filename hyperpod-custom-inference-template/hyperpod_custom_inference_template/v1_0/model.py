@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from pydantic import BaseModel, Field, model_validator, ConfigDict
 from typing import Optional, List, Dict, Union, Literal
+import yaml
 
 from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     Metrics,
@@ -368,3 +369,12 @@ class FlatHPEndpoint(BaseModel):
             invocation_endpoint=self.invocation_endpoint,
             auto_scaling_spec=auto_scaling_spec
         )
+
+    def create_from_k8s_yaml(self, yaml_file_path: str) -> None:
+        """Create HPEndpoint from k8s YAML file."""
+        with open(yaml_file_path, 'r') as f:
+            yaml_data = yaml.safe_load(f)
+        
+        endpoint = HPEndpoint.model_validate(yaml_data['spec'], by_name=True)
+        endpoint.metadata = Metadata.model_validate(yaml_data['metadata'], by_name=True)
+        endpoint.create()
