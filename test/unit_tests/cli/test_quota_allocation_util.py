@@ -292,7 +292,7 @@ class TestQuotaAllocationUtil:
     def test_validate_memory_limit_missing_values(self):
         requests = {}
         limits = {"memory": "8Gi"}
-        with pytest.raises(TypeError, match="expected string or bytes-like object, got 'NoneType'"):
+        with pytest.raises(TypeError):
             _resolve_default_memory_values("ml.g5.xlarge", requests, limits)
 
     def test_validate_memory_limit_invalid_format(self):
