@@ -1,6 +1,7 @@
 from pydantic import ConfigDict, Field
 
-from sagemaker.hyperpod.cli.constants.command_constants import INSTANCE_TYPE_LABEL
+from sagemaker.hyperpod.cli.constants.command_constants import INSTANCE_TYPE_LABEL, NEURON_RESOURCE_LIMIT_KEY, \
+    NVIDIA_GPU_RESOURCE_LIMIT_KEY
 from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config import (
     _HyperPodPytorchJob, HyperPodPytorchJobStatus
 )
@@ -20,7 +21,17 @@ from sagemaker.hyperpod.common.telemetry.constants import Feature
 import yaml
 import logging
 
-from sagemaker.hyperpod.training.quota_allocation_util import _is_valid, _get_resources_from_compute_quotas, _get_resources_from_instance, _get_limits
+from sagemaker.hyperpod.training.quota_allocation_util import (
+    _is_valid,
+    _get_resources_from_compute_quotas,
+    _get_resources_from_instance,
+    _get_limits,
+    _resolve_default_memory_values,
+    _set_default_accelerators_val,
+    _validate_accelerators_inputs,
+    _resolve_default_cpu_values,
+    _trim_resource_requests
+)
 
 TRAINING_GROUP = "sagemaker.amazonaws.com"
 API_VERSION = "v1"
@@ -28,7 +39,8 @@ PLURAL = "hyperpodpytorchjobs"
 KIND = "HyperPodPyTorchJob"
 TRAINING_OPERATOR_NAMESPACE = "aws-hyperpod"
 TRAINING_OPERATOR_LABEL = "hp-training-control-plane"
-
+NVIDIA_RESOURCE_KEY = NVIDIA_GPU_RESOURCE_LIMIT_KEY
+NEURON_RESOURCE_KEY = NEURON_RESOURCE_LIMIT_KEY
 
 class HyperPodPytorchJob(_HyperPodPytorchJob):
     """HyperPod PyTorch job for distributed training on Amazon SageMaker HyperPod clusters.
@@ -94,27 +106,64 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             requests = resources.get('requests', {})
             limits = resources.get('limits', {})
 
+            accelerators = None
+            if requests.get('accelerators'):
+                accelerators = int(requests.get('accelerators'))
+            elif requests.get(NVIDIA_RESOURCE_KEY):
+                accelerators = int(requests.get(NVIDIA_RESOURCE_KEY))
+            elif requests.get(NEURON_RESOURCE_KEY):
+                accelerators = int(requests.get(NEURON_RESOURCE_KEY))
+
             # Extract resource values
-            vcpu = float(requests.get('vcpu')) if requests.get('vcpu') else None
+            vcpu = None
+            if requests.get('cpu'):
+                vcpu = float(requests.get('cpu'))
+            elif requests.get('vcpu'):
+                vcpu = float(requests.get('vcpu'))
+
+            vcpu_limit = None
+            if limits.get('cpu'):
+                vcpu_limit = float(limits.get('cpu'))
+            elif limits.get('vcpu'):
+                vcpu_limit = float(limits.get('vcpu'))
+
             memory = cls._extract_numeric_value(requests.get('memory'))
-            accelerators = int(requests.get('accelerators'))  if requests.get('accelerators') else None
             memory_limit = cls._extract_numeric_value(limits.get('memory'))
-            vcpu_limit = float(limits.get('vcpu')) if limits.get('vcpu') else None
-            accelerators_limit = int(limits.get('accelerators'))  if limits.get('accelerators') else None
+
+            accelerators_limit = None
+            if limits.get('accelerators'):
+                accelerators_limit = int(limits.get('accelerators'))
+            elif limits.get(NVIDIA_RESOURCE_KEY):
+                accelerators_limit = int(limits.get(NVIDIA_RESOURCE_KEY))
+            elif limits.get(NEURON_RESOURCE_KEY):
+                accelerators_limit = int(limits.get(NEURON_RESOURCE_KEY))
+
+            acc_req, acc_lim = _set_default_accelerators_val(instance_type, accelerators, accelerators_limit)
+            _validate_accelerators_inputs(instance_type, acc_req, acc_lim)
 
             # Validate configuration
-            valid, error = _is_valid(vcpu, memory, accelerators, node_count, instance_type)
+            valid, error = _is_valid(vcpu, memory, acc_req, node_count, instance_type)
             if not valid:
                 raise ValueError(error)
 
             # Calculate resource values
-            requests_value = (_get_resources_from_compute_quotas(instance_type, vcpu, memory, accelerators)
-                              or _get_resources_from_instance(instance_type, node_count=1))
-            limits_value = _get_limits(instance_type, vcpu_limit, memory_limit, accelerators_limit)
+            requests_values = _get_resources_from_compute_quotas(instance_type, vcpu, memory, acc_req)
+            if requests_values is None:
+                requests_values = _get_resources_from_instance(instance_type, node_count=1)
+                _trim_resource_requests(instance_type, requests_values)
+                if NVIDIA_RESOURCE_KEY in requests_values:
+                    acc_lim = requests_values[NVIDIA_RESOURCE_KEY]
+                elif NEURON_RESOURCE_KEY in requests_values:
+                    acc_lim = requests_values[NEURON_RESOURCE_KEY]
+
+            limits_values = _get_limits(instance_type, vcpu_limit, memory_limit, acc_lim)
+            _resolve_default_memory_values(instance_type, requests_values, limits_values)
+            _resolve_default_cpu_values(instance_type, requests_values)
 
             # Update data with calculated values
-            data['template']['spec']['containers'][0]['resources']['requests'] = requests_value
-            data['template']['spec']['containers'][0]['resources']['limits'] = limits_value
+            data['template']['spec']['containers'][0]['resources']['requests'] = requests_values
+            data['template']['spec']['containers'][0]['resources']['limits'] = limits_values
+
             return data
         except KeyError as e:
             raise ValueError(f"Missing required configuration key: {str(e)}")
