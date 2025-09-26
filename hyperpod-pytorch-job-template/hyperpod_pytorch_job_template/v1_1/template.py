@@ -24,11 +24,13 @@ metadata:
 {%- endif %}
 spec:
 {%- if tasks_per_node %}
-  nprocPerNode: {{ tasks_per_node }}
+  nprocPerNode: "{{ tasks_per_node }}"
 {%- endif %}
   replicaSpecs:
     - name: pod
-      replicas: {{ node_count or 1 }}
+    {%- if node_count %}
+      replicas: {{ node_count }}
+    {%- endif %}
       template:
         metadata:
           name: {{ job_name }}
@@ -68,7 +70,7 @@ spec:
               env:
 {%-             for key, value in environment.items() %}
                 - name: {{ key }}
-                  value: {{ value }}
+                  value: "{{ value }}"
 {%-             endfor %}
 {%-           endif %}
 {%-           if volume %}

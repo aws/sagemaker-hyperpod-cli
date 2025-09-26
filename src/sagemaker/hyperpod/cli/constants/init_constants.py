@@ -42,25 +42,17 @@ TEMPLATES = {
 }
 
 
-def _get_handler_from_latest_template(template_name, handler_name):
-    """Dynamically import handler from the latest version of a template"""
+def _get_handler_from_template_version(template_name, version, handler_name):
+    """Dynamically import handler from a specific version of a template"""
     try:
         template_info = TEMPLATES[template_name]
         registry = template_info["registry"]
-
-        # Get latest version using same logic as _get_latest_class
-        available_versions = list(registry.keys())
-        def version_key(v):
-            try:
-                return tuple(map(int, v.split('.')))
-            except ValueError:
-                return (0, 0)
-
-        latest_version = max(available_versions, key=version_key)
-        latest_model = registry[latest_version]
         
-        # Get handler from module
-        module = sys.modules[latest_model.__module__]
+        if version not in registry:
+            return None
+            
+        model_class = registry[version]
+        module = sys.modules[model_class.__module__]
         return getattr(module, handler_name)
     except (ImportError, AttributeError):
         return None
@@ -68,7 +60,8 @@ def _get_handler_from_latest_template(template_name, handler_name):
 
 # Template.field to handler mapping - avoids conflicts and works reliably
 SPECIAL_FIELD_HANDLERS = {
-    'hyp-pytorch-job.volume': _get_handler_from_latest_template("hyp-pytorch-job", "VOLUME_TYPE_HANDLER"),
+    'hyp-pytorch-job.1.0.volume': _get_handler_from_template_version("hyp-pytorch-job", "1.0", "VOLUME_TYPE_HANDLER"),
+    'hyp-pytorch-job.1.1.volume': _get_handler_from_template_version("hyp-pytorch-job", "1.1", "VOLUME_TYPE_HANDLER"),
 }
 
 USAGE_GUIDE_TEXT_CFN = """# SageMaker HyperPod CLI - Initialization Workflow

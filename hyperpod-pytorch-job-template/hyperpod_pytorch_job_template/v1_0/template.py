@@ -1,5 +1,5 @@
 TEMPLATE_CONTENT = """
-apiVersion: sagemaker.amazonaws.com.golang.a2z.com/v1
+apiVersion: sagemaker.amazonaws.com/v1
 kind: HyperPodPyTorchJob
 metadata:
   name: {{ job_name }}
@@ -42,7 +42,7 @@ spec:
               env:
 {%-             for key, value in environment.items() %}
                 - name: {{ key }}
-                  value: {{ value }}
+                  value: "{{ value }}"
 {%-             endfor %}
 {%-           endif %}
 {%-           if volume %}

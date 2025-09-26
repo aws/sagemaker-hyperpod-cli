@@ -39,7 +39,7 @@ class VolumeConfig(BaseModel):
         description="PVC claim name (required for pvc volumes)",
         min_length=1
     )
-    read_only: Optional[Literal['true', 'false']] = Field(None, description="Read-only flag for pvc volumes")
+    read_only: Optional[bool] = Field(None, description="Read-only flag for pvc volumes")
     
     @field_validator('mount_path', 'path')
     @classmethod
@@ -260,7 +260,7 @@ class PyTorchJobConfig(BaseModel):
                 elif vol.type == "pvc":
                     volume_obj = Volumes(name=vol.name, persistent_volume_claim=PersistentVolumeClaim(
                         claim_name=vol.claim_name,
-                        read_only=vol.read_only == "true" if vol.read_only else False
+                        read_only=vol.read_only if vol.read_only is not None else False
                     ))
                 volumes.append(volume_obj)
 

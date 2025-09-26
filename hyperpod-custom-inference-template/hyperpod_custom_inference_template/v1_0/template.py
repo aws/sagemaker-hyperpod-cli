@@ -10,16 +10,6 @@ spec:
   modelName: {{ model_name }}
   modelVersion: {{ model_version or "" }}
   
-  env:
-{%- if env %}
-{%- for key, val in env.items() %}
-    - name: {{ key }}
-      value: {{ val }}
-{%- endfor %}
-{%- else %}
-    []
-{%- endif %}
-  
   metrics:
     enabled: {{ metrics_enabled or False }}
   
@@ -42,6 +32,15 @@ spec:
     tlsCertificateOutputS3Uri: {{ tls_certificate_output_s3_uri or "" }}
   
   worker:
+    environmentVariables:
+  {%- if env %}
+  {%- for key, val in env.items() %}
+      - name: {{ key }}
+        value: {{ val }}
+  {%- endfor %}
+  {%- else %}
+      []
+  {%- endif %}
     image: {{ image_uri }}
     modelInvocationPort:
       containerPort: {{ container_port }}
