@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from pydantic import BaseModel, Field, model_validator, ConfigDict
 from typing import Optional
+import yaml
 
 # reuse the nested types
 from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
@@ -115,3 +116,12 @@ class FlatHPJumpStartEndpoint(BaseModel):
             sage_maker_endpoint=sage_ep,
             tls_config=tls
         )
+
+    def create_from_k8s_yaml(self, yaml_file_path: str) -> None:
+        """Create HPJumpStartEndpoint from k8s YAML file."""
+        with open(yaml_file_path, 'r') as f:
+            yaml_data = yaml.safe_load(f)
+        
+        endpoint = HPJumpStartEndpoint.model_validate(yaml_data['spec'], by_name=True)
+        endpoint.metadata = Metadata.model_validate(yaml_data['metadata'], by_name=True)
+        endpoint.create()
