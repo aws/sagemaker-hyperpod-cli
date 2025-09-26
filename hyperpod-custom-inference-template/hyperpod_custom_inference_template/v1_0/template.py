@@ -36,7 +36,7 @@ spec:
   {%- if env %}
   {%- for key, val in env.items() %}
       - name: {{ key }}
-        value: {{ val }}
+        value: "{{ val }}"
   {%- endfor %}
   {%- else %}
       []
