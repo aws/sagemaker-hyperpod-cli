@@ -361,6 +361,7 @@ def test_cluster_update_workflow(runner, cluster_name):
     print(f"✅ Cluster update verification successful - NodeRecovery is now {current_recovery}")
 
 
+
 @pytest.mark.dependency(name="cleanup_initiation", depends=["update_cluster"])
 def test_cleanup_cluster_resources(runner, cluster_name):
     """Clean up cluster resources created during testing.
