@@ -14,7 +14,7 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config impo
     PersistentVolumeClaim
 )
 from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob
-
+import yaml
 
 class VolumeConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -39,7 +39,7 @@ class VolumeConfig(BaseModel):
         description="PVC claim name (required for pvc volumes)",
         min_length=1
     )
-    read_only: Optional[Literal['true', 'false']] = Field(None, description="Read-only flag for pvc volumes")
+    read_only: Optional[bool] = Field(None, description="Read-only flag for pvc volumes")
     
     @field_validator('mount_path', 'path')
     @classmethod
@@ -260,7 +260,7 @@ class PyTorchJobConfig(BaseModel):
                 elif vol.type == "pvc":
                     volume_obj = Volumes(name=vol.name, persistent_volume_claim=PersistentVolumeClaim(
                         claim_name=vol.claim_name,
-                        read_only=vol.read_only == "true" if vol.read_only else False
+                        read_only=vol.read_only if vol.read_only is not None else False
                     ))
                 volumes.append(volume_obj)
 
@@ -309,6 +309,17 @@ class PyTorchJobConfig(BaseModel):
 
         result = HyperPodPytorchJob(**job_kwargs)
         return result
+    
+    def create_from_k8s_yaml(self, yaml_file_path: str) -> None:
+        """Create HyperPodPytorchJob from k8s YAML file."""
+        with open(yaml_file_path, 'r') as f:
+            yaml_data = yaml.safe_load(f)
+        
+        # Combine metadata and spec for full validation
+        full_data = {**yaml_data['spec'], 'metadata': yaml_data['metadata']}
+        job = HyperPodPytorchJob.model_validate(full_data, by_name=True)
+        job.create()
+
 
 # Volume-specific type handlers - only override what's needed
 def volume_parse_strings(ctx_or_strings, param=None, value=None):

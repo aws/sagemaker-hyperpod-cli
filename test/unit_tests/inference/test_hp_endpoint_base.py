@@ -33,10 +33,14 @@ class TestHPEndpointBase(unittest.TestCase):
     @patch("kubernetes.client.CustomObjectsApi")
     @patch.object(HPEndpointBase, "verify_kube_config")
     def test_call_create_api(self, mock_verify_config, mock_custom_api):
+        from sagemaker.hyperpod.common.config.metadata import Metadata
+        
         mock_spec = MagicMock()
         mock_spec.model_dump.return_value = {"test": "data"}
+        
+        mock_metadata = Metadata(name="test-name", namespace="test-ns")
 
-        self.base.call_create_api("test-name", "JumpStartModel", "test-ns", mock_spec)
+        self.base.call_create_api(mock_metadata, "JumpStartModel", mock_spec)
 
         mock_custom_api.return_value.create_namespaced_custom_object.assert_called_once()
 

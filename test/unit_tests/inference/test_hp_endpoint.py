@@ -102,9 +102,8 @@ class TestHPEndpoint(unittest.TestCase):
         self.endpoint.create()
 
         mock_create_api.assert_called_once_with(
-            name="s3-test-endpoint-name",
+            metadata=unittest.mock.ANY,
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
-            namespace="default",
             spec=unittest.mock.ANY,
             debug=False,
         )
@@ -147,8 +146,8 @@ class TestHPEndpoint(unittest.TestCase):
         # Verify it uses metadata name and namespace
         mock_create_api.assert_called_once()
         call_args = mock_create_api.call_args[1]
-        assert call_args['name'] == 'metadata-test-name'
-        assert call_args['namespace'] == 'metadata-test-ns'
+        assert call_args['metadata'].name == 'metadata-test-name'
+        assert call_args['metadata'].namespace == 'metadata-test-ns'
 
     @patch.object(HPEndpoint, "validate_instance_type")
     @patch.object(HPEndpoint, "call_create_api")

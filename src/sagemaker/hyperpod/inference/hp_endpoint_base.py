@@ -10,6 +10,7 @@ from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
 from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     _HPEndpoint,
 )
+from sagemaker.hyperpod.common.config.metadata import Metadata
 from sagemaker.hyperpod.common.utils import (
     handle_exception,
     setup_logging,
@@ -59,9 +60,8 @@ class HPEndpointBase:
     @classmethod
     def call_create_api(
         cls,
-        name: str,
+        metadata: Metadata,
         kind: str,
-        namespace: str,
         spec: Union[_HPJumpStartEndpoint, _HPEndpoint],
         debug: bool = False,
     ):
@@ -76,15 +76,12 @@ class HPEndpointBase:
            * - Parameter
              - Type
              - Description
-           * - name
-             - str
-             - Name of the endpoint to create
+           * - metadata
+             - Metadata
+             - Kubernetes metadata object containing name, namespace, labels, and annotations
            * - kind
              - str
              - Kubernetes resource kind (e.g., 'HPJumpStartEndpoint')
-           * - namespace
-             - str
-             - Kubernetes namespace to create the endpoint in
            * - spec
              - Union[_HPJumpStartEndpoint, _HPEndpoint]
              - Endpoint specification
@@ -99,8 +96,10 @@ class HPEndpointBase:
            .. code-block:: python
 
               >>> from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import _HPJumpStartEndpoint
+              >>> from sagemaker.hyperpod.common.config.metadata import Metadata
               >>> spec = _HPJumpStartEndpoint(...)
-              >>> HPEndpointBase.call_create_api("my-endpoint", "HPJumpStartEndpoint", "default", spec)
+              >>> metadata = Metadata(name="my-endpoint", namespace="default")
+              >>> HPEndpointBase.call_create_api(metadata, "HPJumpStartEndpoint", spec)
         """
         cls.verify_kube_config()
 
@@ -112,7 +111,7 @@ class HPEndpointBase:
         body = {
             "apiVersion": INFERENCE_FULL_API_VERSION,
             "kind": kind,
-            "metadata": SimpleNamespace(name=name, namespace=namespace).__dict__,
+            "metadata": metadata.model_dump(exclude_none=True),
             "spec": spec.model_dump(exclude_none=True),
         }
 
@@ -122,13 +121,13 @@ class HPEndpointBase:
             custom_api.create_namespaced_custom_object(
                 group=INFERENCE_GROUP,
                 version=INFERENCE_API_VERSION,
-                namespace=namespace,
+                namespace=metadata.namespace,
                 plural=KIND_PLURAL_MAP[kind],
                 body=body,
             )
         except Exception as e:
-            logger.error(f"Failed to create endpoint in namespace {namespace}!")
-            handle_exception(e, name, namespace)
+            logger.error(f"Failed to create endpoint in namespace {metadata.namespace}!")
+            handle_exception(e, metadata.name, metadata.namespace)
 
     @classmethod
     def call_list_api(
