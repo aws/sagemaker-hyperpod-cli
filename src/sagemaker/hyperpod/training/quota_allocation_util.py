@@ -212,7 +212,7 @@ def _get_resources_from_instance(instance_type: str, node_count: int) -> dict:
     return result
 
 
-def _trim_resource_requests(instance_type: str, requests_values: dict):
+def _trim_resource_requests(instance_type: str, requests_values: dict) -> dict:
     instance = INSTANCE_RESOURCES.get(instance_type, {})
     cpu_capacity = instance.get("cpu", 0)
     max_allocatable_cpu = cpu_capacity - (_calculate_cpu_reservation(cpu_capacity))
@@ -379,7 +379,7 @@ def _get_accelerator_type_and_count(instance_type: str) -> Tuple[Optional[str], 
         return None, 0
 
 
-def _calculate_memory_reservation(memory_gb):
+def _calculate_memory_reservation(memory_gb: int) -> float:
 
     static_memory_overhead = 0.5  # 500MB
 
@@ -416,7 +416,7 @@ def _calculate_memory_reservation(memory_gb):
     return reserved_memory
 
 
-def _calculate_cpu_reservation(cpu_count):
+def _calculate_cpu_reservation(cpu_count: int) -> float:
 
     # Static overhead for observability tools and system processes
     static_cpu_overhead = 0.1  # 0.1 cores
