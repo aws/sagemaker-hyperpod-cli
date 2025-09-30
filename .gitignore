@@ -23,6 +23,11 @@ doc/_build/
 /sagemaker-hyperpod/.coverage
 /sagemaker-hyperpod/.coverage.*
 
+/hyperpod-cluster-stack-template/build
+/hyperpod-pytorch-job-template/build
+/hyperpod-custom-inference-template/build
+/hyperpod-jumpstart-inference-template/build
+
 # Ignore all contents of result and results directories
 /result/
 /results/
@@ -31,5 +36,3 @@ doc/_build/
 
 .venv*
 venv
-
-/hyperpod-cluster-stack-template/build

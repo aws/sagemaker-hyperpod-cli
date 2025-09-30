@@ -149,8 +149,8 @@ class TestGpuQuotaAllocationIntegration:
         ]
         result = execute_command(describe_cmd)
         assert result.returncode == 0
-        assert "      Limits:   {'memory': '108Gi', 'nvidia.com/gpu': '1'}" in result.stdout
-        assert "      Requests: {'cpu': '29', 'memory': '108Gi', 'nvidia.com/gpu': '1'}" in result.stdout
+        assert "      Limits:   {'memory': '104Gi', 'nvidia.com/gpu': '1'}" in result.stdout
+        assert "      Requests: {'cpu': '29', 'memory': '104Gi', 'nvidia.com/gpu': '1'}" in result.stdout
 
         delete_cmd = [
             "hyp", "delete", "hyp-pytorch-job",

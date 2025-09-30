@@ -30,9 +30,6 @@ from sagemaker.hyperpod.training.quota_allocation_util import (
     INSTANCE_RESOURCES
 )
 
-MAX_MEMORY_PROPORTION = 0.85
-MAX_CPU_PROPORTION = 0.92
-
 def float_equals(a, b, tolerance=0.0001):
     return abs(a - b) <= tolerance
 
@@ -107,7 +104,7 @@ class TestQuotaAllocationUtil:
     def test_get_resources_from_compute_quotas_gpu_instance_with_accelerators_ratio_1(self):
         result = _get_resources_from_compute_quotas("ml.g5.xlarge", None, None, 1)
         # ml.g5.xlarge has 1 GPU, 4 CPUs, 16GiB memory
-        assert result == {"cpu": "3.82", "memory": "12.9Gi", "nvidia.com/gpu": 1}
+        assert result == {"cpu": "3.25", "memory": "11.7Gi", "nvidia.com/gpu": 1}
 
     def test_get_resources_from_compute_quotas_gpu_instance_with_accelerators_ratio_half(self):
         result = _get_resources_from_compute_quotas("ml.g6e.48xlarge", None, None, 4)
@@ -137,7 +134,7 @@ class TestQuotaAllocationUtil:
     def test_get_resources_from_compute_quotas_accelerators_and_cpu_only(self):
         result = _get_resources_from_compute_quotas("ml.g5.xlarge", 2.0, None, 1)
         # ml.g5.xlarge has 1 gpu, 4 CPUs and 16GB memory, and memory calculated as accelerator ratio
-        assert result == {'cpu': '2.0', 'memory': '12.9Gi', 'nvidia.com/gpu': 1}
+        assert result == {'cpu': '2.0', 'memory': '11.7Gi', 'nvidia.com/gpu': 1}
 
     # Tests for _get_resources_from_instance method
     @pytest.mark.parametrize(
@@ -312,8 +309,8 @@ class TestQuotaAllocationUtil:
         requests = {"memory": "16Gi"}
         limits = {}
         _resolve_default_memory_values("ml.g5.xlarge", requests, limits)
-        assert requests["memory"] == "13Gi"
-        assert limits["memory"] == "13Gi"
+        assert requests["memory"] == "11Gi"
+        assert limits["memory"] == "11Gi"
 
     # Tests for _validate_accelerators_inputs
     def test_validate_accelerators_inputs_valid_equal_values(self):
@@ -419,17 +416,17 @@ class TestQuotaAllocationUtil:
     def test_memory_reservation_small_instance(self):
         memory_gb = 4
         reserved = _calculate_memory_reservation(memory_gb)
-        assert float_equals(reserved, 1.5)
+        assert float_equals(reserved, 1.7)
 
     def test_memory_reservation_medium_instance(self):
         memory_gb = 16
         reserved = _calculate_memory_reservation(memory_gb)
-        assert (float_equals(reserved, 3.1))
+        assert (float_equals(reserved, 4.3))
 
     def test_memory_reservation_large_instance(self):
         memory_gb = 2048
         reserved = _calculate_memory_reservation(memory_gb)
-        assert (float_equals(reserved, 48.22))
+        assert (float_equals(reserved, 157.74))
 
     def test_memory_reservation_zero(self):
         memory_gb = 0
@@ -440,23 +437,23 @@ class TestQuotaAllocationUtil:
         """Test CPU reservation for single core"""
         cpu_count = 1
         reserved = _calculate_cpu_reservation(cpu_count)
-        assert (float_equals(reserved, 0.16))
+        assert (float_equals(reserved, 0.4))
 
     def test_cpu_reservation_dual_core(self):
         cpu_count = 2
         reserved = _calculate_cpu_reservation(cpu_count)
-        assert (float_equals(reserved, 0.17))
+        assert (float_equals(reserved, 0.55))
 
     def test_cpu_reservation_quad_core(self):
         cpu_count = 4
         reserved = _calculate_cpu_reservation(cpu_count)
-        assert (float_equals(reserved, 0.18))
+        assert (float_equals(reserved, 0.75))
 
     def test_cpu_reservation_many_cores(self):
         """Test CPU reservation for 96 cores"""
         cpu_count = 96
         reserved = _calculate_cpu_reservation(cpu_count)
-        assert (float_equals(reserved, 0.41))
+        assert (float_equals(reserved, 6.27))
 
     def test_cpu_reservation_zero(self):
         """Test CPU reservation with 0 cores"""

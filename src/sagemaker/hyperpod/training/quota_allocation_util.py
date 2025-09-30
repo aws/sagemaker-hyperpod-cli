@@ -137,9 +137,6 @@ INSTANCE_RESOURCES = {
     "ml.i3en.24xlarge": {"cpu": 96, "gpu": 0, "trainium": 0, "memory": 768}
 }
 
-MAX_MEMORY_PROPORTION = 0.85
-MAX_CPU_PROPORTION = 0.92
-
 def _has_compute_resource_quota_allocation_resources(memory_in_gib: Optional[float], vcpu: Optional[float], accelerators: Optional[int]) -> bool:
     return (
         (memory_in_gib is not None) or
@@ -269,7 +266,7 @@ def _resolve_default_cpu_values(instance_type: str, requests_values: dict) -> No
             f"Maximum available CPU for {instance_type} is {total_available_cpu}."
         )
 
-    max_allocatable_cpu = int(total_available_cpu * MAX_CPU_PROPORTION)
+    max_allocatable_cpu = int(total_available_cpu - _calculate_cpu_reservation(total_available_cpu))
     cpu_request = min(cpu_request, max_allocatable_cpu)
     requests_values["cpu"] = str(cpu_request)
 
@@ -297,9 +294,11 @@ def _resolve_default_memory_values(instance_type: str, requests_values: dict, li
             f"Maximum available memory for {instance_type} is {total_available_memory}Gi."
         )
 
-    max_allocatable_memory = int(total_available_memory * MAX_MEMORY_PROPORTION)
+    max_allocatable_memory = int(total_available_memory - _calculate_memory_reservation(total_available_memory))
+
     if not user_set_limit:
         memory_limit = min(memory_limit, max_allocatable_memory)
+
     memory_request = min(memory_request, max_allocatable_memory)
     limits_values["memory"] = str(memory_limit) + "Gi"
     requests_values["memory"] = str(memory_request) + "Gi"
@@ -387,32 +386,32 @@ def _calculate_memory_reservation(memory_gb):
     reserved_memory = static_memory_overhead
     remaining = memory_gb
 
-    # First 4 GB (25%)
+    # First 4 GB (30%)
     first_4gb = min(4, remaining)
-    reserved_memory += first_4gb * 0.25
+    reserved_memory += first_4gb * 0.3
     remaining -= first_4gb
 
-    # Next 4 GB (20%)
+    # Next 4 GB (25%)
     if remaining > 0:
         next_4gb = min(4, remaining)
-        reserved_memory += next_4gb * 0.20
+        reserved_memory += next_4gb * 0.25
         remaining -= next_4gb
 
-    # Next 8 GB (10%)
+    # Next 8 GB (20%)
     if remaining > 0:
         next_8gb = min(8, remaining)
-        reserved_memory += next_8gb * 0.10
+        reserved_memory += next_8gb * 0.2
         remaining -= next_8gb
 
-    # Next 112 GB (6%)
+    # Next 112 GB (17%)
     if remaining > 0:
         next_112gb = min(112, remaining)
-        reserved_memory += next_112gb * 0.06
+        reserved_memory += next_112gb * 0.17
         remaining -= next_112gb
 
-    # Remaining memory (2%)
+    # Remaining memory (7%)
     if remaining > 0:
-        reserved_memory += remaining * 0.02
+        reserved_memory += remaining * 0.07
 
     return reserved_memory
 
@@ -424,21 +423,21 @@ def _calculate_cpu_reservation(cpu_count):
 
     reserved_cpu = static_cpu_overhead
 
-    # First core (6%)
+    # First core (30%)
     if cpu_count >= 1:
-        reserved_cpu += 0.06
+        reserved_cpu += 0.3
 
-    # Second core (1%)
+    # Second core (15%)
     if cpu_count >= 2:
-        reserved_cpu += 0.01
+        reserved_cpu += 0.15
 
-    # Cores 3-4 (0.5% each)
+    # Cores 3-4 (10% each)
     for _ in range(min(2, max(0, cpu_count - 2))):
-        reserved_cpu += 0.005
+        reserved_cpu += 0.1
 
-    # Remaining cores (0.25% each)
+    # Remaining cores (6% each)
     if cpu_count > 4:
-        reserved_cpu += (cpu_count - 4) * 0.0025
+        reserved_cpu += (cpu_count - 4) * 0.06
 
     return reserved_cpu
 
