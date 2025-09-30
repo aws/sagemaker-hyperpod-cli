@@ -48,7 +48,6 @@ from sagemaker.hyperpod.cli.commands.init import (
 )
 
 
-@click.group(context_settings={'max_content_width': 200})
 def get_package_version(package_name):
     try:
         return version(package_name)

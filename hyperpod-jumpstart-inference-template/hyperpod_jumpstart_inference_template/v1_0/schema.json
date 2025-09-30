@@ -1,6 +1,20 @@
 {
   "additionalProperties": false,
   "properties": {
+    "namespace": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Kubernetes namespace",
+      "title": "Namespace"
+    },
     "accept_eula": {
       "default": false,
       "description": "Whether model terms of use have been accepted",

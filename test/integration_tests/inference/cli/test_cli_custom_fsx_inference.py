@@ -20,7 +20,7 @@ from test.integration_tests.utils import get_time_str
 NAMESPACE = "integration"
 VERSION = "1.0"
 REGION = "us-east-2"
-TIMEOUT_MINUTES = 15
+TIMEOUT_MINUTES = 20
 POLL_INTERVAL_SECONDS = 30
 
 BETA_FSX = "fs-0402c3308e6aba65c"    # fsx id for beta integration test cluster
@@ -112,7 +112,6 @@ def test_wait_until_inservice(custom_endpoint_name):
 
 
 @pytest.mark.dependency(depends=["create"])
-@pytest.mark.skip
 def test_custom_invoke(runner, custom_endpoint_name):
     result = runner.invoke(custom_invoke, [
         "--endpoint-name", custom_endpoint_name,

@@ -45,10 +45,14 @@ hyp create hyp-jumpstart-endpoint [OPTIONS]
 |-----------|------|----------|-------------|
 | `--model-id` | TEXT | Yes | JumpStart model identifier (1-63 characters, alphanumeric with hyphens) |
 | `--instance-type` | TEXT | Yes | EC2 instance type for inference (must start with "ml.") |
+| `--namespace` | TEXT | No | Kubernetes namespace |
+| `--metadata-name` | TEXT | No | Name of the jumpstart endpoint object |
 | `--accept-eula` | BOOLEAN | No | Whether model terms of use have been accepted (default: false) |
 | `--model-version` | TEXT | No | Semantic version of the model (e.g., "1.0.0", 5-14 characters) |
 | `--endpoint-name` | TEXT | No | Name of SageMaker endpoint (1-63 characters, alphanumeric with hyphens) |
 | `--tls-certificate-output-s3-uri` | TEXT | No | S3 URI to write the TLS certificate (optional) |
+| `--debug` | FLAG | No | Enable debug mode (default: false) |
+
 
 ### hyp create hyp-custom-endpoint
 
@@ -70,6 +74,8 @@ hyp create hyp-custom-endpoint [OPTIONS]
 | `--image-uri` | TEXT | Yes | Docker image URI for inference |
 | `--container-port` | INTEGER | Yes | Port on which model server listens (1-65535) |
 | `--model-volume-mount-name` | TEXT | Yes | Name of the model volume mount |
+| `--namespace` | TEXT | No | Kubernetes namespace |
+| `--metadata-name` | TEXT | No | Name of the custom endpoint object |
 | `--endpoint-name` | TEXT | No | Name of SageMaker endpoint (1-63 characters, alphanumeric with hyphens) |
 | `--env` | OBJECT | No | Environment variables as key-value pairs |
 | `--metrics-enabled` | BOOLEAN | No | Enable metrics collection (default: false) |
@@ -97,6 +103,8 @@ hyp create hyp-custom-endpoint [OPTIONS]
 | `--target-value` | NUMBER | No | Target value for the CloudWatch metric |
 | `--use-cached-metrics` | BOOLEAN | No | Enable caching of metric values (default: true) |
 | `--invocation-endpoint` | TEXT | No | Invocation endpoint path (default: "invocations") |
+| `--debug` | FLAG | No | Enable debug mode (default: false) |
+
 
 ## Inference Endpoint Management Commands
 

@@ -24,4 +24,4 @@ include = ["hyperpod_cluster_stack_template*"]
 include-package-data = true
 
 [tool.setuptools.package-data]
-"*" = ["*.yaml"]
+"*" = ["*.yaml", "*.json"]
