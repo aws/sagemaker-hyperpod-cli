@@ -25,6 +25,7 @@ INSTANCE_RESOURCES = {
     "ml.p4d.24xlarge": {"cpu": 96, "gpu": 8, "trainium": 0, "memory": 1152},
     "ml.p4de.24xlarge": {"cpu": 96, "gpu": 8, "trainium": 0, "memory": 1152},
     "ml.p5.48xlarge": {"cpu": 192, "gpu": 8, "trainium": 0, "memory": 2048},
+    "ml.p5.4xlarge": {"cpu": 16, "gpu": 1, "trainium": 0, "memory": 256},
     "ml.trn1.32xlarge": {"cpu": 128, "gpu": 0, "trainium": 16, "memory": 512},
     "ml.trn1n.32xlarge": {"cpu": 128, "gpu": 0, "trainium": 16, "memory": 512},
     "ml.g5.xlarge": {"cpu": 4, "gpu": 1, "trainium": 0, "memory": 16},
