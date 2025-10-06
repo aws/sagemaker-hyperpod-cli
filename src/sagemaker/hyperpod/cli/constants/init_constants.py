@@ -41,6 +41,22 @@ TEMPLATES = {
     }
 }
 
+# K8s Kind to class mapping for create_from_k8s_yaml
+K8S_KIND_MAPPING = {
+    "InferenceEndpointConfig": {
+        "class_path": "sagemaker.hyperpod.inference.hp_endpoint.HPEndpoint",
+        "metadata_handling": "separate"  # metadata handled separately
+    },
+    "JumpStartModel": {
+        "class_path": "sagemaker.hyperpod.inference.hp_jumpstart_endpoint.HPJumpStartEndpoint", 
+        "metadata_handling": "separate"
+    },
+    "HyperPodPyTorchJob": {
+        "class_path": "sagemaker.hyperpod.training.hyperpod_pytorch_job.HyperPodPytorchJob",
+        "metadata_handling": "combined"  # metadata combined with spec
+    }
+}
+
 
 def _get_handler_from_template_version(template_name, version, handler_name):
     """Dynamically import handler from a specific version of a template"""

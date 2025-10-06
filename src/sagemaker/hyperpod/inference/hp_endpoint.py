@@ -82,40 +82,11 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
 
         spec = _HPEndpoint.model_validate(input, by_name=True)
 
-        name = self.metadata.name if self.metadata else None
-        namespace = self.metadata.namespace if self.metadata else None
+        for key, value in spec.model_dump().items():
+            setattr(self, key, value)
 
-        if not namespace:
-            namespace = get_default_namespace()
+        self.create(debug)
 
-        if not spec.endpointName and not name:
-            raise Exception('Input "name" is required if endpoint name is not provided')
-
-        if not name:
-            name = spec.endpointName
-
-        # Create metadata object with labels and annotations if available
-        metadata = Metadata(
-            name=name,
-            namespace=namespace,
-            labels=self.metadata.labels if self.metadata else None,
-            annotations=self.metadata.annotations if self.metadata else None,
-        )
-
-        self.validate_instance_type(spec.instanceType)
-
-        self.call_create_api(
-            metadata=metadata,
-            kind=INFERENCE_ENDPOINT_CONFIG_KIND,
-            spec=spec,
-            debug=debug,
-        )
-
-        self.metadata = metadata
-
-        logger.info(
-            f"Creating sagemaker model and endpoint. Endpoint name: {spec.endpointName}.\n The process may take a few minutes..."
-        )
 
     def refresh(self):
         if not self.metadata:

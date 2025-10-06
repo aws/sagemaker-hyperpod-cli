@@ -534,3 +534,33 @@ def build_config_from_schema(template: str, version: str, model_config=None, exi
             comment_map[key] = desc
     
     return full_cfg, comment_map
+
+
+def create_from_k8s_yaml(yaml_file_path: str) -> None:
+    """Create HyperPod resource from K8s YAML file based on kind mapping."""
+    from sagemaker.hyperpod.cli.constants.init_constants import K8S_KIND_MAPPING
+    
+    with open(yaml_file_path, 'r') as f:
+        yaml_data = yaml.safe_load(f)
+    
+    kind = yaml_data.get('kind')
+    if not kind or kind not in K8S_KIND_MAPPING:
+        raise ValueError(f"Unsupported kind: {kind}")
+    
+    mapping = K8S_KIND_MAPPING[kind]
+    
+    # Dynamic import
+    module_path, class_name = mapping["class_path"].rsplit(".", 1)
+    module = importlib.import_module(module_path)
+    resource_class = getattr(module, class_name)
+    
+    # Handle different metadata patterns
+    if mapping["metadata_handling"] == "combined":
+        full_data = {**yaml_data['spec'], 'metadata': yaml_data['metadata']}
+        resource = resource_class.model_validate(full_data, by_name=True)
+    else:
+        from sagemaker.hyperpod.common.config.metadata import Metadata
+        resource = resource_class.model_validate(yaml_data['spec'], by_name=True)
+        resource.metadata = Metadata.model_validate(yaml_data['metadata'], by_name=True)
+    
+    resource.create()

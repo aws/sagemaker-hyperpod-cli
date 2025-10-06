@@ -1,4 +1,4 @@
-TEMPLATE_CONTENT = """### Please keep template file unchanged ###
+TEMPLATE_CONTENT = """
 apiVersion: sagemaker.amazonaws.com/v1
 kind: HyperPodPyTorchJob
 metadata:

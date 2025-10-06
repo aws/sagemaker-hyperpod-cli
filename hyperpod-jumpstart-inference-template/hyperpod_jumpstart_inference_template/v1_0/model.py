@@ -116,12 +116,3 @@ class FlatHPJumpStartEndpoint(BaseModel):
             sage_maker_endpoint=sage_ep,
             tls_config=tls
         )
-
-    def create_from_k8s_yaml(self, yaml_file_path: str) -> None:
-        """Create HPJumpStartEndpoint from k8s YAML file."""
-        with open(yaml_file_path, 'r') as f:
-            yaml_data = yaml.safe_load(f)
-        
-        endpoint = HPJumpStartEndpoint.model_validate(yaml_data['spec'], by_name=True)
-        endpoint.metadata = Metadata.model_validate(yaml_data['metadata'], by_name=True)
-        endpoint.create()

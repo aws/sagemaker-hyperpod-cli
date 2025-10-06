@@ -86,45 +86,12 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         logger = setup_logging(logger, debug)
 
         spec = _HPJumpStartEndpoint.model_validate(input, by_name=True)
+        
+        for key, value in spec.model_dump().items():
+            setattr(self, key, value)
 
-        endpoint_name = ""
-        name = self.metadata.name if self.metadata else None
-        namespace = self.metadata.namespace if self.metadata else None
+        self.create(debug)
 
-        if spec.sageMakerEndpoint and spec.sageMakerEndpoint.name:
-            endpoint_name = spec.sageMakerEndpoint.name
-
-        if not endpoint_name and not name:
-            raise Exception('Input "name" is required if endpoint name is not provided')
-
-        if not name:
-            name = endpoint_name
-
-        if not namespace:
-            namespace = get_default_namespace()
-
-        # Create metadata object with labels and annotations if available
-        metadata = Metadata(
-            name=name,
-            namespace=namespace,
-            labels=self.metadata.labels if self.metadata else None,
-            annotations=self.metadata.annotations if self.metadata else None,
-        )
-
-        self.validate_instance_type(spec.model.modelId, spec.server.instanceType)
-
-        self.call_create_api(
-            metadata=metadata,
-            kind=JUMPSTART_MODEL_KIND,
-            spec=spec,
-            debug=debug,
-        )
-
-        self.metadata = metadata
-
-        logger.info(
-            f"Creating JumpStart model and sagemaker endpoint. Endpoint name: {endpoint_name}.\n The process may take a few minutes..."
-        )
 
     def refresh(self):
         if not self.metadata:

@@ -1,6 +1,6 @@
 TEMPLATE_CONTENT = """
 apiVersion: inference.sagemaker.aws.amazon.com/v1alpha1
-kind: HPEndpoint
+kind: InferenceEndpointConfig
 metadata:
   name: {{ metadata_name or endpoint_name }}
   namespace: {{ namespace }}
