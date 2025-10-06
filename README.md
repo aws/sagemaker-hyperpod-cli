@@ -46,7 +46,7 @@ The SageMaker HyperPod CLI is a tool that helps create training jobs and inferen
 ### Prerequisites for Inference 
 
 - HyperPod CLI supports creating Inference Endpoints through jumpstart and through custom Endpoint config 
-  - You can follow [inference operator doc](https://github.com/aws/sagemaker-hyperpod-cli/tree/master/helm_chart/HyperPodHelmChart/charts/inference-operator) to install it.
+  - You can follow [inference operator doc](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-model-deployment-setup.html) to install it.
 
 ## Platform Support
 
