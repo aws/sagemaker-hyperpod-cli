@@ -149,8 +149,8 @@ class TestGpuQuotaAllocationIntegration:
         ]
         result = execute_command(describe_cmd)
         assert result.returncode == 0
-        assert "      Limits:   {'nvidia.com/gpu': '1'}" in result.stdout
-        assert "      Requests: {'cpu': '32', 'memory': '128Gi', 'nvidia.com/gpu': '1'}" in result.stdout
+        assert "      Limits:   {'memory': '104Gi', 'nvidia.com/gpu': '1'}" in result.stdout
+        assert "      Requests: {'cpu': '29', 'memory': '104Gi', 'nvidia.com/gpu': '1'}" in result.stdout
 
         delete_cmd = [
             "hyp", "delete", "hyp-pytorch-job",
@@ -197,7 +197,7 @@ class TestGpuQuotaAllocationIntegration:
 
         assert result.returncode == 0
         assert "      Limits:   {'memory': '2899102924800m', 'nvidia.com/gpu': '1'}" in result.stdout
-        assert "      Requests: {'cpu': '32', 'memory': '2040109465600m', 'nvidia.com/gpu': '1'}" in result.stdout
+        assert "      Requests: {'cpu': '29', 'memory': '2040109465600m', 'nvidia.com/gpu': '1'}" in result.stdout
 
         delete_cmd = [
             "hyp", "delete", "hyp-pytorch-job",
@@ -236,7 +236,7 @@ class TestGpuQuotaAllocationIntegration:
                     text=True
                 )
         assert result.returncode != 0
-        assert "Either node-count or a combination of accelerators, vcpu, " in result.stdout
+        assert "Either node-count OR a combination of accelerators, vcpu, " in result.stdout
         assert "memory-in-gib must be specified for instance-type ml.g5.8xlarge" in result.stdout
 
     def test_invalid_no_node_count_or_quota_parameter(self, test_job_name):
