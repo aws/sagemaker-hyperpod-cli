@@ -51,7 +51,7 @@ class ClusterStackBase(BaseModel):
     file_system_type_version: Optional[float] = Field(2.15, description="File system type version for the FSx file system")
     storage_capacity: Optional[int] = Field(1200, description="Storage capacity for the FSx file system in GiB")
     fsx_file_system_id: Optional[str] = Field("", description="Existing FSx file system ID")
-    template_version: str = Field("1", description="Version number of cluster creation template")
+    template_version: Optional[str] = Field("1", description="Version number of cluster creation template")
 
     @field_validator('kubernetes_version', mode='before')
     @classmethod
