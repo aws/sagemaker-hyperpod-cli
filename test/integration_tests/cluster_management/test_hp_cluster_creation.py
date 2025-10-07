@@ -148,8 +148,7 @@ def test_configure_cluster(runner, cluster_name):
         "create-sagemaker-iam-role-stack": "true",
         "create-hyperpod-cluster-stack": "true",
         "create-helm-chart-stack": "true",
-        "create-fsx-stack": "false",
-        "template-version": "1"
+        "create-fsx-stack": "false"
     }
     
     # Build CLI arguments
@@ -171,8 +170,7 @@ def test_configure_cluster(runner, cluster_name):
         "create_sagemaker_iam_role_stack": True,
         "create_hyperpod_cluster_stack": True,
         "create_helm_chart_stack": True,
-        "create_fsx_stack": False,
-        "template-version": "1"
+        "create_fsx_stack": False
     }
     assert_config_values("./", expected_config)
 
@@ -192,7 +190,7 @@ def test_create_cluster(runner, cluster_name, create_time):
     # Record time before submission
     CREATE_TIME = datetime.now(timezone.utc)
     
-    result = runner.invoke(create, ["--region", REGION], catch_exceptions=False)
+    result = runner.invoke(create, ["--region", REGION, "--template-version", "1"], catch_exceptions=False)
     assert_command_succeeded(result)
     
     # Verify expected submission messages appear

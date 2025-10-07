@@ -53,7 +53,7 @@ def parse_status_list(ctx, param, value):
 @click.argument("config-file", required=True)
 @click.argument("stack-name", required=True)
 @click.option("--region", help="AWS region")
-@click.option("--template-version", help="Version number of cluster creation template")
+@click.option("--template-version", type=click.INT, help="Version number of cluster creation template")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 def create_cluster_stack(config_file, region, template_version, debug):
     """Create a new HyperPod cluster stack using the provided configuration.
