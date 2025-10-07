@@ -53,8 +53,9 @@ def parse_status_list(ctx, param, value):
 @click.argument("config-file", required=True)
 @click.argument("stack-name", required=True)
 @click.option("--region", help="AWS region")
+@click.option("--template-version", help="Version number of cluster creation template")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
-def create_cluster_stack(config_file, region, debug):
+def create_cluster_stack(config_file, region, template_version, debug):
     """Create a new HyperPod cluster stack using the provided configuration.
 
     Creates a CloudFormation stack for a HyperPod cluster using settings from a YAML configuration file.
@@ -66,7 +67,7 @@ def create_cluster_stack(config_file, region, debug):
        .. code-block:: bash
 
           # Create cluster stack with config file
-          hyp create hyp-cluster cluster-config.yaml my-stack-name --region us-west-2
+          hyp create hyp-cluster cluster-config.yaml my-stack-name --region us-west-2 --template-version 1
 
           # Create with debug logging
           hyp create hyp-cluster cluster-config.yaml my-stack-name --debug
@@ -95,7 +96,7 @@ def create_cluster_stack(config_file, region, debug):
             config = model_instance.to_config(region=region)
 
             # Create the cluster stack
-            stack_id = HpClusterStack(**config).create(region)
+            stack_id = HpClusterStack(**config).create(region, template_version)
 
             logger.info(f"Stack creation initiated successfully with ID: {stack_id}")
             logger.info("You can monitor the stack creation in the AWS CloudFormation console.")

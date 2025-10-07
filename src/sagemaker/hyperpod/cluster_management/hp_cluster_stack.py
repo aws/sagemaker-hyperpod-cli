@@ -66,7 +66,8 @@ class HpClusterStack(ClusterStackBase):
 
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_cluster_stack")
     def create(self,
-               region: Optional[str] = None) -> str:
+               region: Optional[str] = None,
+               template_version: Optional[int] = 1) -> str:
         """Creates a new HyperPod cluster CloudFormation stack.
 
         **Parameters:**
@@ -112,7 +113,7 @@ class HpClusterStack(ClusterStackBase):
         stack_name = f"HyperpodClusterStack-{str(uuid.uuid4())[:5]}"
         # Use the fixed bucket name from the model
         bucket_name = self.custom_bucket_name
-        template_key = f"{self.template_version}/main-stack-eks-based-template.yaml"
+        template_key = f"{template_version}/templates/main-stack-eks-based-template.yaml"
 
         try:
             # Use TemplateURL for large templates (>51KB)
