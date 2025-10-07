@@ -35,7 +35,7 @@ class ClusterStackBase(BaseModel):
     create_s3_endpoint_stack: Optional[bool] = Field(True, description="Boolean to Create S3 Endpoint stack")
     enable_hp_inference_feature: Optional[bool] = Field(False, description="Boolean to enable inference operator in Hyperpod cluster")
     stage: Optional[str] = Field("prod", description="Deployment stage used in S3 bucket naming for inference operator. Valid values: \"gamma\", \"prod\"")
-    custom_bucket_name: str = Field("sagemaker-hyperpod-cluster-stack-bucket", description="S3 bucket name for templates")
+    custom_bucket_name: str = Field("aws-sagemaker-hyperpod-cluster", description="S3 bucket name for templates")
     create_life_cycle_script_stack: Optional[bool] = Field(True, description="Boolean to Create Life Cycle Script Stack")
     create_s3_bucket_stack: Optional[bool] = Field(True, description="Boolean to Create S3 Bucket Stack")
     s3_bucket_name: Optional[str] = Field("s3-bucket", description="The name of the S3 bucket used to store the cluster lifecycle scripts")
@@ -51,6 +51,7 @@ class ClusterStackBase(BaseModel):
     file_system_type_version: Optional[float] = Field(2.15, description="File system type version for the FSx file system")
     storage_capacity: Optional[int] = Field(1200, description="Storage capacity for the FSx file system in GiB")
     fsx_file_system_id: Optional[str] = Field("", description="Existing FSx file system ID")
+    template_version: str = Field("1", description="Version number of cluster creation template")
 
     @field_validator('kubernetes_version', mode='before')
     @classmethod
@@ -120,7 +121,7 @@ class ClusterStackBase(BaseModel):
         
         # Set fixed defaults
         defaults = {
-            'custom_bucket_name': 'sagemaker-hyperpod-cluster-stack-bucket',
+            'custom_bucket_name': 'aws-sagemaker-hyperpod-cluster',
             'github_raw_url': 'https://raw.githubusercontent.com/aws-samples/awsome-distributed-training/refs/heads/main/1.architectures/7.sagemaker-hyperpod-eks/LifecycleScripts/base-config/on_create.sh',
             'helm_repo_url': 'https://github.com/aws/sagemaker-hyperpod-cli.git',
             'helm_repo_path': 'helm_chart/HyperPodHelmChart'

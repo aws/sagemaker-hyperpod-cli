@@ -112,11 +112,11 @@ class HpClusterStack(ClusterStackBase):
         stack_name = f"HyperpodClusterStack-{str(uuid.uuid4())[:5]}"
         # Use the fixed bucket name from the model
         bucket_name = self.custom_bucket_name
-        template_key = f"1.1/main-stack-eks-based-template.yaml"
+        template_key = f"{self.template_version}/main-stack-eks-based-template.yaml"
 
         try:
             # Use TemplateURL for large templates (>51KB)
-            template_url = f"https://{bucket_name}.s3.amazonaws.com/{template_key}"
+            template_url = f"https://{bucket_name}-{region}-{self.stage}.s3.amazonaws.com/{template_key}"
             response = cf.create_stack(
                 StackName=stack_name,
                 TemplateURL=template_url,
