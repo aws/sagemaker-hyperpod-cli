@@ -154,16 +154,9 @@ class TestHPEndpoint(unittest.TestCase):
     @patch('sagemaker.hyperpod.inference.hp_endpoint.get_default_namespace', return_value='default')
     def test_create_from_dict(self, mock_get_namespace, mock_create_api, mock_validate_instance_type):
 
-        input_dict = self.endpoint.model_dump(exclude_none=True, by_alias=True)
+        input_dict = self.endpoint.model_dump(exclude_none=True)
 
-        # Reset the endpoint and use create_from_dict to populate it
-        test_endpoint = HPEndpoint(
-            instance_type="ml.g5.xlarge",
-            model_name="test-model",
-            model_source_config=self.endpoint.modelSourceConfig,
-            worker=self.endpoint.worker
-        )
-        test_endpoint.create_from_dict(input_dict)
+        self.endpoint.create_from_dict(input_dict)
 
         mock_create_api.assert_called_once()
 

@@ -26,15 +26,10 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
     metadata: Optional[Metadata] = Field(default=None)
     status: Optional[InferenceEndpointConfigStatus] = Field(default=None)
 
-    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_endpoint")
-    def create(
-        self,
-        debug=False
-    ) -> None:
+    def _create_internal(self, spec, debug=False):
+        """Shared internal create logic"""
         logger = self.get_logger()
         logger = setup_logging(logger, debug)
-
-        spec = _HPEndpoint(**self.model_dump(by_alias=True, exclude_none=True))
 
         name = self.metadata.name if self.metadata else None
         namespace = self.metadata.namespace if self.metadata else None
@@ -71,21 +66,22 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
             f"Creating sagemaker model and endpoint. Endpoint name: {spec.endpointName}.\n The process may take a few minutes..."
         )
 
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_endpoint")
+    def create(
+        self,
+        debug=False
+    ) -> None:
+        spec = _HPEndpoint(**self.model_dump(by_alias=True, exclude_none=True))
+        self._create_internal(spec, debug)
+
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_endpoint_from_dict")
     def create_from_dict(
         self,
         input: Dict,
         debug=False
     ) -> None:
-        logger = self.get_logger()
-        logger = setup_logging(logger, debug)
-
         spec = _HPEndpoint.model_validate(input, by_name=True)
-
-        for key, value in spec.model_dump().items():
-            setattr(self, key, value)
-
-        self.create(debug)
+        self._create_internal(spec, debug)
 
 
     def refresh(self):
