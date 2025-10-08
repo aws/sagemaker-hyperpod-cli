@@ -330,7 +330,7 @@ class TestCreateClusterStack(unittest.TestCase):
         
         from sagemaker.hyperpod.cli.commands.cluster_stack import create_cluster_stack
         
-        create_cluster_stack.callback('config.yaml', 'us-west-2', False)
+        create_cluster_stack.callback('config.yaml', 'us-west-2', 1, False)
         
         mock_load_config.assert_called_once()
         mock_filter.assert_called_once_with({'key': 'value'})
@@ -347,7 +347,7 @@ class TestCreateClusterStack(unittest.TestCase):
         
         from sagemaker.hyperpod.cli.commands.cluster_stack import create_cluster_stack
         
-        create_cluster_stack.callback('nonexistent.yaml', 'us-west-2', False)
+        create_cluster_stack.callback('nonexistent.yaml', 'us-west-2', 1, False)
         
         # Assert - function should return early without error
         mock_exists.assert_called_once_with('nonexistent.yaml')
