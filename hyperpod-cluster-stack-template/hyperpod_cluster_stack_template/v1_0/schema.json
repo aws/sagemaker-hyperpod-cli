@@ -439,7 +439,7 @@
       "title": "Stage"
     },
     "custom_bucket_name": {
-      "default": "aws-sagemaker-hyperpod-cluster",
+      "default": "",
       "description": "S3 bucket name for templates",
       "title": "Custom Bucket Name",
       "type": "string"

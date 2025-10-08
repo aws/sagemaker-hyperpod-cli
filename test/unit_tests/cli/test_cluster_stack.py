@@ -337,7 +337,7 @@ class TestCreateClusterStack(unittest.TestCase):
         mock_model_class.assert_called_once_with(**{'key': 'value'})
         mock_model_instance.to_config.assert_called_once_with(region='us-west-2')
         mock_hp_cluster_stack_class.assert_called_once_with(**{'transformed': 'config'})
-        mock_sdk_instance.create.assert_called_once_with('us-west-2')
+        mock_sdk_instance.create.assert_called_once_with('us-west-2', 1)
 
     @patch('os.path.exists')
     def test_create_cluster_stack_file_not_found(self, mock_exists, mock_get_template, mock_read_text):

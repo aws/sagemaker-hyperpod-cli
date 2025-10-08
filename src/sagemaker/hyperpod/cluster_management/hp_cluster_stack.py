@@ -15,8 +15,9 @@ from sagemaker.hyperpod.common.telemetry import _hyperpod_telemetry_emitter
 from sagemaker.hyperpod.common.telemetry.constants import Feature
 
 CAPABILITIES_FOR_STACK_CREATION = [
-'CAPABILITY_IAM',
-'CAPABILITY_NAMED_IAM'
+    'CAPABILITY_AUTO_EXPAND',
+    'CAPABILITY_IAM',
+    'CAPABILITY_NAMED_IAM'
 ]
 log = logging.getLogger()
 
@@ -112,7 +113,7 @@ class HpClusterStack(ClusterStackBase):
 
         stack_name = f"HyperpodClusterStack-{str(uuid.uuid4())[:5]}"
         # Use the fixed bucket name from the model
-        bucket_name = self.custom_bucket_name
+        bucket_name = "aws-sagemaker-hyperpod-cluster-setup"
         template_key = f"{template_version}/templates/main-stack-eks-based-template.yaml"
 
         try:

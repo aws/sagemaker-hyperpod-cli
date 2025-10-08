@@ -35,7 +35,7 @@ class ClusterStackBase(BaseModel):
     create_s3_endpoint_stack: Optional[bool] = Field(True, description="Boolean to Create S3 Endpoint stack")
     enable_hp_inference_feature: Optional[bool] = Field(False, description="Boolean to enable inference operator in Hyperpod cluster")
     stage: Optional[str] = Field("prod", description="Deployment stage used in S3 bucket naming for inference operator. Valid values: \"gamma\", \"prod\"")
-    custom_bucket_name: str = Field("aws-sagemaker-hyperpod-cluster-setup", description="S3 bucket name for templates")
+    custom_bucket_name: str = Field("", description="Custom S3 bucket name for templates")
     create_life_cycle_script_stack: Optional[bool] = Field(True, description="Boolean to Create Life Cycle Script Stack")
     create_s3_bucket_stack: Optional[bool] = Field(True, description="Boolean to Create S3 Bucket Stack")
     s3_bucket_name: Optional[str] = Field("s3-bucket", description="The name of the S3 bucket used to store the cluster lifecycle scripts")
