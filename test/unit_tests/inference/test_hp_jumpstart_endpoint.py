@@ -76,9 +76,16 @@ class TestHPJumpStartEndpoint(unittest.TestCase):
     @patch('sagemaker.hyperpod.inference.hp_jumpstart_endpoint.get_default_namespace', return_value='default')
     def test_create_from_dict(self, mock_get_namespace, mock_create_api, mock_validate_instance_type):
 
-        input_dict = self.endpoint.model_dump(exclude_none=True)
+        input_dict = self.endpoint.model_dump(exclude_none=True, by_alias=True)
 
-        self.endpoint.create_from_dict(input_dict)
+        # Create a minimal endpoint and use create_from_dict to populate it
+        test_endpoint = HPJumpStartEndpoint(
+            model=self.endpoint.model,
+            server=self.endpoint.server
+        )
+        test_endpoint.create_from_dict(input_dict)
+
+        mock_create_api.assert_called_once()
 
     @patch.object(HPJumpStartEndpoint, "call_get_api")
     def test_refresh(self, mock_get_api):
