@@ -272,8 +272,9 @@ def validate():
 
 @click.command(name="_default_create")
 @click.option("--region", "-r", default=None, help="Region to create cluster stack for, default to your region in aws configure. Not available for other templates.")
+@click.option("--template-version", type=click.INT, help="Version number of cluster creation template. Not available for other templates.")
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "init_create_cli")
-def _default_create(region):
+def _default_create(region, template_version):
     """
     Validate configuration and render template files for deployment.
     
@@ -374,7 +375,7 @@ def _default_create(region):
             # Pass region to to_domain for cluster stack template
             if template == "cluster-stack":
                 config = template_model.to_config(region=region)
-                HpClusterStack(**config).create(region)
+                HpClusterStack(**config).create(region, template_version)
             else:
                 # Create from k8s.yaml
                 k8s_file = out_dir / 'k8s.yaml'
