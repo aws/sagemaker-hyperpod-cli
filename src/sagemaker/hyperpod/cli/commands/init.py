@@ -22,7 +22,8 @@ from sagemaker.hyperpod.cli.init_utils import (
     display_validation_results,
     build_config_from_schema,
     save_template,
-    get_default_version_for_template
+    get_default_version_for_template,
+    create_from_k8s_yaml
 )
 from sagemaker.hyperpod.common.utils import get_aws_default_region
 from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
@@ -368,15 +369,16 @@ def _default_create(region):
             # Filter out CLI metadata fields before passing to model
             from sagemaker.hyperpod.cli.init_utils import _filter_cli_metadata_fields
             filtered_config = _filter_cli_metadata_fields(data)
-            flat = model(**filtered_config)
+            template_model = model(**filtered_config)
             
             # Pass region to to_domain for cluster stack template
             if template == "cluster-stack":
-                config = flat.to_config(region=region)
+                config = template_model.to_config(region=region)
                 HpClusterStack(**config).create(region)
             else:
-                domain = flat.to_domain()
-                domain.create()
+                # Create from k8s.yaml
+                k8s_file = out_dir / 'k8s.yaml'
+                create_from_k8s_yaml(str(k8s_file))
 
 
     except Exception as e:

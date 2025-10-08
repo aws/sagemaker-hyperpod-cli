@@ -41,9 +41,8 @@ class TestHPJumpStartEndpoint(unittest.TestCase):
         self.endpoint.create()
 
         mock_create_api.assert_called_once_with(
-            name="bert-testing-jumpstart-7-2-2",
+            metadata=unittest.mock.ANY,
             kind=JUMPSTART_MODEL_KIND,
-            namespace="default",
             spec=unittest.mock.ANY,
             debug=False,
         )
@@ -68,8 +67,8 @@ class TestHPJumpStartEndpoint(unittest.TestCase):
         # Verify it uses metadata name and namespace
         mock_create_api.assert_called_once()
         call_args = mock_create_api.call_args[1]
-        assert call_args['name'] == 'metadata-test-name'
-        assert call_args['namespace'] == 'metadata-test-ns'
+        assert call_args['metadata'].name == 'metadata-test-name'
+        assert call_args['metadata'].namespace == 'metadata-test-ns'
 
 
     @patch.object(HPJumpStartEndpoint, "validate_instance_type")

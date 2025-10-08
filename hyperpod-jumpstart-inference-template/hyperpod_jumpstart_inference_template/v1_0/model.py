@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from pydantic import BaseModel, Field, model_validator, ConfigDict
 from typing import Optional
+import yaml
 
 # reuse the nested types
 from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (

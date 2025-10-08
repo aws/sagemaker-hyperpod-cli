@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from pydantic import BaseModel, Field, model_validator, ConfigDict
 from typing import Optional, List, Dict, Union, Literal
+import yaml
 
 from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     Metrics,

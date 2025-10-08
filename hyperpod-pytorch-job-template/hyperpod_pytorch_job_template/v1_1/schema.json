@@ -363,12 +363,12 @@
       "description": "Service account name",
       "title": "Service Account Name"
     },
-    "preferred-topology": {
+    "preferred_topology": {
       "type": "string",
       "description": "Preferred topology annotation for scheduling",
       "$ref": "#/$defs/topologyLabels"
         },
-    "required-topology": {
+    "required_topology": {
       "type": "string", 
       "description": "Required topology annotation for scheduling",
       "$ref": "#/$defs/topologyLabels"
