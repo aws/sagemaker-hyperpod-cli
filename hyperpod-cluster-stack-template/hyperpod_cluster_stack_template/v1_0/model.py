@@ -120,7 +120,7 @@ class ClusterStackBase(BaseModel):
         
         # Set fixed defaults
         defaults = {
-            'custom_bucket_name': 'aws-sagemaker-hyperpod-cluster-setup',
+            'custom_bucket_name': '',
             'github_raw_url': 'https://raw.githubusercontent.com/aws-samples/awsome-distributed-training/refs/heads/main/1.architectures/7.sagemaker-hyperpod-eks/LifecycleScripts/base-config/on_create.sh',
             'helm_repo_url': 'https://github.com/aws/sagemaker-hyperpod-cli.git',
             'helm_repo_path': 'helm_chart/HyperPodHelmChart'
