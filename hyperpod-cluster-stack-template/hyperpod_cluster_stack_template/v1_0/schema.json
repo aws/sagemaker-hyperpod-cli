@@ -440,7 +440,7 @@
     },
     "custom_bucket_name": {
       "default": "",
-      "description": "S3 bucket name for templates",
+      "description": "Custom S3 bucket name for templates",
       "title": "Custom Bucket Name",
       "type": "string"
     },
