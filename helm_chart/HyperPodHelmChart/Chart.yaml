@@ -88,3 +88,7 @@ dependencies:
     version: "0.1.0"
     repository: "file://charts/hyperpod-patching"
     condition: hyperpod-patching.enabled
+  - name: kuberay-operator
+    version: "1.4.2"
+    repository: "https://ray-project.github.io/kuberay-helm/"
+    condition: kuberay.enabled
