@@ -103,5 +103,9 @@ spec:
             value: {{ .Values.eksClusterName }}
           - name: TLS_CERTIFICATE_OUTPUT_S3URI
             value: {{ .Values.tlsCertificateS3Bucket }}
+          - name: CHART_VERSION
+            value: {{ .Chart.Version | quote }}
+          - name: APP_VERSION
+            value: {{ .Chart.AppVersion | quote }}
       serviceAccountName: {{ .Values.namePrefix }}-controller-manager
       terminationGracePeriodSeconds: 10

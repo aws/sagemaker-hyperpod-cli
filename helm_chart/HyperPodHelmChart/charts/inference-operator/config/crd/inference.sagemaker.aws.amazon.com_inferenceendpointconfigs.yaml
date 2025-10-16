@@ -214,8 +214,8 @@ spec:
                 type: object
               endpointName:
                 description: |-
-                  Name of a SageMaker endpoint to be created for this InferenceEndpointConfig.
-                  The default value of empty string, when used, will skip endpoint creation.
+                  Name used for Sagemaker Endpoint
+                  Name of sagemaker endpoint. Defaults to empty string which represents that Sagemaker endpoint will not be created.
                 maxLength: 63
                 pattern: ^$|^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$
                 type: string
@@ -229,6 +229,24 @@ spec:
                   The invocation endpoint of the model server. http://<host>:<port>/ would be pre-populated based on the other fields.
                   Please fill in the path after http://<host>:<port>/ specific to your model server.
                 type: string
+              loadBalancer:
+                description: Configuration for Application Load Balancer
+                properties:
+                  healthCheckPath:
+                    default: /ping
+                    description: Health check path for the ALB target group. Defaults
+                      to /ping if not specified.
+                    pattern: ^/.*
+                    type: string
+                  routingAlgorithm:
+                    default: least_outstanding_requests
+                    description: Routing algorithm for the ALB target group (least_oustanding_requests
+                      or round_robin)
+                    enum:
+                    - least_outstanding_requests
+                    - round_robin
+                    type: string
+                type: object
               metrics:
                 description: Configuration for metrics collection and exposure
                 properties:
@@ -345,6 +363,17 @@ spec:
               worker:
                 description: Details of the worker
                 properties:
+                  args:
+                    description: Defines the Arguments to the entrypoint.
+                    items:
+                      type: string
+                    type: array
+                  command:
+                    description: Defines the Command which is Entrypoint array. Not
+                      executed within a shell.
+                    items:
+                      type: string
+                    type: array
                   environmentVariables:
                     description: |-
                       List of environment variables to set in the container.
@@ -569,6 +598,9 @@ spec:
                           More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                         type: object
                     type: object
+                  workingDir:
+                    description: Defines the working directory of container.
+                    type: string
                 required:
                 - image
                 - modelInvocationPort

@@ -88,6 +88,10 @@ spec:
                 description: InstanceType is the ML compute instance type used for
                   EndpointConfig creation
                 type: string
+              invocationEndpoint:
+                default: invocations
+                description: The invocation endpoint path used by the model server
+                type: string
               loadBalancerHostName:
                 description: Needed to embed the LB Host Name
                 type: string
