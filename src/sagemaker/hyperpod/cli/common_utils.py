@@ -75,10 +75,10 @@ def parse_comma_separated_list(value: str) -> List[str]:
     """
     Parse a comma-separated string into a list of strings.
     Generic utility that can be reused across commands.
-    
+
     Args:
         value: Comma-separated string like "item1,item2,item3"
-        
+
     Returns:
         List of trimmed strings
     """
@@ -87,25 +87,25 @@ def parse_comma_separated_list(value: str) -> List[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
-def categorize_resources_by_type(resources: List[Dict[str, Any]], 
+def categorize_resources_by_type(resources: List[Dict[str, Any]],
                                 type_mappings: Dict[str, List[str]]) -> Dict[str, List[str]]:
     """
     Generic function to categorize resources by type.
-    
+
     Args:
         resources: List of resource dictionaries with 'ResourceType' and 'LogicalResourceId'
         type_mappings: Dictionary mapping category names to lists of resource types
-        
+
     Returns:
         Dictionary of category -> list of resource names
     """
     categorized = {category: [] for category in type_mappings.keys()}
     categorized["Other"] = []
-    
+
     for resource in resources:
         resource_type = resource.get("ResourceType", "")
         logical_id = resource.get("LogicalResourceId", "")
-        
+
         # Find which category this resource type belongs to
         category_found = False
         for category, types in type_mappings.items():
@@ -113,9 +113,9 @@ def categorize_resources_by_type(resources: List[Dict[str, Any]],
                 categorized[category].append(logical_id)
                 category_found = True
                 break
-        
+
         if not category_found:
             categorized["Other"].append(logical_id)
-    
+
     # Remove empty categories
     return {k: v for k, v in categorized.items() if v}

@@ -358,7 +358,7 @@ The `config.yaml` file supports the following parameters:
 | `create_s3_endpoint_stack` | BOOLEAN | Create S3 Endpoint stack | true |
 | `enable_hp_inference_feature` | BOOLEAN | Enable inference operator | false |
 | `stage` | TEXT | Deployment stage ("gamma" or "prod") | "prod" |
-| `custom_bucket_name` | TEXT | S3 bucket name for templates | "sagemaker-hyperpod-cluster-stack-bucket" |
+| `custom_bucket_name` | TEXT | Custom S3 bucket name for templates | "" |
 | `create_life_cycle_script_stack` | BOOLEAN | Create Life Cycle Script Stack | true |
 | `create_s3_bucket_stack` | BOOLEAN | Create S3 Bucket Stack | true |
 | `s3_bucket_name` | TEXT | S3 bucket for cluster lifecycle scripts | "s3-bucket" |

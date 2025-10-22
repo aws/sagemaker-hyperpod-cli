@@ -26,17 +26,13 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
     metadata: Optional[Metadata] = Field(default=None)
     status: Optional[InferenceEndpointConfigStatus] = Field(default=None)
 
-    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_endpoint")
-    def create(
-        self,
-        name=None,
-        namespace=None,
-        debug=False,
-    ) -> None:
+    def _create_internal(self, spec, debug=False):
+        """Shared internal create logic"""
         logger = self.get_logger()
         logger = setup_logging(logger, debug)
 
-        spec = _HPEndpoint(**self.model_dump(by_alias=True, exclude_none=True))
+        name = self.metadata.name if self.metadata else None
+        namespace = self.metadata.namespace if self.metadata else None
 
         if not spec.endpointName and not name:
             raise Exception('Either metadata name or endpoint name must be provided')
@@ -47,65 +43,46 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
         if not name:
             name = spec.endpointName
 
+        # Create metadata object with labels and annotations if available
+        metadata = Metadata(
+            name=name,
+            namespace=namespace,
+            labels=self.metadata.labels if self.metadata else None,
+            annotations=self.metadata.annotations if self.metadata else None,
+        )
+
         self.validate_instance_type(spec.instanceType)
 
         self.call_create_api(
-            name=name,  # use model name as metadata name
+            metadata=metadata,
             kind=INFERENCE_ENDPOINT_CONFIG_KIND,
-            namespace=namespace,
             spec=spec,
             debug=debug,
         )
 
-        self.metadata = Metadata(
-            name=name,
-            namespace=namespace,
-        )
+        self.metadata = metadata
 
         logger.info(
             f"Creating sagemaker model and endpoint. Endpoint name: {spec.endpointName}.\n The process may take a few minutes..."
         )
+
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_endpoint")
+    def create(
+        self,
+        debug=False
+    ) -> None:
+        spec = _HPEndpoint(**self.model_dump(by_alias=True, exclude_none=True))
+        self._create_internal(spec, debug)
 
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_endpoint_from_dict")
     def create_from_dict(
         self,
         input: Dict,
-        name: str = None,
-        namespace: str = None,
         debug=False
     ) -> None:
-        logger = self.get_logger()
-        logger = setup_logging(logger, debug)
-
         spec = _HPEndpoint.model_validate(input, by_name=True)
+        self._create_internal(spec, debug)
 
-        if not namespace:
-            namespace = get_default_namespace()
-
-        if not spec.endpointName and not name:
-            raise Exception('Input "name" is required if endpoint name is not provided')
-
-        if not name:
-            name = spec.endpointName
-
-        self.validate_instance_type(spec.instanceType)
-
-        self.call_create_api(
-            name=name,  # use model name as metadata name
-            kind=INFERENCE_ENDPOINT_CONFIG_KIND,
-            namespace=namespace,
-            spec=spec,
-            debug=debug,
-        )
-
-        self.metadata = Metadata(
-            name=name,
-            namespace=namespace,
-        )
-
-        logger.info(
-            f"Creating sagemaker model and endpoint. Endpoint name: {spec.endpointName}.\n The process may take a few minutes..."
-        )
 
     def refresh(self):
         if not self.metadata:

@@ -18,6 +18,10 @@ from sagemaker.hyperpod.common.telemetry import _hyperpod_telemetry_emitter
 from sagemaker.hyperpod.common.telemetry.constants import Feature
 from sagemaker.hyperpod.common.utils import setup_logging
 from sagemaker.hyperpod.cli.utils import convert_datetimes
+from sagemaker.hyperpod.cli.init_utils import _filter_cli_metadata_fields
+from sagemaker.hyperpod.cli.init_utils import load_config
+from sagemaker.hyperpod.cli.constants.init_constants import TEMPLATES
+from pathlib import Path
 from sagemaker.hyperpod.cli.cluster_stack_utils import (
     StackNotFoundError,
     delete_stack_with_confirmation
@@ -49,8 +53,9 @@ def parse_status_list(ctx, param, value):
 @click.argument("config-file", required=True)
 @click.argument("stack-name", required=True)
 @click.option("--region", help="AWS region")
+@click.option("--template-version", type=click.INT, help="Version number of cluster creation template")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
-def create_cluster_stack(config_file, region, debug):
+def create_cluster_stack(config_file, region, template_version, debug):
     """Create a new HyperPod cluster stack using the provided configuration.
 
     Creates a CloudFormation stack for a HyperPod cluster using settings from a YAML configuration file.
@@ -62,38 +67,10 @@ def create_cluster_stack(config_file, region, debug):
        .. code-block:: bash
 
           # Create cluster stack with config file
-          hyp create hyp-cluster cluster-config.yaml my-stack-name --region us-west-2
+          hyp create hyp-cluster cluster-config.yaml my-stack-name --region us-west-2 --template-version 1
 
           # Create with debug logging
           hyp create hyp-cluster cluster-config.yaml my-stack-name --debug
-    """
-    create_cluster_stack_helper(config_file, region, debug)
-
-def create_cluster_stack_helper(config_file: str, region: Optional[str] = None, debug: bool = False) -> None:
-    """Helper function to create a HyperPod cluster stack.
-
-    **Parameters:**
-
-    .. list-table::
-       :header-rows: 1
-       :widths: 20 20 60
-
-       * - Parameter
-         - Type
-         - Description
-       * - config_file
-         - str
-         - Path to the YAML configuration file containing cluster stack settings
-       * - region
-         - str, optional
-         - AWS region where the cluster stack will be created
-       * - debug
-         - bool
-         - Enable debug logging for detailed error information
-
-    **Raises:**
-
-    ClickException: When cluster stack creation fails or configuration is invalid
     """
     try:
         # Validate the config file path
@@ -101,51 +78,35 @@ def create_cluster_stack_helper(config_file: str, region: Optional[str] = None, 
             logger.error(f"Config file not found: {config_file}")
             return
 
-        # Load the configuration from the YAML file
-        import yaml
-        import uuid
-        with open(config_file, 'r') as f:
-            config_data = yaml.safe_load(f)
+        # Load config to get template and version
 
-        # Filter out template and namespace fields
-        filtered_config = {}
-        for k, v in config_data.items():
-            if k not in ('template', 'namespace') and v is not None:
-                # Append 4-digit UUID to resource_name_prefix
-                if k == 'resource_name_prefix' and v:
-                    v = f"{v}-{str(uuid.uuid4())[:4]}"
-                filtered_config[k] = v
+        config_dir = Path(config_file).parent
+        data, template, version = load_config(config_dir)
 
-        # Create the HpClusterStack object
-        # Ensure fixed defaults are always set
-        if 'custom_bucket_name' not in filtered_config:
-            filtered_config['custom_bucket_name'] = 'sagemaker-hyperpod-cluster-stack-bucket'
-        if 'github_raw_url' not in filtered_config:
-            filtered_config['github_raw_url'] = 'https://raw.githubusercontent.com/aws-samples/awsome-distributed-training/refs/heads/main/1.architectures/7.sagemaker-hyperpod-eks/LifecycleScripts/base-config/on_create.sh'
-        if 'helm_repo_url' not in filtered_config:
-            filtered_config['helm_repo_url'] = 'https://github.com/aws/sagemaker-hyperpod-cli.git'
-        if 'helm_repo_path' not in filtered_config:
-            filtered_config['helm_repo_path'] = 'helm_chart/HyperPodHelmChart'
-        
-        cluster_stack = HpClusterStack(**filtered_config)
+        # Get model from registry
+        registry = TEMPLATES[template]["registry"]
+        model_class = registry.get(str(version))
 
-        # Log the configuration
-        logger.info("Creating HyperPod cluster stack with the following configuration:")
-        for key, value in filtered_config.items():
-            if value is not None:
-                logger.info(f"  {key}: {value}")
+        if model_class:
+            # Filter out CLI metadata fields
+            filtered_config = _filter_cli_metadata_fields(data)
 
-        # Create the cluster stack
-        stack_id = cluster_stack.create(region)
+            # Create model instance and domain
+            model_instance = model_class(**filtered_config)
+            config = model_instance.to_config(region=region)
 
-        logger.info(f"Stack creation initiated successfully with ID: {stack_id}")
-        logger.info("You can monitor the stack creation in the AWS CloudFormation console.")
+            # Create the cluster stack
+            stack_id = HpClusterStack(**config).create(region, template_version)
+
+            logger.info(f"Stack creation initiated successfully with ID: {stack_id}")
+            logger.info("You can monitor the stack creation in the AWS CloudFormation console.")
 
     except Exception as e:
         logger.error(f"Failed to create cluster stack: {e}")
         if debug:
             logger.exception("Detailed error information:")
         raise click.ClickException(str(e))
+
 
 @click.command("cluster-stack")
 @click.argument("stack-name", required=True)
@@ -223,6 +184,7 @@ def describe_cluster_stack(stack_name: str, debug: bool, region: str) -> None:
 
         raise click.ClickException(str(e))
 
+
 @click.command("cluster-stack")
 @click.option("--region", help="AWS region")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
@@ -294,10 +256,11 @@ def list_cluster_stacks(region, debug, status):
 
         raise click.ClickException(str(e))
     
+
 @click.command("cluster-stack")
 @click.argument("stack-name", required=True)
 @click.option("--retain-resources", help="Comma-separated list of logical resource IDs to retain during deletion (only works on DELETE_FAILED stacks). Resource names are shown in failed deletion output, or use AWS CLI: 'aws cloudformation list-stack-resources --stack-name STACK_NAME --region REGION'")
-@click.option("--region", required=True, help="AWS region (required)")
+@click.option("--region", required=True, help="AWS region")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "delete_cluster_stack_cli")
 def delete_cluster_stack(stack_name: str, retain_resources: str, region: str, debug: bool) -> None:
@@ -316,6 +279,10 @@ def delete_cluster_stack(stack_name: str, retain_resources: str, region: str, de
 
           # Delete with retained resources (only works on DELETE_FAILED stacks)
           hyp delete cluster-stack my-stack-name --retain-resources S3Bucket-TrainingData,EFSFileSystem-Models --region us-west-2
+          hyp delete cluster-stack my-stack-name --region us-west-2
+
+          # Delete with retained resources (only works on DELETE_FAILED stacks)
+          hyp delete cluster-stack my-stack-name --retain-resources S3Bucket-TrainingData,EFSFileSystem-Models --region us-west-2
     """
     logger = setup_logging(logging.getLogger(__name__), debug)
     
@@ -329,7 +296,7 @@ def delete_cluster_stack(stack_name: str, retain_resources: str, region: str, de
             confirm_callback=lambda msg: click.confirm("Continue?", default=False),
             success_callback=lambda msg: click.echo(f"✓ {msg}")
         )
-        
+
     except StackNotFoundError:
         click.secho(f"❌ Stack '{stack_name}' not found", fg='red')
     except click.ClickException:
@@ -340,6 +307,7 @@ def delete_cluster_stack(stack_name: str, retain_resources: str, region: str, de
         if debug:
             logger.exception("Detailed error information:")
         raise click.ClickException(str(e))
+
 
 @click.command("cluster")
 @click.option("--cluster-name", required=True, help="The name of the cluster to update")

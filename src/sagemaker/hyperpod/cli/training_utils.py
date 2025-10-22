@@ -83,7 +83,7 @@ def generate_click_command(
 
             try:
                 flat = Model(**filtered_kwargs)
-                domain_config = flat.to_domain()
+                domain = flat.to_domain()
             except ValidationError as e:
                 error_messages = []
                 for err in e.errors():
@@ -96,7 +96,7 @@ def generate_click_command(
                 )
 
             # call your handler
-            return func(version, debug, domain_config)
+            return func(version, debug, domain)
 
         # 2) inject click options from JSON Schema
         excluded_props = set(["version"])

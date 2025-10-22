@@ -7,14 +7,16 @@ from sagemaker.hyperpod.cli.constants.init_constants import CFN
 
 
 class TestSaveTemplate:
+    @patch('sagemaker.hyperpod.cli.init_utils._get_latest_version_from_registry')
     @patch('sagemaker.hyperpod.cli.init_utils.TEMPLATES')
-    @patch('sagemaker.hyperpod.cli.init_utils.save_cfn_jinja')
-    def test_save_cfn_jinja_called(self, mock_save_cfn_jinja, mock_templates):
+    @patch('sagemaker.hyperpod.cli.init_utils._save_cfn_jinja')
+    def test_save_cfn_jinja_called(self, mock_save_cfn_jinja, mock_templates, mock_get_version):
         # Setup
+        mock_get_version.return_value = '1.0'
         mock_templates = {
             'test-template': {
                 'schema_type': CFN,
-                'template': 'test template content'
+                'template_registry': {'1.0': 'test template content'}
             }
         }
         mock_save_cfn_jinja.return_value = '/path/to/cfn_params.jinja'

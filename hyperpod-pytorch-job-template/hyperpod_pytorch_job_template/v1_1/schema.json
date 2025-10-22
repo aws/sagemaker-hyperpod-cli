@@ -62,11 +62,7 @@
         "read_only": {
           "anyOf": [
             {
-              "enum": [
-                "true",
-                "false"
-              ],
-              "type": "string"
+              "type": "boolean"
             },
             {
               "type": "null"
@@ -280,9 +276,9 @@
       "title": "Queue Name"
     },
     "accelerators": {
-        "type": "integer",
-        "minimum": 0,
-        "description": "Number of accelerators (GPUs/TPUs)"
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of accelerators (GPUs/TPUs)"
     },
     "vcpu": {
       "type": "float",
@@ -294,17 +290,17 @@
       "minimum": 0,
       "description": "Amount of memory in GiB"
     },
-    "accelerators-limit": {
+    "accelerators_limit": {
       "type": "integer",
       "minimum": 0,
       "description": "Limit for the number of accelerators (GPUs/TPUs)"
     },
-    "vcpu-limit": {
+    "vcpu_limit": {
       "type": "float",
       "minimum": 0,
       "description": "Limit for the number of vCPUs"
     },
-    "memory-limit": {
+    "memory_limit": {
       "type": "float",
       "minimum": 0,
       "description": "Limit for the amount of memory in GiB"
@@ -367,12 +363,12 @@
       "description": "Service account name",
       "title": "Service Account Name"
     },
-    "preferred-topology": {
+    "preferred_topology": {
       "type": "string",
       "description": "Preferred topology annotation for scheduling",
       "$ref": "#/$defs/topologyLabels"
         },
-    "required-topology": {
+    "required_topology": {
       "type": "string", 
       "description": "Required topology annotation for scheduling",
       "$ref": "#/$defs/topologyLabels"

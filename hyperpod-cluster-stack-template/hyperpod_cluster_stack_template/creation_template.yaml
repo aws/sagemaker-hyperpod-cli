@@ -282,7 +282,7 @@ Parameters:
     Description: The path to the HyperPod Helm chart in the Helm repo.
   HelmOperators:
     Type: String
-    Default: 'mlflow.enabled=true,trainingOperators.enabled=true,storage.enabled=true,cluster-role-and-bindings.enabled=true,namespaced-role-and-bindings.enable=true,nvidia-device-plugin.devicePlugin.enabled=true,neuron-device-plugin.devicePlugin.enabled=true,aws-efa-k8s-device-plugin.devicePlugin.enabled=true,mpi-operator.enabled=true,health-monitoring-agent.enabled=true,deep-health-check.enabled=true,job-auto-restart.enabled=true,hyperpod-patching.enabled=true'
+    Default: 'mlflow.enabled=true,trainingOperators.enabled=true,cluster-role-and-bindings.enabled=true,namespaced-role-and-bindings.enable=true,nvidia-device-plugin.devicePlugin.enabled=true,neuron-device-plugin.devicePlugin.enabled=true,aws-efa-k8s-device-plugin.devicePlugin.enabled=true,mpi-operator.enabled=true,health-monitoring-agent.enabled=true,deep-health-check.enabled=true,job-auto-restart.enabled=true,hyperpod-patching.enabled=true'
     Description: The configuration of HyperPod Helm chart
   Namespace:
     Type: String
@@ -320,7 +320,7 @@ Parameters:
   InstanceGroupSettings1:
     Type: String
     Default: >-
-      [{"InstanceCount":1,"InstanceGroupName":"controller-group","InstanceType":"ml.t3.medium","TargetAvailabilityZoneId":"use2-az2","ThreadsPerCore":1,"InstanceStorageConfigs":[{"EbsVolumeConfig":{"VolumeSizeInGB":500}}]}]
+      [{"InstanceCount":1,"InstanceGroupName":"default","InstanceType":"ml.t3.medium","TargetAvailabilityZoneId":"use2-az2","ThreadsPerCore":1,"InstanceStorageConfigs":[{"EbsVolumeConfig":{"VolumeSizeInGB":500}}]}]
     Description: JSON array string containing instance group configurations.
   RigS3BucketName:
     Type: String

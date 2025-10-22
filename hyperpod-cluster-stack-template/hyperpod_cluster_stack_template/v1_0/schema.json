@@ -1,0 +1,638 @@
+{
+  "properties": {
+    "resource_name_prefix": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "hyp-eks-stack",
+      "description": "Prefix to be used for all resources. A 4-digit UUID will be added to prefix during submission",
+      "title": "Resource Name Prefix"
+    },
+    "create_hyperpod_cluster_stack": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": true,
+      "description": "Boolean to Create HyperPod Cluster Stack",
+      "title": "Create Hyperpod Cluster Stack"
+    },
+    "hyperpod_cluster_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "hyperpod-cluster",
+      "description": "Name of SageMaker HyperPod Cluster",
+      "title": "Hyperpod Cluster Name"
+    },
+    "create_eks_cluster_stack": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": true,
+      "description": "Boolean to Create EKS Cluster Stack",
+      "title": "Create Eks Cluster Stack"
+    },
+    "kubernetes_version": {
+      "anyOf": [
+        {
+          "type": "str"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "1.31",
+      "description": "The Kubernetes version",
+      "title": "Kubernetes Version"
+    },
+    "eks_cluster_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "eks-cluster",
+      "description": "The name of the EKS cluster",
+      "title": "Eks Cluster Name"
+    },
+    "create_helm_chart_stack": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": true,
+      "description": "Boolean to Create Helm Chart Stack",
+      "title": "Create Helm Chart Stack"
+    },
+    "namespace": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "kube-system",
+      "description": "The namespace to deploy the HyperPod Helm chart",
+      "title": "Namespace"
+    },
+    "helm_repo_url": {
+      "default": "https://github.com/aws/sagemaker-hyperpod-cli.git",
+      "description": "The URL of the Helm repo containing the HyperPod Helm chart (fixed default)",
+      "title": "Helm Repo Url",
+      "type": "string"
+    },
+    "helm_repo_path": {
+      "default": "helm_chart/HyperPodHelmChart",
+      "description": "The path to the HyperPod Helm chart in the Helm repo (fixed default)",
+      "title": "Helm Repo Path",
+      "type": "string"
+    },
+    "helm_operators": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "mlflow.enabled=true,trainingOperators.enabled=true,cluster-role-and-bindings.enabled=true,namespaced-role-and-bindings.enable=true,nvidia-device-plugin.devicePlugin.enabled=true,neuron-device-plugin.devicePlugin.enabled=true,aws-efa-k8s-device-plugin.devicePlugin.enabled=true,mpi-operator.enabled=true,health-monitoring-agent.enabled=true,deep-health-check.enabled=true,job-auto-restart.enabled=true,hyperpod-patching.enabled=true",
+      "description": "The configuration of HyperPod Helm chart",
+      "title": "Helm Operators"
+    },
+    "helm_release": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "dependencies",
+      "description": "The name used for Helm chart release",
+      "title": "Helm Release"
+    },
+    "node_provisioning_mode": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "Continuous",
+      "description": "Enable or disable the continuous provisioning mode. Valid values: \"Continuous\" or leave empty",
+      "title": "Node Provisioning Mode"
+    },
+    "node_recovery": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "Automatic",
+      "description": "Specifies whether to enable or disable the automatic node recovery feature. Valid values: \"Automatic\", \"None\"",
+      "title": "Node Recovery"
+    },
+    "instance_group_settings": {
+      "anyOf": [
+        {
+          "items": {},
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": [
+        {
+          "InstanceCount": 1,
+          "InstanceGroupName": "default",
+          "InstanceType": "ml.t3.medium",
+          "TargetAvailabilityZoneId": "use2-az2",
+          "ThreadsPerCore": 1,
+          "InstanceStorageConfigs": [
+            {
+              "EbsVolumeConfig": {
+                "VolumeSizeInGB": 500
+              }
+            }
+          ]
+        }
+      ],
+      "description": "List of string containing instance group configurations",
+      "title": "Instance Group Settings"
+    },
+    "rig_settings": {
+      "anyOf": [
+        {
+          "items": {},
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "List of string containing restricted instance group configurations",
+      "title": "Rig Settings"
+    },
+    "rig_s3_bucket_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The name of the S3 bucket used to store the RIG resources",
+      "title": "Rig S3 Bucket Name"
+    },
+    "tags": {
+      "anyOf": [
+        {
+          "items": {},
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Custom tags for managing the SageMaker HyperPod cluster as an AWS resource",
+      "title": "Tags"
+    },
+    "create_vpc_stack": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": true,
+      "description": "Boolean to Create VPC Stack",
+      "title": "Create Vpc Stack"
+    },
+    "vpc_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The ID of the VPC you wish to use if you do not want to create a new VPC",
+      "title": "Vpc Id"
+    },
+    "vpc_cidr": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "10.192.0.0/16",
+      "description": "The IP range (CIDR notation) for the VPC",
+      "title": "Vpc Cidr"
+    },
+    "availability_zone_ids": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "List of AZs in submission region to deploy subnets in. Must be provided in YAML format starting with \"-\" below. Example: - use2-az1 for us-east-2 region",
+      "title": "Availability Zone Ids"
+    },
+    "create_security_group_stack": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": true,
+      "description": "Boolean to Create Security Group Stack",
+      "title": "Create Security Group Stack"
+    },
+    "security_group_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The ID of the security group you wish to use in SecurityGroup substack if you do not want to create a new one",
+      "title": "Security Group Id"
+    },
+    "security_group_ids": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The security groups you wish to use for Hyperpod cluster if you do not want to create new ones",
+      "title": "Security Group Ids"
+    },
+    "private_subnet_ids": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "List of private subnet IDs used for HyperPod cluster if you do not want to create VPC stack",
+      "title": "Private Subnet Ids"
+    },
+    "eks_private_subnet_ids": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "List of private subnet IDs for the EKS cluster if you do not want to create VPC stack",
+      "title": "Eks Private Subnet Ids"
+    },
+    "nat_gateway_ids": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "List of NAT Gateway IDs to route internet bound traffic if you do not want to create VPC stack",
+      "title": "Nat Gateway Ids"
+    },
+    "private_route_table_ids": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "List of private route table IDs if you do not want to create VPC stack",
+      "title": "Private Route Table Ids"
+    },
+    "create_s3_endpoint_stack": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": true,
+      "description": "Boolean to Create S3 Endpoint stack",
+      "title": "Create S3 Endpoint Stack"
+    },
+    "enable_hp_inference_feature": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": false,
+      "description": "Boolean to enable inference operator in Hyperpod cluster",
+      "title": "Enable Hp Inference Feature"
+    },
+    "stage": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "prod",
+      "description": "Deployment stage used in S3 bucket naming for inference operator. Valid values: \"gamma\", \"prod\"",
+      "title": "Stage"
+    },
+    "custom_bucket_name": {
+      "default": "",
+      "description": "Custom S3 bucket name for templates",
+      "title": "Custom Bucket Name",
+      "type": "string"
+    },
+    "create_life_cycle_script_stack": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": true,
+      "description": "Boolean to Create Life Cycle Script Stack",
+      "title": "Create Life Cycle Script Stack"
+    },
+    "create_s3_bucket_stack": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": true,
+      "description": "Boolean to Create S3 Bucket Stack",
+      "title": "Create S3 Bucket Stack"
+    },
+    "s3_bucket_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "s3-bucket",
+      "description": "The name of the S3 bucket used to store the cluster lifecycle scripts",
+      "title": "S3 Bucket Name"
+    },
+    "github_raw_url": {
+      "default": "https://raw.githubusercontent.com/aws-samples/awsome-distributed-training/refs/heads/main/1.architectures/7.sagemaker-hyperpod-eks/LifecycleScripts/base-config/on_create.sh",
+      "description": "The raw GitHub URL for the lifecycle script (fixed default)",
+      "title": "Github Raw Url",
+      "type": "string"
+    },
+    "on_create_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "sagemaker-hyperpod-eks-bucket",
+      "description": "The file name of lifecycle script",
+      "title": "On Create Path"
+    },
+    "create_sagemaker_iam_role_stack": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": true,
+      "description": "Boolean to Create SageMaker IAM Role Stack",
+      "title": "Create Sagemaker Iam Role Stack"
+    },
+    "sagemaker_iam_role_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "create-cluster-role",
+      "description": "The name of the IAM role that SageMaker will use during cluster creation to access the AWS resources on your behalf",
+      "title": "Sagemaker Iam Role Name"
+    },
+    "create_fsx_stack": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": true,
+      "description": "Boolean to Create FSx Stack",
+      "title": "Create Fsx Stack"
+    },
+    "fsx_subnet_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "",
+      "description": "The subnet id that will be used to create FSx",
+      "title": "Fsx Subnet Id"
+    },
+    "fsx_availability_zone_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "",
+      "description": "The availability zone to get subnet id that will be used to create FSx",
+      "title": "Fsx Availability Zone Id"
+    },
+    "per_unit_storage_throughput": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": 250,
+      "description": "Per unit storage throughput",
+      "title": "Per Unit Storage Throughput"
+    },
+    "data_compression_type": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "NONE",
+      "description": "Data compression type for the FSx file system. Valid values: \"NONE\", \"LZ4\"",
+      "title": "Data Compression Type"
+    },
+    "file_system_type_version": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": 2.15,
+      "description": "File system type version for the FSx file system",
+      "title": "File System Type Version"
+    },
+    "storage_capacity": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": 1200,
+      "description": "Storage capacity for the FSx file system in GiB",
+      "title": "Storage Capacity"
+    },
+    "fsx_file_system_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "",
+      "description": "Existing FSx file system ID",
+      "title": "Fsx File System Id"
+    }
+  },
+  "title": "ClusterStackBase",
+  "type": "object"
+}

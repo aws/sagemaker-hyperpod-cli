@@ -27,19 +27,15 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
     metadata: Optional[Metadata] = Field(default=None)
     status: Optional[JumpStartModelStatus] = Field(default=None)
 
-    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_js_endpoint")
-    def create(
-        self,
-        name=None,
-        namespace=None,
-        debug=False,
-    ) -> None:
+    def _create_internal(self, spec, debug=False):
+        """Shared internal create logic"""
         logger = self.get_logger()
         logger = setup_logging(logger, debug)
 
-        spec = _HPJumpStartEndpoint(**self.model_dump(by_alias=True, exclude_none=True))
-
         endpoint_name = ""
+        name = self.metadata.name if self.metadata else None
+        namespace = self.metadata.namespace if self.metadata else None
+
         if spec.sageMakerEndpoint and spec.sageMakerEndpoint.name:
             endpoint_name = spec.sageMakerEndpoint.name
 
@@ -52,69 +48,46 @@ class HPJumpStartEndpoint(_HPJumpStartEndpoint, HPEndpointBase):
         if not namespace:
             namespace = get_default_namespace()
 
+        # Create metadata object with labels and annotations if available
+        metadata = Metadata(
+            name=name,
+            namespace=namespace,
+            labels=self.metadata.labels if self.metadata else None,
+            annotations=self.metadata.annotations if self.metadata else None,
+        )
+
         self.validate_instance_type(spec.model.modelId, spec.server.instanceType)
 
         self.call_create_api(
-            name=name,  # use model name as metadata name
+            metadata=metadata,
             kind=JUMPSTART_MODEL_KIND,
-            namespace=namespace,
             spec=spec,
             debug=debug,
         )
 
-        self.metadata = Metadata(
-            name=name,
-            namespace=namespace,
-        )
+        self.metadata = metadata
 
         logger.info(
             f"Creating JumpStart model and sagemaker endpoint. Endpoint name: {endpoint_name}.\n The process may take a few minutes..."
         )
+
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_js_endpoint")
+    def create(
+        self,
+        debug=False
+    ) -> None:
+        spec = _HPJumpStartEndpoint(**self.model_dump(by_alias=True, exclude_none=True))
+        self._create_internal(spec, debug)
 
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_js_endpoint_from_dict")
     def create_from_dict(
         self,
         input: Dict,
-        name: str = None,
-        namespace: str = None,
         debug = False
     ) -> None:
-        logger = self.get_logger()
-        logger = setup_logging(logger, debug)
-
         spec = _HPJumpStartEndpoint.model_validate(input, by_name=True)
+        self._create_internal(spec, debug)
 
-        endpoint_name = ""
-        if spec.sageMakerEndpoint and spec.sageMakerEndpoint.name:
-            endpoint_name = spec.sageMakerEndpoint.name
-
-        if not endpoint_name and not name:
-            raise Exception('Input "name" is required if endpoint name is not provided')
-
-        if not name:
-            name = endpoint_name
-
-        if not namespace:
-            namespace = get_default_namespace()
-
-        self.validate_instance_type(spec.model.modelId, spec.server.instanceType)
-
-        self.call_create_api(
-            name=name,  # use model name as metadata name
-            kind=JUMPSTART_MODEL_KIND,
-            namespace=namespace,
-            spec=spec,
-            debug=debug,
-        )
-
-        self.metadata = Metadata(
-            name=name,
-            namespace=namespace,
-        )
-
-        logger.info(
-            f"Creating JumpStart model and sagemaker endpoint. Endpoint name: {endpoint_name}.\n The process may take a few minutes..."
-        )
 
     def refresh(self):
         if not self.metadata:

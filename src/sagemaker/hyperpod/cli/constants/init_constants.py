@@ -1,11 +1,9 @@
-from sagemaker.hyperpod.cli.templates.cfn_cluster_creation import CLOUDFORMATION_CLUSTER_CREATION_TEMPLATE
-from sagemaker.hyperpod.cli.templates.k8s_js_endpoint_template import KUBERNETES_JS_ENDPOINT_TEMPLATE
-from sagemaker.hyperpod.cli.templates.k8s_custom_endpoint_template import KUBERNETES_CUSTOM_ENDPOINT_TEMPLATE
-from sagemaker.hyperpod.cli.templates.k8s_pytorch_job_template import KUBERNETES_PYTORCH_JOB_TEMPLATE
+from hyperpod_jumpstart_inference_template.registry import SCHEMA_REGISTRY as JS_EP_REG, TEMPLATE_REGISTRY as JS_EP_TEMPLATE_REG
+from hyperpod_custom_inference_template.registry import SCHEMA_REGISTRY as CUSTOM_EP_REG, TEMPLATE_REGISTRY as CUSTOM_EP_TEMPLATE_REG
+from hyperpod_pytorch_job_template.registry import SCHEMA_REGISTRY as PYTORCH_JOB_REG, TEMPLATE_REGISTRY as PYTORCH_JOB_TEMPLATE_REG
+from hyperpod_cluster_stack_template.registry import SCHEMA_REGISTRY as CLUSTER_REG, TEMPLATE_REGISTRY as CLUSTER_TEMPLATE_REG
 
-from hyperpod_jumpstart_inference_template.registry import SCHEMA_REGISTRY as JS_REG
-from hyperpod_custom_inference_template.registry import SCHEMA_REGISTRY as C_REG
-from hyperpod_pytorch_job_template.registry import SCHEMA_REGISTRY as P_REG
+import sys
 
 # Here is the list of existing templates supported
 # You can onboard new template by adding the mapping here
@@ -13,35 +11,74 @@ from hyperpod_pytorch_job_template.registry import SCHEMA_REGISTRY as P_REG
 CRD = "crd"
 CFN = "cfn"
 TEMPLATES = {
-    # "hyp-jumpstart-endpoint": {
-    #     "registry": JS_REG,
-    #     "schema_pkg": "hyperpod_jumpstart_inference_template",
-    #     "schema_type": CRD,
-    #     'template': KUBERNETES_JS_ENDPOINT_TEMPLATE,
-    #     'type': "jinja"
-    # },
-    # "hyp-custom-endpoint": {
-    #     "registry": C_REG,
-    #     "schema_pkg": "hyperpod_custom_inference_template",
-    #     "schema_type": CRD,
-    #     'template': KUBERNETES_CUSTOM_ENDPOINT_TEMPLATE,
-    #     'type': "jinja"
-    # },
-    # "hyp-pytorch-job": {
-    #     "registry": P_REG,
-    #     "schema_pkg": "hyperpod_pytorch_job_template",
-    #     "schema_type": CRD,
-    #     'template': KUBERNETES_PYTORCH_JOB_TEMPLATE,
-    #     'type': "jinja"
-    # },
+    "hyp-jumpstart-endpoint": {
+        "registry": JS_EP_REG,
+        "template_registry": JS_EP_TEMPLATE_REG,
+        "schema_pkg": "hyperpod_jumpstart_inference_template",
+        "schema_type": CRD,
+        'type': "jinja"
+    },
+    "hyp-custom-endpoint": {
+        "registry": CUSTOM_EP_REG,
+        "template_registry": CUSTOM_EP_TEMPLATE_REG,
+        "schema_pkg": "hyperpod_custom_inference_template",
+        "schema_type": CRD,
+        'type': "jinja"
+    },
+    "hyp-pytorch-job": {
+        "registry": PYTORCH_JOB_REG,
+        "template_registry": PYTORCH_JOB_TEMPLATE_REG,
+        "schema_pkg": "hyperpod_pytorch_job_template",
+        "schema_type": CRD,
+        'type': "jinja"
+    },
     "cluster-stack": {
+        "registry": CLUSTER_REG,
+        "template_registry": CLUSTER_TEMPLATE_REG,
         "schema_pkg": "hyperpod_cluster_stack_template",
         "schema_type": CFN,
-        'template': CLOUDFORMATION_CLUSTER_CREATION_TEMPLATE,
         'type': "jinja"
     }
 }
 
+# K8s Kind to class mapping for create_from_k8s_yaml
+K8S_KIND_MAPPING = {
+    "InferenceEndpointConfig": {
+        "class_path": "sagemaker.hyperpod.inference.hp_endpoint.HPEndpoint",
+        "metadata_handling": "separate"  # metadata handled separately
+    },
+    "JumpStartModel": {
+        "class_path": "sagemaker.hyperpod.inference.hp_jumpstart_endpoint.HPJumpStartEndpoint", 
+        "metadata_handling": "separate"
+    },
+    "HyperPodPyTorchJob": {
+        "class_path": "sagemaker.hyperpod.training.hyperpod_pytorch_job.HyperPodPytorchJob",
+        "metadata_handling": "combined"  # metadata combined with spec
+    }
+}
+
+
+def _get_handler_from_template_version(template_name, version, handler_name):
+    """Dynamically import handler from a specific version of a template"""
+    try:
+        template_info = TEMPLATES[template_name]
+        registry = template_info["registry"]
+        
+        if version not in registry:
+            return None
+            
+        model_class = registry[version]
+        module = sys.modules[model_class.__module__]
+        return getattr(module, handler_name)
+    except (ImportError, AttributeError):
+        return None
+
+
+# Template.field to handler mapping - avoids conflicts and works reliably
+SPECIAL_FIELD_HANDLERS = {
+    'hyp-pytorch-job.1.0.volume': _get_handler_from_template_version("hyp-pytorch-job", "1.0", "VOLUME_TYPE_HANDLER"),
+    'hyp-pytorch-job.1.1.volume': _get_handler_from_template_version("hyp-pytorch-job", "1.1", "VOLUME_TYPE_HANDLER"),
+}
 
 USAGE_GUIDE_TEXT_CFN = """# SageMaker HyperPod CLI - Initialization Workflow
 

@@ -72,7 +72,7 @@ class TestTrainingCommands(unittest.TestCase):
 
         from sagemaker.hyperpod.cli.commands.training import pytorch_create
 
-        with patch("sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob") as mock_hyperpod_job:
+        with patch("hyperpod_pytorch_job_template.v1_0.model.HyperPodPytorchJob") as mock_hyperpod_job:
             # Setup mock
             mock_instance = Mock()
             mock_hyperpod_job.return_value = mock_instance
@@ -94,9 +94,9 @@ class TestTrainingCommands(unittest.TestCase):
 
             # Verify HyperPodPytorchJob was created correctly
             mock_hyperpod_job.assert_called_once()
-        call_args = mock_hyperpod_job.call_args[1]
-        self.assertEqual(call_args["metadata"].name, "test-job")
-        mock_instance.create.assert_called_once()
+            call_args = mock_hyperpod_job.call_args[1]
+            self.assertEqual(call_args["metadata"]["name"], "test-job")
+            mock_instance.create.assert_called_once()
 
     def test_missing_required_params(self):
         """Test that command fails when required parameters are missing"""
@@ -121,7 +121,7 @@ class TestTrainingCommands(unittest.TestCase):
 
         from sagemaker.hyperpod.cli.commands.training import pytorch_create
 
-        with patch("sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob") as mock_hyperpod_job:
+        with patch("hyperpod_pytorch_job_template.v1_1.model.HyperPodPytorchJob") as mock_hyperpod_job:
             mock_instance = Mock()
             mock_hyperpod_job.return_value = mock_instance
 
@@ -151,10 +151,10 @@ class TestTrainingCommands(unittest.TestCase):
 
             mock_hyperpod_job.assert_called_once()
             call_args = mock_hyperpod_job.call_args[1]
-            self.assertEqual(call_args["metadata"].name, "test-job")
-            self.assertEqual(call_args["metadata"].namespace, "test-namespace")
-            self.assertEqual(call_args["metadata"].labels["kueue.x-k8s.io/queue-name"], "localqueue")
-            self.assertEqual(call_args["metadata"].annotations["kueue.x-k8s.io/podset-required-topology"], "topology.k8s.aws/ultraserver-id")
+            self.assertEqual(call_args["metadata"]["name"], "test-job")
+            self.assertEqual(call_args["metadata"]["namespace"], "test-namespace")
+            self.assertEqual(call_args["metadata"]["labels"]["kueue.x-k8s.io/queue-name"], "localqueue")
+            self.assertEqual(call_args["metadata"]["annotations"]["kueue.x-k8s.io/podset-required-topology"], "topology.k8s.aws/ultraserver-id")
 
     @patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
     @patch("sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob")
@@ -515,8 +515,8 @@ class TestValidationPatterns(unittest.TestCase):
                         node_count=count
                     )
         
-        # Test tasks_per_node with invalid values
-        invalid_tasks_per_node = [0, -1, -5]
+        # Test tasks_per_node with invalid values (negative numbers and floats)
+        invalid_tasks_per_node = [-1, -5, 1.5, "invalid"]
         for tasks in invalid_tasks_per_node:
             with self.subTest(tasks_per_node=tasks):
                 with self.assertRaises(ValidationError):

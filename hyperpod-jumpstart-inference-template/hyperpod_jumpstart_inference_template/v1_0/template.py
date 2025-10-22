@@ -1,8 +1,8 @@
-KUBERNETES_JS_ENDPOINT_TEMPLATE = """### Please keep template file unchanged ###
+TEMPLATE_CONTENT = """
 apiVersion: inference.sagemaker.aws.amazon.com/v1alpha1
 kind: JumpStartModel
 metadata:
-  name:                {{ model_id }}
+  name:                {{ metadata_name or endpoint_name }}
   namespace:           {{ namespace or "default" }}
 spec:
   model:
@@ -14,4 +14,6 @@ spec:
     name:                     {{ endpoint_name or "" }}
   server:
     instanceType:             {{ instance_type }}
+  tlsConfig:
+    tlsCertificateOutputS3Uri: {{ tls_certificate_output_s3_uri or "" }}
 """

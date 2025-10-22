@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from pydantic import BaseModel, Field, model_validator, ConfigDict
 from typing import Optional
+import yaml
 
 # reuse the nested types
 from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
@@ -21,10 +22,17 @@ from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
     TlsConfig
 )
 from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
+from sagemaker.hyperpod.common.config.metadata import Metadata
 
 class FlatHPJumpStartEndpoint(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    namespace: Optional[str] = Field(
+        default=None, 
+        description="Kubernetes namespace",
+        min_length=1
+    )
+    
     accept_eula: bool = Field(
         False, alias="accept_eula", description="Whether model terms of use have been accepted"
     )
@@ -76,8 +84,19 @@ class FlatHPJumpStartEndpoint(BaseModel):
         pattern=r"^s3://([^/]+)/?(.*)$",
     )
 
+    @model_validator(mode='after')
+    def validate_name(self):
+        if not self.metadata_name and not self.endpoint_name:
+            raise ValueError("Either metadata_name or endpoint_name must be provided")
+        return self
+
+
     def to_domain(self) -> HPJumpStartEndpoint:
-        # Build nested domain (pydantic) objects
+        if self.endpoint_name and not self.metadata_name:
+            self.metadata_name = self.endpoint_name
+            
+        metadata = Metadata(name=self.metadata_name, namespace=self.namespace)
+
         model = Model(
             accept_eula=self.accept_eula,
             model_id=self.model_id,
@@ -91,6 +110,7 @@ class FlatHPJumpStartEndpoint(BaseModel):
             TlsConfig(tls_certificate_output_s3_uri=self.tls_certificate_output_s3_uri)
         )
         return HPJumpStartEndpoint(
+            metadata=metadata,
             model=model,
             server=server,
             sage_maker_endpoint=sage_ep,

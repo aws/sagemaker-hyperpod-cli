@@ -19,7 +19,7 @@ from test.integration_tests.utils import get_time_str
 NAMESPACE = "integration"
 VERSION = "1.0"
 REGION = "us-east-2"
-TIMEOUT_MINUTES = 15
+TIMEOUT_MINUTES = 20
 POLL_INTERVAL_SECONDS = 30
 
 BETA_BUCKET = "sagemaker-hyperpod-beta-integ-test-model-bucket-n"

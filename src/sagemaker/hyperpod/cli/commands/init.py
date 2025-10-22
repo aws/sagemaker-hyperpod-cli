@@ -8,11 +8,8 @@ import shutil
 from sagemaker.hyperpod.cli.constants.init_constants import (
     USAGE_GUIDE_TEXT_CFN,
     USAGE_GUIDE_TEXT_CRD,
-    CFN,
-    CRD
+    CFN
 )
-from sagemaker.hyperpod.common.config import Metadata
-from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob
 from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack
 from sagemaker.hyperpod.cli.init_utils import (
     generate_click_command,
@@ -26,14 +23,19 @@ from sagemaker.hyperpod.cli.init_utils import (
     build_config_from_schema,
     save_template,
     get_default_version_for_template,
-    add_default_az_ids_to_config,
+    create_from_k8s_yaml
 )
 from sagemaker.hyperpod.common.utils import get_aws_default_region
+from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
+    _hyperpod_telemetry_emitter,
+)
+from sagemaker.hyperpod.common.telemetry.constants import Feature
 
 @click.command("init")
 @click.argument("template", type=click.Choice(list(TEMPLATES.keys())))
 @click.argument("directory", type=click.Path(file_okay=False), default=".")
 @click.option("--version", "-v", default=None, help="Schema version")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "init_template_cli")
 def init(
     template: str,
     directory: str,
@@ -47,7 +49,7 @@ def init(
     
     1. Checks if the directory already contains a config.yaml and handles existing configurations
     2. Creates the target directory if it doesn't exist
-    3. Generates a config.yaml file with schema-based default values and user-provided inputs
+    3. Generates a config.yaml file with schema-based default values
     4. Creates a template file (.jinja) for the specified template type
     5. Adds a README.md with usage instructions
     
@@ -112,13 +114,12 @@ def init(
             directory=str(dir_path),
         )
 
-    except Exception as e:
-        click.secho(f"💥  Could not write config.yaml: {e}", fg="red")
-        sys.exit(1)
+        # 4) Generate template
+        save_template(template, dir_path, version)
 
-    # 4) Generate  template
-    if not save_template(template, dir_path):
-        click.secho("⚠️ Template generation failed", fg="yellow")
+    except Exception as e:
+        click.secho(f"💥  Could not write config.yaml or template: {e}", fg="red")
+        sys.exit(1)
 
     # 5) Write README.md
     if not skip_readme:
@@ -132,20 +133,24 @@ def init(
         except Exception as e:
             click.secho("⚠️  README.md generation failed: %s", e, fg="yellow")
 
+    # Convert to relative path for cleaner display
+    relative_path = Path(directory) if directory != "." else Path("./")
+    
     click.secho(
-        f"✔️  {template} for schema version={version!r} is initialized in {dir_path}",
+        f"✔️ {template} for schema version={version!r} is initialized in {relative_path}",
         fg="green",
     )
     click.echo(
         click.style(
             "🚀 Welcome!\n"
-            f"📘 See {dir_path}/README.md for usage.\n",
+            f"📘 See {relative_path}/README.md for usage.\n",
             fg="green",
         )
     )
 
 
 @click.command("reset")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "init_reset_cli")
 def reset():
     """
     Reset the current directory's config.yaml to an "empty" scaffold:
@@ -172,12 +177,13 @@ def reset():
 
     # 4) Regenerate the k8s Jinja template
     if save_template(template, dir_path):
-        click.secho(f"✔️ {template} is regenerated.", fg="green")
+        click.secho(f"✔️  {template} is regenerated.", fg="green")
 
 
 @click.command("configure")
 @generate_click_command()
 @click.pass_context
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "init_configure_cli")
 def configure(ctx, model_config):
     """
     Update any subset of fields in ./config.yaml by passing --<field> flags.
@@ -234,7 +240,7 @@ def configure(ctx, model_config):
     
     is_valid = display_validation_results(
         user_input_errors,
-        success_message="User input is valid!" if user_input_errors else "Configuration updated successfully!",
+        success_message="User input is valid!" if user_input_errors else "config.yaml updated successfully.",
         error_prefix="Invalid input arguments:"
     )
     
@@ -249,13 +255,13 @@ def configure(ctx, model_config):
             comment_map=comment_map,
             directory=str(dir_path),
         )
-        click.secho("✔️  config.yaml updated successfully.", fg="green")
     except Exception as e:
         click.secho(f"💥 Could not update config.yaml: {e}", fg="red")
         sys.exit(1)
 
 
 @click.command("validate")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "init_validate_cli")
 def validate():
     """
     Validate this directory's config.yaml against the appropriate schema.
@@ -265,8 +271,10 @@ def validate():
 
 
 @click.command(name="_default_create")
-@click.option("--region", "-r", default=None, help="Region, default to your region in aws configure")
-def _default_create(region):
+@click.option("--region", "-r", default=None, help="Region to create cluster stack for, default to your region in aws configure. Not available for other templates.")
+@click.option("--template-version", type=click.INT, help="Version number of cluster creation template. Not available for other templates.")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "init_create_cli")
+def _default_create(region, template_version):
     """
     Validate configuration and render template files for deployment.
     
@@ -300,6 +308,11 @@ def _default_create(region):
     # 1) Load config to determine template type
     data, template, version = load_config_and_validate(dir_path)
     
+    # Check if region flag is used for non-cluster-stack templates
+    if region and template != "cluster-stack":
+        click.secho(f"❌  --region flag is only available for cluster-stack template, not for {template}.", fg="red")
+        sys.exit(1)
+    
     # 2) Determine correct jinja file based on template type
     info = TEMPLATES[template]
     schema_type = info["schema_type"]
@@ -312,42 +325,11 @@ def _default_create(region):
     if not config_file.is_file() or not jinja_file.is_file():
         click.secho(f"❌  Missing config.yaml or {jinja_file.name}. Run `hyp init` first.", fg="red")
         sys.exit(1)
-    
-    # 4) Validate config using consolidated function
-    validation_errors = validate_config_against_model(data, template, version)
-    is_valid = display_validation_results(
-        validation_errors,
-        success_message="Configuration is valid!",
-        error_prefix="Validation errors:"
-    )
-    
-    if not is_valid:
-        sys.exit(1)
 
     try:
         template_source = jinja_file.read_text()
         tpl = Template(template_source)
-        
-        # For CFN templates, prepare arrays for Jinja template
-        if schema_type == CFN:
-            # Prepare instance_group_settings array
-            instance_group_settings = []
-            rig_settings = []
-            for i in range(1, 21):
-                ig_key = f'instance_group_settings{i}'
-                rig_key = f'rig_settings{i}'
-                if ig_key in data:
-                    instance_group_settings.append(data[ig_key])
-                if rig_key in data:
-                    rig_settings.append(data[rig_key])
-            
-            # Add arrays to template context
-            template_data = dict(data)
-            template_data['instance_group_settings'] = instance_group_settings
-            template_data['rig_settings'] = rig_settings
-            rendered = tpl.render(**template_data)
-        else:
-            rendered = tpl.render(**data)
+        rendered = tpl.render(**data)
     except Exception as e:
         click.secho(f"❌  Failed to render template: {e}", fg="red")
         sys.exit(1)
@@ -364,7 +346,9 @@ def _default_create(region):
         output_file = 'cfn_params.yaml' if schema_type == CFN else 'k8s.yaml'
         with open(out_dir / output_file, 'w', encoding='utf-8') as f:
             f.write(rendered)
-        click.secho(f"✔️  Submitted! Files written to {out_dir}", fg="green")
+        # Use relative path for cleaner display
+        relative_out_dir = Path("run") / timestamp
+        click.secho(f"✔️  Submitted! Files written to {relative_out_dir}", fg="green")
     except Exception as e:
         click.secho(f"❌  Failed to write run files: {e}", fg="red")
         sys.exit(1)
@@ -373,56 +357,29 @@ def _default_create(region):
     try :
         if region is None:
             region = get_aws_default_region()
-            click.secho(f"Submitting to default region: {region}.", fg="yellow")
+            # Only show region message for cluster-stack template
+            if template == "cluster-stack":
+                click.secho(f"Submitting to default region: {region}.", fg="yellow")
 
-        if schema_type == CFN:
-            add_default_az_ids_to_config(out_dir, region)
-
-            from sagemaker.hyperpod.cli.commands.cluster_stack import create_cluster_stack_helper
-            create_cluster_stack_helper(config_file=f"{out_dir}/config.yaml",
-                                        region=region)
-        else:
-            dir_path = Path(".").resolve()
-            data, template, version = load_config(dir_path)
-            namespace = data.get("namespace", "default")
-            registry = TEMPLATES[template]["registry"]
-            model = registry.get(version)
-            if model:
-                # Filter out CLI metadata fields before passing to model
-                from sagemaker.hyperpod.cli.init_utils import filter_cli_metadata_fields
-                filtered_config = filter_cli_metadata_fields(data)
-                flat = model(**filtered_config)
-                domain = flat.to_domain()
-                if template == "hyp-custom-endpoint" or template == "hyp-jumpstart-endpoint":
-                    domain.create(namespace=namespace)
-                elif template == "hyp-pytorch-job":
-                    # Currently algin with pytorch_create. Open for refactor and simplify              
-                    # Prepare metadata
-                    job_name = domain.get("name")
-                    namespace = domain.get("namespace")
-                    spec = domain.get("spec")
-
-                    # Prepare metadata
-                    metadata_kwargs = {"name": job_name}
-                    if namespace:
-                        metadata_kwargs["namespace"] = namespace
-                    
-                        # Prepare job kwargs
-                    job_kwargs = {
-                        "metadata": Metadata(**metadata_kwargs),
-                        "replica_specs": spec.get("replica_specs"),
-                    }
-
-                    # Add nproc_per_node if present
-                    if "nproc_per_node" in spec:
-                        job_kwargs["nproc_per_node"] = spec.get("nproc_per_node")
-
-                    # Add run_policy if present
-                    if "run_policy" in spec:
-                        job_kwargs["run_policy"] = spec.get("run_policy")
-
-                    job = HyperPodPytorchJob(**job_kwargs)
-                    job.create()
+        # Unified pattern for all templates
+        dir_path = Path(".").resolve()
+        data, template, version = load_config(dir_path)
+        registry = TEMPLATES[template]["registry"]
+        model = registry.get(str(version))
+        if model:
+            # Filter out CLI metadata fields before passing to model
+            from sagemaker.hyperpod.cli.init_utils import _filter_cli_metadata_fields
+            filtered_config = _filter_cli_metadata_fields(data)
+            template_model = model(**filtered_config)
+            
+            # Pass region to to_domain for cluster stack template
+            if template == "cluster-stack":
+                config = template_model.to_config(region=region)
+                HpClusterStack(**config).create(region, template_version)
+            else:
+                # Create from k8s.yaml
+                k8s_file = out_dir / 'k8s.yaml'
+                create_from_k8s_yaml(str(k8s_file))
 
 
     except Exception as e:

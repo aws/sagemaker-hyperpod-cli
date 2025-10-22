@@ -15,8 +15,9 @@ from sagemaker.hyperpod.common.telemetry import _hyperpod_telemetry_emitter
 from sagemaker.hyperpod.common.telemetry.constants import Feature
 
 CAPABILITIES_FOR_STACK_CREATION = [
-'CAPABILITY_IAM',
-'CAPABILITY_NAMED_IAM'
+    'CAPABILITY_AUTO_EXPAND',
+    'CAPABILITY_IAM',
+    'CAPABILITY_NAMED_IAM'
 ]
 log = logging.getLogger()
 
@@ -52,32 +53,6 @@ class HpClusterStack(ClusterStackBase):
     def __init__(self, **data):
         super().__init__(**data)
 
-    @field_validator('kubernetes_version', mode='before')
-    @classmethod
-    def validate_kubernetes_version(cls, v):
-        if v is not None:
-            return str(v)
-        return v
-
-    @field_validator('availability_zone_ids', 'nat_gateway_ids', 'eks_private_subnet_ids', 'security_group_ids', 'private_route_table_ids', 'private_subnet_ids', 'instance_group_settings', 'rig_settings', 'tags', mode='before')
-    @classmethod
-    def validate_list_fields(cls, v):
-        # Convert JSON string to list if needed
-        if isinstance(v, str) and v.startswith('['):
-            try:
-                import json
-                v = json.loads(v)
-            except (json.JSONDecodeError, TypeError):
-                try:
-                    # Try Python literal eval (single quotes)
-                    v = ast.literal_eval(v)
-                except:
-                    pass  # Keep original value if parsing fails
-
-        if isinstance(v, list) and len(v) == 0:
-            raise ValueError('Empty lists [] are not allowed. Use proper YAML array format or leave field empty.')
-        return v
-
     @staticmethod
     def get_template() -> str:
         try:
@@ -92,7 +67,8 @@ class HpClusterStack(ClusterStackBase):
 
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_cluster_stack")
     def create(self,
-               region: Optional[str] = None) -> str:
+               region: Optional[str] = None,
+               template_version: Optional[int] = 1) -> str:
         """Creates a new HyperPod cluster CloudFormation stack.
 
         **Parameters:**
@@ -137,12 +113,12 @@ class HpClusterStack(ClusterStackBase):
 
         stack_name = f"HyperpodClusterStack-{str(uuid.uuid4())[:5]}"
         # Use the fixed bucket name from the model
-        bucket_name = self.custom_bucket_name
-        template_key = f"1.1/main-stack-eks-based-template.yaml"
+        bucket_name = "aws-sagemaker-hyperpod-cluster-setup"
+        template_key = f"{template_version}/templates/main-stack-eks-based-template.yaml"
 
         try:
             # Use TemplateURL for large templates (>51KB)
-            template_url = f"https://{bucket_name}.s3.amazonaws.com/{template_key}"
+            template_url = f"https://{bucket_name}-{region}-{self.stage}.s3.amazonaws.com/{template_key}"
             response = cf.create_stack(
                 StackName=stack_name,
                 TemplateURL=template_url,
@@ -536,6 +512,116 @@ class HpClusterStack(ClusterStackBase):
               >>> status = HpClusterStack.check_status("my-stack", region="us-west-2")
         """
         return HpClusterStack._get_stack_status_helper(stack_name, region)
+    
+    @staticmethod
+    def delete(stack_name: str, region: Optional[str] = None, retain_resources: Optional[List[str]] = None, 
+                logger: Optional[logging.Logger] = None) -> None:
+        """Deletes a HyperPod cluster CloudFormation stack.
+
+        Removes the specified CloudFormation stack and all associated AWS resources.
+        This operation cannot be undone and proceeds automatically without confirmation.
+
+        **Parameters:**
+
+        .. list-table::
+            :header-rows: 1
+            :widths: 20 20 60
+
+            * - Parameter
+                - Type
+                - Description
+            * - stack_name
+                - str
+                - Name of the CloudFormation stack to delete
+            * - region
+                - str, optional
+                - AWS region where the stack exists
+            * - retain_resources
+                - List[str], optional
+                - List of logical resource IDs to retain during deletion (only works on DELETE_FAILED stacks)
+            * - logger
+                - logging.Logger, optional
+                - Logger instance for output messages. Uses default logger if not provided
+
+        **Raises:**
+
+        ValueError: When stack doesn't exist or retain_resources limitation is encountered
+        RuntimeError: When CloudFormation deletion fails
+        Exception: For other deletion errors
+
+        .. dropdown:: Usage Examples
+            :open:
+
+            .. code-block:: python
+
+                >>> # Delete a stack (automatically proceeds without confirmation)
+                >>> HpClusterStack.delete("my-stack-name")
+                >>>
+                >>> # Delete in specific region
+                >>> HpClusterStack.delete("my-stack-name", region="us-west-2")
+                >>>
+                >>> # Delete with retained resources (only works on DELETE_FAILED stacks)
+                >>> HpClusterStack.delete("my-stack-name", retain_resources=["S3Bucket", "EFSFileSystem"])
+                >>>
+                >>> # Delete with custom logger
+                >>> import logging
+                >>> logger = logging.getLogger(__name__)
+                >>> HpClusterStack.delete("my-stack-name", logger=logger)
+        """
+        from sagemaker.hyperpod.cli.cluster_stack_utils import (
+            delete_stack_with_confirmation, 
+            StackNotFoundError
+        )
+        
+        if logger is None:
+            logger = logging.getLogger(__name__)
+        
+        # Convert retain_resources list to comma-separated string for the utility function
+        retain_resources_str = ",".join(retain_resources) if retain_resources else ""
+
+        def sdk_confirm_callback(message: str) -> bool:
+            """SDK-specific confirmation callback - always auto-confirms."""
+            logger.info(f"Auto-confirming: {message}")
+            return True
+        
+        try:
+            delete_stack_with_confirmation(
+                stack_name=stack_name,
+                region=region or boto3.session.Session().region_name,
+                retain_resources_str=retain_resources_str,
+                message_callback=logger.info,
+                confirm_callback=sdk_confirm_callback,
+                success_callback=logger.info
+            )
+        except StackNotFoundError:
+            error_msg = f"Stack '{stack_name}' not found"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+        except Exception as e:
+            error_str = str(e)
+            
+            # Handle CloudFormation retain-resources limitation with clear exception for SDK
+            if retain_resources and "specify which resources to retain only when the stack is in the DELETE_FAILED state" in error_str:
+                error_msg = (
+                    f"CloudFormation limitation: retain_resources can only be used on stacks in DELETE_FAILED state. "
+                    f"Current stack state allows normal deletion. Try deleting without retain_resources first, "
+                    f"then retry with retain_resources if deletion fails."
+                )
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+            
+            # Handle termination protection
+            if "TerminationProtection is enabled" in error_str:
+                error_msg = (
+                    f"Stack deletion blocked: Termination Protection is enabled. "
+                    f"Disable termination protection first using AWS CLI or Console."
+                )
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
+            
+            # Handle other errors
+            logger.error(f"Failed to delete stack: {error_str}")
+            raise RuntimeError(f"Stack deletion failed: {error_str}")
 
     @staticmethod
     def delete(stack_name: str, region: Optional[str] = None, retain_resources: Optional[List[str]] = None, 
@@ -648,8 +734,8 @@ class HpClusterStack(ClusterStackBase):
             raise RuntimeError(f"Stack deletion failed: {error_str}")
 
 
-def _yaml_to_json_string(yaml_path) -> str:
-    """Convert YAML file to JSON string"""
-    with open(yaml_path, 'r') as file:
-        yaml_data = yaml.safe_load(file)
-    return json.dumps(yaml_data, indent=2, ensure_ascii=False)
+    def _yaml_to_json_string(yaml_path) -> str:
+        """Convert YAML file to JSON string"""
+        with open(yaml_path, 'r') as file:
+            yaml_data = yaml.safe_load(file)
+        return json.dumps(yaml_data, indent=2, ensure_ascii=False)

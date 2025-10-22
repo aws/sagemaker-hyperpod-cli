@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from .v1_0 import model as v1_0_model # Import your model
 from .v1_1 import model as v1_1_model
+from .v1_0.template import TEMPLATE_CONTENT as v1_0_template
+from .v1_1.template import TEMPLATE_CONTENT as v1_1_template
 from typing import Dict, Type
 from pydantic import BaseModel
 
@@ -19,4 +21,9 @@ from pydantic import BaseModel
 SCHEMA_REGISTRY: Dict[str, Type[BaseModel]] = {
     "1.0": v1_0_model.PyTorchJobConfig,
     "1.1": v1_1_model.PyTorchJobConfig,
+}
+
+TEMPLATE_REGISTRY = {
+    "1.0": v1_0_template,
+    "1.1": v1_1_template
 }

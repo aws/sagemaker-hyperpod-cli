@@ -149,12 +149,31 @@ def _hyperpod_telemetry_emitter(feature: str, func_name: str):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
+            import inspect
+            sig = inspect.signature(func)
+            bound_args = sig.bind(*args, **kwargs)
+            bound_args.apply_defaults()
+            
+            # Get template value and create template-specific event name
+            template = bound_args.arguments.get('template')
+            if template:
+                event_name = f"{func_name}_{template.replace('-', '_')}"
+            else:
+                event_name = func_name
+            
             extra = (
-                f"{func_name}"
+                f"{event_name}"
                 f"&x-sdkVersion={SDK_VERSION}"
                 f"&x-env={PYTHON_VERSION}"
                 f"&x-sys={OS_NAME_VERSION}"
             )
+
+            # Add template and version to extra
+            if template:
+                extra += f"&x-template={template}"
+            if 'version' in bound_args.arguments and bound_args.arguments['version']:
+                extra += f"&x-version={bound_args.arguments['version']}"
+            
             start = perf_counter()
             try:
                 result = func(*args, **kwargs)

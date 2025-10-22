@@ -8,7 +8,7 @@ from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
     SageMakerEndpoint,
     TlsConfig,
 )
-
+from sagemaker.hyperpod.common.config import Metadata
 
 class TestHPJumpStartEndpoint(unittest.TestCase):
     def setUp(self):
@@ -35,39 +35,50 @@ class TestHPJumpStartEndpoint(unittest.TestCase):
 
     @patch.object(HPJumpStartEndpoint, "validate_instance_type")
     @patch.object(HPJumpStartEndpoint, "call_create_api")
-    def test_create(self, mock_create_api, mock_validate_instance_type):
+    @patch('sagemaker.hyperpod.inference.hp_jumpstart_endpoint.get_default_namespace', return_value='default')
+    def test_create(self, mock_get_namespace, mock_create_api, mock_validate_instance_type):
 
-        self.endpoint.create(name="test-name", namespace="test-ns")
+        self.endpoint.create()
 
         mock_create_api.assert_called_once_with(
-            name="test-name",
+            metadata=unittest.mock.ANY,
             kind=JUMPSTART_MODEL_KIND,
-            namespace="test-ns",
             spec=unittest.mock.ANY,
             debug=False,
         )
-        self.assertEqual(self.endpoint.metadata.name, "test-name")
+        self.assertEqual(self.endpoint.metadata.name, "bert-testing-jumpstart-7-2-2")
+
 
     @patch.object(HPJumpStartEndpoint, "validate_instance_type")
     @patch.object(HPJumpStartEndpoint, "call_create_api")
-    def test_create_from_dict(self, mock_create_api, mock_validate_instance_type):
-
-        input_dict = {
-            "model": {"modelId": "test-model"},
-            "server": {"instance_type": "ml.c5.2xlarge"},
-        }
-
-        self.endpoint.create_from_dict(
-            input_dict, name="test-name", namespace="test-ns"
+    def test_create_with_metadata(self, mock_create_api, mock_validate_instance_type):
+        """Test create_from_dict uses metadata name and namespace when endpoint name not provided"""
+        
+        # Create endpoint without sageMakerEndpoint name to force using metadata
+        endpoint_without_name = HPJumpStartEndpoint(
+            model=Model(model_id="test-model"),
+            server=Server(instance_type="ml.c5.2xlarge"),
+            tls_config=TlsConfig(tls_certificate_output_s3_uri="s3://test-bucket"),
+            metadata=Metadata(name="metadata-test-name", namespace="metadata-test-ns")
         )
 
-        mock_create_api.assert_called_once_with(
-            name="test-name",
-            kind=JUMPSTART_MODEL_KIND,
-            namespace="test-ns",
-            spec=unittest.mock.ANY,
-            debug=False,
-        )
+        endpoint_without_name.create()
+
+        # Verify it uses metadata name and namespace
+        mock_create_api.assert_called_once()
+        call_args = mock_create_api.call_args[1]
+        assert call_args['metadata'].name == 'metadata-test-name'
+        assert call_args['metadata'].namespace == 'metadata-test-ns'
+
+
+    @patch.object(HPJumpStartEndpoint, "validate_instance_type")
+    @patch.object(HPJumpStartEndpoint, "call_create_api")
+    @patch('sagemaker.hyperpod.inference.hp_jumpstart_endpoint.get_default_namespace', return_value='default')
+    def test_create_from_dict(self, mock_get_namespace, mock_create_api, mock_validate_instance_type):
+
+        input_dict = self.endpoint.model_dump(exclude_none=True)
+
+        self.endpoint.create_from_dict(input_dict)
 
     @patch.object(HPJumpStartEndpoint, "call_get_api")
     def test_refresh(self, mock_get_api):
