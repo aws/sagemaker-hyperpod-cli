@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hyperpod-dev-space-template"
+version = "1.0.0"
+description = "Template for HyperPod Dev Space configuration"
+authors = [
+    {name = "Amazon Web Services"},
+]
+license = {text = "Apache-2.0"}
+requires-python = ">=3.8"
+dependencies = [
+    "pydantic>=2.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/aws/sagemaker-hyperpod-cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["hyperpod_dev_space_template*"]
+
+[tool.setuptools.package-data]
+"hyperpod_dev_space_template.v1_0" = ["schema.json"]

@@ -1,0 +1,201 @@
+{
+  "$defs": {
+    "Application": {
+      "enum": [
+        "jupyter",
+        "code-editor"
+      ],
+      "title": "Application",
+      "type": "string"
+    },
+    "ResourcesConfig": {
+      "properties": {
+        "memory": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "1Gi",
+          "description": "Memory limit",
+          "title": "Memory"
+        },
+        "cpu": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "500m",
+          "description": "CPU limit",
+          "title": "Cpu"
+        },
+        "nvidia.com/gpu": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "GPU limit",
+          "title": "Nvidia.Com/Gpu"
+        }
+      },
+      "title": "ResourcesConfig",
+      "type": "object"
+    },
+    "SharedStatus": {
+      "enum": [
+        "public",
+        "private"
+      ],
+      "title": "SharedStatus",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "description": "Dev space name",
+      "maxLength": 63,
+      "minLength": 1,
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+      "title": "Name",
+      "type": "string"
+    },
+    "image": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "public.ecr.aws/sagemaker/sagemaker-distribution:3.2.0-cpu",
+      "description": "Container image for the dev space",
+      "title": "Image"
+    },
+    "namespace": {
+      "default": "default",
+      "description": "Kubernetes namespace",
+      "minLength": 1,
+      "title": "Namespace",
+      "type": "string"
+    },
+    "desired_status": {
+      "anyOf": [
+        {
+          "enum": [
+            "Running",
+            "Stopped"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "Running",
+      "description": "Desired status of the dev space",
+      "title": "Desired Status"
+    },
+    "service_account_name": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "default",
+      "description": "Service account name",
+      "title": "Service Account Name"
+    },
+    "resources": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ResourcesConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": {
+        "memory": "1Gi",
+        "cpu": "500m",
+        "nvidia.com/gpu": null
+      },
+      "description": "Resource limit"
+    },
+    "storage_class_name": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Storage class name",
+      "title": "Storage Class Name"
+    },
+    "storage_size": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Storage size (e.g., '10Gi')",
+      "title": "Storage Size"
+    },
+    "shared_status": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SharedStatus"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "private",
+      "description": "Space shared setting (private | public)"
+    },
+    "application": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Application"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "jupyter",
+      "description": "Application to run in the container (jupyter | code-editor)"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "title": "DevSpaceConfig",
+  "type": "object"
+}
