@@ -21,7 +21,7 @@ image:
     ap-southeast-4: 311141544681.dkr.ecr.ap-southeast-4.amazonaws.com
     ap-southeast-3: 158128612970.dkr.ecr.ap-southeast-3.amazonaws.com
     eu-south-2: 025050981094.dkr.ecr.eu-south-2.amazonaws.com
-  tag: v1.0.0
+  tag: v2.0
   pullPolicy: Always
   repository:
 hyperpodClusterArn:
@@ -29,6 +29,7 @@ executionRoleArn:
 jumpstartGatedModelDownloadRoleArn: ""
 stage: "prod"
 tlsCertificateS3Bucket:
+enableWebhooks: true
 
 s3:
   enabled: true
@@ -62,6 +63,7 @@ fsx:
 
 alb:
   enabled: true
+  enableServiceMutatorWebhook: false
   clusterName: ""
   region: ""
   vpcId: ""
@@ -99,3 +101,6 @@ components:
   metricsService:
     enabled: true
     path: "config/metrics"
+  webhook:
+    enabled: true
+    path: "config/webhook"

@@ -1,11 +1,21 @@
----
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
+    cert-manager.io/inject-ca-from: '{{ .Values.shortPrefix }}-system/serving-cert'
     controller-gen.kubebuilder.io/version: v0.16.4
   name: inferenceendpointconfigs.inference.sagemaker.aws.amazon.com
 spec:
+  conversion:
+    strategy: Webhook
+    webhook:
+      clientConfig:
+        service:
+          name: '{{ .Values.namePrefix }}-conversion-webhook'
+          namespace: '{{ .Values.shortPrefix }}-system'
+          path: /convert
+      conversionReviewVersions:
+      - v1
   group: inference.sagemaker.aws.amazon.com
   names:
     kind: InferenceEndpointConfig
@@ -14,6 +24,1365 @@ spec:
     singular: inferenceendpointconfig
   scope: Namespaced
   versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: InferenceEndpointConfig is the Schema for the inferenceendpointconfigs
+          API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: InferenceEndpointConfigSpec defines the desired state of
+              InferenceEndpointConfig.
+            properties:
+              InitialReplicaCount:
+                description: |-
+                  Number of desired pods. This is a pointer to distinguish between explicit
+                  zero and not specified. Defaults to 1.
+                format: int32
+                type: integer
+              autoScalingSpec:
+                properties:
+                  cloudWatchTrigger:
+                    description: CloudWatch metric trigger to use for autoscaling
+                    properties:
+                      activationTargetValue:
+                        default: 0
+                        description: Activation Value for CloudWatch metric to scale
+                          from 0 to 1. Only applicable if minReplicaCount = 0
+                        type: number
+                      dimensions:
+                        description: Dimensions for Cloudwatch metrics
+                        items:
+                          properties:
+                            name:
+                              description: CloudWatch Metric dimension name
+                              type: string
+                            value:
+                              description: CloudWatch Metric dimension value
+                              type: string
+                          required:
+                          - name
+                          - value
+                          type: object
+                        type: array
+                      metricCollectionPeriod:
+                        default: 300
+                        description: Defines the Period for CloudWatch query
+                        format: int32
+                        type: integer
+                      metricCollectionStartTime:
+                        default: 300
+                        description: Defines the StartTime for CloudWatch query
+                        format: int32
+                        type: integer
+                      metricName:
+                        description: Metric name to query for Cloudwatch trigger
+                        type: string
+                      metricStat:
+                        default: Average
+                        description: Statistics metric to be used by Trigger. Used
+                          to define Stat for CloudWatch query. Default is Average.
+                        type: string
+                      metricType:
+                        default: Average
+                        description: 'The type of metric to be used by HPA. Enum:
+                          AverageValue - Uses average value of metric per pod, Value
+                          - Uses absolute metric value'
+                        enum:
+                        - Value
+                        - Average
+                        type: string
+                      minValue:
+                        default: 0
+                        description: Minimum metric value used in case of empty response
+                          from CloudWatch. Default is 0.
+                        type: number
+                      name:
+                        description: Name for the CloudWatch trigger
+                        type: string
+                      namespace:
+                        description: AWS CloudWatch namespace for metric
+                        type: string
+                      targetValue:
+                        description: TargetValue for CloudWatch metric
+                        type: number
+                      useCachedMetrics:
+                        default: true
+                        description: Enable caching of metric values during polling
+                          interval. Default is true
+                        type: boolean
+                    type: object
+                  cloudWatchTriggerList:
+                    description: Multiple CloudWatch metric triggers to use for autoscaling.
+                      Takes priority over CloudWatchTrigger if both are provided.
+                    items:
+                      properties:
+                        activationTargetValue:
+                          default: 0
+                          description: Activation Value for CloudWatch metric to scale
+                            from 0 to 1. Only applicable if minReplicaCount = 0
+                          type: number
+                        dimensions:
+                          description: Dimensions for Cloudwatch metrics
+                          items:
+                            properties:
+                              name:
+                                description: CloudWatch Metric dimension name
+                                type: string
+                              value:
+                                description: CloudWatch Metric dimension value
+                                type: string
+                            required:
+                            - name
+                            - value
+                            type: object
+                          type: array
+                        metricCollectionPeriod:
+                          default: 300
+                          description: Defines the Period for CloudWatch query
+                          format: int32
+                          type: integer
+                        metricCollectionStartTime:
+                          default: 300
+                          description: Defines the StartTime for CloudWatch query
+                          format: int32
+                          type: integer
+                        metricName:
+                          description: Metric name to query for Cloudwatch trigger
+                          type: string
+                        metricStat:
+                          default: Average
+                          description: Statistics metric to be used by Trigger. Used
+                            to define Stat for CloudWatch query. Default is Average.
+                          type: string
+                        metricType:
+                          default: Average
+                          description: 'The type of metric to be used by HPA. Enum:
+                            AverageValue - Uses average value of metric per pod, Value
+                            - Uses absolute metric value'
+                          enum:
+                          - Value
+                          - Average
+                          type: string
+                        minValue:
+                          default: 0
+                          description: Minimum metric value used in case of empty
+                            response from CloudWatch. Default is 0.
+                          type: number
+                        name:
+                          description: Name for the CloudWatch trigger
+                          type: string
+                        namespace:
+                          description: AWS CloudWatch namespace for metric
+                          type: string
+                        targetValue:
+                          description: TargetValue for CloudWatch metric
+                          type: number
+                        useCachedMetrics:
+                          default: true
+                          description: Enable caching of metric values during polling
+                            interval. Default is true
+                          type: boolean
+                      type: object
+                    maxItems: 100
+                    type: array
+                  cooldownPeriod:
+                    default: 300
+                    description: The period to wait after the last trigger reported
+                      active before scaling the resource back to 0. Default 300 seconds.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  initialCooldownPeriod:
+                    default: 300
+                    description: The delay before the cooldownPeriod starts after
+                      the initial creation of the ScaledObject. Default 300 seconds.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  maxReplicaCount:
+                    default: 5
+                    description: The maximum number of model pods to scale to. Default
+                      5.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  minReplicaCount:
+                    default: 1
+                    description: The minimum number of model pods to scale down to.
+                      Default 1.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  pollingInterval:
+                    default: 30
+                    description: This is the interval to check each trigger on. Default
+                      30 seconds.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  prometheusTrigger:
+                    description: Prometheus metric trigger to use for autoscaling
+                    properties:
+                      activationTargetValue:
+                        default: 0
+                        description: Activation Value for Prometheus metric to scale
+                          from 0 to 1. Only applicable if minReplicaCount = 0
+                        type: number
+                      customHeaders:
+                        description: Custom headers to include while querying the
+                          prometheus endpoint.
+                        type: string
+                      metricType:
+                        default: Average
+                        description: 'The type of metric to be used by HPA. Enum:
+                          AverageValue - Uses average value of metric per pod, Value
+                          - Uses absolute metric value'
+                        enum:
+                        - Value
+                        - Average
+                        type: string
+                      name:
+                        description: Name for the Prometheus trigger
+                        type: string
+                      namespace:
+                        description: Namespace for namespaced queries
+                        type: string
+                      query:
+                        description: PromQLQuery for the metric.
+                        type: string
+                      serverAddress:
+                        description: Server address for AMP workspace
+                        pattern: ^https:\/\/aps-workspaces\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.amazonaws\.com\/workspaces\/ws-[a-zA-Z0-9-]+\/[a-zA-Z0-9-]+$|^$
+                        type: string
+                      targetValue:
+                        description: Target metric value for scaling
+                        type: number
+                      useCachedMetrics:
+                        default: true
+                        description: Enable caching of metric values during polling
+                          interval. Default is true
+                        type: boolean
+                    type: object
+                  prometheusTriggerList:
+                    description: Multiple Prometheus metric triggers to use for autoscaling.
+                      Takes priority over PrometheusTrigger if both are provided.
+                    items:
+                      properties:
+                        activationTargetValue:
+                          default: 0
+                          description: Activation Value for Prometheus metric to scale
+                            from 0 to 1. Only applicable if minReplicaCount = 0
+                          type: number
+                        customHeaders:
+                          description: Custom headers to include while querying the
+                            prometheus endpoint.
+                          type: string
+                        metricType:
+                          default: Average
+                          description: 'The type of metric to be used by HPA. Enum:
+                            AverageValue - Uses average value of metric per pod, Value
+                            - Uses absolute metric value'
+                          enum:
+                          - Value
+                          - Average
+                          type: string
+                        name:
+                          description: Name for the Prometheus trigger
+                          type: string
+                        namespace:
+                          description: Namespace for namespaced queries
+                          type: string
+                        query:
+                          description: PromQLQuery for the metric.
+                          type: string
+                        serverAddress:
+                          description: Server address for AMP workspace
+                          pattern: ^https:\/\/aps-workspaces\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.amazonaws\.com\/workspaces\/ws-[a-zA-Z0-9-]+\/[a-zA-Z0-9-]+$|^$
+                          type: string
+                        targetValue:
+                          description: Target metric value for scaling
+                          type: number
+                        useCachedMetrics:
+                          default: true
+                          description: Enable caching of metric values during polling
+                            interval. Default is true
+                          type: boolean
+                      type: object
+                    maxItems: 100
+                    type: array
+                  scaleDownStabilizationTime:
+                    default: 300
+                    description: The time window to stabilize for HPA before scaling
+                      down. Default 300 seconds.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  scaleUpStabilizationTime:
+                    default: 0
+                    description: The time window to stabilize for HPA before scaling
+                      up. Default 0 seconds.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                type: object
+              endpointName:
+                description: |-
+                  Name used for Sagemaker Endpoint
+                  Name of sagemaker endpoint. Defaults to empty string which represents that Sagemaker endpoint will not be created.
+                maxLength: 63
+                pattern: ^$|^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$
+                type: string
+              instanceType:
+                description: Instance Type to deploy the model on
+                pattern: ^ml\..*
+                type: string
+              intelligentRoutingSpec:
+                description: |-
+                  Configuration for intelligent routing
+                  This feature is currently not supported for existing deployments.
+                  Adding this configuration to an existing deployment will be rejected.
+                properties:
+                  autoScalingSpec:
+                    properties:
+                      cloudWatchTrigger:
+                        description: CloudWatch metric trigger to use for autoscaling
+                        properties:
+                          activationTargetValue:
+                            default: 0
+                            description: Activation Value for CloudWatch metric to
+                              scale from 0 to 1. Only applicable if minReplicaCount
+                              = 0
+                            type: number
+                          dimensions:
+                            description: Dimensions for Cloudwatch metrics
+                            items:
+                              properties:
+                                name:
+                                  description: CloudWatch Metric dimension name
+                                  type: string
+                                value:
+                                  description: CloudWatch Metric dimension value
+                                  type: string
+                              required:
+                              - name
+                              - value
+                              type: object
+                            type: array
+                          metricCollectionPeriod:
+                            default: 300
+                            description: Defines the Period for CloudWatch query
+                            format: int32
+                            type: integer
+                          metricCollectionStartTime:
+                            default: 300
+                            description: Defines the StartTime for CloudWatch query
+                            format: int32
+                            type: integer
+                          metricName:
+                            description: Metric name to query for Cloudwatch trigger
+                            type: string
+                          metricStat:
+                            default: Average
+                            description: Statistics metric to be used by Trigger.
+                              Used to define Stat for CloudWatch query. Default is
+                              Average.
+                            type: string
+                          metricType:
+                            default: Average
+                            description: 'The type of metric to be used by HPA. Enum:
+                              AverageValue - Uses average value of metric per pod,
+                              Value - Uses absolute metric value'
+                            enum:
+                            - Value
+                            - Average
+                            type: string
+                          minValue:
+                            default: 0
+                            description: Minimum metric value used in case of empty
+                              response from CloudWatch. Default is 0.
+                            type: number
+                          name:
+                            description: Name for the CloudWatch trigger
+                            type: string
+                          namespace:
+                            description: AWS CloudWatch namespace for metric
+                            type: string
+                          targetValue:
+                            description: TargetValue for CloudWatch metric
+                            type: number
+                          useCachedMetrics:
+                            default: true
+                            description: Enable caching of metric values during polling
+                              interval. Default is true
+                            type: boolean
+                        type: object
+                      cloudWatchTriggerList:
+                        description: Multiple CloudWatch metric triggers to use for
+                          autoscaling. Takes priority over CloudWatchTrigger if both
+                          are provided.
+                        items:
+                          properties:
+                            activationTargetValue:
+                              default: 0
+                              description: Activation Value for CloudWatch metric
+                                to scale from 0 to 1. Only applicable if minReplicaCount
+                                = 0
+                              type: number
+                            dimensions:
+                              description: Dimensions for Cloudwatch metrics
+                              items:
+                                properties:
+                                  name:
+                                    description: CloudWatch Metric dimension name
+                                    type: string
+                                  value:
+                                    description: CloudWatch Metric dimension value
+                                    type: string
+                                required:
+                                - name
+                                - value
+                                type: object
+                              type: array
+                            metricCollectionPeriod:
+                              default: 300
+                              description: Defines the Period for CloudWatch query
+                              format: int32
+                              type: integer
+                            metricCollectionStartTime:
+                              default: 300
+                              description: Defines the StartTime for CloudWatch query
+                              format: int32
+                              type: integer
+                            metricName:
+                              description: Metric name to query for Cloudwatch trigger
+                              type: string
+                            metricStat:
+                              default: Average
+                              description: Statistics metric to be used by Trigger.
+                                Used to define Stat for CloudWatch query. Default
+                                is Average.
+                              type: string
+                            metricType:
+                              default: Average
+                              description: 'The type of metric to be used by HPA.
+                                Enum: AverageValue - Uses average value of metric
+                                per pod, Value - Uses absolute metric value'
+                              enum:
+                              - Value
+                              - Average
+                              type: string
+                            minValue:
+                              default: 0
+                              description: Minimum metric value used in case of empty
+                                response from CloudWatch. Default is 0.
+                              type: number
+                            name:
+                              description: Name for the CloudWatch trigger
+                              type: string
+                            namespace:
+                              description: AWS CloudWatch namespace for metric
+                              type: string
+                            targetValue:
+                              description: TargetValue for CloudWatch metric
+                              type: number
+                            useCachedMetrics:
+                              default: true
+                              description: Enable caching of metric values during
+                                polling interval. Default is true
+                              type: boolean
+                          type: object
+                        maxItems: 100
+                        type: array
+                      cooldownPeriod:
+                        default: 300
+                        description: The period to wait after the last trigger reported
+                          active before scaling the resource back to 0. Default 300
+                          seconds.
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      initialCooldownPeriod:
+                        default: 300
+                        description: The delay before the cooldownPeriod starts after
+                          the initial creation of the ScaledObject. Default 300 seconds.
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      maxReplicaCount:
+                        default: 5
+                        description: The maximum number of model pods to scale to.
+                          Default 5.
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      minReplicaCount:
+                        default: 1
+                        description: The minimum number of model pods to scale down
+                          to. Default 1.
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      pollingInterval:
+                        default: 30
+                        description: This is the interval to check each trigger on.
+                          Default 30 seconds.
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      prometheusTrigger:
+                        description: Prometheus metric trigger to use for autoscaling
+                        properties:
+                          activationTargetValue:
+                            default: 0
+                            description: Activation Value for Prometheus metric to
+                              scale from 0 to 1. Only applicable if minReplicaCount
+                              = 0
+                            type: number
+                          customHeaders:
+                            description: Custom headers to include while querying
+                              the prometheus endpoint.
+                            type: string
+                          metricType:
+                            default: Average
+                            description: 'The type of metric to be used by HPA. Enum:
+                              AverageValue - Uses average value of metric per pod,
+                              Value - Uses absolute metric value'
+                            enum:
+                            - Value
+                            - Average
+                            type: string
+                          name:
+                            description: Name for the Prometheus trigger
+                            type: string
+                          namespace:
+                            description: Namespace for namespaced queries
+                            type: string
+                          query:
+                            description: PromQLQuery for the metric.
+                            type: string
+                          serverAddress:
+                            description: Server address for AMP workspace
+                            pattern: ^https:\/\/aps-workspaces\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.amazonaws\.com\/workspaces\/ws-[a-zA-Z0-9-]+\/[a-zA-Z0-9-]+$|^$
+                            type: string
+                          targetValue:
+                            description: Target metric value for scaling
+                            type: number
+                          useCachedMetrics:
+                            default: true
+                            description: Enable caching of metric values during polling
+                              interval. Default is true
+                            type: boolean
+                        type: object
+                      prometheusTriggerList:
+                        description: Multiple Prometheus metric triggers to use for
+                          autoscaling. Takes priority over PrometheusTrigger if both
+                          are provided.
+                        items:
+                          properties:
+                            activationTargetValue:
+                              default: 0
+                              description: Activation Value for Prometheus metric
+                                to scale from 0 to 1. Only applicable if minReplicaCount
+                                = 0
+                              type: number
+                            customHeaders:
+                              description: Custom headers to include while querying
+                                the prometheus endpoint.
+                              type: string
+                            metricType:
+                              default: Average
+                              description: 'The type of metric to be used by HPA.
+                                Enum: AverageValue - Uses average value of metric
+                                per pod, Value - Uses absolute metric value'
+                              enum:
+                              - Value
+                              - Average
+                              type: string
+                            name:
+                              description: Name for the Prometheus trigger
+                              type: string
+                            namespace:
+                              description: Namespace for namespaced queries
+                              type: string
+                            query:
+                              description: PromQLQuery for the metric.
+                              type: string
+                            serverAddress:
+                              description: Server address for AMP workspace
+                              pattern: ^https:\/\/aps-workspaces\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.amazonaws\.com\/workspaces\/ws-[a-zA-Z0-9-]+\/[a-zA-Z0-9-]+$|^$
+                              type: string
+                            targetValue:
+                              description: Target metric value for scaling
+                              type: number
+                            useCachedMetrics:
+                              default: true
+                              description: Enable caching of metric values during
+                                polling interval. Default is true
+                              type: boolean
+                          type: object
+                        maxItems: 100
+                        type: array
+                      scaleDownStabilizationTime:
+                        default: 300
+                        description: The time window to stabilize for HPA before scaling
+                          down. Default 300 seconds.
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      scaleUpStabilizationTime:
+                        default: 0
+                        description: The time window to stabilize for HPA before scaling
+                          up. Default 0 seconds.
+                        format: int32
+                        minimum: 0
+                        type: integer
+                    type: object
+                  enabled:
+                    default: false
+                    description: Once set, the enabled field cannot be modified
+                    type: boolean
+                  routingStrategy:
+                    default: prefixaware
+                    enum:
+                    - prefixaware
+                    - kvaware
+                    - session
+                    - roundrobin
+                    type: string
+                type: object
+              invocationEndpoint:
+                default: invocations
+                description: |-
+                  The invocation endpoint of the model server. http://<host>:<port>/ would be pre-populated based on the other fields.
+                  Please fill in the path after http://<host>:<port>/ specific to your model server.
+                type: string
+              kvCacheSpec:
+                description: |-
+                  Configuration for KV Cache specification
+                  By default L1CacheOffloading will be enabled
+                properties:
+                  cacheConfigFile:
+                    description: KVCache configuration file path. If specified, override
+                      other configurations provided via spec
+                    type: string
+                  enableL1Cache:
+                    default: true
+                    description: Enable CPU offloading
+                    type: boolean
+                  enableL2Cache:
+                    default: false
+                    type: boolean
+                  l2CacheSpec:
+                    description: Configuration for providing L2 Cache offloading
+                    properties:
+                      l2CacheBackend:
+                        description: L2 cache backend type. Required when L2CacheSpec
+                          is provided.
+                        pattern: (?i)redis
+                        type: string
+                      l2CacheLocalUrl:
+                        description: Provide the L2 cache URL to local storage
+                        type: string
+                    type: object
+                type: object
+              loadBalancer:
+                description: Configuration for Application Load Balancer
+                properties:
+                  healthCheckPath:
+                    default: /ping
+                    description: Health check path for the ALB target group. Defaults
+                      to /ping if not specified.
+                    pattern: ^/.*
+                    type: string
+                  routingAlgorithm:
+                    default: least_outstanding_requests
+                    description: Routing algorithm for the ALB target group (least_oustanding_requests
+                      or round_robin)
+                    enum:
+                    - least_outstanding_requests
+                    - round_robin
+                    type: string
+                type: object
+              metrics:
+                description: Configuration for metrics collection and exposure
+                properties:
+                  enabled:
+                    default: true
+                    description: Enable metrics collection for this model deployment
+                    type: boolean
+                  metricsScrapeIntervalSeconds:
+                    default: 15
+                    description: Scrape interval in seconds for metrics collection
+                      from sidecar and model container.
+                    format: int32
+                    maximum: 300
+                    minimum: 5
+                    type: integer
+                  modelMetrics:
+                    description: Configuration for model container metrics scraping
+                    properties:
+                      path:
+                        default: /metrics
+                        description: Path where the model exposes metrics
+                        pattern: ^/[a-zA-Z0-9\-_.\/]*$
+                        type: string
+                      port:
+                        default: 8080
+                        description: Port where the model exposes metrics. If not
+                          specified, a default port will be used.
+                        format: int32
+                        maximum: 65535
+                        minimum: 1024
+                        type: integer
+                    type: object
+                type: object
+              modelName:
+                description: Name of model that will be created on Sagemaker
+                maxLength: 63
+                pattern: ^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}
+                type: string
+              modelSourceConfig:
+                properties:
+                  fsxStorage:
+                    properties:
+                      dnsName:
+                        description: FSX File System DNS Name
+                        type: string
+                      fileSystemId:
+                        description: FSX File System ID
+                        type: string
+                      mountName:
+                        description: FSX File System Mount Name
+                        type: string
+                    required:
+                    - fileSystemId
+                    type: object
+                  modelLocation:
+                    description: Specific location where the model data exists
+                    type: string
+                  modelSourceType:
+                    enum:
+                    - fsx
+                    - s3
+                    type: string
+                  prefetchEnabled:
+                    default: false
+                    description: In case the model seems to fit within the instance's
+                      memory (VRAM), this option can be used to pre-fetch the model
+                      to RAM and then the inference server will load to the GPU/CPU
+                      device thereafter.
+                    type: boolean
+                  s3Storage:
+                    properties:
+                      bucketName:
+                        description: S3 bucket location
+                        type: string
+                      region:
+                        description: S3 bucket region
+                        type: string
+                    required:
+                    - bucketName
+                    - region
+                    type: object
+                required:
+                - modelSourceType
+                type: object
+              modelVersion:
+                description: Version of the model used in creating sagemaker endpoint
+                type: string
+              replicas:
+                default: 1
+                description: The desired number of inference server replicas. Default
+                  1.
+                format: int32
+                type: integer
+              tags:
+                description: Mentions the tags to be added to the Sagemaker Endpoint
+                items:
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+                  required:
+                  - name
+                  - value
+                  type: object
+                type: array
+              tlsConfig:
+                description: Configurations for TLS
+                properties:
+                  tlsCertificateOutputS3Uri:
+                    pattern: ^s3://([^/]+)/?(.*)$
+                    type: string
+                type: object
+              worker:
+                description: Details of the worker
+                properties:
+                  args:
+                    description: Defines the Arguments to the entrypoint.
+                    items:
+                      type: string
+                    type: array
+                  command:
+                    description: Defines the Command which is Entrypoint array. Not
+                      executed within a shell.
+                    items:
+                      type: string
+                    type: array
+                  environmentVariables:
+                    description: |-
+                      List of environment variables to set in the container.
+                      Cannot be updated.
+                    items:
+                      description: EnvVar represents an environment variable present
+                        in a Container.
+                      properties:
+                        name:
+                          description: Name of the environment variable. Must be a
+                            C_IDENTIFIER.
+                          type: string
+                        value:
+                          description: |-
+                            Variable references $(VAR_NAME) are expanded
+                            using the previously defined environment variables in the container and
+                            any service environment variables. If a variable cannot be resolved,
+                            the reference in the input string will be unchanged. Double $$ are reduced
+                            to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e.
+                            "$$(VAR_NAME)" will produce the string literal "$(VAR_NAME)".
+                            Escaped references will never be expanded, regardless of whether the variable
+                            exists or not.
+                            Defaults to "".
+                          type: string
+                        valueFrom:
+                          description: Source for the environment variable's value.
+                            Cannot be used if value is not empty.
+                          properties:
+                            configMapKeyRef:
+                              description: Selects a key of a ConfigMap.
+                              properties:
+                                key:
+                                  description: The key to select.
+                                  type: string
+                                name:
+                                  default: ""
+                                  description: |-
+                                    Name of the referent.
+                                    This field is effectively required, but due to backwards compatibility is
+                                    allowed to be empty. Instances of this type with an empty value here are
+                                    almost certainly wrong.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  type: string
+                                optional:
+                                  description: Specify whether the ConfigMap or its
+                                    key must be defined
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            fieldRef:
+                              description: |-
+                                Selects a field of the pod: supports metadata.name, metadata.namespace, `metadata.labels['<KEY>']`, `metadata.annotations['<KEY>']`,
+                                spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs.
+                              properties:
+                                apiVersion:
+                                  description: Version of the schema the FieldPath
+                                    is written in terms of, defaults to "v1".
+                                  type: string
+                                fieldPath:
+                                  description: Path of the field to select in the
+                                    specified API version.
+                                  type: string
+                              required:
+                              - fieldPath
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            resourceFieldRef:
+                              description: |-
+                                Selects a resource of the container: only resources limits and requests
+                                (limits.cpu, limits.memory, limits.ephemeral-storage, requests.cpu, requests.memory and requests.ephemeral-storage) are currently supported.
+                              properties:
+                                containerName:
+                                  description: 'Container name: required for volumes,
+                                    optional for env vars'
+                                  type: string
+                                divisor:
+                                  anyOf:
+                                  - type: integer
+                                  - type: string
+                                  description: Specifies the output format of the
+                                    exposed resources, defaults to "1"
+                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                  x-kubernetes-int-or-string: true
+                                resource:
+                                  description: 'Required: resource to select'
+                                  type: string
+                              required:
+                              - resource
+                              type: object
+                              x-kubernetes-map-type: atomic
+                            secretKeyRef:
+                              description: Selects a key of a secret in the pod's
+                                namespace
+                              properties:
+                                key:
+                                  description: The key of the secret to select from.  Must
+                                    be a valid secret key.
+                                  type: string
+                                name:
+                                  default: ""
+                                  description: |-
+                                    Name of the referent.
+                                    This field is effectively required, but due to backwards compatibility is
+                                    allowed to be empty. Instances of this type with an empty value here are
+                                    almost certainly wrong.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  type: string
+                                optional:
+                                  description: Specify whether the Secret or its key
+                                    must be defined
+                                  type: boolean
+                              required:
+                              - key
+                              type: object
+                              x-kubernetes-map-type: atomic
+                          type: object
+                      required:
+                      - name
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
+                  image:
+                    description: The name of the inference server image to be used
+                    type: string
+                  modelInvocationPort:
+                    description: Defines the port at which the model server will listen
+                      to the invocation requests.
+                    properties:
+                      containerPort:
+                        description: Port on which the model server will be listening
+                        format: int32
+                        maximum: 65535
+                        minimum: 1
+                        type: integer
+                      name:
+                        default: http
+                        description: |-
+                          This is name for the port within the deployed container where the model will listen.
+                          This will be referred to by the Load Balancer Service.
+                          This must be an IANA_SVC_NAME (for eg. http) and unique within the pod.
+                        pattern: ^http$|^grpc$
+                        type: string
+                    required:
+                    - containerPort
+                    type: object
+                  modelVolumeMount:
+                    description: Defines the volume where model will be loaded
+                    properties:
+                      mountPath:
+                        default: /opt/ml/model
+                        description: This is the path within the container where the
+                          model data will be available for the inference server to
+                          load it to GPU,CPU or other device
+                        type: string
+                      name:
+                        description: Name of the model volume mount
+                        type: string
+                    required:
+                    - name
+                    type: object
+                  resources:
+                    description: Defines the Resources in terms of CPU, GPU, Memory
+                      needed for the model to be deployed
+                    properties:
+                      claims:
+                        description: |-
+                          Claims lists the names of resources, defined in spec.resourceClaims,
+                          that are used by this container.
+
+                          This is an alpha field and requires enabling the
+                          DynamicResourceAllocation feature gate.
+
+                          This field is immutable. It can only be set for containers.
+                        items:
+                          description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                          properties:
+                            name:
+                              description: |-
+                                Name must match the name of one entry in pod.spec.resourceClaims of
+                                the Pod where this field is used. It makes that resource available
+                                inside a container.
+                              type: string
+                            request:
+                              description: |-
+                                Request is the name chosen for a request in the referenced claim.
+                                If empty, everything from the claim is made available, otherwise
+                                only the result of this request.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                        - name
+                        x-kubernetes-list-type: map
+                      limits:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Limits describes the maximum amount of compute resources allowed.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                      requests:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: |-
+                          Requests describes the minimum amount of compute resources required.
+                          If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                          otherwise to an implementation-defined value. Requests cannot exceed Limits.
+                          More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                        type: object
+                    type: object
+                  workingDir:
+                    description: Defines the working directory of container.
+                    type: string
+                required:
+                - image
+                - modelInvocationPort
+                - modelVolumeMount
+                - resources
+                type: object
+            required:
+            - instanceType
+            - modelName
+            - modelSourceConfig
+            - worker
+            type: object
+          status:
+            description: ModelDeploymentStatus defines the observed state of ModelDeployment
+            properties:
+              conditions:
+                description: Detailed conditions representing the state of the deployment
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              deploymentStatus:
+                description: Details of the native kubernetes deployment that hosts
+                  the model
+                properties:
+                  deploymentObjectOverallState:
+                    description: Overall State of the Deployment Object
+                    type: string
+                  lastUpdated:
+                    description: Last Update Time
+                    format: date-time
+                    type: string
+                  message:
+                    description: Message populated in the root CRD while updating
+                      the status of underlying Deployment
+                    type: string
+                  name:
+                    description: Name of the Deployment Object
+                    type: string
+                  reason:
+                    description: Reason populated in the root CRD while updating the
+                      status of underlying Deployment
+                    type: string
+                  status:
+                    description: Status of the Deployment Object
+                    properties:
+                      availableReplicas:
+                        description: Total number of available pods (ready for at
+                          least minReadySeconds) targeted by this deployment.
+                        format: int32
+                        type: integer
+                      collisionCount:
+                        description: |-
+                          Count of hash collisions for the Deployment. The Deployment controller uses this
+                          field as a collision avoidance mechanism when it needs to create the name for the
+                          newest ReplicaSet.
+                        format: int32
+                        type: integer
+                      conditions:
+                        description: Represents the latest available observations
+                          of a deployment's current state.
+                        items:
+                          description: DeploymentCondition describes the state of
+                            a deployment at a certain point.
+                          properties:
+                            lastTransitionTime:
+                              description: Last time the condition transitioned from
+                                one status to another.
+                              format: date-time
+                              type: string
+                            lastUpdateTime:
+                              description: The last time this condition was updated.
+                              format: date-time
+                              type: string
+                            message:
+                              description: A human readable message indicating details
+                                about the transition.
+                              type: string
+                            reason:
+                              description: The reason for the condition's last transition.
+                              type: string
+                            status:
+                              description: Status of the condition, one of True, False,
+                                Unknown.
+                              type: string
+                            type:
+                              description: Type of deployment condition.
+                              type: string
+                          required:
+                          - status
+                          - type
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                        - type
+                        x-kubernetes-list-type: map
+                      observedGeneration:
+                        description: The generation observed by the deployment controller.
+                        format: int64
+                        type: integer
+                      readyReplicas:
+                        description: readyReplicas is the number of pods targeted
+                          by this Deployment with a Ready Condition.
+                        format: int32
+                        type: integer
+                      replicas:
+                        description: Total number of non-terminated pods targeted
+                          by this deployment (their labels match the selector).
+                        format: int32
+                        type: integer
+                      unavailableReplicas:
+                        description: |-
+                          Total number of unavailable pods targeted by this deployment. This is the total number of
+                          pods that are still required for the deployment to have 100% available capacity. They may
+                          either be pods that are running but not yet available or pods that still have not been created.
+                        format: int32
+                        type: integer
+                      updatedReplicas:
+                        description: Total number of non-terminated pods targeted
+                          by this deployment that have the desired template spec.
+                        format: int32
+                        type: integer
+                    type: object
+                required:
+                - lastUpdated
+                - name
+                type: object
+              endpoints:
+                description: EndpointStatus contains the status of SageMaker endpoints
+                properties:
+                  sagemaker:
+                    description: Status of the SageMaker endpoint
+                    properties:
+                      configArn:
+                        description: The Amazon Resource Name (ARN) of the endpoint
+                          configuration.
+                        pattern: (arn:aws[a-z\-]*:sagemaker:[a-z0-9\-]*:[0-9]{12}:endpoint-config/.*|^$)
+                        type: string
+                      endpointArn:
+                        description: The Amazon Resource Name (ARN) of the SageMaker
+                          endpoint
+                        pattern: (arn:aws[a-z\-]*:sagemaker:[a-z0-9\-]*:[0-9]{12}:endpoint/.*|^$)
+                        type: string
+                      modelArn:
+                        description: The ARN of the model created in SageMaker.
+                        pattern: (arn:aws[a-z\-]*:sagemaker:[a-z0-9\-]*:[0-9]{12}:model/.*|^$)
+                        type: string
+                      state:
+                        description: The current state of the SageMaker endpoint
+                        type: string
+                    required:
+                    - state
+                    type: object
+                type: object
+              metricsStatus:
+                description: Status of metrics collection
+                properties:
+                  enabled:
+                    description: Whether metrics collection is enabled
+                    type: boolean
+                  errorMessage:
+                    description: Error message if metrics collection is in error state
+                    type: string
+                  metricsScrapeIntervalSeconds:
+                    description: Scrape interval in seconds for metrics collection
+                      from sidecar and model container.
+                    format: int32
+                    type: integer
+                  modelMetrics:
+                    description: Status of model container metrics collection
+                    properties:
+                      path:
+                        description: The path where metrics are available
+                        type: string
+                      port:
+                        description: The port on which metrics are exposed
+                        format: int32
+                        type: integer
+                    type: object
+                  state:
+                    description: Current state of metrics collection
+                    type: string
+                required:
+                - enabled
+                type: object
+              observedGeneration:
+                description: Latest generation reconciled by controller
+                format: int64
+                type: integer
+              replicas:
+                description: The observed number of inference server replicas.
+                format: int32
+                type: integer
+              selector:
+                description: LabelSelector for the deployment.
+                type: string
+              state:
+                description: Current phase of the model deployment
+                enum:
+                - DeploymentPending
+                - DeploymentInProgress
+                - DeploymentFailed
+                - DeploymentComplete
+                - DeletionPending
+                - DeletionInProgress
+                - DeletionFailed
+                - DeletionComplete
+                type: string
+              tlsCertificate:
+                description: CertificateStatus represents the status of TLS certificates
+                properties:
+                  certificateARN:
+                    description: The Amazon Resource Name (ARN) of the ACM certificate
+                    pattern: arn:aws[a-z\-]*:acm:[a-z0-9\-]*:[0-9]{12}:certificate/.*
+                    type: string
+                  certificateDomainNames:
+                    description: The certificate domain names that is attached to
+                      the certificate
+                    items:
+                      type: string
+                    type: array
+                  certificateName:
+                    description: The certificate name of cert manager
+                    type: string
+                  importedCertificates:
+                    description: Used for tracking the imported certificates to ACM
+                    items:
+                      type: string
+                    type: array
+                  issuerName:
+                    description: The issuer name of cert manager
+                    type: string
+                  lastCertExpiryTime:
+                    description: The last certificate expiry time
+                    format: date-time
+                    type: string
+                  tlsCertificateOutputS3Bucket:
+                    description: S3 bucket that stores the certificate that needs
+                      to be trusted
+                    type: string
+                  tlsCertificateS3Keys:
+                    description: The output tls certificate S3 key that points to
+                      the .pem file
+                    items:
+                      type: string
+                    type: array
+                type: object
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      scale:
+        labelSelectorPath: .status.selector
+        specReplicasPath: .spec.replicas
+        statusReplicasPath: .status.replicas
+      status: {}
   - name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -214,6 +1583,7 @@ spec:
                 type: object
               endpointName:
                 description: |-
+                  Name used for Sagemaker Endpoint
                   Name of a SageMaker endpoint to be created for this InferenceEndpointConfig.
                   The default value of empty string, when used, will skip endpoint creation.
                 maxLength: 63
@@ -229,6 +1599,30 @@ spec:
                   The invocation endpoint of the model server. http://<host>:<port>/ would be pre-populated based on the other fields.
                   Please fill in the path after http://<host>:<port>/ specific to your model server.
                 type: string
+              loadBalancer:
+                description: Configuration for Application Load Balancer
+                properties:
+                  healthCheckPath:
+                    default: /ping
+                    description: Health check path for the ALB target group. Defaults
+                      to /ping if not specified.
+                    pattern: ^/.*
+                    type: string
+                  routingAlgorithm:
+                    default: least_outstanding_requests
+                    description: Routing algorithm for the ALB target group (least_oustanding_requests
+                      or round_robin)
+                    enum:
+                    - least_outstanding_requests
+                    - round_robin
+                    type: string
+                type: object
+              maxDeployTimeInSeconds:
+                default: 3600
+                description: Maximum allowed time in seconds for the deployment to
+                  complete before timing out. Defaults to 1 hour (3600 seconds)
+                format: int32
+                type: integer
               metrics:
                 description: Configuration for metrics collection and exposure
                 properties:
@@ -284,7 +1678,7 @@ spec:
                     - fileSystemId
                     type: object
                   modelLocation:
-                    description: Sepcific location where the model data exists
+                    description: Specific location where the model data exists
                     type: string
                   modelSourceType:
                     enum:
@@ -870,7 +2264,7 @@ spec:
             type: object
         type: object
     served: true
-    storage: true
+    storage: false
     subresources:
       scale:
         labelSelectorPath: .status.selector

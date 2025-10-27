@@ -1,4 +1,4 @@
-apiVersion: inference.sagemaker.aws.amazon.com/v1alpha1
+apiVersion: inference.sagemaker.aws.amazon.com/v1
 kind: InferenceEndpointConfig
 metadata:
   name: deepseeks3

@@ -1,11 +1,21 @@
----
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
+    cert-manager.io/inject-ca-from: '{{ .Values.shortPrefix }}-system/serving-cert'
     controller-gen.kubebuilder.io/version: v0.16.4
   name: sagemakerendpointregistrations.inference.sagemaker.aws.amazon.com
 spec:
+  conversion:
+    strategy: Webhook
+    webhook:
+      clientConfig:
+        service:
+          name: '{{ .Values.namePrefix }}-conversion-webhook'
+          namespace: '{{ .Values.shortPrefix }}-system'
+          path: /convert
+      conversionReviewVersions:
+      - v1
   group: inference.sagemaker.aws.amazon.com
   names:
     kind: SageMakerEndpointRegistration
@@ -14,7 +24,7 @@ spec:
     singular: sagemakerendpointregistration
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - name: v1
     schema:
       openAPIV3Schema:
         description: SageMakerEndpointRegistration is the Schema for the sagemakerendpointregistrations
@@ -87,6 +97,10 @@ spec:
               instanceType:
                 description: InstanceType is the ML compute instance type used for
                   EndpointConfig creation
+                type: string
+              invocationEndpoint:
+                default: invocations
+                description: The invocation endpoint path used by the model server
                 type: string
               loadBalancerHostName:
                 description: Needed to embed the LB Host Name
@@ -246,5 +260,243 @@ spec:
         type: object
     served: true
     storage: true
+    subresources:
+      status: {}
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: SageMakerEndpointRegistration is the Schema for the sagemakerendpointregistrations
+          API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: SageMakerEndpointRegistrationSpec defines the desired state
+              of SageMakerEndpointRegistration
+            properties:
+              eksClusterDetails:
+                properties:
+                  arn:
+                    description: Stores cluster ARN
+                    type: string
+                  clusterSecurityGroupId:
+                    description: Stores ClusterSecurityGroup of the EKS Cluster
+                    type: string
+                  name:
+                    description: Stores cluster name
+                    type: string
+                  securityGroupIds:
+                    description: Stores AdditionalSecurityGroupIds of the EKS Cluster
+                    items:
+                      type: string
+                    type: array
+                  subnetIds:
+                    description: Stores SubnetIDs of the EKS Cluster
+                    items:
+                      type: string
+                    type: array
+                  vpcId:
+                    description: Stores VPC Id of the EKS Cluster
+                    type: string
+                required:
+                - arn
+                - clusterSecurityGroupId
+                - name
+                - securityGroupIds
+                - subnetIds
+                - vpcId
+                type: object
+              executionRole:
+                description: The Amazon Resource Name (ARN) of an IAM role that will
+                  be used to create model, endpoint config, and the endpoint
+                maxLength: 2048
+                minLength: 20
+                pattern: ^arn:aws[a-z\-]*:iam::\d{12}:role/?[a-zA-Z_0-9+=,.@\-_/]+$
+                type: string
+              imageUri:
+                description: The ImageUri where inference code is stored
+                maxLength: 255
+                type: string
+              instanceType:
+                description: InstanceType is the ML compute instance type used for
+                  EndpointConfig creation
+                type: string
+              invocationEndpoint:
+                default: invocations
+                description: The invocation endpoint path used by the model server
+                type: string
+              loadBalancerHostName:
+                description: Needed to embed the LB Host Name
+                type: string
+              name:
+                description: Name used for AWS resource creation
+                maxLength: 63
+                pattern: ^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}
+                type: string
+              restApiId:
+                description: REST API Gateway identifier that proxies requests to
+                  the HyperPod endpoint (via NLB/ALB)
+                type: string
+              tlsConfig:
+                properties:
+                  tlsCertificateOutputS3Bucket:
+                    description: S3 bucket that stores the certificate that needs
+                      to be trusted
+                    type: string
+                  tlsCertificateS3Keys:
+                    description: The output tls certificate S3 key that points to
+                      the .pem file
+                    items:
+                      type: string
+                    type: array
+                  tlsServerNameOverride:
+                    description: The server name override for tls certificate selection
+                    type: string
+                required:
+                - tlsCertificateOutputS3Bucket
+                - tlsCertificateS3Keys
+                type: object
+            required:
+            - eksClusterDetails
+            - executionRole
+            - imageUri
+            - instanceType
+            - loadBalancerHostName
+            - name
+            - restApiId
+            - tlsConfig
+            type: object
+          status:
+            description: SageMakerEndpointRegistrationStatus defines the observed
+              state of SageMakerEndpointRegistration
+            properties:
+              conditions:
+                description: Detailed conditions representing the state of the deployment
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              endpoint:
+                description: Endpoint Metadata
+                properties:
+                  arn:
+                    description: The Amazon Resource Name (ARN) of the SageMaker endpoint
+                    pattern: (arn:aws[a-z\-]*:sagemaker:[a-z0-9\-]*:[0-9]{12}:endpoint/.*|^$)
+                    type: string
+                  configArn:
+                    description: The Amazon Resource Name (ARN) of the endpoint configuration.
+                    pattern: (arn:aws[a-z\-]*:sagemaker:[a-z0-9\-]*:[0-9]{12}:endpoint-config/.*|^$)
+                    type: string
+                  lastModifiedTime:
+                    description: The last modified time of SageMaker endpoint.
+                    format: date-time
+                    type: string
+                  modelArn:
+                    description: The ARN of the model created in SageMaker.
+                    pattern: (arn:aws[a-z\-]*:sagemaker:[a-z0-9\-]*:[0-9]{12}:model/.*|^$)
+                    type: string
+                required:
+                - arn
+                - configArn
+                - modelArn
+                type: object
+              loadBalancer:
+                description: LoadBalancer Metadata
+                properties:
+                  hostName:
+                    description: Hostname of LoadBalancer
+                    type: string
+                required:
+                - hostName
+                type: object
+              observedGeneration:
+                description: Latest generation reconciled by controller
+                format: int64
+                type: integer
+              state:
+                description: Current phase of the Endpoint creation Step
+                enum:
+                - CreationInProgress
+                - CreationFailed
+                - CreationCompleted
+                - DeletionInProgress
+                - DeletionFailed
+                - DeletionCompleted
+                - UpdateInProgress
+                - UpdateFailed
+                - UpdateCompleted
+                type: string
+            required:
+            - state
+            type: object
+        type: object
+    served: true
+    storage: false
     subresources:
       status: {}

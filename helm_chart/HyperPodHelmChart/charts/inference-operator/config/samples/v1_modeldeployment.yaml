@@ -1,19 +1,20 @@
-apiVersion: inference.sagemaker.aws.amazon.com/v1alpha1
+apiVersion: inference.sagemaker.aws.amazon.com/v1
 kind: ModelDeployment
 metadata:
   labels:
     app.kubernetes.io/name: huggingface-text2text-flan-t5-xl-app
   name: modeldeployment-sample
+  namespace: ns-team-a
 spec:
   sageMakerEndpoint:
-    name: sample-sagemaker-endpoint-t2t-flan
+    name: sample-sagemaker-endpoint
   model:
     acceptEula: true
     modelHubName: SageMakerPublicHub
     modelId: huggingface-text2text-flan-t5-xl
     modelVersion: 1.0.0
   server:
-    instanceType: ml.g5.8xlarge
+    instanceType: ml.g5.2xlarge
     maxAutoScaleReplicas: 2
     minAutoScaleReplicas: 1
     namespace: inference-namespace
