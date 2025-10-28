@@ -40,6 +40,22 @@ from sagemaker.hyperpod.cli.constants.pytorch_constants import (
     PYTORCH_CUSTOM_OBJECT_PLURAL,
     PYTORCH_CUSTOM_OBJECT_VERSION,
 )
+from sagemaker.hyperpod.cli.constants.dev_space_constants import (
+    DEV_SPACE_GROUP,
+    DEV_SPACE_VERSION,
+    DEV_SPACE_PLURAL,
+    DEFAULT_DEV_SPACE_PORT,
+)
+from sagemaker.hyperpod.cli.constants.space_admin_config_constants import (
+    SPACE_ADMIN_CONFIG_GROUP,
+    SPACE_ADMIN_CONFIG_VERSION,
+    SPACE_ADMIN_CONFIG_PLURAL,
+)
+from sagemaker.hyperpod.cli.constants.dev_space_access_constants import (
+    DEV_SPACE_ACCESS_GROUP,
+    DEV_SPACE_ACCESS_VERSION,
+    DEV_SPACE_ACCESS_PLURAL,
+)
 from sagemaker.hyperpod.cli.utils import setup_logger
 
 logger = setup_logger(__name__)
@@ -358,4 +374,121 @@ class KubernetesClient:
             plural=CLUSTER_QUEUE_PRIORITY_CLASS_CUSTOM_OBJECT_PLURAL,
             name=cluster_queue_name
         )
+
+    def create_dev_space(self, namespace: str, dev_space_spec: dict):
+        return client.CustomObjectsApi().create_namespaced_custom_object(
+            group=DEV_SPACE_GROUP,
+            version=DEV_SPACE_VERSION,
+            namespace=namespace,
+            plural=DEV_SPACE_PLURAL,
+            body=dev_space_spec
+        )
+
+    def list_dev_spaces(self, namespace: str):
+        if namespace:
+            return client.CustomObjectsApi().list_namespaced_custom_object(
+                group=DEV_SPACE_GROUP,
+                version=DEV_SPACE_VERSION,
+                namespace=namespace,
+                plural=DEV_SPACE_PLURAL
+            )
+        else:
+            return client.CustomObjectsApi().list_cluster_custom_object(
+                group=DEV_SPACE_GROUP,
+                version=DEV_SPACE_VERSION,
+                plural=DEV_SPACE_PLURAL
+            )
+
+    def get_dev_space(self, namespace: str, name: str):
+        return client.CustomObjectsApi().get_namespaced_custom_object(
+            group=DEV_SPACE_GROUP,
+            version=DEV_SPACE_VERSION,
+            namespace=namespace,
+            plural=DEV_SPACE_PLURAL,
+            name=name
+        )
+
+    def delete_dev_space(self, namespace: str, name: str):
+        return client.CustomObjectsApi().delete_namespaced_custom_object(
+            group=DEV_SPACE_GROUP,
+            version=DEV_SPACE_VERSION,
+            namespace=namespace,
+            plural=DEV_SPACE_PLURAL,
+            name=name
+        )
+
+    def patch_dev_space(self, namespace: str, name: str, body: dict):
+        return client.CustomObjectsApi().patch_namespaced_custom_object(
+            group=DEV_SPACE_GROUP,
+            version=DEV_SPACE_VERSION,
+            namespace=namespace,
+            plural=DEV_SPACE_PLURAL,
+            name=name,
+            body=body
+        )
+
+
+
+    # Space Admin Configuration methods
+    def create_space_admin_config(self, namespace: str, config_spec: dict):
+        return client.CustomObjectsApi().create_namespaced_custom_object(
+            group=SPACE_ADMIN_CONFIG_GROUP,
+            version=SPACE_ADMIN_CONFIG_VERSION,
+            namespace=namespace,
+            plural=SPACE_ADMIN_CONFIG_PLURAL,
+            body=config_spec
+        )
+
+    def list_space_admin_configs(self, namespace: str = None):
+        if namespace:
+            return client.CustomObjectsApi().list_namespaced_custom_object(
+                group=SPACE_ADMIN_CONFIG_GROUP,
+                version=SPACE_ADMIN_CONFIG_VERSION,
+                namespace=namespace,
+                plural=SPACE_ADMIN_CONFIG_PLURAL
+            )
+        else:
+            return client.CustomObjectsApi().list_cluster_custom_object(
+                group=SPACE_ADMIN_CONFIG_GROUP,
+                version=SPACE_ADMIN_CONFIG_VERSION,
+                plural=SPACE_ADMIN_CONFIG_PLURAL
+            )
+
+    def get_space_admin_config(self, namespace: str, name: str):
+        return client.CustomObjectsApi().get_namespaced_custom_object(
+            group=SPACE_ADMIN_CONFIG_GROUP,
+            version=SPACE_ADMIN_CONFIG_VERSION,
+            namespace=namespace,
+            plural=SPACE_ADMIN_CONFIG_PLURAL,
+            name=name
+        )
+
+    def delete_space_admin_config(self, namespace: str, name: str):
+        return client.CustomObjectsApi().delete_namespaced_custom_object(
+            group=SPACE_ADMIN_CONFIG_GROUP,
+            version=SPACE_ADMIN_CONFIG_VERSION,
+            namespace=namespace,
+            plural=SPACE_ADMIN_CONFIG_PLURAL,
+            name=name
+        )
+
+    def patch_space_admin_config(self, namespace: str, name: str, body: dict):
+        return client.CustomObjectsApi().patch_namespaced_custom_object(
+            group=SPACE_ADMIN_CONFIG_GROUP,
+            version=SPACE_ADMIN_CONFIG_VERSION,
+            namespace=namespace,
+            plural=SPACE_ADMIN_CONFIG_PLURAL,
+            name=name,
+            body=body
+        )
+
+    def create_dev_space_access(self, namespace: str, config_spec: dict):
+        return client.CustomObjectsApi().create_namespaced_custom_object(
+            group=DEV_SPACE_ACCESS_GROUP,
+            version=DEV_SPACE_ACCESS_VERSION,
+            namespace=namespace,
+            plural=DEV_SPACE_ACCESS_PLURAL,
+            body=config_spec
+        )
+
     # Add more methods to access other APIs as needed

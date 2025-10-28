@@ -194,33 +194,4 @@ def dev_space_get_logs(name, namespace):
         click.echo(f"Error getting logs for dev space '{name}': {e}", err=True)
 
 
-@click.command("hyp-dev-space")
-@click.option("--name", required=True, help="Name of the dev space")
-@click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
-@click.option("--port", required=True, help="Mapping localhost port to pod")
-def dev_space_port_forward(name, namespace, port):
-    """Forward a local port to a dev-space pod."""
-    k8s_client = KubernetesClient()
-    
-    try:
-        # Get pods associated with the dev space
-        pods = k8s_client.list_pods_with_labels(
-            namespace=namespace,
-            label_selector=f"sagemaker.aws.com/space-name={name}"
-        )
-        
-        if not pods.items:
-            click.echo(f"No pods found for dev space '{name}'")
-            return
-        
-        # Get the first running pod
-        pod_name = pods.items[0].metadata.name
 
-        k8s_client.port_forward_dev_space(
-            namespace=namespace,
-            pod_name=pod_name,
-            local_port=port,
-        )
-
-    except Exception as e:
-        click.echo(f"Error forwarding port for dev space '{name}': {e}", err=True)

@@ -12,7 +12,6 @@ from sagemaker.hyperpod.cli.commands.dev_space import (
     dev_space_start,
     dev_space_stop,
     dev_space_get_logs,
-    dev_space_port_forward,
 )
 
 
@@ -464,70 +463,6 @@ class TestDevSpaceCommands:
         assert result.exit_code == 0
         assert "Error getting logs for dev space 'test-space': List pod failed" in result.output
 
-    @patch('sagemaker.hyperpod.cli.commands.dev_space.KubernetesClient')
-    def test_dev_space_port_forward_success(self, mock_k8s_client_class):
-        """Test successful dev space port forward"""
-        mock_pod = Mock()
-        mock_pod.metadata.name = "test-pod"
-        mock_pods = Mock()
-        mock_pods.items = [mock_pod]
-
-        mock_k8s_instance = Mock()
-        mock_k8s_instance.list_pods_with_labels.return_value = mock_pods
-        mock_k8s_client_class.return_value = mock_k8s_instance
-
-        result = self.runner.invoke(dev_space_port_forward, [
-            '--name', 'test-space',
-            '--namespace', 'test-ns',
-            '--port', '8080'
-        ])
-
-        assert result.exit_code == 0
-        mock_k8s_instance.list_pods_with_labels.assert_called_once_with(
-            namespace='test-ns',
-            label_selector='sagemaker.aws.com/space-name=test-space'
-        )
-        mock_k8s_instance.port_forward_dev_space.assert_called_once_with(
-            namespace='test-ns',
-            pod_name='test-pod',
-            local_port='8080'
-        )
-
-    @patch('sagemaker.hyperpod.cli.commands.dev_space.KubernetesClient')
-    def test_dev_space_port_forward_no_pods(self, mock_k8s_client_class):
-        """Test dev space port forward with no pods"""
-        mock_pods = Mock()
-        mock_pods.items = []
-
-        mock_k8s_instance = Mock()
-        mock_k8s_instance.list_pods_with_labels.return_value = mock_pods
-        mock_k8s_client_class.return_value = mock_k8s_instance
-
-        result = self.runner.invoke(dev_space_port_forward, [
-            '--name', 'test-space',
-            '--namespace', 'test-ns',
-            '--port', '8080'
-        ])
-
-        assert result.exit_code == 0
-        assert "No pods found for dev space 'test-space'" in result.output
-
-    @patch('sagemaker.hyperpod.cli.commands.dev_space.KubernetesClient')
-    def test_dev_space_port_forward_error(self, mock_k8s_client_class):
-        """Test dev space port forward error handling"""
-        mock_k8s_instance = Mock()
-        mock_k8s_instance.list_pods_with_labels.side_effect = Exception("Port forward failed")
-        mock_k8s_client_class.return_value = mock_k8s_instance
-
-        result = self.runner.invoke(dev_space_port_forward, [
-            '--name', 'test-space',
-            '--namespace', 'test-ns',
-            '--port', '8080'
-        ])
-
-        assert result.exit_code == 0
-        assert "Error forwarding port for dev space 'test-space': Port forward failed" in result.output
-
     def test_missing_required_arguments(self):
         """Test commands with missing required arguments"""
         # Test create without name
@@ -564,11 +499,3 @@ class TestDevSpaceCommands:
         result = self.runner.invoke(dev_space_get_logs, ['--namespace', 'test-ns'])
         assert result.exit_code == 2
         assert "Missing option '--name'" in result.output
-
-        # Test port forward without port
-        result = self.runner.invoke(dev_space_port_forward, [
-            '--name', 'test-space',
-            '--namespace', 'test-ns'
-        ])
-        assert result.exit_code == 2
-        assert "Missing option '--port'" in result.output
