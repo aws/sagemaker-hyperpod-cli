@@ -92,7 +92,7 @@ setup(
         "hyperpod-jumpstart-inference-template>=1.0.0, <2.0.0",
         "hyperpod-cluster-stack-template>=1.0.0, <2.0.0"
         # TODO: need to uncomment before pushing to master
-        # "hyperpod_dev_space_template>=1.0.0, <2.0.0" 
+        # "hyperpod_space_template>=1.0.0, <2.0.0" 
     ],
     entry_points={
         "console_scripts": [

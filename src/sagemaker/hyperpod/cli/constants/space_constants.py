@@ -10,11 +10,11 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-DEV_SPACE_GROUP = "sagemaker.aws.com"
-DEV_SPACE_VERSION = "v1alpha1"
-DEV_SPACE_PLURAL = "spaces"
-DEFAULT_DEV_SPACE_PORT = "8888"
-# Immutable fields that cannot be updated after dev space creation
+SPACE_GROUP = "sagemaker.aws.com"
+SPACE_VERSION = "v1alpha1"
+SPACE_PLURAL = "spaces"
+DEFAULT_SPACE_PORT = "8888"
+# Immutable fields that cannot be updated after space creation
 IMMUTABLE_FIELDS = {
     "storage_class_name",
 }

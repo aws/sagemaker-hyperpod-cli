@@ -3,7 +3,7 @@ import pkgutil
 import click
 from typing import Callable, Optional, Mapping, Type, Dict, Any
 from pydantic import ValidationError
-from sagemaker.hyperpod.cli.constants.dev_space_constants import IMMUTABLE_FIELDS
+from sagemaker.hyperpod.cli.constants.space_constants import IMMUTABLE_FIELDS
 
 
 def load_schema_for_version(
@@ -26,12 +26,12 @@ def load_schema_for_version(
 def generate_click_command(
     *,
     version_key: Optional[str] = None,
-    schema_pkg: str = "hyperpod_dev_space_template",
+    schema_pkg: str = "hyperpod_space_template",
     registry: Mapping[str, Type] = None,
     is_update: bool = False,
 ) -> Callable:
     """
-    Decorator factory for dev space commands.
+    Decorator factory for space commands.
     """
     if registry is None:
         raise ValueError("You must pass a registry mapping version→Model")

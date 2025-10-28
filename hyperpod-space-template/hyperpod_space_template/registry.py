@@ -10,11 +10,11 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-from .v1_0.model import DevSpaceConfig
+from .v1_0.model import SpaceConfig
 from typing import Dict, Type
 from pydantic import BaseModel
 
 # Direct version-to-model mapping
 SCHEMA_REGISTRY: Dict[str, Type[BaseModel]] = {
-    "1.0": DevSpaceConfig,
+    "1.0": SpaceConfig,
 }

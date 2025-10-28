@@ -699,28 +699,28 @@ class TestKubernetesClient(unittest.TestCase):
         self.assertFalse(result)
 
     @patch("kubernetes.client.CustomObjectsApi.create_namespaced_custom_object")
-    def test_create_dev_space(self, mock_create_namespaced_custom_object):
-        """Test creating a dev space"""
+    def test_create_space(self, mock_create_namespaced_custom_object):
+        """Test creating a space"""
         test_client = KubernetesClient()
-        dev_space_spec = {"spec": {"image": "test-image"}}
+        space_spec = {"spec": {"image": "test-image"}}
         
-        test_client.create_dev_space("test-namespace", dev_space_spec)
+        test_client.create_space("test-namespace", space_spec)
         
         mock_create_namespaced_custom_object.assert_called_once_with(
             group="sagemaker.aws.com",
             version="v1alpha1",
             namespace="test-namespace",
             plural="spaces",
-            body=dev_space_spec
+            body=space_spec
         )
 
     @patch("kubernetes.client.CustomObjectsApi.list_namespaced_custom_object")
-    def test_list_dev_spaces_with_namespace(self, mock_list_namespaced_custom_object):
-        """Test listing dev spaces in a specific namespace"""
+    def test_list_spaces_with_namespace(self, mock_list_namespaced_custom_object):
+        """Test listing spaces in a specific namespace"""
         test_client = KubernetesClient()
         mock_list_namespaced_custom_object.return_value = {"items": []}
         
-        result = test_client.list_dev_spaces("test-namespace")
+        result = test_client.list_spaces("test-namespace")
         
         mock_list_namespaced_custom_object.assert_called_once_with(
             group="sagemaker.aws.com",
@@ -731,12 +731,12 @@ class TestKubernetesClient(unittest.TestCase):
         self.assertEqual(result, {"items": []})
 
     @patch("kubernetes.client.CustomObjectsApi.list_cluster_custom_object")
-    def test_list_dev_spaces_without_namespace(self, mock_list_cluster_custom_object):
-        """Test listing dev spaces across all namespaces"""
+    def test_list_spaces_without_namespace(self, mock_list_cluster_custom_object):
+        """Test listing spaces across all namespaces"""
         test_client = KubernetesClient()
         mock_list_cluster_custom_object.return_value = {"items": []}
         
-        result = test_client.list_dev_spaces(None)
+        result = test_client.list_spaces(None)
         
         mock_list_cluster_custom_object.assert_called_once_with(
             group="sagemaker.aws.com",
@@ -746,13 +746,13 @@ class TestKubernetesClient(unittest.TestCase):
         self.assertEqual(result, {"items": []})
 
     @patch("kubernetes.client.CustomObjectsApi.get_namespaced_custom_object")
-    def test_get_dev_space(self, mock_get_namespaced_custom_object):
-        """Test getting a specific dev space"""
+    def test_get_space(self, mock_get_namespaced_custom_object):
+        """Test getting a specific space"""
         test_client = KubernetesClient()
-        mock_dev_space = {"metadata": {"name": "test-space"}}
-        mock_get_namespaced_custom_object.return_value = mock_dev_space
+        mock_space = {"metadata": {"name": "test-space"}}
+        mock_get_namespaced_custom_object.return_value = mock_space
         
-        result = test_client.get_dev_space("test-namespace", "test-space")
+        result = test_client.get_space("test-namespace", "test-space")
         
         mock_get_namespaced_custom_object.assert_called_once_with(
             group="sagemaker.aws.com",
@@ -761,15 +761,15 @@ class TestKubernetesClient(unittest.TestCase):
             plural="spaces",
             name="test-space"
         )
-        self.assertEqual(result, mock_dev_space)
+        self.assertEqual(result, mock_space)
 
     @patch("kubernetes.client.CustomObjectsApi.delete_namespaced_custom_object")
-    def test_delete_dev_space(self, mock_delete_namespaced_custom_object):
-        """Test deleting a dev space"""
+    def test_delete_space(self, mock_delete_namespaced_custom_object):
+        """Test deleting a space"""
         test_client = KubernetesClient()
         mock_delete_namespaced_custom_object.return_value = {}
         
-        result = test_client.delete_dev_space("test-namespace", "test-space")
+        result = test_client.delete_space("test-namespace", "test-space")
         
         mock_delete_namespaced_custom_object.assert_called_once_with(
             group="sagemaker.aws.com",
@@ -781,13 +781,13 @@ class TestKubernetesClient(unittest.TestCase):
         self.assertEqual(result, {})
 
     @patch("kubernetes.client.CustomObjectsApi.patch_namespaced_custom_object")
-    def test_patch_dev_space(self, mock_patch_namespaced_custom_object):
-        """Test patching a dev space"""
+    def test_patch_space(self, mock_patch_namespaced_custom_object):
+        """Test patching a space"""
         test_client = KubernetesClient()
         patch_body = {"spec": {"desiredStatus": "Running"}}
         mock_patch_namespaced_custom_object.return_value = {}
         
-        result = test_client.patch_dev_space("test-namespace", "test-space", patch_body)
+        result = test_client.patch_space("test-namespace", "test-space", patch_body)
         
         mock_patch_namespaced_custom_object.assert_called_once_with(
             group="sagemaker.aws.com",

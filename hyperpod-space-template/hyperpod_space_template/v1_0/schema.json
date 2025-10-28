@@ -83,7 +83,7 @@
         }
       ],
       "default": "public.ecr.aws/sagemaker/sagemaker-distribution:3.2.0-cpu",
-      "description": "Container image for the dev space",
+      "description": "Container image for the space",
       "title": "Image"
     },
     "namespace": {
@@ -107,7 +107,7 @@
         }
       ],
       "default": "Running",
-      "description": "Desired status of the dev space",
+      "description": "Desired status of the space",
       "title": "Desired Status"
     },
     "service_account_name": {
@@ -196,6 +196,6 @@
   "required": [
     "name"
   ],
-  "title": "DevSpaceConfig",
+  "title": "SpaceConfig",
   "type": "object"
 }

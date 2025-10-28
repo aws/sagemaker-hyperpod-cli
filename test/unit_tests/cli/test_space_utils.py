@@ -5,11 +5,11 @@ from click.testing import CliRunner
 from unittest.mock import Mock, patch
 from pydantic import ValidationError
 
-from sagemaker.hyperpod.cli.dev_space_utils import load_schema_for_version, generate_click_command
+from sagemaker.hyperpod.cli.space_utils import load_schema_for_version, generate_click_command
 
 
 class TestLoadSchemaForVersion:
-    @patch('sagemaker.hyperpod.cli.dev_space_utils.pkgutil.get_data')
+    @patch('sagemaker.hyperpod.cli.space_utils.pkgutil.get_data')
     def test_success(self, mock_get_data):
         """Test successful schema loading"""
         data = {"properties": {"name": {"type": "string"}}}
@@ -20,7 +20,7 @@ class TestLoadSchemaForVersion:
         assert result == data
         mock_get_data.assert_called_once_with('test_package.v1_2', 'schema.json')
 
-    @patch('sagemaker.hyperpod.cli.dev_space_utils.pkgutil.get_data')
+    @patch('sagemaker.hyperpod.cli.space_utils.pkgutil.get_data')
     def test_schema_not_found(self, mock_get_data):
         """Test handling of missing schema file"""
         mock_get_data.return_value = None
@@ -30,7 +30,7 @@ class TestLoadSchemaForVersion:
 
         assert "Could not load schema.json for version 1.0" in str(exc.value)
 
-    @patch('sagemaker.hyperpod.cli.dev_space_utils.pkgutil.get_data')
+    @patch('sagemaker.hyperpod.cli.space_utils.pkgutil.get_data')
     def test_invalid_json_schema(self, mock_get_data):
         """Test handling of invalid JSON in schema file"""
         mock_get_data.return_value = b'invalid json'
@@ -49,7 +49,7 @@ class TestGenerateClickCommand:
             generate_click_command(schema_pkg="test_package")
         assert "You must pass a registry mapping" in str(exc.value)
 
-    @patch('sagemaker.hyperpod.cli.dev_space_utils.load_schema_for_version')
+    @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
     def test_unsupported_version(self, mock_load_schema):
         """Test handling of unsupported version"""
         mock_load_schema.return_value = {'properties': {}, 'required': []}
@@ -64,7 +64,7 @@ class TestGenerateClickCommand:
         assert result.exit_code != 0
         assert 'Unsupported schema version: 1.0' in result.output
 
-    @patch('sagemaker.hyperpod.cli.dev_space_utils.load_schema_for_version')
+    @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
     def test_version_handling(self, mock_load_schema):
         """Test version handling in command generation"""
         schema = {'properties': {}, 'required': []}
@@ -91,7 +91,7 @@ class TestGenerateClickCommand:
         assert result.exit_code == 0
         assert result.output.strip() == '2.0'
 
-    @patch('sagemaker.hyperpod.cli.dev_space_utils.load_schema_for_version')
+    @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
     def test_resources_building(self, mock_load_schema):
         """Test CPU and memory resource building"""
         schema = {
@@ -117,7 +117,7 @@ class TestGenerateClickCommand:
         registry = {'1.0': DummyModel}
 
         @click.command()
-        @generate_click_command(registry=registry, schema_pkg="hyperpod_dev_space_template")
+        @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
         def cmd(version, domain_config):
             click.echo(json.dumps(domain_config.resources))
 
@@ -141,7 +141,7 @@ class TestGenerateClickCommand:
         assert result.exit_code == 0
         assert result.output.strip() == 'null'
 
-    @patch('sagemaker.hyperpod.cli.dev_space_utils.load_schema_for_version')
+    @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
     def test_type_conversion(self, mock_load_schema):
         """Test type conversion for different parameter types"""
         schema = {
@@ -164,7 +164,7 @@ class TestGenerateClickCommand:
         registry = {'1.0': DummyModel}
 
         @click.command()
-        @generate_click_command(registry=registry, schema_pkg="hyperpod_dev_space_template")
+        @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
         def cmd(version, domain_config):
             click.echo(json.dumps({
                 'name': domain_config.name,
@@ -193,7 +193,7 @@ class TestGenerateClickCommand:
         assert result.exit_code == 2
         assert "Invalid value" in result.output
 
-    @patch('sagemaker.hyperpod.cli.dev_space_utils.load_schema_for_version')
+    @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
     def test_successful_command_execution(self, mock_load_schema):
         """Test successful command execution with valid parameters"""
         schema = {
@@ -214,7 +214,7 @@ class TestGenerateClickCommand:
         registry = {'1.0': DummyModel}
 
         @click.command()
-        @generate_click_command(registry=registry, schema_pkg="hyperpod_dev_space_template")
+        @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
         def cmd(version, domain_config):
             click.echo(f'success: {domain_config.name}')
 
@@ -223,7 +223,7 @@ class TestGenerateClickCommand:
         assert result.exit_code == 0
         assert 'success: test-space' in result.output
 
-    @patch('sagemaker.hyperpod.cli.dev_space_utils.load_schema_for_version')
+    @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
     def test_immutable_fields_excluded_in_update(self, mock_load_schema):
         """Test that immutable fields are excluded in update mode"""
         schema = {
@@ -247,7 +247,7 @@ class TestGenerateClickCommand:
         @click.command()
         @generate_click_command(
             registry=registry, 
-            schema_pkg="hyperpod_dev_space_template",
+            schema_pkg="hyperpod_space_template",
             is_update=True
         )
         def cmd(version, domain_config):
@@ -262,7 +262,7 @@ class TestGenerateClickCommand:
         assert '--name' in result.output
         assert '--image' in result.output
 
-    @patch('sagemaker.hyperpod.cli.dev_space_utils.load_schema_for_version')
+    @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
     def test_filtered_kwargs(self, mock_load_schema):
         """Test that None/empty values are filtered out"""
         schema = {
@@ -285,7 +285,7 @@ class TestGenerateClickCommand:
         registry = {'1.0': DummyModel}
 
         @click.command()
-        @generate_click_command(registry=registry, schema_pkg="hyperpod_dev_space_template")
+        @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
         def cmd(version, domain_config):
             # Check that None values were filtered out
             click.echo(json.dumps(domain_config.received_kwargs))
@@ -297,7 +297,7 @@ class TestGenerateClickCommand:
         assert output['image'] == 'default-image'
         assert 'namespace' not in output
 
-    @patch('sagemaker.hyperpod.cli.dev_space_utils.load_schema_for_version')
+    @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
     def test_default_version_injection(self, mock_load_schema):
         """Test that version flag is injected when no version_key is provided"""
         schema = {'properties': {}, 'required': []}
@@ -310,7 +310,7 @@ class TestGenerateClickCommand:
         registry = {'1.0': DummyModel, '2.0': DummyModel}
 
         @click.command()
-        @generate_click_command(registry=registry, schema_pkg="hyperpod_dev_space_template")
+        @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
         def cmd(version, domain_config):
             click.echo(version)
 
@@ -325,7 +325,7 @@ class TestGenerateClickCommand:
         assert result.exit_code == 0
         assert result.output.strip() == '2.0'
 
-    @patch('sagemaker.hyperpod.cli.dev_space_utils.load_schema_for_version')
+    @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
     def test_schema_defaults_and_required_fields(self, mock_load_schema):
         """Test handling of schema defaults and required fields"""
         schema = {
@@ -347,7 +347,7 @@ class TestGenerateClickCommand:
         registry = {'1.0': DummyModel}
 
         @click.command()
-        @generate_click_command(registry=registry, schema_pkg="hyperpod_dev_space_template")
+        @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
         def cmd(version, domain_config):
             click.echo('success')
 

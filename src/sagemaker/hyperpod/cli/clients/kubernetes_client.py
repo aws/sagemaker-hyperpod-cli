@@ -40,21 +40,21 @@ from sagemaker.hyperpod.cli.constants.pytorch_constants import (
     PYTORCH_CUSTOM_OBJECT_PLURAL,
     PYTORCH_CUSTOM_OBJECT_VERSION,
 )
-from sagemaker.hyperpod.cli.constants.dev_space_constants import (
-    DEV_SPACE_GROUP,
-    DEV_SPACE_VERSION,
-    DEV_SPACE_PLURAL,
-    DEFAULT_DEV_SPACE_PORT,
+from sagemaker.hyperpod.cli.constants.space_constants import (
+    SPACE_GROUP,
+    SPACE_VERSION,
+    SPACE_PLURAL,
+    DEFAULT_SPACE_PORT,
 )
 from sagemaker.hyperpod.cli.constants.space_admin_config_constants import (
     SPACE_ADMIN_CONFIG_GROUP,
     SPACE_ADMIN_CONFIG_VERSION,
     SPACE_ADMIN_CONFIG_PLURAL,
 )
-from sagemaker.hyperpod.cli.constants.dev_space_access_constants import (
-    DEV_SPACE_ACCESS_GROUP,
-    DEV_SPACE_ACCESS_VERSION,
-    DEV_SPACE_ACCESS_PLURAL,
+from sagemaker.hyperpod.cli.constants.space_access_constants import (
+    SPACE_ACCESS_GROUP,
+    SPACE_ACCESS_VERSION,
+    SPACE_ACCESS_PLURAL,
 )
 from sagemaker.hyperpod.cli.utils import setup_logger
 
@@ -375,54 +375,54 @@ class KubernetesClient:
             name=cluster_queue_name
         )
 
-    def create_dev_space(self, namespace: str, dev_space_spec: dict):
+    def create_space(self, namespace: str, space_spec: dict):
         return client.CustomObjectsApi().create_namespaced_custom_object(
-            group=DEV_SPACE_GROUP,
-            version=DEV_SPACE_VERSION,
+            group=SPACE_GROUP,
+            version=SPACE_VERSION,
             namespace=namespace,
-            plural=DEV_SPACE_PLURAL,
-            body=dev_space_spec
+            plural=SPACE_PLURAL,
+            body=space_spec
         )
 
-    def list_dev_spaces(self, namespace: str):
+    def list_spaces(self, namespace: str):
         if namespace:
             return client.CustomObjectsApi().list_namespaced_custom_object(
-                group=DEV_SPACE_GROUP,
-                version=DEV_SPACE_VERSION,
+                group=SPACE_GROUP,
+                version=SPACE_VERSION,
                 namespace=namespace,
-                plural=DEV_SPACE_PLURAL
+                plural=SPACE_PLURAL
             )
         else:
             return client.CustomObjectsApi().list_cluster_custom_object(
-                group=DEV_SPACE_GROUP,
-                version=DEV_SPACE_VERSION,
-                plural=DEV_SPACE_PLURAL
+                group=SPACE_GROUP,
+                version=SPACE_VERSION,
+                plural=SPACE_PLURAL
             )
 
-    def get_dev_space(self, namespace: str, name: str):
+    def get_space(self, namespace: str, name: str):
         return client.CustomObjectsApi().get_namespaced_custom_object(
-            group=DEV_SPACE_GROUP,
-            version=DEV_SPACE_VERSION,
+            group=SPACE_GROUP,
+            version=SPACE_VERSION,
             namespace=namespace,
-            plural=DEV_SPACE_PLURAL,
+            plural=SPACE_PLURAL,
             name=name
         )
 
-    def delete_dev_space(self, namespace: str, name: str):
+    def delete_space(self, namespace: str, name: str):
         return client.CustomObjectsApi().delete_namespaced_custom_object(
-            group=DEV_SPACE_GROUP,
-            version=DEV_SPACE_VERSION,
+            group=SPACE_GROUP,
+            version=SPACE_VERSION,
             namespace=namespace,
-            plural=DEV_SPACE_PLURAL,
+            plural=SPACE_PLURAL,
             name=name
         )
 
-    def patch_dev_space(self, namespace: str, name: str, body: dict):
+    def patch_space(self, namespace: str, name: str, body: dict):
         return client.CustomObjectsApi().patch_namespaced_custom_object(
-            group=DEV_SPACE_GROUP,
-            version=DEV_SPACE_VERSION,
+            group=SPACE_GROUP,
+            version=SPACE_VERSION,
             namespace=namespace,
-            plural=DEV_SPACE_PLURAL,
+            plural=SPACE_PLURAL,
             name=name,
             body=body
         )
@@ -482,12 +482,12 @@ class KubernetesClient:
             body=body
         )
 
-    def create_dev_space_access(self, namespace: str, config_spec: dict):
+    def create_space_access(self, namespace: str, config_spec: dict):
         return client.CustomObjectsApi().create_namespaced_custom_object(
-            group=DEV_SPACE_ACCESS_GROUP,
-            version=DEV_SPACE_ACCESS_VERSION,
+            group=SPACE_ACCESS_GROUP,
+            version=SPACE_ACCESS_VERSION,
             namespace=namespace,
-            plural=DEV_SPACE_ACCESS_PLURAL,
+            plural=SPACE_ACCESS_PLURAL,
             body=config_spec
         )
 

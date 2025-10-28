@@ -45,7 +45,7 @@ class ResourcesConfig(BaseModel):
     nvidia_gpu: Optional[str] = Field(default=None, alias="nvidia.com/gpu", description="GPU limit")
 
 
-class DevSpaceConfig(BaseModel):
+class SpaceConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(
@@ -56,7 +56,7 @@ class DevSpaceConfig(BaseModel):
     )
     image: Optional[str] = Field(
         default="public.ecr.aws/sagemaker/sagemaker-distribution:3.2.0-cpu",
-        description="Container image for the dev space",
+        description="Container image for the space",
         min_length=1
     )
     namespace: str = Field(
@@ -67,7 +67,7 @@ class DevSpaceConfig(BaseModel):
     desired_status: Optional[Literal['Running', 'Stopped']] = Field(
         default="Running",
         alias="desired_status",
-        description="Desired status of the dev space"
+        description="Desired status of the space"
     )
     service_account_name: Optional[str] = Field(
         default="default",
@@ -142,9 +142,9 @@ class DevSpaceConfig(BaseModel):
 
     def to_domain(self) -> Dict:
         """
-        Convert flat config to domain model for dev space creation
+        Convert flat config to domain model for space creation
         """
-        # Create the dev space spec
+        # Create the space spec
         spec = {
             "image": self.image
         }
@@ -180,8 +180,8 @@ class DevSpaceConfig(BaseModel):
         # if labels:
         #     metadata["labels"] = labels
 
-        # Create the complete dev space configuration
-        dev_space_config = {
+        # Create the complete space configuration
+        space_config = {
             "apiVersion": "sagemaker.aws.com/v1alpha1",
             "kind": "Space",
             "metadata": metadata,
@@ -191,5 +191,5 @@ class DevSpaceConfig(BaseModel):
         return {
             "name": self.name,
             "namespace": self.namespace,
-            "dev_space_spec": dev_space_config
+            "space_spec": space_config
         }
