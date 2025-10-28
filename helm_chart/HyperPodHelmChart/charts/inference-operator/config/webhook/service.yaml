@@ -1,0 +1,14 @@
+apiVersion: v1 # dummy change
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: {{ .Values.namePrefix }}
+  name: {{ .Values.namePrefix }}-conversion-webhook
+  namespace: {{ .Values.shortPrefix }}-system
+spec:
+  ports:
+    - port: 443
+      protocol: TCP
+      targetPort: 9443
+  selector:
+    control-plane: {{ .Values.namePrefix }}-controller-manager

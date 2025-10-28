@@ -70,9 +70,112 @@ class CloudWatchTrigger(BaseModel):
     )
 
 
+class CloudWatchTriggerList(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    activationTargetValue: Optional[float] = Field(
+        default=0,
+        alias="activation_target_value",
+        description="Activation Value for CloudWatch metric to scale from 0 to 1. Only applicable if minReplicaCount = 0",
+    )
+    dimensions: Optional[List[Dimensions]] = Field(
+        default=None, description="Dimensions for Cloudwatch metrics"
+    )
+    metricCollectionPeriod: Optional[int] = Field(
+        default=300,
+        alias="metric_collection_period",
+        description="Defines the Period for CloudWatch query",
+    )
+    metricCollectionStartTime: Optional[int] = Field(
+        default=300,
+        alias="metric_collection_start_time",
+        description="Defines the StartTime for CloudWatch query",
+    )
+    metricName: Optional[str] = Field(
+        default=None,
+        alias="metric_name",
+        description="Metric name to query for Cloudwatch trigger",
+    )
+    metricStat: Optional[str] = Field(
+        default="Average",
+        alias="metric_stat",
+        description="Statistics metric to be used by Trigger. Used to define Stat for CloudWatch query. Default is Average.",
+    )
+    metricType: Optional[Literal["Value", "Average"]] = Field(
+        default="Average",
+        alias="metric_type",
+        description="The type of metric to be used by HPA. Enum: AverageValue - Uses average value of metric per pod, Value - Uses absolute metric value",
+    )
+    minValue: Optional[float] = Field(
+        default=0,
+        alias="min_value",
+        description="Minimum metric value used in case of empty response from CloudWatch. Default is 0.",
+    )
+    name: Optional[str] = Field(
+        default=None, description="Name for the CloudWatch trigger"
+    )
+    namespace: Optional[str] = Field(
+        default=None, description="AWS CloudWatch namespace for metric"
+    )
+    targetValue: Optional[float] = Field(
+        default=None,
+        alias="target_value",
+        description="TargetValue for CloudWatch metric",
+    )
+    useCachedMetrics: Optional[bool] = Field(
+        default=True,
+        alias="use_cached_metrics",
+        description="Enable caching of metric values during polling interval. Default is true",
+    )
+
+
 class PrometheusTrigger(BaseModel):
     """Prometheus metric trigger to use for autoscaling"""
 
+    model_config = ConfigDict(extra="forbid")
+
+    activationTargetValue: Optional[float] = Field(
+        default=0,
+        alias="activation_target_value",
+        description="Activation Value for Prometheus metric to scale from 0 to 1. Only applicable if minReplicaCount = 0",
+    )
+    customHeaders: Optional[str] = Field(
+        default=None,
+        alias="custom_headers",
+        description="Custom headers to include while querying the prometheus endpoint.",
+    )
+    metricType: Optional[Literal["Value", "Average"]] = Field(
+        default="Average",
+        alias="metric_type",
+        description="The type of metric to be used by HPA. Enum: AverageValue - Uses average value of metric per pod, Value - Uses absolute metric value",
+    )
+    name: Optional[str] = Field(
+        default=None, description="Name for the Prometheus trigger"
+    )
+    namespace: Optional[str] = Field(
+        default=None, description="Namespace for namespaced queries"
+    )
+    query: Optional[str] = Field(
+        default=None, description="PromQLQuery for the metric."
+    )
+    serverAddress: Optional[str] = Field(
+        default=None,
+        alias="server_address",
+        description="Server address for AMP workspace",
+    )
+    targetValue: Optional[float] = Field(
+        default=None,
+        alias="target_value",
+        description="Target metric value for scaling",
+    )
+    useCachedMetrics: Optional[bool] = Field(
+        default=True,
+        alias="use_cached_metrics",
+        description="Enable caching of metric values during polling interval. Default is true",
+    )
+
+
+class PrometheusTriggerList(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     activationTargetValue: Optional[float] = Field(
@@ -124,6 +227,11 @@ class AutoScalingSpec(BaseModel):
         alias="cloud_watch_trigger",
         description="CloudWatch metric trigger to use for autoscaling",
     )
+    cloudWatchTriggerList: Optional[List[CloudWatchTriggerList]] = Field(
+        default=None,
+        alias="cloud_watch_trigger_list",
+        description="Multiple CloudWatch metric triggers to use for autoscaling. Takes priority over CloudWatchTrigger if both are provided.",
+    )
     cooldownPeriod: Optional[int] = Field(
         default=300,
         alias="cooldown_period",
@@ -154,6 +262,11 @@ class AutoScalingSpec(BaseModel):
         alias="prometheus_trigger",
         description="Prometheus metric trigger to use for autoscaling",
     )
+    prometheusTriggerList: Optional[List[PrometheusTriggerList]] = Field(
+        default=None,
+        alias="prometheus_trigger_list",
+        description="Multiple Prometheus metric triggers to use for autoscaling. Takes priority over PrometheusTrigger if both are provided.",
+    )
     scaleDownStabilizationTime: Optional[int] = Field(
         default=300,
         alias="scale_down_stabilization_time",
@@ -163,6 +276,79 @@ class AutoScalingSpec(BaseModel):
         default=0,
         alias="scale_up_stabilization_time",
         description="The time window to stabilize for HPA before scaling up. Default 0 seconds.",
+    )
+
+
+class IntelligentRoutingSpec(BaseModel):
+    """Configuration for intelligent routing This feature is currently not supported for existing deployments. Adding this configuration to an existing deployment will be rejected."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    autoScalingSpec: Optional[AutoScalingSpec] = Field(
+        default=None, alias="auto_scaling_spec"
+    )
+    enabled: Optional[bool] = Field(
+        default=False, description="Once set, the enabled field cannot be modified"
+    )
+    routingStrategy: Optional[
+        Literal["prefixaware", "kvaware", "session", "roundrobin"]
+    ] = Field(default="prefixaware", alias="routing_strategy")
+
+
+class L2CacheSpec(BaseModel):
+    """Configuration for providing L2 Cache offloading"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    l2CacheBackend: Optional[str] = Field(
+        default=None,
+        alias="l2_cache_backend",
+        description="L2 cache backend type. Required when L2CacheSpec is provided.",
+    )
+    l2CacheLocalUrl: Optional[str] = Field(
+        default=None,
+        alias="l2_cache_local_url",
+        description="Provide the L2 cache URL to local storage",
+    )
+
+
+class KvCacheSpec(BaseModel):
+    """Configuration for KV Cache specification By default L1CacheOffloading will be enabled"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    cacheConfigFile: Optional[str] = Field(
+        default=None,
+        alias="cache_config_file",
+        description="KVCache configuration file path. If specified, override other configurations provided via spec",
+    )
+    enableL1Cache: Optional[bool] = Field(
+        default=True, alias="enable_l1_cache", description="Enable CPU offloading"
+    )
+    enableL2Cache: Optional[bool] = Field(default=False, alias="enable_l2_cache")
+    l2CacheSpec: Optional[L2CacheSpec] = Field(
+        default=None,
+        alias="l2_cache_spec",
+        description="Configuration for providing L2 Cache offloading",
+    )
+
+
+class LoadBalancer(BaseModel):
+    """Configuration for Application Load Balancer"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    healthCheckPath: Optional[str] = Field(
+        default="/ping",
+        alias="health_check_path",
+        description="Health check path for the ALB target group. Defaults to /ping if not specified.",
+    )
+    routingAlgorithm: Optional[Literal["least_outstanding_requests", "round_robin"]] = (
+        Field(
+            default="least_outstanding_requests",
+            alias="routing_algorithm",
+            description="Routing algorithm for the ALB target group (least_oustanding_requests or round_robin)",
+        )
     )
 
 
@@ -433,6 +619,13 @@ class Worker(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    args: Optional[List[str]] = Field(
+        default=None, description="Defines the Arguments to the entrypoint."
+    )
+    command: Optional[List[str]] = Field(
+        default=None,
+        description="Defines the Command which is Entrypoint array. Not executed within a shell.",
+    )
     environmentVariables: Optional[List[EnvironmentVariables]] = Field(
         default=None,
         alias="environment_variables",
@@ -449,6 +642,11 @@ class Worker(BaseModel):
     )
     resources: Resources = Field(
         description="Defines the Resources in terms of CPU, GPU, Memory needed for the model to be deployed"
+    )
+    workingDir: Optional[str] = Field(
+        default=None,
+        alias="working_dir",
+        description="Defines the working directory of container.",
     )
 
 
@@ -468,15 +666,30 @@ class _HPEndpoint(BaseModel):
     endpointName: Optional[str] = Field(
         default=None,
         alias="endpoint_name",
-        description="Name of a SageMaker endpoint to be created for this InferenceEndpointConfig. The default value of empty string, when used, will skip endpoint creation.",
+        description="Name used for Sagemaker Endpoint Name of sagemaker endpoint. Defaults to empty string which represents that Sagemaker endpoint will not be created.",
     )
     instanceType: str = Field(
         alias="instance_type", description="Instance Type to deploy the model on"
+    )
+    intelligentRoutingSpec: Optional[IntelligentRoutingSpec] = Field(
+        default=None,
+        alias="intelligent_routing_spec",
+        description="Configuration for intelligent routing This feature is currently not supported for existing deployments. Adding this configuration to an existing deployment will be rejected.",
     )
     invocationEndpoint: Optional[str] = Field(
         default="invocations",
         alias="invocation_endpoint",
         description="The invocation endpoint of the model server. http://<host>:<port>/ would be pre-populated based on the other fields. Please fill in the path after http://<host>:<port>/ specific to your model server.",
+    )
+    kvCacheSpec: Optional[KvCacheSpec] = Field(
+        default=None,
+        alias="kv_cache_spec",
+        description="Configuration for KV Cache specification By default L1CacheOffloading will be enabled",
+    )
+    loadBalancer: Optional[LoadBalancer] = Field(
+        default=None,
+        alias="load_balancer",
+        description="Configuration for Application Load Balancer",
     )
     metrics: Optional[Metrics] = Field(
         default=None, description="Configuration for metrics collection and exposure"
@@ -641,7 +854,7 @@ class Endpoints(BaseModel):
     )
 
 
-class ModelMetrics(BaseModel):
+class ModelMetricsStatus(BaseModel):
     """Status of model container metrics collection"""
 
     model_config = ConfigDict(extra="forbid")
@@ -670,7 +883,7 @@ class MetricsStatus(BaseModel):
         alias="metrics_scrape_interval_seconds",
         description="Scrape interval in seconds for metrics collection from sidecar and model container.",
     )
-    modelMetrics: Optional[ModelMetrics] = Field(
+    modelMetrics: Optional[ModelMetricsStatus] = Field(
         default=None,
         alias="model_metrics",
         description="Status of model container metrics collection",

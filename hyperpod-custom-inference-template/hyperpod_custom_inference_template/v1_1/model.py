@@ -12,7 +12,6 @@
 # language governing permissions and limitations under the License.
 from pydantic import BaseModel, Field, model_validator, ConfigDict
 from typing import Optional, List, Dict, Union, Literal
-import yaml
 
 from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     Metrics,
@@ -28,6 +27,9 @@ from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     Dimensions,
     AutoScalingSpec,
     CloudWatchTrigger,
+    IntelligentRoutingSpec,
+    KvCacheSpec,
+    L2CacheSpec,
 )
 from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
 from sagemaker.hyperpod.common.config.metadata import Metadata
@@ -251,6 +253,47 @@ class FlatHPEndpoint(BaseModel):
         ),
     )
 
+    # Intelligent Routing flattened fields
+    intelligent_routing_enabled: Optional[bool] = Field(
+        None,
+        alias="intelligent_routing_enabled",
+        description="Enable intelligent routing",
+    )
+    routing_strategy: Optional[
+        Literal["prefixaware", "kvaware", "session", "roundrobin"]
+    ] = Field(
+        None,
+        alias="routing_strategy",
+        description="Routing strategy for intelligent routing",
+    )
+
+    # KV Cache flattened fields
+    enable_l1_cache: Optional[bool] = Field(
+        None,
+        alias="enable_l1_cache",
+        description="Enable L1 cache (CPU offloading)",
+    )
+    enable_l2_cache: Optional[bool] = Field(
+        None,
+        alias="enable_l2_cache",
+        description="Enable L2 cache",
+    )
+    l2_cache_backend: Optional[str] = Field(
+        None,
+        alias="l2_cache_backend",
+        description="L2 cache backend type",
+    )
+    l2_cache_local_url: Optional[str] = Field(
+        None,
+        alias="l2_cache_local_url",
+        description="L2 cache URL to local storage",
+    )
+    cache_config_file: Optional[str] = Field(
+        None,
+        alias="cache_config_file",
+        description="KV cache configuration file path",
+    )
+
     @model_validator(mode="after")
     def validate_model_source_config(self):
         """Validate that required fields are provided based on model_source_type"""
@@ -357,6 +400,31 @@ class FlatHPEndpoint(BaseModel):
             model_volume_mount=volume_mount,
             resources=resources,
         )
+        # Build intelligent routing spec from flattened fields
+        intelligent_routing_spec = None
+        if self.intelligent_routing_enabled is not None:
+            intelligent_routing_spec = IntelligentRoutingSpec(
+                enabled=self.intelligent_routing_enabled,
+                routing_strategy=self.routing_strategy,
+            )
+
+        # Build KV cache spec from flattened fields
+        kv_cache_spec = None
+        if any([self.enable_l1_cache, self.enable_l2_cache, self.cache_config_file]):
+            l2_cache_spec = None
+            if self.l2_cache_backend or self.l2_cache_local_url:
+                l2_cache_spec = L2CacheSpec(
+                    l2_cache_backend=self.l2_cache_backend,
+                    l2_cache_local_url=self.l2_cache_local_url,
+                )
+
+            kv_cache_spec = KvCacheSpec(
+                enable_l1_cache=self.enable_l1_cache,
+                enable_l2_cache=self.enable_l2_cache,
+                l2_cache_spec=l2_cache_spec,
+                cache_config_file=self.cache_config_file,
+            )
+
         return HPEndpoint(
             metadata=metadata,
             endpoint_name=self.endpoint_name,
@@ -368,5 +436,7 @@ class FlatHPEndpoint(BaseModel):
             tls_config=tls,
             worker=worker,
             invocation_endpoint=self.invocation_endpoint,
-            auto_scaling_spec=auto_scaling_spec
+            auto_scaling_spec=auto_scaling_spec,
+            intelligent_routing_spec=intelligent_routing_spec,
+            kv_cache_spec=kv_cache_spec,
         )

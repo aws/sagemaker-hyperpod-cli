@@ -55,9 +55,14 @@ spec:
           - --metrics-bind-address=:8443
           - --leader-elect
           - --health-probe-bind-address=:8081
+          - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
         image: "{{ .Values.image.repository }}/hyperpod-inference-operator:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: manager
+        ports:
+        - containerPort: 9443
+          name: webhook-server
+          protocol: TCP
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -73,8 +78,10 @@ spec:
           httpGet:
             path: /healthz
             port: 8081
+          initialDelaySeconds: 180
           failureThreshold: 120
           periodSeconds: 60
+          timeoutSeconds: 5
         readinessProbe:
           httpGet:
             path: /readyz
@@ -90,6 +97,10 @@ spec:
           requests:
             cpu: 10m
             memory: 64Mi
+        volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: webhook-certs
+          readOnly: true
         env:
           - name: HYPERPOD_CLUSTER_ARN
             value: {{ .Values.hyperpodClusterArn }}
@@ -103,5 +114,15 @@ spec:
             value: {{ .Values.eksClusterName }}
           - name: TLS_CERTIFICATE_OUTPUT_S3URI
             value: {{ .Values.tlsCertificateS3Bucket }}
+          - name: ENABLE_WEBHOOKS
+            value: "{{ .Values.enableWebhooks }}"
+          - name: CHART_VERSION
+            value: {{ .Chart.Version | quote }}
+          - name: APP_VERSION
+            value: {{ .Chart.AppVersion | quote }}
       serviceAccountName: {{ .Values.namePrefix }}-controller-manager
       terminationGracePeriodSeconds: 10
+      volumes:
+      - name: webhook-certs
+        secret:
+          secretName: webhook-server-cert

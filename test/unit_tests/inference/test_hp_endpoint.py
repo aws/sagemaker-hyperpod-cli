@@ -3,8 +3,15 @@ from unittest.mock import MagicMock, patch
 from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
 from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     CloudWatchTrigger,
+    CloudWatchTriggerList,
+    PrometheusTrigger,
+    PrometheusTriggerList,
     Dimensions,
     AutoScalingSpec,
+    IntelligentRoutingSpec,
+    KvCacheSpec,
+    L2CacheSpec,
+    LoadBalancer,
     Metrics,
     S3Storage,
     ModelSourceConfig,
@@ -83,6 +90,30 @@ class TestHPEndpoint(unittest.TestCase):
         # Create metrics
         metrics = Metrics(enabled=True)
 
+        # Create intelligent routing spec
+        intelligent_routing_spec = IntelligentRoutingSpec(
+            enabled=True,
+            routing_strategy="prefixaware",
+            auto_scaling_spec=auto_scaling_spec
+        )
+
+        # Create KV cache spec
+        l2_cache_spec = L2CacheSpec(
+            l2_cache_backend="redis",
+            l2_cache_local_url="redis://localhost:6379"
+        )
+        kv_cache_spec = KvCacheSpec(
+            enable_l1_cache=True,
+            enable_l2_cache=True,
+            l2_cache_spec=l2_cache_spec
+        )
+
+        # Create load balancer
+        load_balancer = LoadBalancer(
+            health_check_path="/health",
+            routing_algorithm="least_outstanding_requests"
+        )
+
         self.endpoint = HPEndpoint(
             endpoint_name="s3-test-endpoint-name",
             instance_type="ml.g5.xlarge",
@@ -91,6 +122,9 @@ class TestHPEndpoint(unittest.TestCase):
             model_source_config=model_source_config,
             worker=worker,
             auto_scaling_spec=auto_scaling_spec,
+            intelligent_routing_spec=intelligent_routing_spec,
+            kv_cache_spec=kv_cache_spec,
+            load_balancer=load_balancer,
             metrics=metrics,
         )
 
