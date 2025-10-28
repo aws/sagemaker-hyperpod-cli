@@ -10,6 +10,8 @@ set_script_variables() {
     SUPPORTED_REGIONS=(
         "us-east-1"
         "eu-north-1"
+        "eu-west-2"
+        "us-west-2"
     )
 
     SRC_DIR="HyperPodHelmChart"
