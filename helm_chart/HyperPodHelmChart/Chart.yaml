@@ -45,7 +45,7 @@ dependencies:
     repository: https://aws.github.io/eks-charts/
     condition: aws-efa-k8s-device-plugin.devicePlugin.enabled
   - name: neuron-device-plugin
-    version: "0.1.0"
+    version: "v0.1.0"
     repository: "file://charts/neuron-device-plugin"
     condition: neuron-device-plugin.devicePlugin.enabled
   - name: storage
