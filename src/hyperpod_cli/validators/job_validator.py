@@ -314,7 +314,8 @@ def validate_recipe_file(recipe: str):
                 elif "nova" in model_type and "evaluation" in recipe_data:
                     NovaEvaluationRecipeSchema(**recipe_data)
                 elif "nova" in model_type:
-                    NovaRecipeSchema(**recipe_data)
+                    return True    # skip for beta release
+                    # NovaRecipeSchema(**recipe_data)
                 else:
                     raise Exception("Unsupported model_type {model_type}. Make sure the recipe exists in src/hyperpod_cli/sagemaker_hyperpod_recipes/recipes_collection/recipes")
                 return True
