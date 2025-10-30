@@ -47,11 +47,80 @@ def test_js_create_with_required_args():
         "sagemaker.hyperpod.common.cli_decorators._is_valid_jumpstart_model_id"
     ) as mock_model_validation, patch(
         "sagemaker.hyperpod.common.cli_decorators._namespace_exists"
-    ) as mock_namespace_exists:
+    ) as mock_namespace_exists, patch(
+        "sagemaker.hyperpod.inference.hp_jumpstart_endpoint.HPJumpStartEndpoint.validate_instance_type"
+    ) as mock_validate_instance, patch(
+        "sagemaker.hyperpod.common.utils.get_jumpstart_model_instance_types"
+    ) as mock_get_instance_types, patch(
+        "sagemaker.hyperpod.common.utils.get_cluster_instance_types"
+    ) as mock_get_cluster_types, patch(
+        "sagemaker.hyperpod.inference.hp_jumpstart_endpoint.HPJumpStartEndpoint.create"
+    ) as mock_create:
 
         # Mock enhanced error handling
         mock_model_validation.return_value = True  # Allow test model-id
         mock_namespace_exists.return_value = True  # Allow test namespace
+        mock_validate_instance.return_value = None  # Skip validation
+        mock_get_instance_types.return_value = [
+            "ml.p4d.24xlarge"
+        ]  # Mock supported types
+        mock_get_cluster_types.return_value = ["ml.p4d.24xlarge"]  # Mock cluster types
+        mock_create.return_value = None  # Mock successful creation
+
+        # Prepare mock model-to-domain mapping
+        mock_model_class = Mock()
+        mock_model_instance = Mock()
+        domain_obj = Mock()
+        domain_obj.create = mock_create
+        mock_model_instance.to_domain.return_value = domain_obj
+        mock_model_class.return_value = mock_model_instance
+
+        # Set up the registry for version 1.0
+        jreg.SCHEMA_REGISTRY["1.0"] = mock_model_class
+
+        runner = CliRunner()
+        result = runner.invoke(
+            js_create,
+            [
+                "--namespace",
+                "test-ns",
+                "--version",
+                "1.0",
+                "--model-id",
+                "test-model-id",
+                "--instance-type",
+                "ml.p4d.24xlarge",  # Use a supported instance type
+                "--endpoint-name",
+                "test-endpoint",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        mock_create.assert_called_once_with(debug=False)
+
+
+def test_js_create_missing_required_args():
+    runner = CliRunner()
+    result = runner.invoke(js_create, [])
+    assert result.exit_code != 0
+    assert "Missing option" in result.output
+
+
+def test_js_create_with_mig_profile():
+    """
+    Test js_create with MIG profile (accelerator partition) options using v1.1 schema.
+    """
+    with patch(
+        "sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint"
+    ) as mock_endpoint_class, patch(
+        "sagemaker.hyperpod.common.cli_decorators._is_valid_jumpstart_model_id"
+    ) as mock_model_validation, patch(
+        "sagemaker.hyperpod.common.cli_decorators._namespace_exists"
+    ) as mock_namespace_exists:
+
+        # Mock enhanced error handling
+        mock_model_validation.return_value = True
+        mock_namespace_exists.return_value = True
 
         # Mock schema loading
         mock_load_schema.return_value = {
@@ -71,7 +140,8 @@ def test_js_create_with_required_args():
         mock_endpoint_class.model_construct.return_value = domain_obj
 
         jreg.SCHEMA_REGISTRY.clear()
-        jreg.SCHEMA_REGISTRY["1.0"] = mock_model_class
+        # Set up the registry for version 1.1
+        jreg.SCHEMA_REGISTRY["1.1"] = mock_model_class
 
         runner = CliRunner()
         result = runner.invoke(
@@ -80,11 +150,15 @@ def test_js_create_with_required_args():
                 "--namespace",
                 "test-ns",
                 "--version",
-                "1.0",
+                "1.1",
                 "--model-id",
                 "test-model-id",
                 "--instance-type",
-                "ml.t2.micro",
+                "ml.p4d.24xlarge",
+                "--accelerator-partition-type",
+                "mig-1g.5gb",
+                "--accelerator-partition-validation",
+                "true",
                 "--endpoint-name",
                 "test-endpoint",
             ],
@@ -93,12 +167,73 @@ def test_js_create_with_required_args():
         assert result.exit_code == 0, result.output
         domain_obj.create.assert_called_once_with(debug=False)
 
+        # Verify the model instance was created with MIG profile parameters
+        mock_model_class.assert_called_once()
+        call_args = mock_model_class.call_args[1]
+        assert "accelerator_partition_type" in call_args
+        assert "accelerator_partition_validation" in call_args
 
 def test_js_create_missing_required_args():
     runner = CliRunner()
     result = runner.invoke(js_create, [])
     assert result.exit_code != 0
     assert "Missing option" in result.output
+
+def test_js_create_mig_validation_error_handling():
+    """
+    Test js_create properly handles MIG profile validation errors using v1.1 schema.
+    """
+    with patch(
+        "sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint"
+    ) as mock_endpoint_class, patch(
+        "sagemaker.hyperpod.common.cli_decorators._is_valid_jumpstart_model_id"
+    ) as mock_model_validation, patch(
+        "sagemaker.hyperpod.common.cli_decorators._namespace_exists"
+    ) as mock_namespace_exists:
+
+        # Mock enhanced error handling
+        mock_model_validation.return_value = True
+        mock_namespace_exists.return_value = True
+
+        # Prepare mock model-to-domain mapping that raises validation error
+        mock_model_class = Mock()
+        mock_model_instance = Mock()
+        domain_obj = Mock()
+        # Simulate MIG validation error during create
+        domain_obj.create.side_effect = ValueError(
+            "MIG profile '1g.5gb' is not supported for instance type 'ml.c5.2xlarge'"
+        )
+        mock_model_instance.to_domain.return_value = domain_obj
+        mock_model_class.return_value = mock_model_instance
+        mock_endpoint_class.model_construct.return_value = domain_obj
+
+        # Set up the registry for version 1.1
+        jreg.SCHEMA_REGISTRY["1.1"] = mock_model_class
+
+        runner = CliRunner()
+        result = runner.invoke(
+            js_create,
+            [
+                "--namespace",
+                "test-ns",
+                "--version",
+                "1.1",
+                "--model-id",
+                "test-model-id",
+                "--instance-type",
+                "ml.c5.2xlarge",  # Instance type that doesn't support MIG
+                "--accelerator-partition-type",
+                "1g.5gb",  # Invalid MIG profile for this instance
+                "--accelerator-partition-validation",
+                "true",
+                "--endpoint-name",
+                "test-endpoint",
+            ],
+        )
+
+        # Should fail due to MIG validation error
+        assert result.exit_code != 0
+        assert "MIG profile" in result.output or "not supported" in result.output
 
 
 @patch("sagemaker.hyperpod.common.cli_decorators._namespace_exists")
