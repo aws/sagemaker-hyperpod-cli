@@ -10,11 +10,11 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-SPACE_GROUP = "sagemaker.aws.com"
+SPACE_GROUP = "workspace.jupyter.org"
 SPACE_VERSION = "v1alpha1"
-SPACE_PLURAL = "spaces"
-DEFAULT_SPACE_PORT = "8888"
+SPACE_PLURAL = "workspaces"
 # Immutable fields that cannot be updated after space creation
 IMMUTABLE_FIELDS = {
-    "storage_class_name",
+    "storage",  # storage is immutable per Go struct validation
+    "template_ref",  # templateRef is immutable per Go struct validation
 }

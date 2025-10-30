@@ -707,10 +707,10 @@ class TestKubernetesClient(unittest.TestCase):
         test_client.create_space("test-namespace", space_spec)
         
         mock_create_namespaced_custom_object.assert_called_once_with(
-            group="sagemaker.aws.com",
+            group="workspace.jupyter.org",
             version="v1alpha1",
             namespace="test-namespace",
-            plural="spaces",
+            plural="workspaces",
             body=space_spec
         )
 
@@ -723,10 +723,10 @@ class TestKubernetesClient(unittest.TestCase):
         result = test_client.list_spaces("test-namespace")
         
         mock_list_namespaced_custom_object.assert_called_once_with(
-            group="sagemaker.aws.com",
+            group="workspace.jupyter.org",
             version="v1alpha1",
             namespace="test-namespace",
-            plural="spaces"
+            plural="workspaces"
         )
         self.assertEqual(result, {"items": []})
 
@@ -739,9 +739,9 @@ class TestKubernetesClient(unittest.TestCase):
         result = test_client.list_spaces(None)
         
         mock_list_cluster_custom_object.assert_called_once_with(
-            group="sagemaker.aws.com",
+            group="workspace.jupyter.org",
             version="v1alpha1",
-            plural="spaces"
+            plural="workspaces"
         )
         self.assertEqual(result, {"items": []})
 
@@ -755,10 +755,10 @@ class TestKubernetesClient(unittest.TestCase):
         result = test_client.get_space("test-namespace", "test-space")
         
         mock_get_namespaced_custom_object.assert_called_once_with(
-            group="sagemaker.aws.com",
+            group="workspace.jupyter.org",
             version="v1alpha1",
             namespace="test-namespace",
-            plural="spaces",
+            plural="workspaces",
             name="test-space"
         )
         self.assertEqual(result, mock_space)
@@ -772,10 +772,10 @@ class TestKubernetesClient(unittest.TestCase):
         result = test_client.delete_space("test-namespace", "test-space")
         
         mock_delete_namespaced_custom_object.assert_called_once_with(
-            group="sagemaker.aws.com",
+            group="workspace.jupyter.org",
             version="v1alpha1",
             namespace="test-namespace",
-            plural="spaces",
+            plural="workspaces",
             name="test-space"
         )
         self.assertEqual(result, {})
@@ -790,10 +790,10 @@ class TestKubernetesClient(unittest.TestCase):
         result = test_client.patch_space("test-namespace", "test-space", patch_body)
         
         mock_patch_namespaced_custom_object.assert_called_once_with(
-            group="sagemaker.aws.com",
+            group="workspace.jupyter.org",
             version="v1alpha1",
             namespace="test-namespace",
-            plural="spaces",
+            plural="workspaces",
             name="test-space",
             body=patch_body
         )

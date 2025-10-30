@@ -26,7 +26,7 @@ def space_create(version, config):
         k8s_client = KubernetesClient()
         k8s_client.create_space(namespace, space_spec)
         
-        click.echo(f"Dev space '{name}' created successfully in namespace '{namespace}'")
+        click.echo(f"Space '{name}' created successfully in namespace '{namespace}'")
     except Exception as e:
         click.echo(f"Error creating space: {e}", err=True)
 
@@ -91,7 +91,7 @@ def space_delete(name, namespace):
     try:
         k8s_client.delete_space(namespace, name)
 
-        click.echo(f"Dev space '{name}' deleted successfully")
+        click.echo(f"Space '{name}' deleted successfully")
     except Exception as e:
         click.echo(f"Error deleting space '{name}': {e}", err=True)
 
@@ -117,7 +117,7 @@ def space_update(version, config):
             body=space_spec
         )
 
-        click.echo(f"Dev space '{name}' updated successfully")
+        click.echo(f"Space '{name}' updated successfully")
     except Exception as e:
         click.echo(f"Error updating space '{name}': {e}", err=True)
 
@@ -138,7 +138,7 @@ def space_start(name, namespace):
             body=patch_body
         )
 
-        click.echo(f"Dev space '{name}' start requested")
+        click.echo(f"Space '{name}' start requested")
     except Exception as e:
         click.echo(f"Error starting space '{name}': {e}", err=True)
 
@@ -159,7 +159,7 @@ def space_stop(name, namespace):
             body=patch_body
         )
 
-        click.echo(f"Dev space '{name}' stop requested")
+        click.echo(f"Space '{name}' stop requested")
     except Exception as e:
         click.echo(f"Error stopping space '{name}': {e}", err=True)
 

@@ -44,7 +44,6 @@ from sagemaker.hyperpod.cli.constants.space_constants import (
     SPACE_GROUP,
     SPACE_VERSION,
     SPACE_PLURAL,
-    DEFAULT_SPACE_PORT,
 )
 from sagemaker.hyperpod.cli.constants.space_admin_config_constants import (
     SPACE_ADMIN_CONFIG_GROUP,

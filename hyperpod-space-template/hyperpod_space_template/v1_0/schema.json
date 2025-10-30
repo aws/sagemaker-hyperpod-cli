@@ -1,42 +1,103 @@
 {
   "$defs": {
-    "Application": {
+    "ContainerConfig": {
+      "description": "ContainerConfig defines container command and args configuration",
+      "properties": {
+        "command": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Command specifies the container command",
+          "title": "Command"
+        },
+        "args": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Args specifies the container arguments",
+          "title": "Args"
+        }
+      },
+      "title": "ContainerConfig",
+      "type": "object"
+    },
+    "DesiredStatus": {
       "enum": [
-        "jupyter",
-        "code-editor"
+        "Running",
+        "Stopped"
       ],
-      "title": "Application",
+      "title": "DesiredStatus",
       "type": "string"
     },
-    "ResourcesConfig": {
+    "OwnershipType": {
+      "enum": [
+        "Public",
+        "OwnerOnly"
+      ],
+      "title": "OwnershipType",
+      "type": "string"
+    },
+    "ResourceRequirements": {
+      "description": "ResourceRequirements describes the compute resource requirements",
       "properties": {
-        "memory": {
+        "requests": {
           "anyOf": [
             {
-              "type": "string"
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
             },
             {
               "type": "null"
             }
           ],
-          "default": "1Gi",
-          "description": "Memory limit",
-          "title": "Memory"
+          "default": null,
+          "description": "Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. Requests cannot exceed Limits.",
+          "title": "Requests"
         },
-        "cpu": {
+        "limits": {
           "anyOf": [
             {
-              "type": "string"
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
             },
             {
               "type": "null"
             }
           ],
-          "default": "500m",
-          "description": "CPU limit",
-          "title": "Cpu"
-        },
-        "nvidia.com/gpu": {
+          "default": null,
+          "description": "Limits describes the maximum amount of compute resources allowed.",
+          "title": "Limits"
+        }
+      },
+      "title": "ResourceRequirements",
+      "type": "object"
+    },
+    "StorageSpec": {
+      "description": "StorageSpec defines the storage configuration for Workspace",
+      "properties": {
+        "storageClassName": {
           "anyOf": [
             {
               "type": "string"
@@ -46,45 +107,86 @@
             }
           ],
           "default": null,
-          "description": "GPU limit",
-          "title": "Nvidia.Com/Gpu"
+          "description": "StorageClassName specifies the storage class to use for persistent storage",
+          "title": "Storageclassname"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "10Gi",
+          "description": "Size specifies the size of the persistent volume. Supports standard Kubernetes resource quantities (e.g., '10Gi', '500Mi', '1Ti'). Integer values without units are interpreted as bytes",
+          "title": "Size"
+        },
+        "mountPath": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "/home",
+          "description": "MountPath specifies where to mount the persistent volume in the container. Default is /home/jovyan (jovyan is the standard user in Jupyter images)",
+          "title": "Mountpath"
         }
       },
-      "title": "ResourcesConfig",
+      "title": "StorageSpec",
       "type": "object"
     },
-    "SharedStatus": {
-      "enum": [
-        "public",
-        "private"
+    "VolumeSpec": {
+      "description": "VolumeSpec defines a volume to mount from an existing PVC",
+      "properties": {
+        "name": {
+          "description": "Name is a unique identifier for this volume within the pod (maps to pod.spec.volumes[].name)",
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "mountPath": {
+          "description": "MountPath is the path where the volume should be mounted (Unix-style path, e.g. /data)",
+          "minLength": 1,
+          "title": "Mountpath",
+          "type": "string"
+        },
+        "persistentVolumeClaimName": {
+          "description": "PersistentVolumeClaimName is the name of the existing PVC to mount",
+          "minLength": 1,
+          "title": "Persistentvolumeclaimname",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "mountPath",
+        "persistentVolumeClaimName"
       ],
-      "title": "SharedStatus",
-      "type": "string"
+      "title": "VolumeSpec",
+      "type": "object"
     }
   },
   "additionalProperties": false,
+  "description": "SpaceConfig defines the desired state of a Space",
   "properties": {
     "name": {
-      "description": "Dev space name",
+      "description": "Space name",
       "maxLength": 63,
       "minLength": 1,
       "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
       "title": "Name",
       "type": "string"
     },
-    "image": {
-      "anyOf": [
-        {
-          "minLength": 1,
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": "public.ecr.aws/sagemaker/sagemaker-distribution:3.2.0-cpu",
-      "description": "Container image for the space",
-      "title": "Image"
+    "display_name": {
+      "description": "Display Name of the space",
+      "minLength": 1,
+      "title": "Display Name",
+      "type": "string"
     },
     "namespace": {
       "default": "default",
@@ -93,57 +195,159 @@
       "title": "Namespace",
       "type": "string"
     },
+    "image": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Image specifies the container image to use",
+      "title": "Image"
+    },
     "desired_status": {
       "anyOf": [
         {
-          "enum": [
-            "Running",
-            "Stopped"
-          ],
-          "type": "string"
+          "$ref": "#/$defs/DesiredStatus"
         },
         {
           "type": "null"
         }
       ],
-      "default": "Running",
-      "description": "Desired status of the space",
-      "title": "Desired Status"
+      "default": null,
+      "description": "DesiredStatus specifies the desired operational status"
     },
-    "service_account_name": {
+    "ownership_type": {
       "anyOf": [
         {
-          "minLength": 1,
-          "type": "string"
+          "$ref": "#/$defs/OwnershipType"
         },
         {
           "type": "null"
         }
       ],
-      "default": "default",
-      "description": "Service account name",
-      "title": "Service Account Name"
+      "default": null,
+      "description": "OwnershipType specifies who can modify the space. Public means anyone with RBAC permissions can update/delete the space. OwnerOnly means only the creator can update/delete the space."
     },
     "resources": {
       "anyOf": [
         {
-          "$ref": "#/$defs/ResourcesConfig"
+          "$ref": "#/$defs/ResourceRequirements"
         },
         {
           "type": "null"
         }
       ],
-      "default": {
-        "memory": "1Gi",
-        "cpu": "500m",
-        "nvidia.com/gpu": null
-      },
-      "description": "Resource limit"
+      "default": null,
+      "description": "Resources specifies the resource requirements"
     },
-    "storage_class_name": {
+    "storage": {
       "anyOf": [
         {
-          "minLength": 1,
+          "$ref": "#/$defs/StorageSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Storage specifies the storage configuration"
+    },
+    "volumes": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/VolumeSpec"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Volumes specifies additional volumes to mount from existing PersistentVolumeClaims",
+      "title": "Volumes"
+    },
+    "container_config": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ContainerConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "ContainerConfig specifies container command and args configuration"
+    },
+    "node_selector": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "NodeSelector specifies node selection constraints for the space pod (JSON)",
+      "title": "Node Selector"
+    },
+    "affinity": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Affinity specifies node affinity and anti-affinity rules for the space pod (JSON)",
+      "title": "Affinity"
+    },
+    "tolerations": {
+      "anyOf": [
+        {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Tolerations specifies tolerations for the space pod to schedule on nodes with matching taints (JSON)",
+      "title": "Tolerations"
+    },
+    "lifecycle": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Lifecycle specifies actions that the management system should take in response to container lifecycle events (JSON)",
+      "title": "Lifecycle"
+    },
+    "template_ref": {
+      "anyOf": [
+        {
           "type": "string"
         },
         {
@@ -151,50 +355,13 @@
         }
       ],
       "default": null,
-      "description": "Storage class name",
-      "title": "Storage Class Name"
-    },
-    "storage_size": {
-      "anyOf": [
-        {
-          "minLength": 1,
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "description": "Storage size (e.g., '10Gi')",
-      "title": "Storage Size"
-    },
-    "shared_status": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/SharedStatus"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": "private",
-      "description": "Space shared setting (private | public)"
-    },
-    "application": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/Application"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": "jupyter",
-      "description": "Application to run in the container (jupyter | code-editor)"
+      "description": "TemplateRef references a WorkspaceTemplate to use as base configuration. When set, template provides defaults and spec fields (Image, Resources, Storage.Size) act as overrides.",
+      "title": "Template Ref"
     }
   },
   "required": [
-    "name"
+    "name",
+    "display_name"
   ],
   "title": "SpaceConfig",
   "type": "object"

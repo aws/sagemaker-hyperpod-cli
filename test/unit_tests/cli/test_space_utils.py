@@ -125,16 +125,16 @@ class TestGenerateClickCommand:
         result = self.runner.invoke(cmd, ['--cpu', '1000m', '--memory', '1Gi'])
         assert result.exit_code == 0
         output = json.loads(result.output)
-        assert output['cpu'] == '1000m'
-        assert output['memory'] == '1Gi'
-        assert output['nvidia.com/gpu'] is None
+        assert output['requests']['cpu'] == '1000m'
+        assert output['requests']['memory'] == '1Gi'
+        assert 'nvidia.com/gpu' not in output['requests']
 
         # Test with only CPU
         result = self.runner.invoke(cmd, ['--cpu', '750m'])
         assert result.exit_code == 0
         output = json.loads(result.output)
-        assert output['cpu'] == '750m'
-        assert output['memory'] == '256Mi'  # default
+        assert output['requests']['cpu'] == '750m'
+        assert 'memory' not in output['requests']
 
         # Test with no resources specified
         result = self.runner.invoke(cmd, [])
@@ -229,7 +229,8 @@ class TestGenerateClickCommand:
         schema = {
             'properties': {
                 'name': {'type': 'string'},
-                'storage_class_name': {'type': 'string'},
+                'storage': {'type': 'object'},  # storage is immutable
+                'template_ref': {'type': 'string'},  # template_ref is immutable
                 'image': {'type': 'string'}
             },
             'required': ['name']
@@ -256,8 +257,9 @@ class TestGenerateClickCommand:
         # Get the command's help to check available options
         result = self.runner.invoke(cmd, ['--help'])
         assert result.exit_code == 0
-        # storage_class_name should not be available in update mode
-        assert '--storage-class-name' not in result.output
+        # storage and template_ref should not be available in update mode
+        assert '--storage' not in result.output
+        assert '--template-ref' not in result.output
         # but other fields should be available
         assert '--name' in result.output
         assert '--image' in result.output
@@ -361,3 +363,234 @@ class TestGenerateClickCommand:
         print(result.output)
         assert result.exit_code == 0
         assert result.output.strip() == 'success'
+
+    @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
+    def test_volume_parsing(self, mock_load_schema):
+        """Test volume parameter parsing"""
+        schema = {
+            'properties': {
+                'name': {'type': 'string'},
+                'volumes': {'type': 'array'}
+            },
+            'required': ['name']
+        }
+        mock_load_schema.return_value = schema
+
+        class DummyModel:
+            def __init__(self, **kwargs):
+                self.__dict__.update(kwargs)
+            def to_domain(self):
+                return self
+
+        registry = {'1.0': DummyModel}
+
+        @click.command()
+        @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
+        def cmd(version, domain_config):
+            click.echo(json.dumps(getattr(domain_config, 'volumes', None)))
+
+        # Test valid volume parsing
+        result = self.runner.invoke(cmd, [
+            '--name', 'test-space',
+            '--volume', 'name=vol1,mountPath=/data,persistentVolumeClaimName=pvc1'
+        ])
+        assert result.exit_code == 0
+        volumes = json.loads(result.output)
+        assert len(volumes) == 1
+        assert volumes[0]['name'] == 'vol1'
+        assert volumes[0]['mountPath'] == '/data'
+        assert volumes[0]['persistentVolumeClaimName'] == 'pvc1'
+
+        # Test multiple volumes
+        result = self.runner.invoke(cmd, [
+            '--name', 'test-space',
+            '--volume', 'name=vol1,mountPath=/data1',
+            '--volume', 'name=vol2,mountPath=/data2'
+        ])
+        assert result.exit_code == 0
+        volumes = json.loads(result.output)
+        assert len(volumes) == 2
+
+        # Test invalid volume format
+        result = self.runner.invoke(cmd, [
+            '--name', 'test-space',
+            '--volume', 'invalid_format'
+        ])
+        assert result.exit_code == 2
+        assert 'Invalid volume format' in result.output
+
+    @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
+    def test_storage_parsing(self, mock_load_schema):
+        """Test storage parameter parsing"""
+        schema = {
+            'properties': {
+                'name': {'type': 'string'},
+                'storage': {'type': 'object'}
+            },
+            'required': ['name']
+        }
+        mock_load_schema.return_value = schema
+
+        class DummyModel:
+            def __init__(self, **kwargs):
+                self.__dict__.update(kwargs)
+            def to_domain(self):
+                return self
+
+        registry = {'1.0': DummyModel}
+
+        @click.command()
+        @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
+        def cmd(version, domain_config):
+            click.echo(json.dumps(getattr(domain_config, 'storage', None)))
+
+        # Test valid storage parsing
+        result = self.runner.invoke(cmd, [
+            '--name', 'test-space',
+            '--storage', 'storageClassName=gp2,size=20Gi,mountPath=/data'
+        ])
+        assert result.exit_code == 0
+        storage = json.loads(result.output)
+        assert storage['storageClassName'] == 'gp2'
+        assert storage['size'] == '20Gi'
+        assert storage['mountPath'] == '/data'
+
+        # Test invalid storage format
+        result = self.runner.invoke(cmd, [
+            '--name', 'test-space',
+            '--storage', 'invalid_format'
+        ])
+        assert result.exit_code == 2
+        assert 'Invalid storage format' in result.output
+
+    @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
+    def test_container_config_parsing_simple(self, mock_load_schema):
+        """Test container config parameter parsing with simple format"""
+        schema = {
+            'properties': {
+                'name': {'type': 'string'},
+                'container_config': {'type': 'object'}
+            },
+            'required': ['name']
+        }
+        mock_load_schema.return_value = schema
+
+        class DummyModel:
+            def __init__(self, **kwargs):
+                self.__dict__.update(kwargs)
+            def to_domain(self):
+                return self
+
+        registry = {'1.0': DummyModel}
+
+        @click.command()
+        @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
+        def cmd(version, domain_config):
+            click.echo(json.dumps(getattr(domain_config, 'container_config', None)))
+
+        # Test valid container config with semicolon format
+        result = self.runner.invoke(cmd, [
+            '--name', 'test-space',
+            '--container-config', 'command=python;app.py,args=--port;8080'
+        ])
+        assert result.exit_code == 0
+        config = json.loads(result.output)
+        assert config['command'] == ['python', 'app.py']
+        assert config['args'] == ['--port', '8080']
+
+        # Test invalid container config format
+        result = self.runner.invoke(cmd, [
+            '--name', 'test-space',
+            '--container-config', 'invalid_format'
+        ])
+        assert result.exit_code == 2
+        assert 'Invalid container-config format' in result.output
+
+    @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
+    def test_json_object_parsing(self, mock_load_schema):
+        """Test JSON object parameter parsing"""
+        schema = {
+            'properties': {
+                'name': {'type': 'string'},
+                'metadata': {'type': 'object'},
+                'tags': {'type': 'array'}
+            },
+            'required': ['name']
+        }
+        mock_load_schema.return_value = schema
+
+        class DummyModel:
+            def __init__(self, **kwargs):
+                self.__dict__.update(kwargs)
+            def to_domain(self):
+                return self
+
+        registry = {'1.0': DummyModel}
+
+        @click.command()
+        @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
+        def cmd(version, domain_config):
+            result = {
+                'metadata': getattr(domain_config, 'metadata', None),
+                'tags': getattr(domain_config, 'tags', None)
+            }
+            click.echo(json.dumps(result))
+
+        # Test valid JSON object
+        result = self.runner.invoke(cmd, [
+            '--name', 'test-space',
+            '--metadata', '{"key": "value", "number": 42}',
+            '--tags', '["tag1", "tag2"]'
+        ])
+        assert result.exit_code == 0
+        output = json.loads(result.output)
+        assert output['metadata']['key'] == 'value'
+        assert output['metadata']['number'] == 42
+        assert output['tags'] == ['tag1', 'tag2']
+
+        # Test invalid JSON
+        result = self.runner.invoke(cmd, [
+            '--name', 'test-space',
+            '--metadata', 'invalid json'
+        ])
+        assert result.exit_code == 2
+        assert 'Invalid JSON for --metadata' in result.output
+
+    @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
+    def test_anyof_type_handling(self, mock_load_schema):
+        """Test handling of anyOf type specifications"""
+        schema = {
+            'properties': {
+                'name': {'type': 'string'},
+                'config': {
+                    'anyOf': [
+                        {'type': 'object'},
+                        {'type': 'null'}
+                    ]
+                }
+            },
+            'required': ['name']
+        }
+        mock_load_schema.return_value = schema
+
+        class DummyModel:
+            def __init__(self, **kwargs):
+                self.__dict__.update(kwargs)
+            def to_domain(self):
+                return self
+
+        registry = {'1.0': DummyModel}
+
+        @click.command()
+        @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
+        def cmd(version, domain_config):
+            click.echo(json.dumps(getattr(domain_config, 'config', None)))
+
+        # Test with JSON object for anyOf type
+        result = self.runner.invoke(cmd, [
+            '--name', 'test-space',
+            '--config', '{"setting": "value"}'
+        ])
+        assert result.exit_code == 0
+        config = json.loads(result.output)
+        assert config['setting'] == 'value'

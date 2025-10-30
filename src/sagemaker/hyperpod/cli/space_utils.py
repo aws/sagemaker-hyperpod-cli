@@ -46,12 +46,91 @@ def generate_click_command(
             if cpu is None and memory is None and gpu is None:
                 return None
 
-            default_resources = props["resources"]["default"]
+            # Build requests dictionary
+            requests = {}
+            if cpu is not None:
+                requests["cpu"] = cpu
+            if memory is not None:
+                requests["memory"] = memory
+            if gpu is not None:
+                requests["nvidia.com/gpu"] = gpu
+
+            # Return ResourceRequirements structure
             return {
-                "cpu": cpu or default_resources["cpu"],
-                "memory": memory or default_resources["memory"],
-                "nvidia.com/gpu": gpu or default_resources["nvidia.com/gpu"]
+                "requests": requests
             }
+
+        def _parse_volume_param(ctx, param, value):
+            """Parse volume parameters from command line format to dictionary format."""
+            if not value:
+                return None
+            
+            volumes = []
+            for i, v in enumerate(value):
+                try:
+                    # Split by comma and then by equals, with validation
+                    parts = {}
+                    for item in v.split(','):
+                        if '=' not in item:
+                            raise click.UsageError(f"Invalid volume format in volume {i+1}: '{item}' should be key=value")
+                        key, val = item.split('=', 1)  # Split only on first '=' to handle values with '='
+                        # Convert snake_case to match model field names
+                        if key.strip() == 'mount_path':
+                            key = 'mountPath'
+                        elif key.strip() == 'persistent_volume_claim_name':
+                            key = 'persistentVolumeClaimName'
+                        parts[key.strip()] = val.strip()
+                    
+                    volumes.append(parts)
+                except Exception as e:
+                    raise click.UsageError(f"Error parsing volume {i+1}: {str(e)}")
+            
+            return volumes
+
+        def _parse_storage_param(ctx, param, value):
+            """Parse storage parameters from command line format to dictionary format."""
+            if not value:
+                return None
+            
+            try:
+                parts = {}
+                for item in value.split(','):
+                    if '=' not in item:
+                        raise click.UsageError(f"Invalid storage format: '{item}' should be key=value")
+                    key, val = item.split('=', 1)
+                    # Convert snake_case to match model field names
+                    if key.strip() == 'storage_class_name':
+                        key = 'storageClassName'
+                    elif key.strip() == 'mount_path':
+                        key = 'mountPath'
+                    parts[key.strip()] = val.strip()
+                return parts
+            except Exception as e:
+                raise click.UsageError(f"Error parsing storage: {str(e)}")
+
+        def _parse_container_config_param(ctx, param, value):
+            """Parse container config parameters from command line format to dictionary format."""
+            if not value:
+                return None
+            
+            try:
+                parts = {}
+                for item in value.split(','):
+                    if '=' not in item:
+                        raise click.UsageError(f"Invalid container-config format: '{item}' should be key=value")
+                    key, val = item.split('=', 1)
+                    key = key.strip()
+                    val = val.strip()
+                    
+                    # Handle array fields (command and args)
+                    if key in ['command', 'args']:
+                        parts[key] = [item.strip() for item in val.split(';') if item.strip()]
+                    else:
+                        parts[key] = val
+                
+                return parts
+            except Exception as e:
+                raise click.UsageError(f"Error parsing container-config: {str(e)}")
     
         # 1) the wrapper click will call
         def wrapped_func(*args, **kwargs):
@@ -65,10 +144,41 @@ def generate_click_command(
             if resources is not None:
                 kwargs["resources"] = resources
 
+            volumes = kwargs.pop("volume", None)
+            if volumes is not None:
+                kwargs["volumes"] = volumes
+
+            storage = kwargs.pop("storage", None)
+            if storage is not None:
+                kwargs["storage"] = storage
+
+            container_config = kwargs.pop("container_config", None)
+            if container_config is not None:
+                kwargs["container_config"] = container_config
+
             # filter out None/empty values so Pydantic model defaults apply
             filtered_kwargs = {}
             for key, value in kwargs.items():
                 if value is not None:
+                    # Parse JSON for object/array type parameters
+                    spec = props.get(key, {})
+                    is_object_type = False
+                    
+                    if spec.get("type") == "object" or spec.get("type") == "array":
+                        is_object_type = True
+                    elif "anyOf" in spec:
+                        # Check if any of the anyOf options is an object/aray type
+                        for option in spec["anyOf"]:
+                            if option.get("type") == "object" or option.get("type") == "array":
+                                is_object_type = True
+                                break
+                    
+                    if isinstance(value, str) and is_object_type:
+                        try:
+                            value = json.loads(value)
+                        except json.JSONDecodeError:
+                            raise click.UsageError(f"Invalid JSON for --{key.replace('_', '-')}: {value}")
+                    
                     filtered_kwargs[key] = value
 
             try:
@@ -77,12 +187,12 @@ def generate_click_command(
             except ValidationError as e:
                 error_messages = []
                 for err in e.errors():
-                    loc = ".".join(str(x) for x in err["loc"])
+                    loc = ".".join(str(x).replace('_','-') for x in err["loc"])
                     msg = err["msg"]
                     error_messages.append(f"  – {loc}: {msg}")
                 
                 raise click.UsageError(
-                    f"❌ Configuration validation errors:\n" + "\n".join(error_messages)
+                    f"Configuration validation errors:\n" + "\n".join(error_messages)
                 )
 
             return func(version, domain_config)
@@ -109,11 +219,35 @@ def generate_click_command(
             help="Gpu resource, e.g. '1'",
         )(wrapped_func)
 
+        wrapped_func = click.option(
+            "--volume",
+            multiple=True,
+            callback=_parse_volume_param,
+            help="Volume configuration. Format: --volume name=<name>,mountPath=<path>,persistentVolumeClaimName=<pvc_name>. Use multiple --volume flags for multiple volumes.",
+        )(wrapped_func)
+
+        # Only add storage option if not in update mode as storage is immutable
+        if not is_update:
+            wrapped_func = click.option(
+                "--storage",
+                callback=_parse_storage_param,
+                help="Storage configuration. Format: --storage storageClassName=<class>,size=<size>,mountPath=<path>",
+            )(wrapped_func)
+
+        wrapped_func = click.option(
+            "--container-config",
+            callback=_parse_container_config_param,
+            help="Container configuration. Format: --container-config command=<cmd1;cmd2>,args=<arg1;arg2>",
+        )(wrapped_func)
+
         # Exclude the props that were handled out of the below for loop
         excluded_props = set(
             [
                 "resources",
                 "version",
+                "volumes",
+                "storage",
+                "container_config",
             ]
         )
 
@@ -136,6 +270,8 @@ def generate_click_command(
                 ctype = float
             elif spec.get("type") == "boolean":
                 ctype = bool
+            elif spec.get("type") == "object":
+                ctype = str  # JSON string input
             else:
                 ctype = str
 

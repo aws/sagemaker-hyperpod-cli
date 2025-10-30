@@ -30,9 +30,10 @@ class TestSpaceCommands:
         mock_load_schema.return_value = {
             "properties": {
                 "name": {"type": "string"},
+                "display_name": {"type": "string"},
                 "namespace": {"type": "string"}
             },
-            "required": ["name"]
+            "required": ["name", "display_name"]
         }
 
         # Mock model registry
@@ -40,6 +41,7 @@ class TestSpaceCommands:
         mock_model.return_value = Mock()
         mock_model.return_value.to_domain.return_value = {
             "name": "test-space",
+            "display_name": "Test Space",
             "namespace": "test-ns",
             "space_spec": {"spec": {"image": "test-image"}}
         }
@@ -52,11 +54,12 @@ class TestSpaceCommands:
             result = self.runner.invoke(space_create, [
                 '--version', '1.0',
                 '--name', 'test-space',
+                '--display-name', 'Test Space',
                 '--namespace', 'test-ns'
             ])
 
         assert result.exit_code == 0
-        assert "Dev space 'test-space' created successfully" in result.output
+        assert "Space 'test-space' created successfully" in result.output
         mock_k8s_instance.create_space.assert_called_once()
 
     @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
@@ -82,6 +85,7 @@ class TestSpaceCommands:
         mock_model.return_value = Mock()
         mock_model.return_value.to_domain.return_value = {
             "name": "test-space",
+            "display_name": "Test Space",
             "namespace": "test-ns",
             "space_spec": {}
         }
@@ -91,13 +95,15 @@ class TestSpaceCommands:
                 mock_load_schema.return_value = {
                     "properties": {
                         "name": {"type": "string"},
+                        "display_name": {"type": "string"},
                         "namespace": {"type": "string"}
                     },
-                    "required": ["name", "namespace"]
+                    "required": ["name", "display_name"]
                 }
                 result = self.runner.invoke(space_create, [
                     '--version', '1.0',
                     '--name', 'test-space',
+                    '--display-name', 'Test Space',
                     '--namespace', 'test-ns'
                 ])
 
@@ -245,7 +251,7 @@ class TestSpaceCommands:
         ])
 
         assert result.exit_code == 0
-        assert "Dev space 'test-space' deleted successfully" in result.output
+        assert "Space 'test-space' deleted successfully" in result.output
         mock_k8s_instance.delete_space.assert_called_once_with('test-ns', 'test-space')
 
     @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
@@ -271,6 +277,7 @@ class TestSpaceCommands:
         mock_load_schema.return_value = {
             "properties": {
                 "name": {"type": "string"},
+                "display_name": {"type": "string"},
                 "namespace": {"type": "string"}
             },
             "required": ["name"]
@@ -293,11 +300,12 @@ class TestSpaceCommands:
             result = self.runner.invoke(space_update, [
                 '--version', '1.0',
                 '--name', 'test-space',
+                '--display-name', 'Test Space',
                 '--namespace', 'test-ns'
             ])
 
         assert result.exit_code == 0
-        assert "Dev space 'test-space' updated successfully" in result.output
+        assert "Space 'test-space' updated successfully" in result.output
         mock_k8s_instance.patch_space.assert_called_once()
 
     @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
@@ -320,13 +328,15 @@ class TestSpaceCommands:
                 mock_load_schema.return_value = {
                     "properties": {
                         "name": {"type": "string"},
+                        "display_name": {"type": "string"},
                         "namespace": {"type": "string"}
                     },
-                    "required": ["name", "namespace"]
+                    "required": ["name"]
                 }
                 result = self.runner.invoke(space_update, [
                     '--version', '1.0',
                     '--name', 'test-space',
+                    '--display-name', 'Test Space',
                     '--namespace', 'test-ns'
                 ])
 
@@ -345,7 +355,7 @@ class TestSpaceCommands:
         ])
 
         assert result.exit_code == 0
-        assert "Dev space 'test-space' start requested" in result.output
+        assert "Space 'test-space' start requested" in result.output
         mock_k8s_instance.patch_space.assert_called_once_with(
             namespace='test-ns',
             name='test-space',
@@ -379,7 +389,7 @@ class TestSpaceCommands:
         ])
 
         assert result.exit_code == 0
-        assert "Dev space 'test-space' stop requested" in result.output
+        assert "Space 'test-space' stop requested" in result.output
         mock_k8s_instance.patch_space.assert_called_once_with(
             namespace='test-ns',
             name='test-space',
