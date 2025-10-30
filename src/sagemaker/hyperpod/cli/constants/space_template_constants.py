@@ -11,6 +11,6 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
-SPACE_ADMIN_CONFIG_GROUP = "sagemaker.aws.com"
-SPACE_ADMIN_CONFIG_VERSION = "v1alpha1"
-SPACE_ADMIN_CONFIG_PLURAL = "spaceadminconfigs"
+SPACE_TEMPLATE_GROUP = "workspace.jupyter.org"
+SPACE_TEMPLATE_VERSION = "v1alpha1"
+SPACE_TEMPLATE_PLURAL = "workspacetemplates"

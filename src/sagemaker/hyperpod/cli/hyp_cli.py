@@ -48,6 +48,13 @@ from sagemaker.hyperpod.cli.commands.space import (
     space_stop,
     space_get_logs,
 )
+from sagemaker.hyperpod.cli.commands.space_template import (
+    space_template_create,
+    space_template_list,
+    space_template_describe,
+    space_template_delete,
+    space_template_update,
+)
 
 from sagemaker.hyperpod.cli.commands.init import (
     init,
@@ -123,23 +130,23 @@ def create():
 
 @cli.group(cls=CLICommand)
 def list():
-    """List endpoints, pytorch jobs, cluster stacks or spaces."""
+    """List endpoints, pytorch jobs, cluster stacks, spaces, and space templates."""
     pass
 
 
 @cli.group(cls=CLICommand)
 def describe():
-    """Describe endpoints, pytorch jobs or cluster stacks, spaces or space admin configs."""
+    """Describe endpoints, pytorch jobs or cluster stacks, spaces or space template."""
     pass
 
 @cli.group(cls=CLICommand)
 def update():
-    """Update an existing HyperPod cluster configuration, space, or space admin config."""
+    """Update an existing HyperPod cluster configuration, space, or space template."""
     pass
 
 @cli.group(cls=CLICommand)
 def delete():
-    """Delete endpoints, pytorch jobs, space, space access or space admin config."""
+    """Delete endpoints, pytorch jobs, space, space access or space template."""
     pass
 
 
@@ -200,12 +207,14 @@ create.add_command(custom_create)
 _default_create.hidden = True
 create.add_command(_default_create)
 create.add_command(space_create)
+create.add_command(space_template_create)
 
 list.add_command(list_jobs)
 list.add_command(js_list)
 list.add_command(custom_list)
 list.add_command(list_cluster_stacks)
 list.add_command(space_list)
+list.add_command(space_template_list)
 
 describe.add_command(pytorch_describe)
 describe.add_command(js_describe)
@@ -214,15 +223,18 @@ describe.add_command(describe_cluster_stack)
 
 describe.add_command(describe_cluster)
 describe.add_command(space_describe)
+describe.add_command(space_template_describe)
 
 update.add_command(update_cluster)
 update.add_command(space_update)
+update.add_command(space_template_update)
 
 delete.add_command(pytorch_delete)
 delete.add_command(js_delete)
 delete.add_command(custom_delete)
 delete.add_command(delete_cluster_stack)
 delete.add_command(space_delete)
+delete.add_command(space_template_delete)
 
 start.add_command(space_start)
 

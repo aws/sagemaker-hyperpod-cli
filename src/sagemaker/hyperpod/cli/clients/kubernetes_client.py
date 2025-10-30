@@ -45,10 +45,10 @@ from sagemaker.hyperpod.cli.constants.space_constants import (
     SPACE_VERSION,
     SPACE_PLURAL,
 )
-from sagemaker.hyperpod.cli.constants.space_admin_config_constants import (
-    SPACE_ADMIN_CONFIG_GROUP,
-    SPACE_ADMIN_CONFIG_VERSION,
-    SPACE_ADMIN_CONFIG_PLURAL,
+from sagemaker.hyperpod.cli.constants.space_template_constants import (
+    SPACE_TEMPLATE_GROUP,
+    SPACE_TEMPLATE_VERSION,
+    SPACE_TEMPLATE_PLURAL,
 )
 from sagemaker.hyperpod.cli.constants.space_access_constants import (
     SPACE_ACCESS_GROUP,
@@ -426,66 +426,51 @@ class KubernetesClient:
             body=body
         )
 
-
-
-    # Space Admin Configuration methods
-    def create_space_admin_config(self, namespace: str, config_spec: dict):
-        return client.CustomObjectsApi().create_namespaced_custom_object(
-            group=SPACE_ADMIN_CONFIG_GROUP,
-            version=SPACE_ADMIN_CONFIG_VERSION,
-            namespace=namespace,
-            plural=SPACE_ADMIN_CONFIG_PLURAL,
+    # Space Template Configuration methods
+    def create_space_template(self, config_spec: dict):
+        return client.CustomObjectsApi().create_cluster_custom_object(
+            group=SPACE_TEMPLATE_GROUP,
+            version=SPACE_TEMPLATE_VERSION,
+            plural=SPACE_TEMPLATE_PLURAL,
             body=config_spec
         )
 
-    def list_space_admin_configs(self, namespace: str = None):
-        if namespace:
-            return client.CustomObjectsApi().list_namespaced_custom_object(
-                group=SPACE_ADMIN_CONFIG_GROUP,
-                version=SPACE_ADMIN_CONFIG_VERSION,
-                namespace=namespace,
-                plural=SPACE_ADMIN_CONFIG_PLURAL
-            )
-        else:
-            return client.CustomObjectsApi().list_cluster_custom_object(
-                group=SPACE_ADMIN_CONFIG_GROUP,
-                version=SPACE_ADMIN_CONFIG_VERSION,
-                plural=SPACE_ADMIN_CONFIG_PLURAL
-            )
+    def list_space_templates(self):
+        return client.CustomObjectsApi().list_cluster_custom_object(
+            group=SPACE_TEMPLATE_GROUP,
+            version=SPACE_TEMPLATE_VERSION,
+            plural=SPACE_TEMPLATE_PLURAL
+        )
 
-    def get_space_admin_config(self, namespace: str, name: str):
-        return client.CustomObjectsApi().get_namespaced_custom_object(
-            group=SPACE_ADMIN_CONFIG_GROUP,
-            version=SPACE_ADMIN_CONFIG_VERSION,
-            namespace=namespace,
-            plural=SPACE_ADMIN_CONFIG_PLURAL,
+    def get_space_template(self, name: str):
+        return client.CustomObjectsApi().get_cluster_custom_object(
+            group=SPACE_TEMPLATE_GROUP,
+            version=SPACE_TEMPLATE_VERSION,
+            plural=SPACE_TEMPLATE_PLURAL,
             name=name
         )
 
-    def delete_space_admin_config(self, namespace: str, name: str):
-        return client.CustomObjectsApi().delete_namespaced_custom_object(
-            group=SPACE_ADMIN_CONFIG_GROUP,
-            version=SPACE_ADMIN_CONFIG_VERSION,
-            namespace=namespace,
-            plural=SPACE_ADMIN_CONFIG_PLURAL,
+    def delete_space_template(self, name: str):
+        return client.CustomObjectsApi().delete_cluster_custom_object(
+            group=SPACE_TEMPLATE_GROUP,
+            version=SPACE_TEMPLATE_VERSION,
+            plural=SPACE_TEMPLATE_PLURAL,
             name=name
         )
 
-    def patch_space_admin_config(self, namespace: str, name: str, body: dict):
-        return client.CustomObjectsApi().patch_namespaced_custom_object(
-            group=SPACE_ADMIN_CONFIG_GROUP,
-            version=SPACE_ADMIN_CONFIG_VERSION,
-            namespace=namespace,
-            plural=SPACE_ADMIN_CONFIG_PLURAL,
+    def patch_space_template(self, name: str, body: dict):
+        return client.CustomObjectsApi().patch_cluster_custom_object(
+            group=SPACE_TEMPLATE_GROUP,
+            version=SPACE_TEMPLATE_VERSION,
+            plural=SPACE_TEMPLATE_PLURAL,
             name=name,
             body=body
         )
 
-    def create_space_access(self, namespace: str, config_spec: dict):
-        return client.CustomObjectsApi().create_namespaced_custom_object(
+    def create_space_access(self, config_spec: dict):
+        return client.CustomObjectsApi().create_cluster_custom_object(
             group=SPACE_ACCESS_GROUP,
             version=SPACE_ACCESS_VERSION,
-            namespace=namespace,
             plural=SPACE_ACCESS_PLURAL,
             body=config_spec
         )
