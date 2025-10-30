@@ -1,3 +1,9 @@
+## v1.1.4 (2025-10-30)
+
+### Features
+
+* User can modify jinja template to add parameters supported by CRD through init experience, for further CLI customization
+
 ## v1.1.2 (2025-09-10)
 
 ### Features
