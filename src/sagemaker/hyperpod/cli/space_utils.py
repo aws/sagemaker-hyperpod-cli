@@ -254,6 +254,10 @@ def generate_click_command(
         # 3) auto-inject all schema.json fields
         reqs = set(schema.get("required", []))
 
+        # Make display_name optional for update operation
+        if is_update and "display_name" in reqs:
+            reqs.remove("display_name")
+
         for name, spec in reversed(list(props.items())):
             if name in excluded_props:
                 continue
