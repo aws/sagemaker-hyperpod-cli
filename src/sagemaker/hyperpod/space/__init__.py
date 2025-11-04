@@ -12,9 +12,11 @@
 # language governing permissions and limitations under the License.
 
 from sagemaker.hyperpod.space.hyperpod_space import HPSpace
+from sagemaker.hyperpod.space.hyperpod_space_template import HPSpaceTemplate
 from hyperpod_space_template.v1_0.model import SpaceConfig
 
 __all__ = [
     "HPSpace",
+    "HPSpaceTemplate",
     "SpaceConfig",
 ]

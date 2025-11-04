@@ -237,7 +237,7 @@ def generate_click_command(
         wrapped_func = click.option(
             "--container-config",
             callback=_parse_container_config_param,
-            help="Container configuration. Format: --container-config command=<cmd1;cmd2>,args=<arg1;arg2>",
+            help="Container configuration. Format: --container-config command=<cmd>,args=<arg1;arg2>",
         )(wrapped_func)
 
         # Exclude the props that were handled out of the below for loop
