@@ -108,9 +108,6 @@ spec:
                       - ml.p6e-gb200.36xlarge
       containers:
         - name: health-monitoring-agent
-          args:
-            - --enable-k8s-exporter=false
-            - --config.system-log-monitor=/config/system-message-monitor.json
           image: {{ include "health-monitoring-agent.imageUri" . }}
           resources:
             limits:

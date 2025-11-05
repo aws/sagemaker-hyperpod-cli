@@ -25,7 +25,7 @@ imageTag: ""
 
 # Override the health monitoring agent image URI
 # If specified, this will override the automatic region-based URI selection
-# Example: "905418368575.dkr.ecr.us-west-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.935.0_1.0.282.0"
+# Example: "905418368575.dkr.ecr.us-west-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1038.0_1.0.305.0"
 hmaimage: ""
 
 # Enable debug output for region selection process
