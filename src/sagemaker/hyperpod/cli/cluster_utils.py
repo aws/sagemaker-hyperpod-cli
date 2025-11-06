@@ -24,7 +24,7 @@ def _get_current_aws_identity(session: boto3.Session) -> Tuple[str, str]:
     """
     sts_client = session.client('sts')
     identity = sts_client.get_caller_identity()
-    
+
     arn = identity['Arn']
     
     # Determine identity type
@@ -39,10 +39,31 @@ def _get_current_aws_identity(session: boto3.Session) -> Tuple[str, str]:
         # becomes arn:aws:iam::123456789012:role/MyRole
         parts = arn.split('/')
         if len(parts) >= 3:
-            base_arn = arn.replace(':sts:', ':iam:').replace(':assumed-role/', ':role/').rsplit('/', 1)[0]
-            arn = base_arn
+            role_name = parts[1]  # Extract role name from ARN
+            
+            # Validate role name before API call
+            if not role_name or not role_name.strip():
+                logger.debug(f"Invalid role name extracted from ARN: {arn}")
+                arn = arn.replace(':sts:', ':iam:').replace(':assumed-role/', ':role/').rsplit('/', 1)[0]
+            else:
+                # Try IAM API first (preferred method)
+                try:
+                    iam_client = session.client('iam')
+                    role_response = iam_client.get_role(RoleName=role_name)
+                    arn = role_response['Role']['Arn']  # Use actual ARN from IAM API
+                    logger.debug(f"Retrieved base role ARN from IAM API: {arn}")
+                except ClientError as e:
+                    # Fall back to string replacement if IAM API fails
+                    logger.debug(f"IAM API failed, falling back to string replacement: {e}")
+                    arn = arn.replace(':sts:', ':iam:').replace(':assumed-role/', ':role/').rsplit('/', 1)[0]
+                except Exception as e:
+                    # Fall back to string replacement for any other errors
+                    logger.debug(f"Unexpected error with IAM API, falling back to string replacement: {e}")
+                    arn = arn.replace(':sts:', ':iam:').replace(':assumed-role/', ':role/').rsplit('/', 1)[0]
     else:
         identity_type = 'unknown'
+
+    logger.debug(f"Resolved identity - ARN: {arn}, Type: {identity_type}")
     
     return arn, identity_type
 
