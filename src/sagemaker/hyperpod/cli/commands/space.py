@@ -1,9 +1,11 @@
 import click
 import json
+import yaml
 from tabulate import tabulate
-from sagemaker.hyperpod.cli.clients.kubernetes_client import KubernetesClient
+from sagemaker.hyperpod.space.hyperpod_space import HPSpace
 from sagemaker.hyperpod.cli.space_utils import generate_click_command
 from hyperpod_space_template.registry import SCHEMA_REGISTRY
+from hyperpod_space_template.v1_0.model import SpaceConfig
 from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
     _hyperpod_telemetry_emitter,
 )
@@ -17,16 +19,12 @@ from sagemaker.hyperpod.common.telemetry.constants import Feature
 )
 def space_create(version, config):
     """Create a space resource."""
-
     try:
-        name = config.get("name")
-        namespace = config.get("namespace")
-        space_spec = config.get("space_spec")
-
-        k8s_client = KubernetesClient()
-        k8s_client.create_space(namespace, space_spec)
+        space_config = SpaceConfig(**config)
+        space = HPSpace(config=space_config)
+        space.create()
         
-        click.echo(f"Space '{name}' created successfully in namespace '{namespace}'")
+        click.echo(f"Space '{space_config.name}' created successfully in namespace '{space_config.namespace}'")
     except Exception as e:
         click.echo(f"Error creating space: {e}", err=True)
 
@@ -36,24 +34,38 @@ def space_create(version, config):
 @click.option("--output", "-o", type=click.Choice(["table", "json"]), default="table")
 def space_list(namespace, output):
     """List space resources."""
-    k8s_client = KubernetesClient()
-    
     try:
-        resources = k8s_client.list_spaces(namespace)
+        spaces = HPSpace.list(namespace=namespace)
         
         if output == "json":
-            click.echo(json.dumps(resources, indent=2))
+            spaces_data = []
+            for space in spaces:
+                space_dict = space.config.model_dump()
+                spaces_data.append(space_dict)
+            click.echo(json.dumps(spaces_data, indent=2))
         else:
-            items = resources.get("items", [])
-            if items:
+            if spaces:
                 table_data = []
-                for item in items:
+                for space in spaces:
+                    # Extract status conditions from raw resource
+                    available = ""
+                    progressing = ""
+                    degraded = ""
+                    
+                    if space.status and 'conditions' in space.status:
+                        conditions = {c['type']: c['status'] for c in space.status['conditions']}
+                        available = conditions.get('Available', '')
+                        progressing = conditions.get('Progressing', '')
+                        degraded = conditions.get('Degraded', '')
+                    
                     table_data.append([
-                        item["metadata"]["name"],
-                        item["metadata"]["namespace"],
-                        item.get("status", {}).get("phase", "Unknown")
+                        space.config.name,
+                        namespace,
+                        available,
+                        progressing,
+                        degraded
                     ])
-                click.echo(tabulate(table_data, headers=["NAME", "NAMESPACE", "STATUS"]))
+                click.echo(tabulate(table_data, headers=["NAME", "NAMESPACE", "AVAILABLE", "PROGRESSING", "DEGRADED"]))
             else:
                 click.echo("No spaces found")
     except Exception as e:
@@ -66,17 +78,16 @@ def space_list(namespace, output):
 @click.option("--output", "-o", type=click.Choice(["yaml", "json"]), default="yaml")
 def space_describe(name, namespace, output):
     """Describe a space resource."""
-    k8s_client = KubernetesClient()
-    
     try:
-        resource = k8s_client.get_space(namespace, name)
-        resource["metadata"].pop('managedFields', None)
+        current_space = HPSpace.get(name=name, namespace=namespace)
+        
+        # Combine config and raw resource data
+        current_space.raw_resource.get('metadata', {}).pop('managedFields', None)
         
         if output == "json":
-            click.echo(json.dumps(resource, indent=2))
+            click.echo(json.dumps(current_space.raw_resource, indent=2))
         else:
-            import yaml
-            click.echo(yaml.dump(resource, default_flow_style=False))
+            click.echo(yaml.dump(current_space.raw_resource, default_flow_style=False))
     except Exception as e:
         click.echo(f"Error describing space '{name}': {e}", err=True)
 
@@ -86,10 +97,9 @@ def space_describe(name, namespace, output):
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
 def space_delete(name, namespace):
     """Delete a space resource."""
-    k8s_client = KubernetesClient()
-    
     try:
-        k8s_client.delete_space(namespace, name)
+        current_space = HPSpace.get(name=name, namespace=namespace)
+        current_space.delete()
 
         click.echo(f"Space '{name}' deleted successfully")
     except Exception as e:
@@ -104,22 +114,16 @@ def space_delete(name, namespace):
 )
 def space_update(version, config):
     """Update a space resource."""
-    k8s_client = KubernetesClient()
-
     try:
-        name = config["name"]
-        namespace = config["namespace"]
-        space_spec = config.get("space_spec", {})
+        current_space = HPSpace.get(name=config['name'], namespace=config['namespace'])
+        if not config.get("display_name"):
+            config["display_name"] = current_space.config.display_name
 
-        k8s_client.patch_space(
-            namespace=namespace,
-            name=name,
-            body=space_spec
-        )
+        current_space.update(**config)
 
-        click.echo(f"Space '{name}' updated successfully")
+        click.echo(f"Space '{current_space.config.name}' updated successfully")
     except Exception as e:
-        click.echo(f"Error updating space '{name}': {e}", err=True)
+        click.echo(f"Error updating space: {e}", err=True)
 
 
 @click.command("hyp-space")
@@ -127,16 +131,9 @@ def space_update(version, config):
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
 def space_start(name, namespace):
     """Start a space resource."""
-    k8s_client = KubernetesClient()
-    
     try:
-        # Patch the resource to set desired status to "Running"
-        patch_body = {"spec": {"desiredStatus": "Running"}}
-        k8s_client.patch_space(
-            namespace=namespace,
-            name=name,
-            body=patch_body
-        )
+        current_space = HPSpace.get(name=name, namespace=namespace)
+        current_space.start()
 
         click.echo(f"Space '{name}' start requested")
     except Exception as e:
@@ -148,16 +145,9 @@ def space_start(name, namespace):
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
 def space_stop(name, namespace):
     """Stop a space resource."""
-    k8s_client = KubernetesClient()
-    
     try:
-        # Patch the resource to set desired status to "Stopped"
-        patch_body = {"spec": {"desiredStatus": "Stopped"}}
-        k8s_client.patch_space(
-            namespace=namespace,
-            name=name,
-            body=patch_body
-        )
+        current_space = HPSpace.get(name=name, namespace=namespace)
+        current_space.stop()
 
         click.echo(f"Space '{name}' stop requested")
     except Exception as e:
@@ -167,31 +157,13 @@ def space_stop(name, namespace):
 @click.command("hyp-space")
 @click.option("--name", required=True, help="Name of the space")
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
-def space_get_logs(name, namespace):
+@click.option("--pod-name", required=False, help="Name of the pod to get logs from")
+@click.option("--container", required=False, help="Name of the container to get logs from")
+def space_get_logs(name, namespace, pod_name, container):
     """Get logs for a space resource."""
-    k8s_client = KubernetesClient()
-    
     try:
-        # Get pods associated with the space
-        pods = k8s_client.list_pods_with_labels(
-            namespace=namespace,
-            label_selector=f"sagemaker.aws.com/space-name={name}"
-        )
-        
-        if not pods.items:
-            click.echo(f"No pods found for space '{name}'")
-            return
-        
-        # Get logs from the first pod
-        pod_name = pods.items[0].metadata.name
-        logs = k8s_client.get_logs_for_pod(
-            pod_name=pod_name,
-            namespace=namespace,
-        )
-
+        current_space = HPSpace.get(name=name, namespace=namespace)
+        logs = current_space.get_logs(pod_name=pod_name, container=container)
         click.echo(logs)
     except Exception as e:
         click.echo(f"Error getting logs for space '{name}': {e}", err=True)
-
-
-

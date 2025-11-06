@@ -3,7 +3,7 @@ import json
 import click
 from click.testing import CliRunner
 from unittest.mock import Mock, patch
-from pydantic import ValidationError
+from pydantic import ValidationError, BaseModel
 
 from sagemaker.hyperpod.cli.space_utils import load_schema_for_version, generate_click_command
 
@@ -70,11 +70,9 @@ class TestGenerateClickCommand:
         schema = {'properties': {}, 'required': []}
         mock_load_schema.return_value = schema
 
-        class DummyModel:
-            def __init__(self, **kwargs): 
-                pass
-            def to_domain(self): 
-                return self
+        class DummyModel(BaseModel):
+            class Config:
+                extra = 'allow'
 
         registry = {'2.0': DummyModel}
 
@@ -108,18 +106,16 @@ class TestGenerateClickCommand:
         }
         mock_load_schema.return_value = schema
 
-        class DummyModel:
-            def __init__(self, **kwargs):
-                self.resources = kwargs.get('resources')
-            def to_domain(self):
-                return self
+        class DummyModel(BaseModel):
+            class Config:
+                extra = 'allow'
 
         registry = {'1.0': DummyModel}
 
         @click.command()
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
         def cmd(version, domain_config):
-            click.echo(json.dumps(domain_config.resources))
+            click.echo(json.dumps(domain_config.get('resources')))
 
         # Test with custom CPU and memory
         result = self.runner.invoke(cmd, ['--cpu', '1000m', '--memory', '1Gi'])
@@ -155,11 +151,9 @@ class TestGenerateClickCommand:
         }
         mock_load_schema.return_value = schema
 
-        class DummyModel:
-            def __init__(self, **kwargs):
-                self.__dict__.update(kwargs)
-            def to_domain(self):
-                return self
+        class DummyModel(BaseModel):
+            class Config:
+                extra = 'allow'
 
         registry = {'1.0': DummyModel}
 
@@ -167,10 +161,10 @@ class TestGenerateClickCommand:
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
         def cmd(version, domain_config):
             click.echo(json.dumps({
-                'name': domain_config.name,
-                'desired_status': getattr(domain_config, 'desired_status', None),
-                'storage_size': getattr(domain_config, 'storage_size', None),
-                'port': getattr(domain_config, 'port', None)
+                'name': domain_config.get('name'),
+                'desired_status': domain_config.get('desired_status'),
+                'storage_size': domain_config.get('storage_size'),
+                'port': domain_config.get('port')
             }))
 
         # Test string and enum types
@@ -205,18 +199,16 @@ class TestGenerateClickCommand:
         }
         mock_load_schema.return_value = schema
 
-        class DummyModel:
-            def __init__(self, **kwargs):
-                self.__dict__.update(kwargs)
-            def to_domain(self):
-                return self
+        class DummyModel(BaseModel):
+            class Config:
+                extra = 'allow'
 
         registry = {'1.0': DummyModel}
 
         @click.command()
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
         def cmd(version, domain_config):
-            click.echo(f'success: {domain_config.name}')
+            click.echo(f'success: {domain_config.get("name")}')
 
         # Test successful execution
         result = self.runner.invoke(cmd, ['--name', 'test-space'])
@@ -237,11 +229,9 @@ class TestGenerateClickCommand:
         }
         mock_load_schema.return_value = schema
 
-        class DummyModel:
-            def __init__(self, **kwargs):
-                self.__dict__.update(kwargs)
-            def to_domain(self):
-                return self
+        class DummyModel(BaseModel):
+            class Config:
+                extra = 'allow'
 
         registry = {'1.0': DummyModel}
 
@@ -277,12 +267,9 @@ class TestGenerateClickCommand:
         }
         mock_load_schema.return_value = schema
 
-        class DummyModel:
-            def __init__(self, **kwargs):
-                self.received_kwargs = kwargs
-                self.__dict__.update(kwargs)
-            def to_domain(self):
-                return self
+        class DummyModel(BaseModel):
+            class Config:
+                extra = 'allow'
 
         registry = {'1.0': DummyModel}
 
@@ -290,7 +277,7 @@ class TestGenerateClickCommand:
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
         def cmd(version, domain_config):
             # Check that None values were filtered out
-            click.echo(json.dumps(domain_config.received_kwargs))
+            click.echo(json.dumps(domain_config))
 
         result = self.runner.invoke(cmd, ['--name', 'test-space'])
         assert result.exit_code == 0
@@ -305,9 +292,9 @@ class TestGenerateClickCommand:
         schema = {'properties': {}, 'required': []}
         mock_load_schema.return_value = schema
 
-        class DummyModel:
-            def __init__(self, **kwargs): pass
-            def to_domain(self): return self
+        class DummyModel(BaseModel):
+            class Config:
+                extra = 'allow'
 
         registry = {'1.0': DummyModel, '2.0': DummyModel}
 
@@ -323,7 +310,6 @@ class TestGenerateClickCommand:
 
         # Test custom version
         result = self.runner.invoke(cmd, ['--version', '2.0'])
-        print(result.output)
         assert result.exit_code == 0
         assert result.output.strip() == '2.0'
 
@@ -340,11 +326,9 @@ class TestGenerateClickCommand:
         }
         mock_load_schema.return_value = schema
 
-        class DummyModel:
-            def __init__(self, **kwargs):
-                self.__dict__.update(kwargs)
-            def to_domain(self):
-                return self
+        class DummyModel(BaseModel):
+            class Config:
+                extra = 'allow'
 
         registry = {'1.0': DummyModel}
 
@@ -360,7 +344,6 @@ class TestGenerateClickCommand:
 
         # Test with required field provided
         result = self.runner.invoke(cmd, ['--name', 'test-space', '--namespace', 'test-ns'])
-        print(result.output)
         assert result.exit_code == 0
         assert result.output.strip() == 'success'
 
@@ -376,18 +359,16 @@ class TestGenerateClickCommand:
         }
         mock_load_schema.return_value = schema
 
-        class DummyModel:
-            def __init__(self, **kwargs):
-                self.__dict__.update(kwargs)
-            def to_domain(self):
-                return self
+        class DummyModel(BaseModel):
+            class Config:
+                extra = 'allow'
 
         registry = {'1.0': DummyModel}
 
         @click.command()
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
         def cmd(version, domain_config):
-            click.echo(json.dumps(getattr(domain_config, 'volumes', None)))
+            click.echo(json.dumps(domain_config.get('volumes')))
 
         # Test valid volume parsing
         result = self.runner.invoke(cmd, [
@@ -431,18 +412,16 @@ class TestGenerateClickCommand:
         }
         mock_load_schema.return_value = schema
 
-        class DummyModel:
-            def __init__(self, **kwargs):
-                self.__dict__.update(kwargs)
-            def to_domain(self):
-                return self
+        class DummyModel(BaseModel):
+            class Config:
+                extra = 'allow'
 
         registry = {'1.0': DummyModel}
 
         @click.command()
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
         def cmd(version, domain_config):
-            click.echo(json.dumps(getattr(domain_config, 'storage', None)))
+            click.echo(json.dumps(domain_config.get('storage')))
 
         # Test valid storage parsing
         result = self.runner.invoke(cmd, [
@@ -475,18 +454,16 @@ class TestGenerateClickCommand:
         }
         mock_load_schema.return_value = schema
 
-        class DummyModel:
-            def __init__(self, **kwargs):
-                self.__dict__.update(kwargs)
-            def to_domain(self):
-                return self
+        class DummyModel(BaseModel):
+            class Config:
+                extra = 'allow'
 
         registry = {'1.0': DummyModel}
 
         @click.command()
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
         def cmd(version, domain_config):
-            click.echo(json.dumps(getattr(domain_config, 'container_config', None)))
+            click.echo(json.dumps(domain_config.get('container_config')))
 
         # Test valid container config with semicolon format
         result = self.runner.invoke(cmd, [
@@ -519,11 +496,9 @@ class TestGenerateClickCommand:
         }
         mock_load_schema.return_value = schema
 
-        class DummyModel:
-            def __init__(self, **kwargs):
-                self.__dict__.update(kwargs)
-            def to_domain(self):
-                return self
+        class DummyModel(BaseModel):
+            class Config:
+                extra = 'allow'
 
         registry = {'1.0': DummyModel}
 
@@ -531,8 +506,8 @@ class TestGenerateClickCommand:
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
         def cmd(version, domain_config):
             result = {
-                'metadata': getattr(domain_config, 'metadata', None),
-                'tags': getattr(domain_config, 'tags', None)
+                'metadata': domain_config.get('metadata'),
+                'tags': domain_config.get('tags')
             }
             click.echo(json.dumps(result))
 
@@ -573,18 +548,16 @@ class TestGenerateClickCommand:
         }
         mock_load_schema.return_value = schema
 
-        class DummyModel:
-            def __init__(self, **kwargs):
-                self.__dict__.update(kwargs)
-            def to_domain(self):
-                return self
+        class DummyModel(BaseModel):
+            class Config:
+                extra = 'allow'
 
         registry = {'1.0': DummyModel}
 
         @click.command()
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
         def cmd(version, domain_config):
-            click.echo(json.dumps(getattr(domain_config, 'config', None)))
+            click.echo(json.dumps(domain_config.get('config')))
 
         # Test with JSON object for anyOf type
         result = self.runner.invoke(cmd, [
@@ -594,3 +567,36 @@ class TestGenerateClickCommand:
         assert result.exit_code == 0
         config = json.loads(result.output)
         assert config['setting'] == 'value'
+
+    @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
+    def test_display_name_optional_in_update_mode(self, mock_load_schema):
+        """Test that display_name is optional in update mode"""
+        schema = {
+            'properties': {
+                'name': {'type': 'string'},
+                'display_name': {'type': 'string'},
+                'image': {'type': 'string'}
+            },
+            'required': ['name', 'display_name']
+        }
+        mock_load_schema.return_value = schema
+
+        class DummyModel(BaseModel):
+            class Config:
+                extra = 'allow'
+
+        registry = {'1.0': DummyModel}
+
+        @click.command()
+        @generate_click_command(
+            registry=registry, 
+            schema_pkg="hyperpod_space_template",
+            is_update=True
+        )
+        def cmd(version, domain_config):
+            click.echo('success')
+
+        # In update mode, display_name should not be required
+        result = self.runner.invoke(cmd, ['--name', 'test-space'])
+        assert result.exit_code == 0
+        assert 'success' in result.output

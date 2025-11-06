@@ -1,6 +1,6 @@
 import logging
 import yaml
-from typing import List, Optional, ClassVar, Dict
+from typing import List, Optional, ClassVar, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
@@ -38,11 +38,36 @@ class HPSpace(BaseModel):
     config: SpaceConfig = Field(
         description="The space configuration using the template model"
     )
+    
+    raw_resource: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="The complete Kubernetes resource data including apiVersion, kind, metadata, and status"
+    )
 
     @classmethod
     def get_logger(cls):
         """Get logger for the class."""
         return logging.getLogger(__name__)
+
+    @property
+    def api_version(self) -> Optional[str]:
+        """Get the apiVersion from the Kubernetes resource."""
+        return self.raw_resource.get("apiVersion") if self.raw_resource else None
+
+    @property
+    def kind(self) -> Optional[str]:
+        """Get the kind from the Kubernetes resource."""
+        return self.raw_resource.get("kind") if self.raw_resource else None
+
+    @property
+    def metadata(self) -> Optional[Dict[str, Any]]:
+        """Get the metadata from the Kubernetes resource."""
+        return self.raw_resource.get("metadata") if self.raw_resource else None
+
+    @property
+    def status(self) -> Optional[Dict[str, Any]]:
+        """Get the status from the Kubernetes resource."""
+        return self.raw_resource.get("status") if self.raw_resource else None
 
     @classmethod
     def verify_kube_config(cls):
@@ -54,24 +79,6 @@ class HPSpace(BaseModel):
                 verify_kubernetes_version_compatibility(cls.get_logger())
             except Exception as e:
                 raise RuntimeError(f"Failed to load kubeconfig: {e}")
-
-    def space_exists(self):
-        """Check if the space already exists"""
-        custom_api = client.CustomObjectsApi()
-        try:
-            custom_api.get_namespaced_custom_object(
-                group=SPACE_GROUP,
-                version=SPACE_VERSION,
-                namespace=self.config.namespace,
-                plural=SPACE_PLURAL,
-                name=self.config.name
-            )
-            return True
-        except ApiException as e:
-            if e.status == 404:
-                return False
-            # re-raise if exception is not 404 (Not found)
-            raise
 
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_space")
     def create(self, debug: bool = False):
@@ -87,10 +94,6 @@ class HPSpace(BaseModel):
         
         logger = self.get_logger()
         logger = setup_logging(logger, debug)
-
-        if self.space_exists():
-            logger.info(f"HyperPod Space '{self.config.name}' already exists in namespace '{self.config.namespace}'")
-            return
 
         # Convert config to domain model
         domain_config = self.config.to_domain()
@@ -160,6 +163,7 @@ class HPSpace(BaseModel):
                 
                 space = cls(
                     config=space_config,
+                    raw_resource=item
                 )
                 spaces.append(space)
             
@@ -202,6 +206,7 @@ class HPSpace(BaseModel):
             
             return cls(
                 config=space_config,
+                raw_resource=response
             )
         except Exception as e:
             handle_exception(e, name, namespace)
@@ -215,10 +220,6 @@ class HPSpace(BaseModel):
         """
         self.verify_kube_config()
         logger = self.get_logger()
-
-        if not self.space_exists():
-            logger.info(f"HyperPod Space '{self.config.name}' does not exist in namespace '{self.config.namespace}'")
-            return
 
         custom_api = client.CustomObjectsApi()
 
@@ -248,16 +249,12 @@ class HPSpace(BaseModel):
         self.verify_kube_config()
         logger = self.get_logger()
 
-        if not self.space_exists():
-            logger.info(f"HyperPod Space '{self.config.name}' does not exist in namespace '{self.config.namespace}'")
-            return
-
         custom_api = client.CustomObjectsApi()
 
-        # Update the local config
-        for key, value in kwargs.items():
-            if hasattr(self.config, key):
-                setattr(self.config, key, value)
+        # Update space config with the input config
+        current_config = self.config.model_dump(by_alias=True)
+        current_config.update(kwargs)
+        self.config = SpaceConfig(**current_config)
 
         # Convert to domain model and extract spec
         domain_config = self.config.to_domain()
@@ -295,17 +292,13 @@ class HPSpace(BaseModel):
         """
         self.verify_kube_config()
         logger = self.get_logger()
-
-        if not self.space_exists():
-            logger.info(f"HyperPod Space '{self.config.name}' does not exist in namespace '{self.config.namespace}'")
-            return []
         
         v1 = client.CoreV1Api()
         
         try:
             pods = v1.list_namespaced_pod(
                 namespace=self.config.namespace,
-                label_selector=f"sagemaker.aws.com/space-name={self.config.name}"
+                label_selector=f"{SPACE_GROUP}/workspaceName={self.config.name}"
             )
             return [pod.metadata.name for pod in pods.items]
         except Exception as e:
@@ -324,10 +317,6 @@ class HPSpace(BaseModel):
         """
         self.verify_kube_config()
         logger = self.get_logger()
-        
-        if not self.space_exists():
-            logger.info(f"HyperPod Space '{self.config.name}' does not exist in namespace '{self.config.namespace}'")
-            return ""
 
         if not pod_name:
             pods = self.list_pods()

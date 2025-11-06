@@ -20,11 +20,11 @@ class TestSpaceCommands:
 
     def setup_method(self):
         self.runner = CliRunner()
-        self.mock_k8s_client = Mock()
+        self.mock_hp_space = Mock()
 
+    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
     @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
-    @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
-    def test_space_create_success(self, mock_k8s_client_class, mock_load_schema):
+    def test_space_create_success(self, mock_load_schema, mock_hp_space_class):
         """Test successful space creation"""
         # Mock schema loading
         mock_load_schema.return_value = {
@@ -36,6 +36,10 @@ class TestSpaceCommands:
             "required": ["name", "display_name"]
         }
 
+        # Mock HPSpace instance
+        mock_hp_space_instance = Mock()
+        mock_hp_space_class.return_value = mock_hp_space_instance
+
         # Mock model registry
         mock_model = Mock()
         mock_model.return_value = Mock()
@@ -46,21 +50,21 @@ class TestSpaceCommands:
             "space_spec": {"spec": {"image": "test-image"}}
         }
 
-        # Mock KubernetesClient
-        mock_k8s_instance = Mock()
-        mock_k8s_client_class.return_value = mock_k8s_instance
-
         with patch('hyperpod_space_template.registry.SCHEMA_REGISTRY', {'1.0': mock_model}):
-            result = self.runner.invoke(space_create, [
-                '--version', '1.0',
-                '--name', 'test-space',
-                '--display-name', 'Test Space',
-                '--namespace', 'test-ns'
-            ])
+            with patch('sagemaker.hyperpod.cli.commands.space.SpaceConfig') as mock_space_config:
+                mock_space_config.return_value.name = "test-space"
+                mock_space_config.return_value.namespace = "test-ns"
+                
+                result = self.runner.invoke(space_create, [
+                    '--version', '1.0',
+                    '--name', 'test-space',
+                    '--display-name', 'Test Space',
+                    '--namespace', 'test-ns'
+                ])
 
         assert result.exit_code == 0
         assert "Space 'test-space' created successfully" in result.output
-        mock_k8s_instance.create_space.assert_called_once()
+        mock_hp_space_instance.create.assert_called_once()
 
     @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
     def test_space_create_missing_required_args(self, mock_load_schema):
@@ -74,12 +78,12 @@ class TestSpaceCommands:
         assert result.exit_code != 0
         assert 'Missing option' in result.output
 
-    @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
-    def test_space_create_k8s_error(self, mock_k8s_client_class):
+    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
+    def test_space_create_hp_space_error(self, mock_hp_space_class):
         """Test space creation error handling"""
-        mock_k8s_instance = Mock()
-        mock_k8s_instance.create_space.side_effect = Exception("Creation failed")
-        mock_k8s_client_class.return_value = mock_k8s_instance
+        mock_hp_space_instance = Mock()
+        mock_hp_space_instance.create.side_effect = Exception("Creation failed")
+        mock_hp_space_class.return_value = mock_hp_space_instance
 
         mock_model = Mock()
         mock_model.return_value = Mock()
@@ -110,23 +114,27 @@ class TestSpaceCommands:
         assert result.exit_code == 0
         assert "Error creating space: Creation failed" in result.output
 
-    @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
-    def test_space_list_table_output(self, mock_k8s_client_class):
+    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
+    def test_space_list_table_output(self, mock_hp_space_class):
         """Test space list with table output"""
-        mock_k8s_instance = Mock()
-        mock_k8s_instance.list_spaces.return_value = {
-            "items": [
-                {
-                    "metadata": {"name": "space1", "namespace": "ns1"},
-                    "status": {"phase": "Running"}
-                },
-                {
-                    "metadata": {"name": "space2", "namespace": "ns2"},
-                    "status": {"phase": "Stopped"}
-                }
-            ]
-        }
-        mock_k8s_client_class.return_value = mock_k8s_instance
+        # Mock HPSpace instances with config and status
+        mock_space1 = Mock()
+        mock_space1.config.name = "space1"
+        mock_space1.status = {"conditions": [
+            {"type": "Available", "status": "True"},
+            {"type": "Progressing", "status": "False"},
+            {"type": "Degraded", "status": "False"}
+        ]}
+        
+        mock_space2 = Mock()
+        mock_space2.config.name = "space2"
+        mock_space2.status = {"conditions": [
+            {"type": "Available", "status": "False"},
+            {"type": "Progressing", "status": "True"},
+            {"type": "Degraded", "status": "False"}
+        ]}
+        
+        mock_hp_space_class.list.return_value = [mock_space1, mock_space2]
 
         result = self.runner.invoke(space_list, [
             '--namespace', 'test-ns',
@@ -136,19 +144,16 @@ class TestSpaceCommands:
         assert result.exit_code == 0
         assert "space1" in result.output
         assert "space2" in result.output
-        mock_k8s_instance.list_spaces.assert_called_once_with('test-ns')
+        mock_hp_space_class.list.assert_called_once_with(namespace='test-ns')
 
-    @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
-    def test_space_list_json_output(self, mock_k8s_client_class):
+    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
+    def test_space_list_json_output(self, mock_hp_space_class):
         """Test space list with JSON output"""
-        mock_resources = {
-            "items": [
-                {"metadata": {"name": "space1", "namespace": "ns1"}}
-            ]
-        }
-        mock_k8s_instance = Mock()
-        mock_k8s_instance.list_spaces.return_value = mock_resources
-        mock_k8s_client_class.return_value = mock_k8s_instance
+        # Mock HPSpace instances
+        mock_space1 = Mock()
+        mock_space1.config.model_dump.return_value = {"name": "space1", "namespace": "ns1"}
+        
+        mock_hp_space_class.list.return_value = [mock_space1]
 
         result = self.runner.invoke(space_list, [
             '--namespace', 'test-ns',
@@ -157,14 +162,12 @@ class TestSpaceCommands:
 
         assert result.exit_code == 0
         output_json = json.loads(result.output)
-        assert output_json == mock_resources
+        assert output_json == [{"name": "space1", "namespace": "ns1"}]
 
-    @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
-    def test_space_list_empty(self, mock_k8s_client_class):
+    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
+    def test_space_list_empty(self, mock_hp_space_class):
         """Test space list with no items"""
-        mock_k8s_instance = Mock()
-        mock_k8s_instance.list_spaces.return_value = {"items": []}
-        mock_k8s_client_class.return_value = mock_k8s_instance
+        mock_hp_space_class.list.return_value = []
 
         result = self.runner.invoke(space_list, [
             '--namespace', 'test-ns'
@@ -173,12 +176,10 @@ class TestSpaceCommands:
         assert result.exit_code == 0
         assert "No spaces found" in result.output
 
-    @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
-    def test_space_list_error(self, mock_k8s_client_class):
+    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
+    def test_space_list_error(self, mock_hp_space_class):
         """Test space list error handling"""
-        mock_k8s_instance = Mock()
-        mock_k8s_instance.list_spaces.side_effect = Exception("List failed")
-        mock_k8s_client_class.return_value = mock_k8s_instance
+        mock_hp_space_class.list.side_effect = Exception("List failed")
 
         result = self.runner.invoke(space_list, [
             '--namespace', 'test-ns'
@@ -187,13 +188,13 @@ class TestSpaceCommands:
         assert result.exit_code == 0
         assert "Error listing spaces: List failed" in result.output
 
-    @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
-    def test_space_describe_yaml_output(self, mock_k8s_client_class):
+    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
+    def test_space_describe_yaml_output(self, mock_hp_space_class):
         """Test space describe with YAML output"""
         mock_resource = {"metadata": {"name": "test-space"}}
-        mock_k8s_instance = Mock()
-        mock_k8s_instance.get_space.return_value = mock_resource
-        mock_k8s_client_class.return_value = mock_k8s_instance
+        # mock_hp_space_instance = Mock()
+        # mock_hp_space_instance.raw_resource = mock_resource
+        # mock_hp_space_class.get.return_value = mock_hp_space_instance
 
         with patch('yaml.dump') as mock_yaml_dump:
             mock_yaml_dump.return_value = "yaml_output"
@@ -204,15 +205,15 @@ class TestSpaceCommands:
 
         assert result.exit_code == 0
         assert "yaml_output" in result.output
-        mock_k8s_instance.get_space.assert_called_once_with('test-ns', 'test-space')
+        mock_hp_space_class.get.assert_called_once_with(name='test-space', namespace='test-ns')
 
-    @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
-    def test_space_describe_json_output(self, mock_k8s_client_class):
+    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
+    def test_space_describe_json_output(self, mock_hp_space_class):
         """Test space describe with JSON output"""
         mock_resource = {"metadata": {"name": "test-space"}}
-        mock_k8s_instance = Mock()
-        mock_k8s_instance.get_space.return_value = mock_resource
-        mock_k8s_client_class.return_value = mock_k8s_instance
+        mock_hp_space_instance = Mock()
+        mock_hp_space_instance.raw_resource = mock_resource
+        mock_hp_space_class.get.return_value = mock_hp_space_instance
 
         result = self.runner.invoke(space_describe, [
             '--name', 'test-space',
@@ -224,12 +225,10 @@ class TestSpaceCommands:
         output_json = json.loads(result.output)
         assert output_json == mock_resource
 
-    @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
-    def test_space_describe_k8s_error(self, mock_k8s_client_class):
+    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
+    def test_space_describe_hp_space_error(self, mock_hp_space_class):
         """Test space describe error handling"""
-        mock_k8s_instance = Mock()
-        mock_k8s_instance.get_space.side_effect = Exception("Describe failed")
-        mock_k8s_client_class.return_value = mock_k8s_instance
+        mock_hp_space_class.get.side_effect = Exception("Describe failed")
 
         result = self.runner.invoke(space_describe, [
             '--name', 'test-space',
@@ -239,11 +238,11 @@ class TestSpaceCommands:
         assert result.exit_code == 0
         assert "Error describing space 'test-space': Describe failed" in result.output
 
-    @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
-    def test_space_delete_success(self, mock_k8s_client_class):
+    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
+    def test_space_delete_success(self, mock_hp_space_class):
         """Test successful space deletion"""
-        mock_k8s_instance = Mock()
-        mock_k8s_client_class.return_value = mock_k8s_instance
+        mock_hp_space_instance = Mock()
+        mock_hp_space_class.get.return_value = mock_hp_space_instance
 
         result = self.runner.invoke(space_delete, [
             '--name', 'test-space',
@@ -252,14 +251,13 @@ class TestSpaceCommands:
 
         assert result.exit_code == 0
         assert "Space 'test-space' deleted successfully" in result.output
-        mock_k8s_instance.delete_space.assert_called_once_with('test-ns', 'test-space')
+        mock_hp_space_class.get.assert_called_once_with(name='test-space', namespace='test-ns')
+        mock_hp_space_instance.delete.assert_called_once()
 
-    @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
-    def test_space_delete_k8s_error(self, mock_k8s_client_class):
+    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
+    def test_space_delete_hp_space_error(self, mock_hp_space_class):
         """Test space delete error handling"""
-        mock_k8s_instance = Mock()
-        mock_k8s_instance.delete_space.side_effect = Exception("Delete failed")
-        mock_k8s_client_class.return_value = mock_k8s_instance
+        mock_hp_space_class.get.side_effect = Exception("Delete failed")
 
         result = self.runner.invoke(space_delete, [
             '--name', 'test-space',
@@ -269,9 +267,9 @@ class TestSpaceCommands:
         assert result.exit_code == 0
         assert "Error deleting space 'test-space': Delete failed" in result.output
 
+    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
     @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
-    @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
-    def test_space_update_success(self, mock_k8s_client_class, mock_load_schema):
+    def test_space_update_success(self, mock_load_schema, mock_hp_space_class):
         """Test successful space update"""
         # Mock schema loading
         mock_load_schema.return_value = {
@@ -283,6 +281,12 @@ class TestSpaceCommands:
             "required": ["name"]
         }
 
+        # Mock HPSpace instance
+        mock_hp_space_instance = Mock()
+        mock_hp_space_instance.config.name = "test-space"
+        mock_hp_space_instance.config.display_name = "Test Space"
+        mock_hp_space_class.get.return_value = mock_hp_space_instance
+
         # Mock model registry
         mock_model = Mock()
         mock_model.return_value = Mock()
@@ -291,10 +295,6 @@ class TestSpaceCommands:
             "namespace": "test-ns",
             "space_spec": {"spec": {"image": "updated-image"}}
         }
-
-        # Mock KubernetesClient
-        mock_k8s_instance = Mock()
-        mock_k8s_client_class.return_value = mock_k8s_instance
 
         with patch('hyperpod_space_template.registry.SCHEMA_REGISTRY', {'1.0': mock_model}):
             result = self.runner.invoke(space_update, [
@@ -306,14 +306,15 @@ class TestSpaceCommands:
 
         assert result.exit_code == 0
         assert "Space 'test-space' updated successfully" in result.output
-        mock_k8s_instance.patch_space.assert_called_once()
+        mock_hp_space_class.get.assert_called_once_with(name='test-space', namespace='test-ns')
+        mock_hp_space_instance.update.assert_called_once()
 
-    @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
-    def test_space_update_k8_error(self, mock_k8s_client_class):
+    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
+    def test_space_update_hp_space_error(self, mock_hp_space_class):
         """Test space update error handling"""
-        mock_k8s_instance = Mock()
-        mock_k8s_instance.patch_space.side_effect = Exception("Update failed")
-        mock_k8s_client_class.return_value = mock_k8s_instance
+        mock_hp_space_instance = Mock()
+        mock_hp_space_instance.update.side_effect = Exception("Update failed")
+        mock_hp_space_class.get.return_value = mock_hp_space_instance
 
         mock_model = Mock()
         mock_model.return_value = Mock()
@@ -341,13 +342,13 @@ class TestSpaceCommands:
                 ])
 
         assert result.exit_code == 0
-        assert "Error updating space 'test-space': Update failed" in result.output
+        assert "Error updating space: Update failed" in result.output
 
-    @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
-    def test_space_start_success(self, mock_k8s_client_class):
+    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
+    def test_space_start_success(self, mock_hp_space_class):
         """Test successful space start"""
-        mock_k8s_instance = Mock()
-        mock_k8s_client_class.return_value = mock_k8s_instance
+        mock_hp_space_instance = Mock()
+        mock_hp_space_class.get.return_value = mock_hp_space_instance
 
         result = self.runner.invoke(space_start, [
             '--name', 'test-space',
@@ -356,18 +357,15 @@ class TestSpaceCommands:
 
         assert result.exit_code == 0
         assert "Space 'test-space' start requested" in result.output
-        mock_k8s_instance.patch_space.assert_called_once_with(
-            namespace='test-ns',
-            name='test-space',
-            body={"spec": {"desiredStatus": "Running"}}
-        )
+        mock_hp_space_class.get.assert_called_once_with(name='test-space', namespace='test-ns')
+        mock_hp_space_instance.start.assert_called_once()
 
-    @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
-    def test_space_start_k8s_error(self, mock_k8s_client_class):
+    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
+    def test_space_start_hp_space_error(self, mock_hp_space_class):
         """Test space start error handling"""
-        mock_k8s_instance = Mock()
-        mock_k8s_instance.patch_space.side_effect = Exception("Start failed")
-        mock_k8s_client_class.return_value = mock_k8s_instance
+        mock_hp_space_instance = Mock()
+        mock_hp_space_instance.start.side_effect = Exception("Start failed")
+        mock_hp_space_class.get.return_value = mock_hp_space_instance
 
         result = self.runner.invoke(space_start, [
             '--name', 'test-space',
@@ -377,11 +375,11 @@ class TestSpaceCommands:
         assert result.exit_code == 0
         assert "Error starting space 'test-space': Start failed" in result.output
 
-    @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
-    def test_space_stop_success(self, mock_k8s_client_class):
+    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
+    def test_space_stop_success(self, mock_hp_space_class):
         """Test successful space stop"""
-        mock_k8s_instance = Mock()
-        mock_k8s_client_class.return_value = mock_k8s_instance
+        mock_hp_space_instance = Mock()
+        mock_hp_space_class.get.return_value = mock_hp_space_instance
 
         result = self.runner.invoke(space_stop, [
             '--name', 'test-space',
@@ -390,18 +388,15 @@ class TestSpaceCommands:
 
         assert result.exit_code == 0
         assert "Space 'test-space' stop requested" in result.output
-        mock_k8s_instance.patch_space.assert_called_once_with(
-            namespace='test-ns',
-            name='test-space',
-            body={"spec": {"desiredStatus": "Stopped"}}
-        )
+        mock_hp_space_class.get.assert_called_once_with(name='test-space', namespace='test-ns')
+        mock_hp_space_instance.stop.assert_called_once()
 
-    @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
-    def test_space_stop_k8s_error(self, mock_k8s_client_class):
+    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
+    def test_space_stop_hp_space_error(self, mock_hp_space_class):
         """Test space stop error handling"""
-        mock_k8s_instance = Mock()
-        mock_k8s_instance.patch_space.side_effect = Exception("Stop failed")
-        mock_k8s_client_class.return_value = mock_k8s_instance
+        mock_hp_space_instance = Mock()
+        mock_hp_space_instance.stop.side_effect = Exception("Stop failed")
+        mock_hp_space_class.get.return_value = mock_hp_space_instance
 
         result = self.runner.invoke(space_stop, [
             '--name', 'test-space',
@@ -411,18 +406,12 @@ class TestSpaceCommands:
         assert result.exit_code == 0
         assert "Error stopping space 'test-space': Stop failed" in result.output
 
-    @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
-    def test_space_get_logs_success(self, mock_k8s_client_class):
+    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
+    def test_space_get_logs_success(self, mock_hp_space_class):
         """Test successful space get logs"""
-        mock_pod = Mock()
-        mock_pod.metadata.name = "test-pod"
-        mock_pods = Mock()
-        mock_pods.items = [mock_pod]
-
-        mock_k8s_instance = Mock()
-        mock_k8s_instance.list_pods_with_labels.return_value = mock_pods
-        mock_k8s_instance.get_logs_for_pod.return_value = "test logs"
-        mock_k8s_client_class.return_value = mock_k8s_instance
+        mock_hp_space_instance = Mock()
+        mock_hp_space_instance.get_logs.return_value = "test logs"
+        mock_hp_space_class.get.return_value = mock_hp_space_instance
 
         result = self.runner.invoke(space_get_logs, [
             '--name', 'test-space',
@@ -431,24 +420,15 @@ class TestSpaceCommands:
 
         assert result.exit_code == 0
         assert "test logs" in result.output
-        mock_k8s_instance.list_pods_with_labels.assert_called_once_with(
-            namespace='test-ns',
-            label_selector='sagemaker.aws.com/space-name=test-space'
-        )
-        mock_k8s_instance.get_logs_for_pod.assert_called_once_with(
-            pod_name='test-pod',
-            namespace='test-ns'
-        )
+        mock_hp_space_class.get.assert_called_once_with(name='test-space', namespace='test-ns')
+        mock_hp_space_instance.get_logs.assert_called_once_with(pod_name=None, container=None)
 
-    @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
-    def test_space_get_logs_no_pods(self, mock_k8s_client_class):
+    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
+    def test_space_get_logs_no_pods(self, mock_hp_space_class):
         """Test space get logs with no pods"""
-        mock_pods = Mock()
-        mock_pods.items = []
-
-        mock_k8s_instance = Mock()
-        mock_k8s_instance.list_pods_with_labels.return_value = mock_pods
-        mock_k8s_client_class.return_value = mock_k8s_instance
+        mock_hp_space_instance = Mock()
+        mock_hp_space_instance.get_logs.return_value = ""
+        mock_hp_space_class.get.return_value = mock_hp_space_instance
 
         result = self.runner.invoke(space_get_logs, [
             '--name', 'test-space',
@@ -456,14 +436,14 @@ class TestSpaceCommands:
         ])
 
         assert result.exit_code == 0
-        assert "No pods found for space 'test-space'" in result.output
+        # HPSpace.get_logs() handles the "no pods" case internally
 
-    @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
-    def test_space_get_logs_k8s_error(self, mock_k8s_client_class):
+    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
+    def test_space_get_logs_hp_space_error(self, mock_hp_space_class):
         """Test space get logs error handling"""
-        mock_k8s_instance = Mock()
-        mock_k8s_instance.list_pods_with_labels.side_effect = Exception("List pod failed")
-        mock_k8s_client_class.return_value = mock_k8s_instance
+        mock_hp_space_instance = Mock()
+        mock_hp_space_instance.get_logs.side_effect = Exception("Get logs failed")
+        mock_hp_space_class.get.return_value = mock_hp_space_instance
 
         result = self.runner.invoke(space_get_logs, [
             '--name', 'test-space',
@@ -471,7 +451,7 @@ class TestSpaceCommands:
         ])
 
         assert result.exit_code == 0
-        assert "Error getting logs for space 'test-space': List pod failed" in result.output
+        assert "Error getting logs for space 'test-space': Get logs failed" in result.output
 
     def test_missing_required_arguments(self):
         """Test commands with missing required arguments"""

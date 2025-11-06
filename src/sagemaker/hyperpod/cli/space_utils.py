@@ -181,9 +181,17 @@ def generate_click_command(
                     
                     filtered_kwargs[key] = value
 
+            # For update operations, add temporary display_name if not provided to pass validation
+            is_update_and_display_name_not_exist = False
+            if is_update and 'display_name' not in filtered_kwargs:
+                filtered_kwargs['display_name'] = 'dummy'
+                is_update_and_display_name_not_exist = True
+
             try:
                 flat = Model(**filtered_kwargs)
-                domain_config = flat.to_domain()
+                config_dict = flat.model_dump(exclude_none=True, by_alias=True)
+                if is_update_and_display_name_not_exist:
+                    config_dict['display_name'] = None
             except ValidationError as e:
                 error_messages = []
                 for err in e.errors():
@@ -195,7 +203,7 @@ def generate_click_command(
                     f"Configuration validation errors:\n" + "\n".join(error_messages)
                 )
 
-            return func(version, domain_config)
+            return func(version, config_dict)
         
         # 2) inject click options from JSON Schema
         wrapped_func = click.option(
