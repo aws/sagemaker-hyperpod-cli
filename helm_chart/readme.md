@@ -234,19 +234,19 @@ helm upgrade dependencies helm_chart/HyperPodHelmChart --namespace kube-system
 
 - **Supported Regions and their ECR URIs**:
   ```
-  us-east-1 (US East (N. Virginia)):      767398015722.dkr.ecr.us-east-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.935.0_1.0.282.0
-  us-west-2 (US West (Oregon)):           905418368575.dkr.ecr.us-west-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.935.0_1.0.282.0
-  us-east-2 (US East (Ohio)):             851725546812.dkr.ecr.us-east-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.935.0_1.0.282.0
-  us-west-1 (US West (N. California)):    011528288828.dkr.ecr.us-west-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.935.0_1.0.282.0
-  eu-central-1 (Europe (Frankfurt)):      211125453373.dkr.ecr.eu-central-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.935.0_1.0.282.0
-  eu-north-1 (Europe (Stockholm)):        654654141839.dkr.ecr.eu-north-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.935.0_1.0.282.0
-  eu-west-1 (Europe (Ireland)):           533267293120.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.935.0_1.0.282.0
-  eu-west-2 (Europe (London)):            011528288831.dkr.ecr.eu-west-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.935.0_1.0.282.0
-  ap-northeast-1 (Asia Pacific (Tokyo)):  533267052152.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.935.0_1.0.282.0
-  ap-south-1 (Asia Pacific (Mumbai)):     011528288864.dkr.ecr.ap-south-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.935.0_1.0.282.0
-  ap-southeast-1 (Asia Pacific (Singapore)): 905418428165.dkr.ecr.ap-southeast-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.935.0_1.0.282.0
-  ap-southeast-2 (Asia Pacific (Sydney)):    851725636348.dkr.ecr.ap-southeast-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.935.0_1.0.282.0
-  sa-east-1 (South America (São Paulo)):     025066253954.dkr.ecr.sa-east-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.935.0_1.0.282.0
+  us-east-1 (US East (N. Virginia)):      767398015722.dkr.ecr.us-east-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1038.0_1.0.305.0
+  us-west-2 (US West (Oregon)):           905418368575.dkr.ecr.us-west-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1038.0_1.0.305.0
+  us-east-2 (US East (Ohio)):             851725546812.dkr.ecr.us-east-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1038.0_1.0.305.0
+  us-west-1 (US West (N. California)):    011528288828.dkr.ecr.us-west-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1038.0_1.0.305.0
+  eu-central-1 (Europe (Frankfurt)):      211125453373.dkr.ecr.eu-central-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1038.0_1.0.305.0
+  eu-north-1 (Europe (Stockholm)):        654654141839.dkr.ecr.eu-north-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1038.0_1.0.305.0
+  eu-west-1 (Europe (Ireland)):           533267293120.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1038.0_1.0.305.0
+  eu-west-2 (Europe (London)):            011528288831.dkr.ecr.eu-west-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1038.0_1.0.305.0
+  ap-northeast-1 (Asia Pacific (Tokyo)):  533267052152.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1038.0_1.0.305.0
+  ap-south-1 (Asia Pacific (Mumbai)):     011528288864.dkr.ecr.ap-south-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1038.0_1.0.305.0
+  ap-southeast-1 (Asia Pacific (Singapore)): 905418428165.dkr.ecr.ap-southeast-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1038.0_1.0.305.0
+  ap-southeast-2 (Asia Pacific (Sydney)):    851725636348.dkr.ecr.ap-southeast-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1038.0_1.0.305.0
+  sa-east-1 (South America (São Paulo)):     025066253954.dkr.ecr.sa-east-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1038.0_1.0.305.0
   ```
 
 ## 7. Troubleshooting
