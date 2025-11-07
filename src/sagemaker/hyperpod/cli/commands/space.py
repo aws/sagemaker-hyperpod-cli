@@ -101,7 +101,7 @@ def space_delete(name, namespace):
         current_space = HPSpace.get(name=name, namespace=namespace)
         current_space.delete()
 
-        click.echo(f"Space '{name}' deleted successfully")
+        click.echo(f"Space '{name}' deleted successfully in namespace '{namespace}'")
     except Exception as e:
         click.echo(f"Error deleting space '{name}': {e}", err=True)
 
@@ -121,7 +121,7 @@ def space_update(version, config):
 
         current_space.update(**config)
 
-        click.echo(f"Space '{current_space.config.name}' updated successfully")
+        click.echo(f"Space '{current_space.config.name}' updated successfully in namespace '{config['namespace']}'")
     except Exception as e:
         click.echo(f"Error updating space: {e}", err=True)
 

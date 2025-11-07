@@ -97,25 +97,41 @@ class TestHPSpace(unittest.TestCase):
         
         mock_handle_exception.assert_called_once()
 
-
-
+    @patch('sagemaker.hyperpod.space.hyperpod_space.boto3.client')
     @patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi')
     @patch.object(HPSpace, 'verify_kube_config')
     @patch('sagemaker.hyperpod.space.hyperpod_space.get_default_namespace')
-    def test_list_success(self, mock_get_namespace, mock_verify_config, mock_custom_api_class):
+    def test_list_success(self, mock_get_namespace, mock_verify_config, mock_custom_api_class, mock_boto3_client):
         """Test successful dev space listing"""
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
         mock_get_namespace.return_value = "default"
         
+        # Mock STS client for caller identity
+        mock_sts_client = Mock()
+        mock_sts_client.get_caller_identity.return_value = {'Arn': 'arn:aws:iam::123456789012:user/test-user'}
+        mock_boto3_client.return_value = mock_sts_client
+        
         mock_response = {
             "items": [
                 {
-                    "metadata": {"name": "space1", "namespace": "default"},
+                    "metadata": {
+                        "name": "space1", 
+                        "namespace": "default",
+                        "annotations": {
+                            "workspace.jupyter.org/created-by": "arn:aws:iam::123456789012:user/test-user"
+                        }
+                    },
                     "spec": {"image": "image1:latest", "displayName": "Space 1"},
                 },
                 {
-                    "metadata": {"name": "space2", "namespace": "default"},
+                    "metadata": {
+                        "name": "space2", 
+                        "namespace": "default",
+                        "annotations": {
+                            "workspace.jupyter.org/created-by": "arn:aws:iam::123456789012:user/test-user"
+                        }
+                    },
                     "spec": {"image": "image2:latest", "displayName": "Space 2"},
                 }
             ]
@@ -129,12 +145,18 @@ class TestHPSpace(unittest.TestCase):
         self.assertEqual(result[1].config.name, "space2")
         mock_custom_api.list_namespaced_custom_object.assert_called_once()
 
+    @patch('sagemaker.hyperpod.space.hyperpod_space.boto3.client')
     @patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi')
     @patch.object(HPSpace, 'verify_kube_config')
-    def test_list_with_namespace(self, mock_verify_config, mock_custom_api_class):
+    def test_list_with_namespace(self, mock_verify_config, mock_custom_api_class, mock_boto3_client):
         """Test dev space listing with specific namespace"""
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
+        
+        # Mock STS client for caller identity
+        mock_sts_client = Mock()
+        mock_sts_client.get_caller_identity.return_value = {'Arn': 'arn:aws:iam::123456789012:user/test-user'}
+        mock_boto3_client.return_value = mock_sts_client
         
         mock_response = {"items": []}
         mock_custom_api.list_namespaced_custom_object.return_value = mock_response
@@ -145,13 +167,191 @@ class TestHPSpace(unittest.TestCase):
             group="workspace.jupyter.org",
             version="v1alpha1",
             namespace="custom-namespace",
-            plural="workspaces"
+            plural="workspaces",
+            _continue=None
         )
 
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.boto3.client')
+    @patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi')
+    @patch.object(HPSpace, 'verify_kube_config')
+    @patch('sagemaker.hyperpod.space.hyperpod_space.get_default_namespace')
+    def test_list_filters_by_creator(self, mock_get_namespace, mock_verify_config, mock_custom_api_class, mock_boto3_client):
+        """Test that list only returns spaces created by the caller"""
+        mock_custom_api = Mock()
+        mock_custom_api_class.return_value = mock_custom_api
+        mock_get_namespace.return_value = "default"
+        
+        # Mock STS client for caller identity
+        mock_sts_client = Mock()
+        mock_sts_client.get_caller_identity.return_value = {'Arn': 'arn:aws:iam::123456789012:user/test-user'}
+        mock_boto3_client.return_value = mock_sts_client
+        
+        # Mock response with spaces from different creators
+        mock_response = {
+            "items": [
+                {
+                    "metadata": {
+                        "name": "my-space", 
+                        "namespace": "default",
+                        "annotations": {
+                            "workspace.jupyter.org/created-by": "arn:aws:iam::123456789012:user/test-user"
+                        }
+                    },
+                    "spec": {"image": "image1:latest", "displayName": "My Space"},
+                },
+                {
+                    "metadata": {
+                        "name": "other-space", 
+                        "namespace": "default",
+                        "annotations": {
+                            "workspace.jupyter.org/created-by": "arn:aws:iam::123456789012:user/other-user"
+                        }
+                    },
+                    "spec": {"image": "image2:latest", "displayName": "Other Space"},
+                },
+                {
+                    "metadata": {
+                        "name": "no-annotation-space", 
+                        "namespace": "default"
+                    },
+                    "spec": {"image": "image3:latest", "displayName": "No Annotation Space"},
+                }
+            ]
+        }
+        mock_custom_api.list_namespaced_custom_object.return_value = mock_response
+        
+        result = HPSpace.list()
+        
+        # Should only return the space created by the current user
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].config.name, "my-space")
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.boto3.client')
+    @patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi')
+    @patch.object(HPSpace, 'verify_kube_config')
+    @patch('sagemaker.hyperpod.space.hyperpod_space.get_default_namespace')
+    def test_list_pagination_multiple_pages(self, mock_get_namespace, mock_verify_config, mock_custom_api_class, mock_boto3_client):
+        """Test pagination with multiple pages"""
+        mock_custom_api = Mock()
+        mock_custom_api_class.return_value = mock_custom_api
+        mock_get_namespace.return_value = "default"
+        
+        # Mock STS client
+        mock_sts_client = Mock()
+        mock_sts_client.get_caller_identity.return_value = {'Arn': 'arn:aws:iam::123456789012:user/test-user'}
+        mock_boto3_client.return_value = mock_sts_client
+        
+        # Mock responses for multiple pages
+        first_page_response = {
+            "items": [
+                {
+                    "metadata": {
+                        "name": "space1", 
+                        "namespace": "default",
+                        "annotations": {
+                            "workspace.jupyter.org/created-by": "arn:aws:iam::123456789012:user/test-user"
+                        }
+                    },
+                    "spec": {"image": "image1:latest", "displayName": "Space 1"},
+                }
+            ],
+            "metadata": {"continue": "page2-token"}
+        }
+        
+        second_page_response = {
+            "items": [
+                {
+                    "metadata": {
+                        "name": "space2", 
+                        "namespace": "default",
+                        "annotations": {
+                            "workspace.jupyter.org/created-by": "arn:aws:iam::123456789012:user/test-user"
+                        }
+                    },
+                    "spec": {"image": "image2:latest", "displayName": "Space 2"},
+                }
+            ],
+            "metadata": {}  # No continue token (last page)
+        }
+        
+        mock_custom_api.list_namespaced_custom_object.side_effect = [first_page_response, second_page_response]
+        
+        result = HPSpace.list()
+        
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0].config.name, "space1")
+        self.assertEqual(result[1].config.name, "space2")
+        
+        # Should be called twice (two pages)
+        self.assertEqual(mock_custom_api.list_namespaced_custom_object.call_count, 2)
+        
+        # Verify the calls
+        calls = mock_custom_api.list_namespaced_custom_object.call_args_list
+        self.assertEqual(calls[0][1]['_continue'], None)  # First call
+        self.assertEqual(calls[1][1]['_continue'], "page2-token")  # Second call with token
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.boto3.client')
+    @patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi')
+    @patch.object(HPSpace, 'verify_kube_config')
+    def test_list_no_matching_spaces_across_pages(self, mock_verify_config, mock_custom_api_class, mock_boto3_client):
+        """Test pagination when no spaces match the creator filter"""
+        mock_custom_api = Mock()
+        mock_custom_api_class.return_value = mock_custom_api
+        
+        # Mock STS client
+        mock_sts_client = Mock()
+        mock_sts_client.get_caller_identity.return_value = {'Arn': 'arn:aws:iam::123456789012:user/test-user'}
+        mock_boto3_client.return_value = mock_sts_client
+        
+        # Mock responses with no matching creators
+        first_page_response = {
+            "items": [
+                {
+                    "metadata": {
+                        "name": "other-space1", 
+                        "namespace": "test-namespace",
+                        "annotations": {
+                            "workspace.jupyter.org/created-by": "arn:aws:iam::123456789012:user/other-user"
+                        }
+                    },
+                    "spec": {"image": "image1:latest", "displayName": "Other Space 1"},
+                }
+            ],
+            "metadata": {"continue": "page2-token"}
+        }
+        
+        second_page_response = {
+            "items": [
+                {
+                    "metadata": {
+                        "name": "another-space", 
+                        "namespace": "test-namespace",
+                        "annotations": {
+                            "workspace.jupyter.org/created-by": "arn:aws:iam::123456789012:user/another-user"
+                        }
+                    },
+                    "spec": {"image": "image2:latest", "displayName": "Another Space"},
+                }
+            ],
+            "metadata": {}  # No continue token (last page)
+        }
+        
+        mock_custom_api.list_namespaced_custom_object.side_effect = [first_page_response, second_page_response]
+        
+        result = HPSpace.list(namespace="test-namespace")
+        
+        # Should return empty list (no matching creators)
+        self.assertEqual(len(result), 0)
+        
+        # Should still paginate through all pages
+        self.assertEqual(mock_custom_api.list_namespaced_custom_object.call_count, 2)
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.boto3.client')
     @patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi')
     @patch.object(HPSpace, 'verify_kube_config')
     @patch('sagemaker.hyperpod.space.hyperpod_space.handle_exception')
-    def test_list_failure(self, mock_handle_exception, mock_verify_config, mock_custom_api_class):
+    def test_list_failure(self, mock_handle_exception, mock_verify_config, mock_custom_api_class, mock_boto3_client):
         """Test dev space listing failure"""
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api

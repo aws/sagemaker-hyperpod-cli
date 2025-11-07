@@ -1,5 +1,6 @@
 import logging
 import yaml
+import boto3
 from typing import List, Optional, ClassVar, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict
 from kubernetes import client, config
@@ -119,7 +120,7 @@ class HPSpace(BaseModel):
                 plural=SPACE_PLURAL,
                 body=config_body,
             )
-            logger.info(f"Successfully created HyperPod Space '{self.config.name}'!")
+            logger.debug(f"Successfully created HyperPod Space '{self.config.name}'!")
         except Exception as e:
             logger.error(f"Failed to create HyperPod Space {self.config.name}!")
             handle_exception(e, self.config.name, self.config.namespace)
@@ -127,14 +128,14 @@ class HPSpace(BaseModel):
     @classmethod
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_spaces")
     def list(cls, namespace: Optional[str] = None) -> List["HPSpace"]:
-        """List all HyperPod Spaces in the specified namespace.
+        """List all HyperPod Spaces in the specified namespace created by the caller.
 
         Args:
             namespace (str, optional): The Kubernetes namespace to list spaces from.
                 If None, uses the default namespace from current context.
 
         Returns:
-            List[HPSpace]: List of HPSpace instances found in the namespace
+            List[HPSpace]: List of HPSpace instances created by the caller
 
         Raises:
             Exception: If the Kubernetes API call fails or spaces cannot be retrieved
@@ -144,33 +145,43 @@ class HPSpace(BaseModel):
         if not namespace:
             namespace = get_default_namespace()
 
+        # Get caller identity
+        sts_client = boto3.client('sts')
+        caller_identity = sts_client.get_caller_identity()
+        caller_arn = caller_identity['Arn']
+
         custom_api = client.CustomObjectsApi()
+        spaces = []
+        continue_token = None
         
         try:
-            response = custom_api.list_namespaced_custom_object(
-                group=SPACE_GROUP,
-                version=SPACE_VERSION,
-                namespace=namespace,
-                plural=SPACE_PLURAL
+            while True:
+                response = custom_api.list_namespaced_custom_object(
+                    group=SPACE_GROUP,
+                    version=SPACE_VERSION,
+                    namespace=namespace,
+                    plural=SPACE_PLURAL,
+                    _continue=continue_token
                 )
 
-            spaces = []
-            for item in response.get("items", []):
-                # Create SpaceConfig from the Kubernetes resource
-                spec = item.get("spec", {})
-                config_data = {
-                    "name": item["metadata"]["name"],
-                    "namespace": item["metadata"]["namespace"],
-                }
-                
-                config_data = map_kubernetes_response_to_model(item, SpaceConfig)
-                space_config = SpaceConfig(**config_data)
-                
-                space = cls(
-                    config=space_config,
-                    raw_resource=item
-                )
-                spaces.append(space)
+                for item in response.get("items", []):
+                    # Check if space was created by the caller
+                    # TODO: need to also check OwnershipType when it's implemented in the operator
+                    created_by = item.get('metadata', {}).get('annotations', {}).get('workspace.jupyter.org/created-by')
+                    if created_by == caller_arn:
+                        config_data = map_kubernetes_response_to_model(item, SpaceConfig)
+                        space_config = SpaceConfig(**config_data)
+                        
+                        space = cls(
+                            config=space_config,
+                            raw_resource=item
+                        )
+                        spaces.append(space)
+
+                # Check if there are more pages
+                continue_token = response.get('metadata', {}).get('continue')
+                if not continue_token:
+                    break
             
             return spaces
         except Exception as e:
@@ -236,7 +247,7 @@ class HPSpace(BaseModel):
                 plural=SPACE_PLURAL,
                 name=self.config.name
             )
-            logger.info(f"Successfully deleted HyperPod Space '{self.config.name}'!")
+            logger.debug(f"Successfully deleted HyperPod Space '{self.config.name}'!")
         except Exception as e:
             logger.error(f"Failed to delete HyperPod Space {self.config.name}!")
             handle_exception(e, self.config.name, self.config.namespace)
@@ -274,7 +285,7 @@ class HPSpace(BaseModel):
                 name=self.config.name,
                 body={"spec": spec_updates}
             )
-            logger.info(f"Successfully updated HyperPod Space '{self.config.name}'!")
+            logger.debug(f"Successfully updated HyperPod Space '{self.config.name}'!")
         except Exception as e:
             logger.error(f"Failed to update HyperPod Space {self.config.name}!")
             handle_exception(e, self.config.name, self.config.namespace)
