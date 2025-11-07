@@ -11,6 +11,6 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
-SPACE_ACCESS_GROUP = "access.devspaces.sagemaker.aws.com"
+SPACE_ACCESS_GROUP = "connection.workspace.jupyter.org"
 SPACE_ACCESS_VERSION = "v1alpha1"
-SPACE_ACCESS_PLURAL = "devspaceaccess"
+SPACE_ACCESS_PLURAL = "workspaceconnections"

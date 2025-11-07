@@ -22,6 +22,11 @@ from sagemaker.hyperpod.cli.constants.space_constants import (
     SPACE_VERSION,
     SPACE_PLURAL,
 )
+from sagemaker.hyperpod.cli.constants.space_access_constants import (
+    SPACE_ACCESS_GROUP,
+    SPACE_ACCESS_VERSION,
+    SPACE_ACCESS_PLURAL,
+)
 from hyperpod_space_template.v1_0.model import SpaceConfig
 
 
@@ -341,3 +346,48 @@ class HPSpace(BaseModel):
             return logs
         except Exception as e:
             handle_exception(e, pod_name, self.config.namespace)
+
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_space_access")
+    def create_space_access(self, connection_type: str = "vscode-remote") -> Dict[str, str]:
+        """Create a space access for this space.
+
+        Args:
+            connection_type (str, optional): The IDE type for remote access. Defaults to "vscode".
+
+        Returns:
+            Dict[str, str]: Dictionary with 'SpaceConnectionType' and 'SpaceConnectionUrl' keys
+
+        Raises:
+            Exception: If the space access creation fails
+        """
+        self.verify_kube_config()
+        logger = self.get_logger()
+
+        config = {
+            "metadata": {
+                "namespace": self.config.namespace,
+            },
+            "spec": {
+                "workspaceName": self.config.name,
+                "workspaceConnectionType": connection_type,
+            }
+        }
+
+        custom_api = client.CustomObjectsApi()
+
+        try:
+            response = custom_api.create_namespaced_custom_object(
+                group=SPACE_ACCESS_GROUP,
+                version=SPACE_ACCESS_VERSION,
+                namespace=self.config.namespace,
+                plural=SPACE_ACCESS_PLURAL,
+                body=config
+            )
+            logger.debug(f"Successfully created space access for '{self.config.name}'!")
+            return {
+                "SpaceConnectionType": connection_type,
+                "SpaceConnectionUrl": response["status"]["workspaceConnectionUrl"]
+            }
+        except Exception as e:
+            logger.error(f"Failed to create space access for {self.config.name}!")
+            handle_exception(e, self.config.name, self.config.namespace)

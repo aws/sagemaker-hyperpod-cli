@@ -55,6 +55,7 @@ from sagemaker.hyperpod.cli.commands.space_template import (
     space_template_delete,
     space_template_update,
 )
+from sagemaker.hyperpod.cli.commands.space_access import space_access_create
 
 from sagemaker.hyperpod.cli.commands.init import (
     init,
@@ -208,6 +209,7 @@ _default_create.hidden = True
 create.add_command(_default_create)
 create.add_command(space_create)
 create.add_command(space_template_create)
+create.add_command(space_access_create)
 
 list.add_command(list_jobs)
 list.add_command(js_list)

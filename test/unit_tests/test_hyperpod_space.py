@@ -433,3 +433,91 @@ class TestHPSpace(unittest.TestCase):
         """Test get_logger class method"""
         logger = HPSpace.get_logger()
         self.assertEqual(logger.name, "sagemaker.hyperpod.space.hyperpod_space")
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi')
+    @patch.object(HPSpace, 'verify_kube_config')
+    def test_create_space_access_success(self, mock_verify_config, mock_custom_api_class):
+        """Test successful space access creation"""
+        mock_custom_api = Mock()
+        mock_custom_api_class.return_value = mock_custom_api
+        
+        mock_response = {
+            "status": {
+                "workspaceConnectionUrl": "https://example.com/vscode-access"
+            }
+        }
+        mock_custom_api.create_namespaced_custom_object.return_value = mock_response
+        
+        result = self.hp_space.create_space_access()
+        
+        expected_config = {
+            "metadata": {
+                "namespace": "test-namespace",
+            },
+            "spec": {
+                "workspaceName": "test-space",
+                "workspaceConnectionType": "vscode-remote",
+            }
+        }
+        
+        mock_verify_config.assert_called_once()
+        mock_custom_api.create_namespaced_custom_object.assert_called_once_with(
+            group="connection.workspace.jupyter.org",
+            version="v1alpha1",
+            namespace="test-namespace",
+            plural="workspaceconnections",
+            body=expected_config
+        )
+        self.assertEqual(result, {"SpaceConnectionType": "vscode-remote", "SpaceConnectionUrl": "https://example.com/vscode-access"})
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi')
+    @patch.object(HPSpace, 'verify_kube_config')
+    def test_create_space_access_custom_ide(self, mock_verify_config, mock_custom_api_class):
+        """Test space access creation with custom IDE type"""
+        mock_custom_api = Mock()
+        mock_custom_api_class.return_value = mock_custom_api
+        
+        mock_response = {
+            "status": {
+                "workspaceConnectionUrl": "https://example.com/webui-access"
+            }
+        }
+        mock_custom_api.create_namespaced_custom_object.return_value = mock_response
+        
+        result = self.hp_space.create_space_access(connection_type="web-ui")
+        
+        expected_config = {
+            "metadata": {
+                "namespace": "test-namespace",
+            },
+            "spec": {
+                "workspaceName": "test-space",
+                "workspaceConnectionType": "web-ui",
+            }
+        }
+        
+        mock_custom_api.create_namespaced_custom_object.assert_called_once_with(
+            group="connection.workspace.jupyter.org",
+            version="v1alpha1",
+            namespace="test-namespace",
+            plural="workspaceconnections",
+            body=expected_config
+        )
+        self.assertEqual(result, {"SpaceConnectionType": "web-ui", "SpaceConnectionUrl": "https://example.com/webui-access"})
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi')
+    @patch.object(HPSpace, 'verify_kube_config')
+    @patch('sagemaker.hyperpod.space.hyperpod_space.handle_exception')
+    def test_create_space_access_failure(self, mock_handle_exception, mock_verify_config, mock_custom_api_class):
+        """Test space access creation failure"""
+        mock_custom_api = Mock()
+        mock_custom_api_class.return_value = mock_custom_api
+        mock_custom_api.create_namespaced_custom_object.side_effect = Exception("Access creation failed")
+        
+        self.hp_space.create_space_access()
+        
+        mock_handle_exception.assert_called_once_with(
+            mock_custom_api.create_namespaced_custom_object.side_effect,
+            "test-space",
+            "test-namespace"
+        )
