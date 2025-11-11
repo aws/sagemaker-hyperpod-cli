@@ -341,3 +341,173 @@ class TestValidateEksAccessBeforeKubeconfigUpdate:
         assert has_access is False
         assert 'Unexpected error validating EKS access' in message
         assert 'Unexpected error' in message
+
+    def test_assumed_role_with_iam_api_success(self):
+        """Test assumed role with successful IAM API call (IDC role case)."""
+        # Mock session with both STS and IAM clients
+        mock_session = Mock()
+        mock_sts_client = Mock()
+        mock_iam_client = Mock()
+        
+        def mock_client(service):
+            if service == 'sts':
+                return mock_sts_client
+            elif service == 'iam':
+                return mock_iam_client
+        
+        mock_session.client.side_effect = mock_client
+        
+        # Mock STS response for IDC assumed role
+        mock_sts_client.get_caller_identity.return_value = {
+            'Arn': 'arn:aws:sts::123456789012:assumed-role/AWSReservedSSO_AdministratorAccess_abc123/user-session'
+        }
+        
+        # Mock IAM response with correct base role ARN
+        mock_iam_client.get_role.return_value = {
+            'Role': {
+                'Arn': 'arn:aws:iam::123456789012:role/aws-reserved/sso.amazonaws.com/us-west-2/AWSReservedSSO_AdministratorAccess_abc123'
+            }
+        }
+        
+        # Call function
+        arn, identity_type = _get_current_aws_identity(mock_session)
+        
+        # Assertions
+        assert arn == 'arn:aws:iam::123456789012:role/aws-reserved/sso.amazonaws.com/us-west-2/AWSReservedSSO_AdministratorAccess_abc123'
+        assert identity_type == 'assumed-role'
+        mock_iam_client.get_role.assert_called_once_with(RoleName='AWSReservedSSO_AdministratorAccess_abc123')
+
+    def test_assumed_role_with_iam_api_access_denied(self):
+        """Test assumed role with IAM API access denied (fallback to string replacement)."""
+        # Mock session with both STS and IAM clients
+        mock_session = Mock()
+        mock_sts_client = Mock()
+        mock_iam_client = Mock()
+        
+        def mock_client(service):
+            if service == 'sts':
+                return mock_sts_client
+            elif service == 'iam':
+                return mock_iam_client
+        
+        mock_session.client.side_effect = mock_client
+        
+        # Mock STS response
+        mock_sts_client.get_caller_identity.return_value = {
+            'Arn': 'arn:aws:sts::123456789012:assumed-role/MyRole/session-name'
+        }
+        
+        # Mock IAM API failure (access denied)
+        mock_iam_client.get_role.side_effect = ClientError(
+            error_response={'Error': {'Code': 'AccessDenied', 'Message': 'Access denied'}},
+            operation_name='GetRole'
+        )
+        
+        # Call function
+        arn, identity_type = _get_current_aws_identity(mock_session)
+        
+        # Assertions - should fall back to string replacement
+        assert arn == 'arn:aws:iam::123456789012:role/MyRole'
+        assert identity_type == 'assumed-role'
+        mock_iam_client.get_role.assert_called_once_with(RoleName='MyRole')
+
+    def test_assumed_role_with_iam_api_role_not_found(self):
+        """Test assumed role with IAM API role not found (fallback to string replacement)."""
+        # Mock session with both STS and IAM clients
+        mock_session = Mock()
+        mock_sts_client = Mock()
+        mock_iam_client = Mock()
+        
+        def mock_client(service):
+            if service == 'sts':
+                return mock_sts_client
+            elif service == 'iam':
+                return mock_iam_client
+        
+        mock_session.client.side_effect = mock_client
+        
+        # Mock STS response
+        mock_sts_client.get_caller_identity.return_value = {
+            'Arn': 'arn:aws:sts::123456789012:assumed-role/CrossAccountRole/session-name'
+        }
+        
+        # Mock IAM API failure (role not found - cross-account case)
+        mock_iam_client.get_role.side_effect = ClientError(
+            error_response={'Error': {'Code': 'NoSuchEntity', 'Message': 'Role not found'}},
+            operation_name='GetRole'
+        )
+        
+        # Call function
+        arn, identity_type = _get_current_aws_identity(mock_session)
+        
+        # Assertions - should fall back to string replacement
+        assert arn == 'arn:aws:iam::123456789012:role/CrossAccountRole'
+        assert identity_type == 'assumed-role'
+        mock_iam_client.get_role.assert_called_once_with(RoleName='CrossAccountRole')
+
+    def test_assumed_role_with_iam_api_unexpected_error(self):
+        """Test assumed role with IAM API unexpected error (fallback to string replacement)."""
+        # Mock session with both STS and IAM clients
+        mock_session = Mock()
+        mock_sts_client = Mock()
+        mock_iam_client = Mock()
+        
+        def mock_client(service):
+            if service == 'sts':
+                return mock_sts_client
+            elif service == 'iam':
+                return mock_iam_client
+        
+        mock_session.client.side_effect = mock_client
+        
+        # Mock STS response
+        mock_sts_client.get_caller_identity.return_value = {
+            'Arn': 'arn:aws:sts::123456789012:assumed-role/MyRole/session-name'
+        }
+        
+        # Mock IAM API unexpected error
+        mock_iam_client.get_role.side_effect = Exception('Network timeout')
+        
+        # Call function
+        arn, identity_type = _get_current_aws_identity(mock_session)
+        
+        # Assertions - should fall back to string replacement
+        assert arn == 'arn:aws:iam::123456789012:role/MyRole'
+        assert identity_type == 'assumed-role'
+        mock_iam_client.get_role.assert_called_once_with(RoleName='MyRole')
+
+    def test_assumed_role_with_custom_path_success(self):
+        """Test assumed role with custom path retrieved via IAM API."""
+        # Mock session with both STS and IAM clients
+        mock_session = Mock()
+        mock_sts_client = Mock()
+        mock_iam_client = Mock()
+        
+        def mock_client(service):
+            if service == 'sts':
+                return mock_sts_client
+            elif service == 'iam':
+                return mock_iam_client
+        
+        mock_session.client.side_effect = mock_client
+        
+        # Mock STS response
+        mock_sts_client.get_caller_identity.return_value = {
+            'Arn': 'arn:aws:sts::123456789012:assumed-role/MyCustomRole/session-name'
+        }
+        
+        # Mock IAM response with custom path
+        mock_iam_client.get_role.return_value = {
+            'Role': {
+                'Arn': 'arn:aws:iam::123456789012:role/custom/path/MyCustomRole'
+            }
+        }
+        
+        # Call function
+        arn, identity_type = _get_current_aws_identity(mock_session)
+        
+        # Assertions
+        assert arn == 'arn:aws:iam::123456789012:role/custom/path/MyCustomRole'
+        assert identity_type == 'assumed-role'
+        mock_iam_client.get_role.assert_called_once_with(RoleName='MyCustomRole')
+
