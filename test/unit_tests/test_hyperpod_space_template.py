@@ -31,7 +31,7 @@ class TestHPSpaceTemplate(unittest.TestCase):
         mock_yaml_load.return_value = self.mock_config_data
         mock_file.return_value.read.return_value = self.yaml_content
         
-        template = HPSpaceTemplate("test.yaml")
+        template = HPSpaceTemplate(file_path="test.yaml")
         
         self.assertEqual(template.config_data, self.mock_config_data)
         self.assertEqual(template.name, "test-template")
@@ -41,7 +41,7 @@ class TestHPSpaceTemplate(unittest.TestCase):
     def test_init_file_not_found(self, mock_file):
         """Test initialization with non-existent file"""
         with self.assertRaises(FileNotFoundError) as context:
-            HPSpaceTemplate("nonexistent.yaml")
+            HPSpaceTemplate(file_path="nonexistent.yaml")
         self.assertIn("File 'nonexistent.yaml' not found", str(context.exception))
 
     @patch('builtins.open', new_callable=mock_open)
@@ -49,7 +49,7 @@ class TestHPSpaceTemplate(unittest.TestCase):
     def test_init_yaml_error(self, mock_yaml_load, mock_file):
         """Test initialization with invalid YAML"""
         with self.assertRaises(ValueError) as context:
-            HPSpaceTemplate("invalid.yaml")
+            HPSpaceTemplate(file_path="invalid.yaml")
         self.assertIn("Error parsing YAML file", str(context.exception))
 
     @patch('sagemaker.hyperpod.space.hyperpod_space_template.config.load_kube_config')
@@ -82,7 +82,7 @@ class TestHPSpaceTemplate(unittest.TestCase):
         mock_custom_api_class.return_value = mock_custom_api
         mock_custom_api.create_cluster_custom_object.return_value = self.mock_config_data
         
-        template = HPSpaceTemplate("test.yaml")
+        template = HPSpaceTemplate(file_path="test.yaml")
         template.create()
         
         mock_verify_config.assert_called_once()
@@ -105,7 +105,7 @@ class TestHPSpaceTemplate(unittest.TestCase):
         mock_custom_api_class.return_value = mock_custom_api
         mock_custom_api.create_cluster_custom_object.side_effect = ApiException(status=409)
         
-        template = HPSpaceTemplate("test.yaml")
+        template = HPSpaceTemplate(file_path="test.yaml")
         template.create()
         
         mock_handle_exception.assert_called_once()
@@ -121,7 +121,7 @@ class TestHPSpaceTemplate(unittest.TestCase):
         mock_custom_api_class.return_value = mock_custom_api
         mock_custom_api.create_cluster_custom_object.side_effect = Exception("Creation failed")
         
-        template = HPSpaceTemplate("test.yaml")
+        template = HPSpaceTemplate(file_path="test.yaml")
         
         with self.assertRaises(Exception):
             template.create()
@@ -236,7 +236,7 @@ class TestHPSpaceTemplate(unittest.TestCase):
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
         
-        template = HPSpaceTemplate("test.yaml")
+        template = HPSpaceTemplate(file_path="test.yaml")
         template.delete()
         
         mock_verify_config.assert_called_once()
@@ -259,7 +259,7 @@ class TestHPSpaceTemplate(unittest.TestCase):
         mock_custom_api_class.return_value = mock_custom_api
         mock_custom_api.delete_cluster_custom_object.side_effect = ApiException(status=404)
         
-        template = HPSpaceTemplate("test.yaml")
+        template = HPSpaceTemplate(file_path="test.yaml")
         template.delete()
         
         mock_handle_exception.assert_called_once()
@@ -275,7 +275,7 @@ class TestHPSpaceTemplate(unittest.TestCase):
         mock_custom_api_class.return_value = mock_custom_api
         mock_custom_api.patch_cluster_custom_object.return_value = self.mock_config_data
         
-        template = HPSpaceTemplate("test.yaml")
+        template = HPSpaceTemplate(file_path="test.yaml")
         template.update("updated.yaml")
         
         mock_verify_config.assert_called_once()
@@ -297,7 +297,7 @@ class TestHPSpaceTemplate(unittest.TestCase):
             {"metadata": {"name": "different-name"}}
         ]
         
-        template = HPSpaceTemplate("test.yaml")
+        template = HPSpaceTemplate(file_path="test.yaml")
         
         with self.assertRaises(ValueError) as context:
             template.update("different.yaml")
@@ -311,7 +311,7 @@ class TestHPSpaceTemplate(unittest.TestCase):
         mock_yaml_load.return_value = self.mock_config_data
         mock_file.side_effect = [mock_open().return_value, FileNotFoundError("File 'nonexistent.yaml' not found")]
         
-        template = HPSpaceTemplate("test.yaml")
+        template = HPSpaceTemplate(file_path="test.yaml")
         
         with self.assertRaises(FileNotFoundError) as context:
             template.update("nonexistent.yaml")
@@ -324,7 +324,7 @@ class TestHPSpaceTemplate(unittest.TestCase):
         """Test space template update with YAML error"""
         mock_yaml_load.side_effect = [self.mock_config_data, yaml.YAMLError("Invalid YAML")]
         
-        template = HPSpaceTemplate("test.yaml")
+        template = HPSpaceTemplate(file_path="test.yaml")
         
         with self.assertRaises(ValueError) as context:
             template.update("invalid.yaml")
@@ -342,7 +342,7 @@ class TestHPSpaceTemplate(unittest.TestCase):
         mock_custom_api_class.return_value = mock_custom_api
         mock_custom_api.patch_cluster_custom_object.side_effect = ApiException(status=404)
         
-        template = HPSpaceTemplate("test.yaml")
+        template = HPSpaceTemplate(file_path="test.yaml")
         template.update("updated.yaml")
         
         mock_handle_exception.assert_called_once()
@@ -353,7 +353,7 @@ class TestHPSpaceTemplate(unittest.TestCase):
         """Test converting space template to YAML"""
         mock_yaml_load.return_value = self.mock_config_data
         
-        template = HPSpaceTemplate("test.yaml")
+        template = HPSpaceTemplate(file_path="test.yaml")
         result = template.to_yaml()
         
         self.assertIsInstance(result, str)
@@ -365,7 +365,7 @@ class TestHPSpaceTemplate(unittest.TestCase):
         """Test converting space template to dictionary"""
         mock_yaml_load.return_value = self.mock_config_data
         
-        template = HPSpaceTemplate("test.yaml")
+        template = HPSpaceTemplate(file_path="test.yaml")
         result = template.to_dict()
         
         self.assertEqual(result, self.mock_config_data)

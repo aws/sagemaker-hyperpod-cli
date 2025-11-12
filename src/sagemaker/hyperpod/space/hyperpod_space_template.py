@@ -1,6 +1,6 @@
 import logging
 import yaml
-from typing import List, Optional, ClassVar, Dict, Any, Union
+from typing import List, Optional, ClassVar, Dict, Any
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 
@@ -28,19 +28,31 @@ class HPSpaceTemplate:
     
     is_kubeconfig_loaded: ClassVar[bool] = False
 
-    def __init__(self, file_path: str):
-        """Initialize space template with config YAML file path.
+    def __init__(self, *, file_path: Optional[str] = None, config_data: Optional[Dict[str, Any]] = None):
+        """Initialize space template with config YAML file path or dictionary data.
         
         Args:
-            file_path: Path to YAML file
+            file_path: Path to YAML configuration file
+            config_data: Dictionary containing configuration data
+            
+        Raises:
+            ValueError: If both or neither parameters are provided
         """
-        try:
-            with open(file_path, 'r') as f:
-                self.config_data = yaml.safe_load(f)
-        except FileNotFoundError:
-            raise FileNotFoundError(f"File '{file_path}' not found")
-        except yaml.YAMLError as e:
-            raise ValueError(f"Error parsing YAML file: {e}")
+        if (file_path is None) == (config_data is None):
+            raise ValueError("Exactly one of 'file_path' or 'config_data' must be provided")
+        
+        if file_path is not None:
+            # Initialize from file path
+            try:
+                with open(file_path, 'r') as f:
+                    self.config_data = yaml.safe_load(f)
+            except FileNotFoundError:
+                raise FileNotFoundError(f"File '{file_path}' not found")
+            except yaml.YAMLError as e:
+                raise ValueError(f"Error parsing YAML file: {e}")
+        else:
+            # Initialize from dictionary data (e.g., from Kubernetes API response)
+            self.config_data = config_data
         
         self.name = self.config_data.get('metadata', {}).get('name')
 
@@ -104,7 +116,7 @@ class HPSpaceTemplate:
             
             templates = []
             for item in response.get("items", []):
-                templates.append(cls(item))
+                templates.append(cls(config_data=item))
             
             return templates
                 
@@ -140,7 +152,7 @@ class HPSpaceTemplate:
             if 'metadata' in response:
                 response['metadata'].pop('managedFields', None)
             
-            return cls(response)
+            return cls(config_data=response)
                 
         except ApiException as e:
             handle_exception(e, name, None)
