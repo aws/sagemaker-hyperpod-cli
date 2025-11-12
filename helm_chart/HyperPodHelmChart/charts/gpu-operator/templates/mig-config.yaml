@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "default-mig-config"
+  namespace: {{ .Release.Namespace }}
+  labels:
+    sagemaker.amazonaws.com/accelerator-partition-configmap: "true"
+data:
+  config.yaml: |
+{{- $content := $.Files.Get "config/default-mig-config.yaml" }}
+{{ $content | indent 4 }}
