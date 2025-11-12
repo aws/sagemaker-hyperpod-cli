@@ -1,0 +1,314 @@
+version: v1
+mig-configs:
+  # Profile 1
+  all-disabled:
+    - devices: all
+      mig-enabled: false
+
+  # Profile 19
+  all-1g.10gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.10gb": 7
+
+  all-1g.5gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.5gb": 7
+
+  all-1g.18gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.18gb": 7
+
+  # Profile 5
+  all-3g.40gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "3g.40gb": 2
+
+  all-3g.20gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "3g.20gb": 2
+
+  all-3g.71gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "3g.71gb": 2
+
+  # Profile 1
+  all-7g.80gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "7g.80gb": 1
+
+  all-7g.40gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "7g.40gb": 1
+
+  all-7g.141gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "7g.141gb": 1
+
+  # Profile 2
+  mixed-1-3g.40gb-1-4g.40gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "3g.40gb": 1
+        "4g.40gb": 1
+
+  mixed-1-3g.20gb-1-4g.20gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "3g.20gb": 1
+        "4g.20gb": 1
+
+  mixed-1-3g.71gb-1-4g.71gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "3g.71gb": 1
+        "4g.71gb": 1
+
+  # Profile 3
+  mixed-1-1g.10gb-1-2g.20gb-1-4g.40gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.10gb": 1
+        "2g.20gb": 1
+        "4g.40gb": 1
+
+  mixed-1-1g.5gb-1-2g.10gb-1-4g.20gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.5gb": 1
+        "2g.10gb": 1
+        "4g.20gb": 1
+
+  mixed-1-1g.18gb-1-2g.35gb-1-4g.71gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.18gb": 1
+        "2g.35gb": 1
+        "4g.71gb": 1
+
+  # Profile 4
+  mixed-3-1g.10gb-1-4g.40gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.10gb": 3
+        "4g.40gb": 1
+
+  mixed-3-1g.5gb-1-4g.20gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.5gb": 3
+        "4g.20gb": 1
+
+  mixed-3-1g.18gb-1-4g.71gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.18gb": 3
+        "4g.71gb": 1
+
+  # Profile 6
+  mixed-1g.10gb-1-2g.20gb-1-3g.40gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.10gb": 1
+        "2g.20gb": 1
+        "3g.40gb": 1
+
+  mixed-1g.5gb-1-2g.10gb-1-3g.20gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.5gb": 1
+        "2g.10gb": 1
+        "3g.20gb": 1
+
+  mixed-1g.18gb-1-2g.35gb-1-3g.71gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.18gb": 1
+        "2g.35gb": 1
+        "3g.71gb": 1
+
+  # Profile 7
+  mixed-3-1g.10gb-1-3g.40gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.10gb": 3
+        "3g.40gb": 1
+
+  mixed-3-1g.5gb-1-3g.20gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.5gb": 3
+        "3g.20gb": 1
+
+  mixed-3-1g.18gb-1-3g.70gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.18gb": 3
+        "3g.71gb": 1
+
+  # Profile 8
+  mixed-2-2g.20gb-1-3g.40gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "2g.20gb": 2
+        "3g.40gb": 1
+
+  mixed-2-2g.10gb-1-3g.20gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "2g.10gb": 2
+        "3g.20gb": 1
+
+  mixed-2-2g.35gb-1-3g.71gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "2g.35gb": 2
+        "3g.71gb": 1
+
+  # Profile 9, 10
+  mixed-2-1g.10gb-1-2g.20gb-1-3g.40gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.10gb": 2
+        "2g.20gb": 1
+        "3g.40gb": 1
+
+  mixed-2-1g.5gb-1-2g.20gb-1-3g.20gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.5gb": 2
+        "2g.10gb": 1
+        "3g.20gb": 1
+
+  mixed-2-1g.18gb-1-2g.47gb-1-3g.71gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.18gb": 2
+        "2g.47gb": 1
+        "3g.71gb": 1
+
+  # Profile 11
+  mixed-4-1g.10gb-1-3g.40gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.10gb": 4
+        "3g.40gb": 1
+
+  mixed-4-1g.5gb-1-3g.20gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.5gb": 4
+        "3g.20gb": 1
+
+  mixed-4-1g.18gb-1-3g.71gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.18gb": 4
+        "3g.71gb": 1
+
+  # Profile 12
+  mixed-1-1g.10gb-3-2g.20gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.10gb": 1
+        "2g.20gb": 3
+
+  mixed-1-1g.5gb-3-2g.10gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.5gb": 1
+        "2g.10gb": 3
+
+  mixed-1-1g.18gb-3-2g.35gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.18gb": 1
+        "2g.35gb": 3
+
+  # Profile 13, 14
+  mixed-3-1g.10gb-2-2g.20gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.10gb": 3
+        "2g.20gb": 2
+
+  mixed-3-1g.5gb-2-2g.10gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.5gb": 3
+        "2g.10gb": 2
+
+  mixed-3-1g.18gb-2-2g.35gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.18gb": 3
+        "2g.35gb": 2
+
+  # Profile 15, 16, 17, 18, 19
+  mixed-5-1g.10gb-1-2g.20gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.10gb": 5
+        "2g.20gb": 1
+
+  mixed-5-1g.5gb-1-2g.10gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.5gb": 5
+        "2g.10gb": 1
+
+  mixed-5-1g.18gb-1-2g.35gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.18gb": 5
+        "2g.35gb": 1

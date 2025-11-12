@@ -1,0 +1,13 @@
+gpu-operator:
+  operator:
+    repository: "940482419867.dkr.ecr.us-east-2.amazonaws.com"
+  toolkit:
+    repository: "940482419867.dkr.ecr.us-east-2.amazonaws.com/mirror-k8s"
+  devicePlugin:
+    repository: "940482419867.dkr.ecr.us-east-2.amazonaws.com"
+  gfd:
+    repository: "940482419867.dkr.ecr.us-east-2.amazonaws.com"
+  migManager:
+    repository: "940482419867.dkr.ecr.us-east-2.amazonaws.com/mirror-cloud-native"
+  validator:
+    repository: "940482419867.dkr.ecr.us-east-2.amazonaws.com/mirror-cloud-native"

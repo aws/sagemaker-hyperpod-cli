@@ -88,3 +88,7 @@ dependencies:
     version: "0.1.0"
     repository: "file://charts/hyperpod-patching"
     condition: hyperpod-patching.enabled
+  - name: gpu-operator
+    version: "0.1.0"
+    repository: "file://charts/gpu-operator"
+    condition: gpu-operator.enabled
