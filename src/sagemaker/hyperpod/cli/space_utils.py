@@ -42,22 +42,40 @@ def generate_click_command(
 
     def decorator(func: Callable) -> Callable:
         # build resources from CPU/memory options  
-        def _build_resources(cpu, memory, gpu):
-            if cpu is None and memory is None and gpu is None:
+        def _build_resources(cpu, cpu_limit, memory, memory_limit, gpu, gpu_limit,
+            accelerator_partition_type, accelerator_partition_count):
+            if not any([cpu, cpu_limit, memory, memory_limit, gpu, gpu_limit,
+                accelerator_partition_type, accelerator_partition_count]):
                 return None
+            
+            if (accelerator_partition_type is None) ^ (accelerator_partition_count is None):
+                raise click.UsageError(
+                    "Both accelerator-partition-type and accelerator-partition-count must be specified together"
+                )
 
             # Build requests dictionary
             requests = {}
+            limits = {}
             if cpu is not None:
                 requests["cpu"] = cpu
+            if cpu_limit is not None:
+                limits["cpu"] = cpu_limit
             if memory is not None:
                 requests["memory"] = memory
+            if memory_limit is not None:
+                limits["memory"] = memory_limit
             if gpu is not None:
                 requests["nvidia.com/gpu"] = gpu
+            if gpu_limit is not None:
+                limits["nvidia.com/gpu"] = gpu_limit
+            if accelerator_partition_type is not None and accelerator_partition_count is not None:
+                requests[f"nvidia.com/{accelerator_partition_type}"] = accelerator_partition_count
+                limits[f"nvidia.com/{accelerator_partition_type}"] = accelerator_partition_count
 
             # Return ResourceRequirements structure
             return {
-                "requests": requests
+                "requests": requests,
+                "limits": limits,
             }
 
         def _parse_volume_param(ctx, param, value):
@@ -140,7 +158,16 @@ def generate_click_command(
             if Model is None:
                 raise click.ClickException(f"Unsupported schema version: {version}")
 
-            resources = _build_resources(kwargs.pop("cpu", None), kwargs.pop("memory", None), kwargs.pop("gpu", None))
+            resources = _build_resources(
+                kwargs.pop("cpu", None),
+                kwargs.pop("cpu_limit", None),
+                kwargs.pop("memory", None),
+                kwargs.pop("memory_limit", None),
+                kwargs.pop("gpu", None),
+                kwargs.pop("gpu_limit", None),
+                kwargs.pop("accelerator_partition_type", None),
+                kwargs.pop("accelerator_partition_count", None),
+            )
             if resources is not None:
                 kwargs["resources"] = resources
 
@@ -210,21 +237,56 @@ def generate_click_command(
             "--cpu",
             type=str,
             default=None,
-            help="CPU resource, e.g. '250m'",
+            help="CPU resource request, e.g. '250m'",
+        )(wrapped_func)
+
+        wrapped_func = click.option(
+            "--cpu-limit",
+            type=str,
+            default=None,
+            help="CPU resource limit, e.g. '250m'",
         )(wrapped_func)
 
         wrapped_func = click.option(
             "--memory",
             type=str,
             default=None,
-            help="Memory resource, e.g. '256Mi'",
+            help="Memory resource request, e.g. '256Mi'",
+        )(wrapped_func)
+
+        wrapped_func = click.option(
+            "--memory-limit",
+            type=str,
+            default=None,
+            help="Memory resource limit, e.g. '256Mi'",
         )(wrapped_func)
 
         wrapped_func = click.option(
             "--gpu",
             type=str,
             default=None,
-            help="Gpu resource, e.g. '1'",
+            help="Gpu resource request, e.g. '1'",
+        )(wrapped_func)
+
+        wrapped_func = click.option(
+            "--gpu-limit",
+            type=str,
+            default=None,
+            help="Gpu resource limit, e.g. '1'",
+        )(wrapped_func)
+
+        wrapped_func = click.option(
+            "--accelerator-partition-type",
+            type=str,
+            default=None,
+            help="Fractional GPU parition type",
+        )(wrapped_func)
+
+        wrapped_func = click.option(
+            "--accelerator-partition-count",
+            type=str,
+            default=None,
+            help="Fractional GPU parition count",
         )(wrapped_func)
 
         wrapped_func = click.option(

@@ -314,7 +314,7 @@ class HPSpace(BaseModel):
         try:
             pods = v1.list_namespaced_pod(
                 namespace=self.config.namespace,
-                label_selector=f"{SPACE_GROUP}/workspaceName={self.config.name}"
+                label_selector=f"{SPACE_GROUP}/workspace-name={self.config.name}"
             )
             return [pod.metadata.name for pod in pods.items]
         except Exception as e:

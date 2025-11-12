@@ -504,7 +504,7 @@ class TestHPSpace(unittest.TestCase):
         self.assertEqual(result, ["pod1", "pod2"])
         mock_core_api.list_namespaced_pod.assert_called_once_with(
             namespace="test-namespace",
-            label_selector="workspace.jupyter.org/workspaceName=test-space"
+            label_selector="workspace.jupyter.org/workspace-name=test-space"
         )
 
     @patch('sagemaker.hyperpod.space.hyperpod_space.client.CoreV1Api')

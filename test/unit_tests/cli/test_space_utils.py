@@ -91,7 +91,7 @@ class TestGenerateClickCommand:
 
     @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
     def test_resources_building(self, mock_load_schema):
-        """Test CPU and memory resource building"""
+        """Test CPU, memory, GPU and fractional GPU resource building"""
         schema = {
             'properties': {
                 'resources': {
@@ -117,25 +117,42 @@ class TestGenerateClickCommand:
         def cmd(version, domain_config):
             click.echo(json.dumps(domain_config.get('resources')))
 
-        # Test with custom CPU and memory
-        result = self.runner.invoke(cmd, ['--cpu', '1000m', '--memory', '1Gi'])
+        # Test with CPU and memory requests and limits
+        result = self.runner.invoke(cmd, ['--cpu', '1000m', '--cpu-limit', '2000m', '--memory', '1Gi', '--memory-limit', '2Gi'])
         assert result.exit_code == 0
         output = json.loads(result.output)
         assert output['requests']['cpu'] == '1000m'
         assert output['requests']['memory'] == '1Gi'
-        assert 'nvidia.com/gpu' not in output['requests']
+        assert output['limits']['cpu'] == '2000m'
+        assert output['limits']['memory'] == '2Gi'
 
-        # Test with only CPU
-        result = self.runner.invoke(cmd, ['--cpu', '750m'])
+        # Test with GPU requests and limits
+        result = self.runner.invoke(cmd, ['--gpu', '1', '--gpu-limit', '2'])
         assert result.exit_code == 0
         output = json.loads(result.output)
-        assert output['requests']['cpu'] == '750m'
-        assert 'memory' not in output['requests']
+        assert output['requests']['nvidia.com/gpu'] == '1'
+        assert output['limits']['nvidia.com/gpu'] == '2'
+
+        # Test with fractional GPU partitioning
+        result = self.runner.invoke(cmd, ['--accelerator-partition-type', 'mig-1g.5gb', '--accelerator-partition-count', '2'])
+        assert result.exit_code == 0
+        output = json.loads(result.output)
+        assert output['requests']['nvidia.com/mig-1g.5gb'] == '2'
+        assert output['limits']['nvidia.com/mig-1g.5gb'] == '2'
 
         # Test with no resources specified
         result = self.runner.invoke(cmd, [])
         assert result.exit_code == 0
         assert result.output.strip() == 'null'
+
+        # Test error when only one accelerator partition parameter is provided
+        result = self.runner.invoke(cmd, ['--accelerator-partition-type', 'mig-1g.5gb'])
+        assert result.exit_code == 2
+        assert 'Both accelerator-partition-type and accelerator-partition-count must be specified together' in result.output
+
+        result = self.runner.invoke(cmd, ['--accelerator-partition-count', '2'])
+        assert result.exit_code == 2
+        assert 'Both accelerator-partition-type and accelerator-partition-count must be specified together' in result.output
 
     @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
     def test_type_conversion(self, mock_load_schema):
