@@ -156,6 +156,62 @@ class TestTrainingCommands(unittest.TestCase):
             self.assertEqual(call_args["metadata"]["labels"]["kueue.x-k8s.io/queue-name"], "localqueue")
             self.assertEqual(call_args["metadata"]["annotations"]["kueue.x-k8s.io/podset-required-topology"], "topology.k8s.aws/ultraserver-id")
 
+    @patch('sys.argv', ['pytest', '--version', '1.1'])
+    def test_elastic_training_params(self):
+        """Test job creation with elastic training parameters"""
+        # Reload the training module with mocked sys.argv
+        if 'sagemaker.hyperpod.cli.commands.training' in sys.modules:
+            importlib.reload(sys.modules['sagemaker.hyperpod.cli.commands.training'])
+
+        from sagemaker.hyperpod.cli.commands.training import pytorch_create
+
+        with patch("hyperpod_pytorch_job_template.v1_1.model.HyperPodPytorchJob") as mock_hyperpod_job:
+            mock_instance = Mock()
+            mock_hyperpod_job.return_value = mock_instance
+
+            result = self.runner.invoke(
+                pytorch_create,
+                [
+                    "--version",
+                    "1.1",
+                    "--job-name",
+                    "elastic-test-job",
+                    "--image",
+                    "pytorch:latest",
+                    "--elastic-replica-increment-step",
+                    "2",
+                    "--max-node-count",
+                    "4",
+                    "--elastic-graceful-shutdown-timeout-seconds",
+                    "180",
+                    "--elastic-scaling-timeout",
+                    "30s",
+                ],
+            )
+
+            print(f"Command output: {result.output}")
+
+            # Verify command succeeded
+            self.assertEqual(result.exit_code, 0)
+            self.assertIn("Using version: 1.1", result.output)
+
+            # Verify HyperPodPytorchJob was created with elastic parameters
+            mock_hyperpod_job.assert_called_once()
+            call_args = mock_hyperpod_job.call_args[1]
+
+            # Validate basic job configuration
+            self.assertEqual(call_args["metadata"]["name"], "elastic-test-job")
+
+            # Validate elastic policy configuration
+            self.assertIsNotNone(call_args.get("elastic_policy"))
+            elastic_policy = call_args["elastic_policy"]
+            self.assertEqual(elastic_policy.replicaIncrementStep, 2)
+            self.assertEqual(elastic_policy.maxReplicas, 4)
+            self.assertEqual(elastic_policy.gracefulShutdownTimeoutSeconds, 180)
+            self.assertEqual(elastic_policy.scalingTimeout, "30s")
+
+            mock_instance.create.assert_called_once()
+
     @patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
     @patch("sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob")
     def test_list_jobs(self, mock_hyperpod_pytorch_job, mock_namespace_exists):
