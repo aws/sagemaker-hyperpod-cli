@@ -11,8 +11,7 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config impo
     Metadata,
     Volumes,
     HostPath, 
-    PersistentVolumeClaim,
-    ElasticPolicy
+    PersistentVolumeClaim
 )
 from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob
 import yaml
@@ -223,28 +222,6 @@ class PyTorchJobConfig(BaseModel):
         alias="required_topology",
         description="Required topology annotation for scheduling",
     )
-    elastic_replica_increment_step: Optional[int] = Field(
-        default=None,
-        alias="elastic_replica_increment_step",
-        description="Scaling step size for elastic training",
-        ge=1,
-    )
-    max_node_count: Optional[int] = Field(
-        default=None,
-        alias="max_node_count",
-        description="Maximum number of nodes for elastic training",
-        ge=1,
-    )
-    elastic_graceful_shutdown_timeout_seconds: Optional[int] = Field(
-        default=None,
-        alias="elastic_graceful_shutdown_timeout_seconds",
-        description="Graceful shutdown timeout in seconds for elastic scaling operations"
-    )
-    elastic_scaling_timeout: Optional[str] = Field(
-        default=None,
-        alias="elastic_scaling_timeout",
-        description="Scaling timeout for elastic training"
-    )
 
     @field_validator('tasks_per_node', mode='before')
     @classmethod
@@ -454,34 +431,15 @@ class PyTorchJobConfig(BaseModel):
         replica_kwargs = build_dict(
             name="pod",
             template=Template(metadata=Metadata(**metadata_kwargs), spec=Spec(**spec_kwargs)),
-            replicas=self.node_count,
-            max_replicas=self.max_node_count
+            replicas=self.node_count
         )
-
-        # Build elastic policy
-        elastic_policy = None
-        if any([
-            self.elastic_replica_increment_step is not None,
-            self.max_node_count is not None,
-            self.elastic_graceful_shutdown_timeout_seconds is not None,
-            self.elastic_scaling_timeout is not None
-        ]):
-            elastic_policy_kwargs = build_dict(
-                min_replicas=self.node_count,
-                replica_increment_step=self.elastic_replica_increment_step,
-                max_replicas=self.max_node_count,
-                graceful_shutdown_timeout_seconds=self.elastic_graceful_shutdown_timeout_seconds,
-                scaling_timeout=self.elastic_scaling_timeout
-            )
-            elastic_policy = ElasticPolicy(**elastic_policy_kwargs)
 
         # Build job
         job_kwargs = build_dict(
             metadata=metadata_kwargs,
             replica_specs=[ReplicaSpec(**replica_kwargs)],
             nproc_per_node=str(self.tasks_per_node) if self.tasks_per_node else None,
-            run_policy=RunPolicy(clean_pod_policy="None", job_max_retry_count=self.max_retry) if self.max_retry else None,
-            elastic_policy=elastic_policy
+            run_policy=RunPolicy(clean_pod_policy="None", job_max_retry_count=self.max_retry) if self.max_retry else None
         )
 
         result = HyperPodPytorchJob(**job_kwargs)
