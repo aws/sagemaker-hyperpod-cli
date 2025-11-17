@@ -12,6 +12,7 @@ set_script_variables() {
         "eu-north-1"
         "eu-west-2"
         "us-west-2"
+        "ap-northeast-1"
     )
 
     SRC_DIR="HyperPodHelmChart"
