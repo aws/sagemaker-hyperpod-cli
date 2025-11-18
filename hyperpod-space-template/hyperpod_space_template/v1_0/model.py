@@ -43,6 +43,41 @@ class ContainerConfig(BaseModel):
     )
 
 
+class TemplateRef(BaseModel):
+    """ContainerConfig defines container command and args configuration"""
+    name: str = Field(
+        description="Name of the WorkspaceTemplate"
+    )
+    namespace: Optional[str] = Field(
+        default=None,
+        description="Namespace where the WorkspaceTemplate is located"
+    )
+
+
+class IdleDetectionSpec(BaseModel):
+    """IdleDetectionSpec defines idle detection methods"""
+    http_get: Optional[Dict[str, Any]] = Field(
+        default=None,
+        alias="httpGet",
+        description="HTTPGet specifies the HTTP request to perform for idle detection"
+    )
+
+
+class IdleShutdownSpec(BaseModel):
+    """IdleShutdownSpec defines idle shutdown configuration"""
+    enabled: bool = Field(
+        description="Enabled indicates if idle shutdown is enabled"
+    )
+    timeout_minutes: int = Field(
+        alias="timeoutMinutes",
+        description="TimeoutMinutes specifies idle timeout in minutes",
+        ge=1
+    )
+    detection: IdleDetectionSpec = Field(
+        description="Detection specifies how to detect idle state"
+    )
+
+
 class StorageSpec(BaseModel):
     """StorageSpec defines the storage configuration for Workspace"""
     storage_class_name: Optional[str] = Field(
@@ -63,11 +98,11 @@ class StorageSpec(BaseModel):
 
 class ResourceRequirements(BaseModel):
     """ResourceRequirements describes the compute resource requirements"""
-    requests: Optional[Dict[str, str]] = Field(
+    requests: Optional[Dict[str, Optional[str]]] = Field(
         default=None,
         description="Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. Requests cannot exceed Limits."
     )
-    limits: Optional[Dict[str, str]] = Field(
+    limits: Optional[Dict[str, Optional[str]]] = Field(
         default=None,
         description="Limits describes the maximum amount of compute resources allowed."
     )
@@ -105,7 +140,7 @@ class SpaceConfig(BaseModel):
     ownership_type: Optional[OwnershipType] = Field(
         default=None,
         alias="ownership_type",
-        description="OwnershipType specifies who can modify the space. Public means anyone with RBAC permissions can update/delete the space. OwnerOnly means only the creator can update/delete the space."
+        description="OwnershipType specifies who can modify the space. 'Public' means anyone with RBAC permissions can update/delete the space. 'OwnerOnly' means only the creator can update/delete the space."
     )
     resources: Optional[ResourceRequirements] = Field(
         default=None,
@@ -127,24 +162,39 @@ class SpaceConfig(BaseModel):
     node_selector: Optional[Dict[str, str]] = Field(
         default=None,
         alias="node_selector",
-        description="NodeSelector specifies node selection constraints for the space pod (JSON)"
+        description="NodeSelector specifies node selection constraints for the space pod (JSON string)"
     )
     affinity: Optional[Dict[str, Any]] = Field(
         default=None,
-        description="Affinity specifies node affinity and anti-affinity rules for the space pod (JSON)"
+        description="Affinity specifies node affinity and anti-affinity rules for the space pod (JSON string)"
     )
     tolerations: Optional[List[Dict[str, Any]]] = Field(
         default=None,
-        description="Tolerations specifies tolerations for the space pod to schedule on nodes with matching taints (JSON)"
+        description="Tolerations specifies tolerations for the space pod to schedule on nodes with matching taints (JSON string)"
     )
     lifecycle: Optional[Dict[str, Any]] = Field(
         default=None,
-        description="Lifecycle specifies actions that the management system should take in response to container lifecycle events (JSON)"
+        description="Lifecycle specifies actions that the management system should take in response to container lifecycle events (JSON string)"
     )
-    template_ref: Optional[str] = Field(
+    template_ref: Optional[TemplateRef] = Field(
         default=None,
         alias="template_ref",
-        description="TemplateRef references a WorkspaceTemplate to use as base configuration. When set, template provides defaults and spec fields (Image, Resources, Storage.Size) act as overrides."
+        description="TemplateRef references a WorkspaceTemplate to use as base configuration. When set, template provides defaults and workspace spec fields act as overrides"
+    )
+    idle_shutdown: Optional[IdleShutdownSpec] = Field(
+        default=None,
+        alias="idle_shutdown",
+        description="IdleShutdown specifies idle shutdown configuration"
+    )
+    app_type: Optional[str] = Field(
+        default=None,
+        alias="app_type",
+        description="AppType specifies the application type for this workspace"
+    )
+    service_account_name: Optional[str] = Field(
+        default=None,
+        alias="service_account_name",
+        description="ServiceAccountName specifies the name of the ServiceAccount to use for the workspace pod"
     )
 
     @field_validator('volumes')
@@ -199,6 +249,12 @@ class SpaceConfig(BaseModel):
             spec["lifecycle"] = self.lifecycle
         if self.template_ref is not None:
             spec["templateRef"] = self.template_ref
+        if self.idle_shutdown is not None:
+            spec["idleShutdown"] = self.idle_shutdown.model_dump(exclude_none=True, by_alias=True)
+        if self.app_type is not None:
+            spec["appType"] = self.app_type
+        if self.service_account_name is not None:
+            spec["serviceAccountName"] = self.service_account_name
 
         # Create metadata
         metadata = {"name": self.name}

@@ -6,6 +6,7 @@ from kubernetes.client.rest import ApiException
 
 from sagemaker.hyperpod.common.utils import (
     handle_exception,
+    get_default_namespace,
     verify_kubernetes_version_compatibility
 )
 from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
@@ -55,6 +56,7 @@ class HPSpaceTemplate:
             self.config_data = config_data
         
         self.name = self.config_data.get('metadata', {}).get('name')
+        self.namespace = self.config_data.get('metadata', {}).get('namespace')
 
     @classmethod
     def get_logger(cls):
@@ -80,9 +82,10 @@ class HPSpaceTemplate:
         
         try:
             api_instance = client.CustomObjectsApi()
-            response = api_instance.create_cluster_custom_object(
+            response = api_instance.create_namespaced_custom_object(
                 group=SPACE_TEMPLATE_GROUP,
                 version=SPACE_TEMPLATE_VERSION,
+                namespace=self.namespace,
                 plural=SPACE_TEMPLATE_PLURAL,
                 body=self.config_data
             )
@@ -98,19 +101,27 @@ class HPSpaceTemplate:
 
     @classmethod
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_space_templates")
-    def list(cls) -> List["HPSpaceTemplate"]:
-        """List all space templates.
+    def list(cls, namespace: Optional[str] = None) -> List["HPSpaceTemplate"]:
+        """List all space templates in the specified namespace.
+
+        Args:
+            namespace (str, optional): The Kubernetes namespace to list space templates from.
+                If None, uses the default namespace from current context.
         
         Returns:
             List of HPSpaceTemplate instances
         """
         cls.verify_kube_config()
+
+        if not namespace:
+            namespace = get_default_namespace()
         
         try:
             api_instance = client.CustomObjectsApi()
-            response = api_instance.list_cluster_custom_object(
+            response = api_instance.list_namespaced_custom_object(
                 group=SPACE_TEMPLATE_GROUP,
                 version=SPACE_TEMPLATE_VERSION,
+                namespace=namespace,
                 plural=SPACE_TEMPLATE_PLURAL
             )
             
@@ -128,22 +139,28 @@ class HPSpaceTemplate:
 
     @classmethod
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "get_space_template")
-    def get(cls, name: str) -> "HPSpaceTemplate":
+    def get(cls, name: str, namespace: Optional[str] = None) -> "HPSpaceTemplate":
         """Get a specific space template by name.
         
         Args:
             name: Name of the space template
+            namespace (str, optional): The Kubernetes namespace.
+                    If None, uses the default namespace from current context.
             
         Returns:
             HPSpaceTemplate instance
         """
         cls.verify_kube_config()
+
+        if not namespace:
+            namespace = get_default_namespace()
         
         try:
             api_instance = client.CustomObjectsApi()
-            response = api_instance.get_cluster_custom_object(
+            response = api_instance.get_namespaced_custom_object(
                 group=SPACE_TEMPLATE_GROUP,
                 version=SPACE_TEMPLATE_VERSION,
+                namespace=namespace,
                 plural=SPACE_TEMPLATE_PLURAL,
                 name=name
             )
@@ -167,9 +184,10 @@ class HPSpaceTemplate:
         
         try:
             api_instance = client.CustomObjectsApi()
-            api_instance.delete_cluster_custom_object(
+            api_instance.delete_namespaced_custom_object(
                 group=SPACE_TEMPLATE_GROUP,
                 version=SPACE_TEMPLATE_VERSION,
+                namespace=self.namespace,
                 plural=SPACE_TEMPLATE_PLURAL,
                 name=self.name
             )
@@ -209,9 +227,10 @@ class HPSpaceTemplate:
                     config_data['metadata'].pop(field, None)
             
             api_instance = client.CustomObjectsApi()
-            response = api_instance.patch_cluster_custom_object(
+            response = api_instance.patch_namespaced_custom_object(
                 group=SPACE_TEMPLATE_GROUP,
                 version=SPACE_TEMPLATE_VERSION,
+                namespace=self.namespace,
                 plural=SPACE_TEMPLATE_PLURAL,
                 name=self.name,
                 body=config_data

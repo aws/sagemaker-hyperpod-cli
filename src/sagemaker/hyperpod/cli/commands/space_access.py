@@ -9,7 +9,11 @@ from sagemaker.hyperpod.common.telemetry.constants import Feature
 @click.command("hyp-space-access")
 @click.option("--name", required=True, help="Name of the space")
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
-@click.option("--connection-type", "-t", required=False, default="vscode-remote", help="Remote access type")
+@click.option("--connection-type", "-t",
+    required=False,
+    default="vscode-remote",
+    help="Remote access type supported values: [vscode-remote, web-ui] [default: vscode-remote]"
+)
 def space_access_create(name, namespace, connection_type):
     """Create a space access resource."""
 

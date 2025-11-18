@@ -1,8 +1,9 @@
 """Utility functions for space operations."""
 
 import re
-from typing import Dict, Any, Set
+from typing import Dict, Any, Set, List
 from pydantic import BaseModel
+from kubernetes import client
 
 
 def camel_to_snake(name: str) -> str:
@@ -55,3 +56,36 @@ def map_kubernetes_response_to_model(k8s_data: Dict[str, Any], model_class: Base
                 mapped_data[snake_field] = value
     
     return mapped_data
+
+
+def get_pod_instance_type(pod_name: str, namespace: str = "default") -> str:
+    """
+    Get the instance type of the node where a pod is running.
+    
+    Args:
+        pod_name: Name of the pod
+        namespace: Kubernetes namespace of the pod
+        
+    Returns:
+        Instance type of the node running the pod
+        
+    Raises:
+        RuntimeError: If pod is not found or not scheduled on a node
+    """
+    v1 = client.CoreV1Api()
+    
+    pod = v1.read_namespaced_pod(name=pod_name, namespace=namespace)
+    
+    if not pod.spec.node_name:
+        raise RuntimeError(f"Pod '{pod_name}' is not scheduled on any node")
+
+    node = v1.read_node(name=pod.spec.node_name)
+    if node.metadata.labels:
+        instance_type = (
+            node.metadata.labels.get('node.kubernetes.io/instance-type') or
+            node.metadata.labels.get('beta.kubernetes.io/instance-type')
+        )
+        if instance_type:
+            return instance_type
+    
+    raise RuntimeError(f"Instance type not found for node '{pod.spec.node_name}'")

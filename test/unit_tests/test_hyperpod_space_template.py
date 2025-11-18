@@ -15,7 +15,8 @@ class TestHPSpaceTemplate(unittest.TestCase):
             "apiVersion": "workspace.jupyter.org/v1alpha1",
             "kind": "WorkspaceTemplate",
             "metadata": {
-                "name": "test-template"
+                "name": "test-template",
+                "namespace": "test-namespace"
             },
             "spec": {
                 "displayName": "Test Template",
@@ -80,15 +81,16 @@ class TestHPSpaceTemplate(unittest.TestCase):
         mock_yaml_load.return_value = self.mock_config_data
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
-        mock_custom_api.create_cluster_custom_object.return_value = self.mock_config_data
+        mock_custom_api.create_namespaced_custom_object.return_value = self.mock_config_data
         
         template = HPSpaceTemplate(file_path="test.yaml")
         template.create()
         
         mock_verify_config.assert_called_once()
-        mock_custom_api.create_cluster_custom_object.assert_called_once_with(
+        mock_custom_api.create_namespaced_custom_object.assert_called_once_with(
             group="workspace.jupyter.org",
             version="v1alpha1",
+            namespace="test-namespace",
             plural="workspacetemplates",
             body=self.mock_config_data
         )
@@ -103,7 +105,7 @@ class TestHPSpaceTemplate(unittest.TestCase):
         mock_yaml_load.return_value = self.mock_config_data
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
-        mock_custom_api.create_cluster_custom_object.side_effect = ApiException(status=409)
+        mock_custom_api.create_namespaced_custom_object.side_effect = ApiException(status=409)
         
         template = HPSpaceTemplate(file_path="test.yaml")
         template.create()
@@ -119,7 +121,7 @@ class TestHPSpaceTemplate(unittest.TestCase):
         mock_yaml_load.return_value = self.mock_config_data
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
-        mock_custom_api.create_cluster_custom_object.side_effect = Exception("Creation failed")
+        mock_custom_api.create_namespaced_custom_object.side_effect = Exception("Creation failed")
         
         template = HPSpaceTemplate(file_path="test.yaml")
         
@@ -128,44 +130,49 @@ class TestHPSpaceTemplate(unittest.TestCase):
 
     @patch('sagemaker.hyperpod.space.hyperpod_space_template.client.CustomObjectsApi')
     @patch.object(HPSpaceTemplate, 'verify_kube_config')
-    def test_list_success(self, mock_verify_config, mock_custom_api_class):
+    @patch('sagemaker.hyperpod.space.hyperpod_space_template.get_default_namespace')
+    def test_list_success(self, mock_get_namespace, mock_verify_config, mock_custom_api_class):
         """Test successful space template listing"""
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
+        mock_get_namespace.return_value = "default"
         
         mock_response = {
             "items": [
                 {
-                    "metadata": {"name": "template1"},
+                    "metadata": {"name": "template1", "namespace": "default"},
                     "spec": {"displayName": "Template 1"}
                 },
                 {
-                    "metadata": {"name": "template2"},
+                    "metadata": {"name": "template2", "namespace": "default"},
                     "spec": {"displayName": "Template 2"}
                 }
             ]
         }
-        mock_custom_api.list_cluster_custom_object.return_value = mock_response
+        mock_custom_api.list_namespaced_custom_object.return_value = mock_response
         
         with patch('builtins.open', new_callable=mock_open), \
              patch('yaml.safe_load', return_value=mock_response["items"][0]):
             result = HPSpaceTemplate.list()
         
         self.assertEqual(len(result), 2)
-        mock_custom_api.list_cluster_custom_object.assert_called_once_with(
+        mock_custom_api.list_namespaced_custom_object.assert_called_once_with(
             group="workspace.jupyter.org",
             version="v1alpha1",
+            namespace="default",
             plural="workspacetemplates"
         )
 
     @patch('sagemaker.hyperpod.space.hyperpod_space_template.client.CustomObjectsApi')
-    @patch.object(HPSpaceTemplate, 'verify_kube_config')
+    @patch('sagemaker.hyperpod.space.hyperpod_space_template.HPSpaceTemplate.verify_kube_config')
     @patch('sagemaker.hyperpod.space.hyperpod_space_template.handle_exception')
-    def test_list_api_exception(self, mock_handle_exception, mock_verify_config, mock_custom_api_class):
+    @patch('sagemaker.hyperpod.space.hyperpod_space_template.get_default_namespace')
+    def test_list_api_exception(self, mock_get_namespace, mock_handle_exception, mock_verify_config, mock_custom_api_class):
         """Test space template listing with API exception"""
+        mock_get_namespace.return_value = "default"
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
-        mock_custom_api.list_cluster_custom_object.side_effect = ApiException(status=500)
+        mock_custom_api.list_namespaced_custom_object.side_effect = ApiException(status=500)
         
         HPSpaceTemplate.list()
         
@@ -177,21 +184,24 @@ class TestHPSpaceTemplate(unittest.TestCase):
         """Test space template listing with general exception"""
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
-        mock_custom_api.list_cluster_custom_object.side_effect = Exception("List failed")
+        mock_custom_api.list_namespaced_custom_object.side_effect = Exception("List failed")
         
         with self.assertRaises(Exception):
             HPSpaceTemplate.list()
 
     @patch('sagemaker.hyperpod.space.hyperpod_space_template.client.CustomObjectsApi')
     @patch.object(HPSpaceTemplate, 'verify_kube_config')
-    def test_get_success(self, mock_verify_config, mock_custom_api_class):
+    @patch('sagemaker.hyperpod.space.hyperpod_space_template.get_default_namespace')
+    def test_get_success(self, mock_get_namespace, mock_verify_config, mock_custom_api_class):
         """Test successful space template retrieval"""
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
+        mock_get_namespace.return_value = "default"
         
         mock_response = {
             "metadata": {
                 "name": "test-template",
+                "namespace": "test-namespace",
                 "managedFields": [{"manager": "test"}]
             },
             "spec": {"displayName": "Test Template"}
@@ -200,27 +210,30 @@ class TestHPSpaceTemplate(unittest.TestCase):
             "metadata": {"name": "test-template"},
             "spec": {"displayName": "Test Template"}
         }
-        mock_custom_api.get_cluster_custom_object.return_value = mock_response
+        mock_custom_api.get_namespaced_custom_object.return_value = mock_response
         
         with patch('builtins.open', new_callable=mock_open), \
              patch('yaml.safe_load', return_value=expected_response):
             result = HPSpaceTemplate.get("test-template")
         
-        mock_custom_api.get_cluster_custom_object.assert_called_once_with(
+        mock_custom_api.get_namespaced_custom_object.assert_called_once_with(
             group="workspace.jupyter.org",
             version="v1alpha1",
+            namespace="default",
             plural="workspacetemplates",
             name="test-template"
         )
 
     @patch('sagemaker.hyperpod.space.hyperpod_space_template.client.CustomObjectsApi')
-    @patch.object(HPSpaceTemplate, 'verify_kube_config')
+    @patch('sagemaker.hyperpod.space.hyperpod_space_template.HPSpaceTemplate.verify_kube_config')
     @patch('sagemaker.hyperpod.space.hyperpod_space_template.handle_exception')
-    def test_get_api_exception(self, mock_handle_exception, mock_verify_config, mock_custom_api_class):
+    @patch('sagemaker.hyperpod.space.hyperpod_space_template.get_default_namespace')
+    def test_get_api_exception(self, mock_get_namespace, mock_handle_exception, mock_verify_config, mock_custom_api_class):
         """Test space template retrieval with API exception"""
+        mock_get_namespace.return_value = "default"
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
-        mock_custom_api.get_cluster_custom_object.side_effect = ApiException(status=404)
+        mock_custom_api.get_namespaced_custom_object.side_effect = ApiException(status=404)
         
         HPSpaceTemplate.get("nonexistent-template")
         
@@ -240,9 +253,10 @@ class TestHPSpaceTemplate(unittest.TestCase):
         template.delete()
         
         mock_verify_config.assert_called_once()
-        mock_custom_api.delete_cluster_custom_object.assert_called_once_with(
+        mock_custom_api.delete_namespaced_custom_object.assert_called_once_with(
             group="workspace.jupyter.org",
             version="v1alpha1",
+            namespace="test-namespace",
             plural="workspacetemplates",
             name="test-template"
         )
@@ -257,7 +271,7 @@ class TestHPSpaceTemplate(unittest.TestCase):
         mock_yaml_load.return_value = self.mock_config_data
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
-        mock_custom_api.delete_cluster_custom_object.side_effect = ApiException(status=404)
+        mock_custom_api.delete_namespaced_custom_object.side_effect = ApiException(status=404)
         
         template = HPSpaceTemplate(file_path="test.yaml")
         template.delete()
@@ -273,15 +287,16 @@ class TestHPSpaceTemplate(unittest.TestCase):
         mock_yaml_load.side_effect = [self.mock_config_data, self.mock_config_data]
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
-        mock_custom_api.patch_cluster_custom_object.return_value = self.mock_config_data
+        mock_custom_api.patch_namespaced_custom_object.return_value = self.mock_config_data
         
         template = HPSpaceTemplate(file_path="test.yaml")
         template.update("updated.yaml")
         
         mock_verify_config.assert_called_once()
-        mock_custom_api.patch_cluster_custom_object.assert_called_once_with(
+        mock_custom_api.patch_namespaced_custom_object.assert_called_once_with(
             group="workspace.jupyter.org",
             version="v1alpha1",
+            namespace="test-namespace",
             plural="workspacetemplates",
             name="test-template",
             body=self.mock_config_data
@@ -340,7 +355,7 @@ class TestHPSpaceTemplate(unittest.TestCase):
         mock_yaml_load.side_effect = [self.mock_config_data, self.mock_config_data]
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
-        mock_custom_api.patch_cluster_custom_object.side_effect = ApiException(status=404)
+        mock_custom_api.patch_namespaced_custom_object.side_effect = ApiException(status=404)
         
         template = HPSpaceTemplate(file_path="test.yaml")
         template.update("updated.yaml")

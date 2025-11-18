@@ -239,7 +239,6 @@ class TestGenerateClickCommand:
             'properties': {
                 'name': {'type': 'string'},
                 'storage': {'type': 'object'},  # storage is immutable
-                'template_ref': {'type': 'string'},  # template_ref is immutable
                 'image': {'type': 'string'}
             },
             'required': ['name']
@@ -266,7 +265,6 @@ class TestGenerateClickCommand:
         assert result.exit_code == 0
         # storage and template_ref should not be available in update mode
         assert '--storage' not in result.output
-        assert '--template-ref' not in result.output
         # but other fields should be available
         assert '--name' in result.output
         assert '--image' in result.output
@@ -617,3 +615,104 @@ class TestGenerateClickCommand:
         result = self.runner.invoke(cmd, ['--name', 'test-space'])
         assert result.exit_code == 0
         assert 'success' in result.output
+
+    @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
+    def test_template_ref_parsing(self, mock_load_schema):
+        """Test template_ref parameter parsing"""
+        schema = {
+            'properties': {
+                'name': {'type': 'string'},
+                'template_ref': {'type': 'object'}
+            },
+            'required': ['name']
+        }
+        mock_load_schema.return_value = schema
+
+        class DummyModel(BaseModel):
+            class Config:
+                extra = 'allow'
+
+        registry = {'1.0': DummyModel}
+
+        @click.command()
+        @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
+        def cmd(version, domain_config):
+            click.echo(json.dumps(domain_config.get('template_ref')))
+
+        # Test valid template_ref parsing
+        result = self.runner.invoke(cmd, [
+            '--name', 'test-space',
+            '--template-ref', 'name=sagemaker-jupyter-template,namespace=jupyter-k8s-shared'
+        ])
+        assert result.exit_code == 0
+        template_ref = json.loads(result.output)
+        assert template_ref['name'] == 'sagemaker-jupyter-template'
+        assert template_ref['namespace'] == 'jupyter-k8s-shared'
+
+        # Test template_ref with different values
+        result = self.runner.invoke(cmd, [
+            '--name', 'test-space',
+            '--template-ref', 'name=custom-template,namespace=default'
+        ])
+        assert result.exit_code == 0
+        template_ref = json.loads(result.output)
+        assert template_ref['name'] == 'custom-template'
+        assert template_ref['namespace'] == 'default'
+
+        # Test invalid template_ref format (missing equals)
+        result = self.runner.invoke(cmd, [
+            '--name', 'test-space',
+            '--template-ref', 'invalid_format'
+        ])
+        assert result.exit_code == 2
+        assert 'Invalid template ref format' in result.output
+
+        # Test invalid template_ref format (no comma separation)
+        result = self.runner.invoke(cmd, [
+            '--name', 'test-space',
+            '--template-ref', 'name=template'
+        ])
+        assert result.exit_code == 0
+        template_ref = json.loads(result.output)
+        assert template_ref['name'] == 'template'
+        assert 'namespace' not in template_ref
+
+        # Test empty template_ref
+        result = self.runner.invoke(cmd, ['--name', 'test-space'])
+        assert result.exit_code == 0
+        assert result.output.strip() == 'null'
+
+    @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
+    def test_accelerator_partition_validation(self, mock_load_schema):
+        """Test accelerator partition type validation"""
+        schema = {'properties': {}, 'required': []}
+        mock_load_schema.return_value = schema
+
+        class DummyModel(BaseModel):
+            class Config:
+                extra = 'allow'
+
+        registry = {'1.0': DummyModel}
+
+        @click.command()
+        @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
+        def cmd(version, domain_config):
+            click.echo(json.dumps(domain_config.get('resources')))
+
+        # Test invalid accelerator partition type (not starting with 'mig')
+        result = self.runner.invoke(cmd, [
+            '--accelerator-partition-type', 'invalid-type',
+            '--accelerator-partition-count', '2'
+        ])
+        assert result.exit_code == 2
+        assert "Invalid accelerator partition type 'invalid-type'" in result.output
+
+        # Test valid accelerator partition type
+        result = self.runner.invoke(cmd, [
+            '--accelerator-partition-type', 'mig-2g.10gb',
+            '--accelerator-partition-count', '1'
+        ])
+        assert result.exit_code == 0
+        output = json.loads(result.output)
+        assert output['requests']['nvidia.com/mig-2g.10gb'] == '1'
+        assert output['limits']['nvidia.com/mig-2g.10gb'] == '1'

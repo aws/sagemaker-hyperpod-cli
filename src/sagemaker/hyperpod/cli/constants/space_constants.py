@@ -16,5 +16,5 @@ SPACE_PLURAL = "workspaces"
 # Immutable fields that cannot be updated after space creation
 IMMUTABLE_FIELDS = {
     "storage",  # storage is immutable per Go struct validation
-    "template_ref",  # templateRef is immutable per Go struct validation
 }
+ENABLE_MIG_PROFILE_VALIDATION = False

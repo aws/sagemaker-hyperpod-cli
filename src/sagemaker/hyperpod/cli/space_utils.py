@@ -69,6 +69,8 @@ def generate_click_command(
             if gpu_limit is not None:
                 limits["nvidia.com/gpu"] = gpu_limit
             if accelerator_partition_type is not None and accelerator_partition_count is not None:
+                if not accelerator_partition_type.startswith("mig"):
+                    raise click.UsageError(f"Invalid accelerator partition type '{accelerator_partition_type}'")
                 requests[f"nvidia.com/{accelerator_partition_type}"] = accelerator_partition_count
                 limits[f"nvidia.com/{accelerator_partition_type}"] = accelerator_partition_count
 
@@ -149,6 +151,22 @@ def generate_click_command(
                 return parts
             except Exception as e:
                 raise click.UsageError(f"Error parsing container-config: {str(e)}")
+
+        def _parse_template_ref(ctx, param, value):
+            """Parse template ref from command line format to dictionary format."""
+            if not value:
+                return None
+
+            try:
+                parts = {}
+                for item in value.split(','):
+                    if '=' not in item:
+                        raise click.UsageError(f"Invalid template ref format: '{item}' should be key=value")
+                    key, val = item.split('=', 1)
+                    parts[key.strip()] = val.strip()
+                return parts
+            except Exception as e:
+                raise click.UsageError(f"Error parsing template ref: {str(e)}")
     
         # 1) the wrapper click will call
         def wrapped_func(*args, **kwargs):
@@ -310,6 +328,12 @@ def generate_click_command(
             help="Container configuration. Format: --container-config command=<cmd>,args=<arg1;arg2>",
         )(wrapped_func)
 
+        wrapped_func = click.option(
+            "--template-ref",
+            callback=_parse_template_ref,
+            help="TemplateRef references a WorkspaceTemplate to use as base configuration. Format: --template-ref name=<name>,namespace=<namespace>",
+        )(wrapped_func)
+
         # Exclude the props that were handled out of the below for loop
         excluded_props = set(
             [
@@ -318,6 +342,7 @@ def generate_click_command(
                 "volumes",
                 "storage",
                 "container_config",
+                "template_ref",
             ]
         )
 

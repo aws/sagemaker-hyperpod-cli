@@ -2,7 +2,7 @@ import logging
 import yaml
 import boto3
 from typing import List, Optional, ClassVar, Dict, Any
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 
@@ -11,9 +11,15 @@ from sagemaker.hyperpod.common.utils import (
     handle_exception,
     get_default_namespace,
     setup_logging,
-    verify_kubernetes_version_compatibility
+    verify_kubernetes_version_compatibility,
+    get_current_cluster,
+    get_current_region,
+    get_cluster_instance_types,
 )
-from sagemaker.hyperpod.space.utils import map_kubernetes_response_to_model
+from sagemaker.hyperpod.space.utils import (
+    map_kubernetes_response_to_model,
+    get_pod_instance_type,
+)
 from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
     _hyperpod_telemetry_emitter,
 )
@@ -22,6 +28,7 @@ from sagemaker.hyperpod.cli.constants.space_constants import (
     SPACE_GROUP,
     SPACE_VERSION,
     SPACE_PLURAL,
+    ENABLE_MIG_PROFILE_VALIDATION,
 )
 from sagemaker.hyperpod.cli.constants.space_access_constants import (
     SPACE_ACCESS_GROUP,
@@ -29,6 +36,9 @@ from sagemaker.hyperpod.cli.constants.space_access_constants import (
     SPACE_ACCESS_PLURAL,
 )
 from hyperpod_space_template.v1_0.model import SpaceConfig
+
+if ENABLE_MIG_PROFILE_VALIDATION:
+    from sagemaker.hyperpod.training.hyperpod_pytorch_job import list_accelerator_partition_types
 
 
 class HPSpace(BaseModel):
@@ -42,7 +52,7 @@ class HPSpace(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     config: SpaceConfig = Field(
-        description="The space configuration using the template model"
+        description="The space configuration using the space parameter model"
     )
     
     raw_resource: Optional[Dict[str, Any]] = Field(
@@ -96,10 +106,32 @@ class HPSpace(BaseModel):
         Raises:
             Exception: If the space creation fails or Kubernetes API call fails
         """
+
         self.verify_kube_config()
         
         logger = self.get_logger()
         logger = setup_logging(logger, debug)
+
+        # Validate supported MIG profiles for the cluster
+        if ENABLE_MIG_PROFILE_VALIDATION:
+            if self.config.resources:
+                mig_profiles = set()
+                if self.config.resources.requests:
+                    mig_profiles.update([key for key in self.config.resources.requests.keys() if key.startswith("nvidia.com/mig")])
+                if self.config.resources.limits:
+                    mig_profiles.update([key for key in self.config.resources.limits.keys() if key.startswith("nvidia.com/mig")])
+
+                if len(mig_profiles) > 1:
+                    raise RuntimeError("Space only supports one MIG profile")
+
+                if mig_profiles:
+                    cluster_instance_types = get_cluster_instance_types(
+                        get_current_cluster(),
+                        get_current_region()
+                    )
+                    supported_mig_profiles = {profile for instance_type in cluster_instance_types for profile in list_accelerator_partition_types(instance_type)}
+                    if list(mig_profiles)[0] not in supported_mig_profiles:
+                        raise RuntimeError(f"Accelerator partition type '{list(mig_profiles)[0]}' does not exist in this cluster. Use 'hyp list-accelerator-partition-type' to check for available resources.")
 
         # Convert config to domain model
         domain_config = self.config.to_domain()
@@ -189,12 +221,13 @@ class HPSpace(BaseModel):
 
     @classmethod
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "get_space")
-    def get(cls, name: str, namespace: str = "default") -> "HPSpace":
+    def get(cls, name: str, namespace: str = None) -> "HPSpace":
         """Get a specific HyperPod Space by name.
 
         Args:
             name (str): The name of the space to retrieve
-            namespace (str, optional): The Kubernetes namespace. Defaults to "default".
+            namespace (str, optional): The Kubernetes namespace.
+                    If None, uses the default namespace from current context.
 
         Returns:
             HPSpace: The space instance
@@ -203,6 +236,9 @@ class HPSpace(BaseModel):
             Exception: If the space is not found or Kubernetes API call fails
         """
         cls.verify_kube_config()
+
+        if not namespace:
+            namespace = get_default_namespace()
 
         custom_api = client.CustomObjectsApi()
         
@@ -265,6 +301,33 @@ class HPSpace(BaseModel):
         self.verify_kube_config()
         logger = self.get_logger()
 
+        # Validate supported MIG profile for node which the Space is running on
+        if ENABLE_MIG_PROFILE_VALIDATION:
+            if "resources" in kwargs:
+                mig_profiles = set()
+                mig_profiles.update([key for key in kwargs["resources"].get("requests", {}).keys() if key.startswith("nvidia.com/mig")])
+                mig_profiles.update([key for key in kwargs["resources"].get("limits", {}).keys() if key.startswith("nvidia.com/mig")])
+
+                if len(mig_profiles) > 1:
+                    raise RuntimeError("Space only supports one MIG profile")
+
+                if mig_profiles:
+                    pods = self.list_pods()
+                    if not pods:
+                        raise RuntimeError(f"No pods found for space '{self.config.name}'")
+
+                    node_instance_type = get_pod_instance_type(pods[0], self.config.namespace)
+                    supported_mig_profiles = set(list_accelerator_partition_types(node_instance_type))
+                    if list(mig_profiles)[0] not in supported_mig_profiles:
+                        raise RuntimeError(f"Accelerator partition type '{list(mig_profiles)[0]}' does not exist in this cluster. Use 'hyp list-accelerator-partition-type' to check for available resources.")
+
+                    # Ensure existing MIG profile gets removed before setting a new one
+                    existing_config = HPSpace.get(self.config.name, self.config.namespace).config
+                    existing_mig_profiles = [key for key in existing_config.resources.requests.keys() if key.startswith("nvidia.com/mig")]
+                    if existing_mig_profiles:
+                        kwargs["resources"]["requests"].update({existing_mig_profiles[0]: None})
+                        kwargs["resources"]["limits"].update({existing_mig_profiles[0]: None})
+
         custom_api = client.CustomObjectsApi()
 
         # Update space config with the input config
@@ -308,9 +371,9 @@ class HPSpace(BaseModel):
         """
         self.verify_kube_config()
         logger = self.get_logger()
-        
+
         v1 = client.CoreV1Api()
-        
+
         try:
             pods = v1.list_namespaced_pod(
                 namespace=self.config.namespace,
@@ -363,7 +426,7 @@ class HPSpace(BaseModel):
         """Create a space access for this space.
 
         Args:
-            connection_type (str, optional): The IDE type for remote access. Defaults to "vscode".
+            connection_type (str, optional): The IDE type for remote access. Defaults to "vscode-remote".
 
         Returns:
             Dict[str, str]: Dictionary with 'SpaceConnectionType' and 'SpaceConnectionUrl' keys
@@ -373,6 +436,9 @@ class HPSpace(BaseModel):
         """
         self.verify_kube_config()
         logger = self.get_logger()
+
+        if connection_type not in {"vscode-remote", "web-ui"}:
+            raise ValueError("--connection-type must be 'vscode-remote' or 'web-ui'.")
 
         config = {
             "metadata": {
