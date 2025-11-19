@@ -302,6 +302,37 @@ hyp create hyp-pytorch-job \
     --volume name=training-output,type=pvc,mount_path=/data2,claim_name=my-pvc,read_only=false
 ```
 
+**Example with accelerator parititons:**
+
+```bash
+hyp create hyp-pytorch-job \
+    --version 1.1 \
+    --job-name test-pytorch-job \
+    --image pytorch/pytorch:latest \
+    --command '[python, train.py]' \
+    --args '[--epochs=10, --batch-size=32]' \
+    --environment '{"PYTORCH_CUDA_ALLOC_CONF": "max_split_size_mb:32"}' \
+    --pull-policy "IfNotPresent" \
+    --instance-type ml.p4d.24xlarge \
+    --tasks-per-node 8 \
+    --label-selector '{"accelerator": "nvidia", "network": "efa"}' \
+    --deep-health-check-passed-nodes-only true \
+    --scheduler-type "kueue" \
+    --queue-name "training-queue" \
+    --priority "high" \
+    --max-retry 3 \
+    --accelerator-partition-type "mig-1g.5gb" \
+    --accelerator-partition-count 2 \
+    --accelerator-partition-limit 4 \
+    --vcpu 96.0 \
+    --memory 1152.0 \
+    --vcpu-limit 96.0 \
+    --memory-limit 1152.0 \
+    --preferred-topology "topology.kubernetes.io/zone=us-west-2a" \
+    --volume name=model-data,type=hostPath,mount_path=/data,path=/data \
+    --volume name=training-output,type=pvc,mount_path=/data2,claim_name=my-pvc,read_only=false
+```
+
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `--job-name` | TEXT | Yes | Unique name for the training job (1-63 characters, alphanumeric with hyphens) |
@@ -328,9 +359,20 @@ hyp create hyp-pytorch-job \
 | `--accelerators-limit` | INTEGER | No | Limit for the number of accelerators a.k.a GPUs or Trainium Chips |
 | `--vcpu-limit` | FLOAT | No | Limit for the number of vCPUs |
 | `--memory-limit` | FLOAT | No | Limit for the amount of memory in GiB |
+| `--accelerator-partition-type` | TEXT | No | Type of accelerator partition (e.g., mig-1g.5gb, mig-2g.10gb, mig-3g.20gb, mig-4g.20gb, mig-7g.40gb) |
+| `--accelerator-partition-count` | INTEGER | No | Number of accelerator partitions to request (minimum: 1) |
+| `--accelerator-partition-limit` | INTEGER | No | Limit for the number of accelerator partitions (minimum: 1) |
 | `--preferred-topology` | TEXT | No | Preferred topology annotation for scheduling |
 | `--required-topology` | TEXT | No | Required topology annotation for scheduling |
 | `--debug` | FLAG | No | Enable debug mode (default: false) |
+
+#### List Available Accelerator Partition Types
+
+This command lists the available accelerator partition types on the cluster for a specific instance type.
+
+```bash
+hyp list-accelerator-partition-type --instance-type <instance-type>
+```
 
 #### List Training Jobs
 
