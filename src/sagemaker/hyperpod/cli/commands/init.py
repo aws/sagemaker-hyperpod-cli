@@ -11,6 +11,7 @@ from sagemaker.hyperpod.cli.constants.init_constants import (
     CFN
 )
 from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack
+from sagemaker.hyperpod.cli.commands.cluster_stack import get_newest_template_version
 from sagemaker.hyperpod.cli.init_utils import (
     generate_click_command,
     save_config_yaml,
@@ -375,6 +376,10 @@ def _default_create(region, template_version):
             # Pass region to to_domain for cluster stack template
             if template == "cluster-stack":
                 config = template_model.to_config(region=region)
+                # Use newest template version if not provided
+                if template_version is None:
+                    template_version = get_newest_template_version()
+                    click.secho(f"No template version specified, using newest version: {template_version}", fg="yellow")
                 HpClusterStack(**config).create(region, template_version)
             else:
                 # Create from k8s.yaml

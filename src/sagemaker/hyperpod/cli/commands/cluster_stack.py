@@ -30,6 +30,19 @@ from sagemaker.hyperpod.cli.cluster_stack_utils import (
 logger = logging.getLogger(__name__)
 
 
+def get_newest_template_version() -> int:
+    """Get the newest available template version.
+    
+    Returns:
+        int: The newest template version number
+        
+    TODO: Implement logic to fetch the actual newest template version
+    from the template registry or remote source.
+    """
+    # Placeholder implementation - currently returns 1 as the latest version
+    return 1
+
+
 def parse_status_list(ctx, param, value):
     """Parse status list from string format like "['CREATE_COMPLETE', 'UPDATE_COMPLETE']" """
     if not value:
@@ -79,7 +92,6 @@ def create_cluster_stack(config_file, region, template_version, debug):
             return
 
         # Load config to get template and version
-
         config_dir = Path(config_file).parent
         data, template, version = load_config(config_dir)
 
@@ -94,6 +106,11 @@ def create_cluster_stack(config_file, region, template_version, debug):
             # Create model instance and domain
             model_instance = model_class(**filtered_config)
             config = model_instance.to_config(region=region)
+
+            # Use newest template version if not provided
+            if template_version is None:
+                template_version = get_newest_template_version()
+                logger.info(f"No template version specified, using newest version: {template_version}")
 
             # Create the cluster stack
             stack_id = HpClusterStack(**config).create(region, template_version)
