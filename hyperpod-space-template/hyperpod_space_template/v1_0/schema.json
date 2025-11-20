@@ -76,10 +76,10 @@
           "title": "Enabled",
           "type": "boolean"
         },
-        "timeoutMinutes": {
-          "description": "TimeoutMinutes specifies idle timeout in minutes",
+        "idleTimeoutInMinutes": {
+          "description": "IdleTimeoutInMinutes specifies idle timeout in minutes",
           "minimum": 1,
-          "title": "Timeoutminutes",
+          "title": "Idletimeoutinminutes",
           "type": "integer"
         },
         "detection": {
@@ -89,7 +89,7 @@
       },
       "required": [
         "enabled",
-        "timeoutMinutes",
+        "idleTimeoutInMinutes",
         "detection"
       ],
       "title": "IdleShutdownSpec",

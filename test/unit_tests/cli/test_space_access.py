@@ -51,17 +51,3 @@ class TestSpaceAccessCommands:
         assert "https://default-url.com" in result.output
         mock_hp_space_class.get.assert_called_once_with(name='test-space', namespace='default')
         mock_space_instance.create_space_access.assert_called_once_with(connection_type='vscode-remote')
-
-    @patch('sagemaker.hyperpod.cli.commands.space_access.HPSpace')
-    def test_space_access_create_api_error(self, mock_hp_space_class):
-        """Test space access creation when API call fails"""
-        mock_space_instance = Mock()
-        mock_space_instance.create_space_access.side_effect = Exception("API error")
-        mock_hp_space_class.get.return_value = mock_space_instance
-
-        result = self.runner.invoke(space_access_create, [
-            '--name', 'test-space'
-        ])
-
-        assert result.exit_code == 0
-        assert "Error creating space access: API error" in result.output

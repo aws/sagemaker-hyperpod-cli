@@ -1,6 +1,7 @@
 import json
 import pkgutil
 import click
+import re
 from typing import Callable, Optional, Mapping, Type, Dict, Any
 from pydantic import ValidationError
 from sagemaker.hyperpod.cli.constants.space_constants import IMMUTABLE_FIELDS
@@ -167,7 +168,35 @@ def generate_click_command(
                 return parts
             except Exception as e:
                 raise click.UsageError(f"Error parsing template ref: {str(e)}")
-    
+
+        def _parse_idle_shutdown_param(ctx, param, value):
+            """Parse idle shutdown parameters from command line format to dictionary format."""
+            if not value:
+                return None
+
+            try:
+                parts = {}
+                for item in re.split(r',(?![^{]*})', value):
+                    if '=' not in item:
+                        raise click.UsageError(f"Invalid idle-shutdown format: '{item}' should be key=value")
+                    key, val = item.split('=', 1)
+                    key = key.strip()
+                    val = val.strip()
+
+                    if key == 'idle_timeout_in_minutes':
+                        key = 'idleTimeoutInMinutes'
+                    elif key == 'enabled':
+                        val = val.lower() in ('True', 'true', '1', 'yes')
+                    elif key == 'detection':
+                        try:
+                            val = json.loads(val)
+                        except json.JSONDecodeError:
+                            raise click.UsageError(f"Invalid JSON for --{key}: {val}")
+                    parts[key] = val
+                return parts
+            except Exception as e:
+                raise click.UsageError(f"Error parsing idle-shutdown: {str(e)}")
+
         # 1) the wrapper click will call
         def wrapped_func(*args, **kwargs):
             version = version_key or kwargs.pop("version", "1.0")
@@ -200,6 +229,14 @@ def generate_click_command(
             container_config = kwargs.pop("container_config", None)
             if container_config is not None:
                 kwargs["container_config"] = container_config
+
+            template_ref = kwargs.pop("template_ref", None)
+            if template_ref is not None:
+                kwargs["template_ref"] = template_ref
+
+            idle_shutdown = kwargs.pop("idle_shutdown", None)
+            if idle_shutdown is not None:
+                kwargs["idle_shutdown"] = idle_shutdown
 
             # filter out None/empty values so Pydantic model defaults apply
             filtered_kwargs = {}
@@ -255,56 +292,56 @@ def generate_click_command(
             "--cpu",
             type=str,
             default=None,
-            help="CPU resource request, e.g. '250m'",
+            help="CPU resource request, e.g. '500m'",
         )(wrapped_func)
 
         wrapped_func = click.option(
             "--cpu-limit",
             type=str,
             default=None,
-            help="CPU resource limit, e.g. '250m'",
+            help="CPU resource limit, e.g. '500m'",
         )(wrapped_func)
 
         wrapped_func = click.option(
             "--memory",
             type=str,
             default=None,
-            help="Memory resource request, e.g. '256Mi'",
+            help="Memory resource request, e.g. '2Gi'",
         )(wrapped_func)
 
         wrapped_func = click.option(
             "--memory-limit",
             type=str,
             default=None,
-            help="Memory resource limit, e.g. '256Mi'",
+            help="Memory resource limit, e.g. '2Gi'",
         )(wrapped_func)
 
         wrapped_func = click.option(
             "--gpu",
             type=str,
             default=None,
-            help="Gpu resource request, e.g. '1'",
+            help="GPU resource request, e.g. '1'",
         )(wrapped_func)
 
         wrapped_func = click.option(
             "--gpu-limit",
             type=str,
             default=None,
-            help="Gpu resource limit, e.g. '1'",
+            help="GPU resource limit, e.g. '1'",
         )(wrapped_func)
 
         wrapped_func = click.option(
             "--accelerator-partition-type",
             type=str,
             default=None,
-            help="Fractional GPU parition type",
+            help="Fractional GPU partition type, e.g. 'mig-3g.20gb'",
         )(wrapped_func)
 
         wrapped_func = click.option(
             "--accelerator-partition-count",
             type=str,
             default=None,
-            help="Fractional GPU parition count",
+            help="Fractional GPU partition count, e.g. '1'",
         )(wrapped_func)
 
         wrapped_func = click.option(
@@ -334,6 +371,12 @@ def generate_click_command(
             help="TemplateRef references a WorkspaceTemplate to use as base configuration. Format: --template-ref name=<name>,namespace=<namespace>",
         )(wrapped_func)
 
+        wrapped_func = click.option(
+            "--idle-shutdown",
+            callback=_parse_idle_shutdown_param,
+            help="Idle shutdown configuration. Format: --idle-shutdown enabled=<bool>,idleTimeoutInMinutes=<int>,detection=<JSON string>",
+        )(wrapped_func)
+
         # Exclude the props that were handled out of the below for loop
         excluded_props = set(
             [
@@ -343,6 +386,7 @@ def generate_click_command(
                 "storage",
                 "container_config",
                 "template_ref",
+                "idle_shutdown",
             ]
         )
 

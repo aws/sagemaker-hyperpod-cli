@@ -19,14 +19,10 @@ from sagemaker.hyperpod.common.telemetry.constants import Feature
 )
 def space_create(version, config):
     """Create a space resource."""
-    try:
-        space_config = SpaceConfig(**config)
-        space = HPSpace(config=space_config)
-        space.create()
-        
-        click.echo(f"Space '{space_config.name}' created successfully in namespace '{space_config.namespace}'")
-    except Exception as e:
-        click.echo(f"Error creating space: {e}", err=True)
+    space_config = SpaceConfig(**config)
+    space = HPSpace(config=space_config)
+    space.create()
+    click.echo(f"Space '{space_config.name}' created successfully in namespace '{space_config.namespace}'")
 
 
 @click.command("hyp-space")
@@ -34,42 +30,39 @@ def space_create(version, config):
 @click.option("--output", "-o", type=click.Choice(["table", "json"]), default="table")
 def space_list(namespace, output):
     """List space resources."""
-    try:
-        spaces = HPSpace.list(namespace=namespace)
-        
-        if output == "json":
-            spaces_data = []
+    spaces = HPSpace.list(namespace=namespace)
+    
+    if output == "json":
+        spaces_data = []
+        for space in spaces:
+            space_dict = space.config.model_dump()
+            spaces_data.append(space_dict)
+        click.echo(json.dumps(spaces_data, indent=2))
+    else:
+        if spaces:
+            table_data = []
             for space in spaces:
-                space_dict = space.config.model_dump()
-                spaces_data.append(space_dict)
-            click.echo(json.dumps(spaces_data, indent=2))
+                # Extract status conditions from raw resource
+                available = ""
+                progressing = ""
+                degraded = ""
+                
+                if space.status and 'conditions' in space.status:
+                    conditions = {c['type']: c['status'] for c in space.status['conditions']}
+                    available = conditions.get('Available', '')
+                    progressing = conditions.get('Progressing', '')
+                    degraded = conditions.get('Degraded', '')
+                
+                table_data.append([
+                    space.config.name,
+                    namespace,
+                    available,
+                    progressing,
+                    degraded
+                ])
+            click.echo(tabulate(table_data, headers=["NAME", "NAMESPACE", "AVAILABLE", "PROGRESSING", "DEGRADED"]))
         else:
-            if spaces:
-                table_data = []
-                for space in spaces:
-                    # Extract status conditions from raw resource
-                    available = ""
-                    progressing = ""
-                    degraded = ""
-                    
-                    if space.status and 'conditions' in space.status:
-                        conditions = {c['type']: c['status'] for c in space.status['conditions']}
-                        available = conditions.get('Available', '')
-                        progressing = conditions.get('Progressing', '')
-                        degraded = conditions.get('Degraded', '')
-                    
-                    table_data.append([
-                        space.config.name,
-                        namespace,
-                        available,
-                        progressing,
-                        degraded
-                    ])
-                click.echo(tabulate(table_data, headers=["NAME", "NAMESPACE", "AVAILABLE", "PROGRESSING", "DEGRADED"]))
-            else:
-                click.echo("No spaces found")
-    except Exception as e:
-        click.echo(f"Error listing spaces: {e}", err=True)
+            click.echo("No spaces found")
 
 
 @click.command("hyp-space")
@@ -78,18 +71,15 @@ def space_list(namespace, output):
 @click.option("--output", "-o", type=click.Choice(["yaml", "json"]), default="yaml")
 def space_describe(name, namespace, output):
     """Describe a space resource."""
-    try:
-        current_space = HPSpace.get(name=name, namespace=namespace)
-        
-        # Combine config and raw resource data
-        current_space.raw_resource.get('metadata', {}).pop('managedFields', None)
-        
-        if output == "json":
-            click.echo(json.dumps(current_space.raw_resource, indent=2))
-        else:
-            click.echo(yaml.dump(current_space.raw_resource, default_flow_style=False))
-    except Exception as e:
-        click.echo(f"Error describing space '{name}': {e}", err=True)
+    current_space = HPSpace.get(name=name, namespace=namespace)
+    
+    # Combine config and raw resource data
+    current_space.raw_resource.get('metadata', {}).pop('managedFields', None)
+    
+    if output == "json":
+        click.echo(json.dumps(current_space.raw_resource, indent=2))
+    else:
+        click.echo(yaml.dump(current_space.raw_resource, default_flow_style=False))
 
 
 @click.command("hyp-space")
@@ -97,13 +87,9 @@ def space_describe(name, namespace, output):
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
 def space_delete(name, namespace):
     """Delete a space resource."""
-    try:
-        current_space = HPSpace.get(name=name, namespace=namespace)
-        current_space.delete()
-
-        click.echo(f"Space '{name}' deleted successfully in namespace '{namespace}'")
-    except Exception as e:
-        click.echo(f"Error deleting space '{name}': {e}", err=True)
+    current_space = HPSpace.get(name=name, namespace=namespace)
+    current_space.delete()
+    click.echo(f"Requested deletion for Space '{name}' in namespace '{namespace}'")
 
 
 @click.command("hyp-space")
@@ -114,16 +100,12 @@ def space_delete(name, namespace):
 )
 def space_update(version, config):
     """Update a space resource."""
-    try:
-        current_space = HPSpace.get(name=config['name'], namespace=config['namespace'])
-        if not config.get("display_name"):
-            config["display_name"] = current_space.config.display_name
+    current_space = HPSpace.get(name=config['name'], namespace=config['namespace'])
+    if not config.get("display_name"):
+        config["display_name"] = current_space.config.display_name
 
-        current_space.update(**config)
-
-        click.echo(f"Space '{current_space.config.name}' updated successfully in namespace '{config['namespace']}'")
-    except Exception as e:
-        click.echo(f"Error updating space: {e}", err=True)
+    current_space.update(**config)
+    click.echo(f"Space '{current_space.config.name}' updated successfully in namespace '{config['namespace']}'")
 
 
 @click.command("hyp-space")
@@ -131,13 +113,9 @@ def space_update(version, config):
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
 def space_start(name, namespace):
     """Start a space resource."""
-    try:
-        current_space = HPSpace.get(name=name, namespace=namespace)
-        current_space.start()
-
-        click.echo(f"Space '{name}' start requested")
-    except Exception as e:
-        click.echo(f"Error starting space '{name}': {e}", err=True)
+    current_space = HPSpace.get(name=name, namespace=namespace)
+    current_space.start()
+    click.echo(f"Space '{name}' start requested")
 
 
 @click.command("hyp-space")
@@ -145,13 +123,9 @@ def space_start(name, namespace):
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
 def space_stop(name, namespace):
     """Stop a space resource."""
-    try:
-        current_space = HPSpace.get(name=name, namespace=namespace)
-        current_space.stop()
-
-        click.echo(f"Space '{name}' stop requested")
-    except Exception as e:
-        click.echo(f"Error stopping space '{name}': {e}", err=True)
+    current_space = HPSpace.get(name=name, namespace=namespace)
+    current_space.stop()
+    click.echo(f"Space '{name}' stop requested")
 
 
 @click.command("hyp-space")
@@ -161,9 +135,6 @@ def space_stop(name, namespace):
 @click.option("--container", required=False, help="Name of the container to get logs from")
 def space_get_logs(name, namespace, pod_name, container):
     """Get logs for a space resource."""
-    try:
-        current_space = HPSpace.get(name=name, namespace=namespace)
-        logs = current_space.get_logs(pod_name=pod_name, container=container)
-        click.echo(logs)
-    except Exception as e:
-        click.echo(f"Error getting logs for space '{name}': {e}", err=True)
+    current_space = HPSpace.get(name=name, namespace=namespace)
+    logs = current_space.get_logs(pod_name=pod_name, container=container)
+    click.echo(logs)

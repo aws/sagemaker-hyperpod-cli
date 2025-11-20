@@ -79,42 +79,6 @@ class TestSpaceCommands:
         assert 'Missing option' in result.output
 
     @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
-    def test_space_create_hp_space_error(self, mock_hp_space_class):
-        """Test space creation error handling"""
-        mock_hp_space_instance = Mock()
-        mock_hp_space_instance.create.side_effect = Exception("Creation failed")
-        mock_hp_space_class.return_value = mock_hp_space_instance
-
-        mock_model = Mock()
-        mock_model.return_value = Mock()
-        mock_model.return_value.to_domain.return_value = {
-            "name": "test-space",
-            "display_name": "Test Space",
-            "namespace": "test-ns",
-            "space_spec": {}
-        }
-
-        with patch('hyperpod_space_template.registry.SCHEMA_REGISTRY', {'1.0': mock_model}):
-            with patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version') as mock_load_schema:
-                mock_load_schema.return_value = {
-                    "properties": {
-                        "name": {"type": "string"},
-                        "display_name": {"type": "string"},
-                        "namespace": {"type": "string"}
-                    },
-                    "required": ["name", "display_name"]
-                }
-                result = self.runner.invoke(space_create, [
-                    '--version', '1.0',
-                    '--name', 'test-space',
-                    '--display-name', 'Test Space',
-                    '--namespace', 'test-ns'
-                ])
-
-        assert result.exit_code == 0
-        assert "Error creating space: Creation failed" in result.output
-
-    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
     def test_space_list_table_output(self, mock_hp_space_class):
         """Test space list with table output"""
         # Mock HPSpace instances with config and status
@@ -177,18 +141,6 @@ class TestSpaceCommands:
         assert "No spaces found" in result.output
 
     @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
-    def test_space_list_error(self, mock_hp_space_class):
-        """Test space list error handling"""
-        mock_hp_space_class.list.side_effect = Exception("List failed")
-
-        result = self.runner.invoke(space_list, [
-            '--namespace', 'test-ns'
-        ])
-
-        assert result.exit_code == 0
-        assert "Error listing spaces: List failed" in result.output
-
-    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
     def test_space_describe_yaml_output(self, mock_hp_space_class):
         """Test space describe with YAML output"""
         mock_resource = {"metadata": {"name": "test-space"}}
@@ -226,19 +178,6 @@ class TestSpaceCommands:
         assert output_json == mock_resource
 
     @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
-    def test_space_describe_hp_space_error(self, mock_hp_space_class):
-        """Test space describe error handling"""
-        mock_hp_space_class.get.side_effect = Exception("Describe failed")
-
-        result = self.runner.invoke(space_describe, [
-            '--name', 'test-space',
-            '--namespace', 'test-ns'
-        ])
-
-        assert result.exit_code == 0
-        assert "Error describing space 'test-space': Describe failed" in result.output
-
-    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
     def test_space_delete_success(self, mock_hp_space_class):
         """Test successful space deletion"""
         mock_hp_space_instance = Mock()
@@ -250,22 +189,10 @@ class TestSpaceCommands:
         ])
 
         assert result.exit_code == 0
-        assert "Space 'test-space' deleted successfully" in result.output
+        assert "Requested deletion for Space 'test-space' in namespace 'test-ns'" in result.output
         mock_hp_space_class.get.assert_called_once_with(name='test-space', namespace='test-ns')
         mock_hp_space_instance.delete.assert_called_once()
 
-    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
-    def test_space_delete_hp_space_error(self, mock_hp_space_class):
-        """Test space delete error handling"""
-        mock_hp_space_class.get.side_effect = Exception("Delete failed")
-
-        result = self.runner.invoke(space_delete, [
-            '--name', 'test-space',
-            '--namespace', 'test-ns'
-        ])
-
-        assert result.exit_code == 0
-        assert "Error deleting space 'test-space': Delete failed" in result.output
 
     @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
     @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
@@ -310,41 +237,6 @@ class TestSpaceCommands:
         mock_hp_space_instance.update.assert_called_once()
 
     @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
-    def test_space_update_hp_space_error(self, mock_hp_space_class):
-        """Test space update error handling"""
-        mock_hp_space_instance = Mock()
-        mock_hp_space_instance.update.side_effect = Exception("Update failed")
-        mock_hp_space_class.get.return_value = mock_hp_space_instance
-
-        mock_model = Mock()
-        mock_model.return_value = Mock()
-        mock_model.return_value.to_domain.return_value = {
-            "name": "test-space",
-            "namespace": "test-ns",
-            "space_spec": {}
-        }
-
-        with patch('hyperpod_space_template.registry.SCHEMA_REGISTRY', {'1.0': mock_model}):
-            with patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version') as mock_load_schema:
-                mock_load_schema.return_value = {
-                    "properties": {
-                        "name": {"type": "string"},
-                        "display_name": {"type": "string"},
-                        "namespace": {"type": "string"}
-                    },
-                    "required": ["name"]
-                }
-                result = self.runner.invoke(space_update, [
-                    '--version', '1.0',
-                    '--name', 'test-space',
-                    '--display-name', 'Test Space',
-                    '--namespace', 'test-ns'
-                ])
-
-        assert result.exit_code == 0
-        assert "Error updating space: Update failed" in result.output
-
-    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
     def test_space_start_success(self, mock_hp_space_class):
         """Test successful space start"""
         mock_hp_space_instance = Mock()
@@ -361,21 +253,6 @@ class TestSpaceCommands:
         mock_hp_space_instance.start.assert_called_once()
 
     @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
-    def test_space_start_hp_space_error(self, mock_hp_space_class):
-        """Test space start error handling"""
-        mock_hp_space_instance = Mock()
-        mock_hp_space_instance.start.side_effect = Exception("Start failed")
-        mock_hp_space_class.get.return_value = mock_hp_space_instance
-
-        result = self.runner.invoke(space_start, [
-            '--name', 'test-space',
-            '--namespace', 'test-ns'
-        ])
-
-        assert result.exit_code == 0
-        assert "Error starting space 'test-space': Start failed" in result.output
-
-    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
     def test_space_stop_success(self, mock_hp_space_class):
         """Test successful space stop"""
         mock_hp_space_instance = Mock()
@@ -390,21 +267,6 @@ class TestSpaceCommands:
         assert "Space 'test-space' stop requested" in result.output
         mock_hp_space_class.get.assert_called_once_with(name='test-space', namespace='test-ns')
         mock_hp_space_instance.stop.assert_called_once()
-
-    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
-    def test_space_stop_hp_space_error(self, mock_hp_space_class):
-        """Test space stop error handling"""
-        mock_hp_space_instance = Mock()
-        mock_hp_space_instance.stop.side_effect = Exception("Stop failed")
-        mock_hp_space_class.get.return_value = mock_hp_space_instance
-
-        result = self.runner.invoke(space_stop, [
-            '--name', 'test-space',
-            '--namespace', 'test-ns'
-        ])
-
-        assert result.exit_code == 0
-        assert "Error stopping space 'test-space': Stop failed" in result.output
 
     @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
     def test_space_get_logs_success(self, mock_hp_space_class):
@@ -437,21 +299,6 @@ class TestSpaceCommands:
 
         assert result.exit_code == 0
         # HPSpace.get_logs() handles the "no pods" case internally
-
-    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
-    def test_space_get_logs_hp_space_error(self, mock_hp_space_class):
-        """Test space get logs error handling"""
-        mock_hp_space_instance = Mock()
-        mock_hp_space_instance.get_logs.side_effect = Exception("Get logs failed")
-        mock_hp_space_class.get.return_value = mock_hp_space_instance
-
-        result = self.runner.invoke(space_get_logs, [
-            '--name', 'test-space',
-            '--namespace', 'test-ns'
-        ])
-
-        assert result.exit_code == 0
-        assert "Error getting logs for space 'test-space': Get logs failed" in result.output
 
     def test_missing_required_arguments(self):
         """Test commands with missing required arguments"""

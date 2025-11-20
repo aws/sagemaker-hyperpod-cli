@@ -52,7 +52,7 @@ class TestHPSpace(unittest.TestCase):
     @patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi')
     @patch.object(HPSpace, 'verify_kube_config')
     def test_create_success(self, mock_verify_config, mock_custom_api_class):
-        """Test successful dev space creation"""
+        """Test successful space creation"""
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
         
@@ -76,7 +76,7 @@ class TestHPSpace(unittest.TestCase):
     @patch.object(HPSpace, 'verify_kube_config')
     @patch('sagemaker.hyperpod.space.hyperpod_space.handle_exception')
     def test_create_failure(self, mock_handle_exception, mock_verify_config, mock_custom_api_class):
-        """Test dev space creation failure"""
+        """Test space creation failure"""
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
         
@@ -102,7 +102,7 @@ class TestHPSpace(unittest.TestCase):
     @patch.object(HPSpace, 'verify_kube_config')
     @patch('sagemaker.hyperpod.space.hyperpod_space.get_default_namespace')
     def test_list_success(self, mock_get_namespace, mock_verify_config, mock_custom_api_class, mock_boto3_client):
-        """Test successful dev space listing"""
+        """Test successful space listing"""
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
         mock_get_namespace.return_value = "default"
@@ -149,7 +149,7 @@ class TestHPSpace(unittest.TestCase):
     @patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi')
     @patch.object(HPSpace, 'verify_kube_config')
     def test_list_with_namespace(self, mock_verify_config, mock_custom_api_class, mock_boto3_client):
-        """Test dev space listing with specific namespace"""
+        """Test space listing with specific namespace"""
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
         
@@ -352,7 +352,7 @@ class TestHPSpace(unittest.TestCase):
     @patch.object(HPSpace, 'verify_kube_config')
     @patch('sagemaker.hyperpod.space.hyperpod_space.handle_exception')
     def test_list_failure(self, mock_handle_exception, mock_verify_config, mock_custom_api_class, mock_boto3_client):
-        """Test dev space listing failure"""
+        """Test space listing failure"""
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
         mock_custom_api.list_namespaced_custom_object.side_effect = Exception("List failed")
@@ -364,7 +364,7 @@ class TestHPSpace(unittest.TestCase):
     @patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi')
     @patch.object(HPSpace, 'verify_kube_config')
     def test_get_success(self, mock_verify_config, mock_custom_api_class):
-        """Test successful dev space retrieval"""
+        """Test successful space retrieval"""
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
         
@@ -383,7 +383,7 @@ class TestHPSpace(unittest.TestCase):
     @patch.object(HPSpace, 'verify_kube_config')
     @patch('sagemaker.hyperpod.space.hyperpod_space.handle_exception')
     def test_get_failure(self, mock_handle_exception, mock_verify_config, mock_custom_api_class):
-        """Test dev space retrieval failure"""
+        """Test space retrieval failure"""
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
         mock_custom_api.get_namespaced_custom_object.side_effect = Exception("Get failed")
@@ -402,7 +402,7 @@ class TestHPSpace(unittest.TestCase):
     @patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi')
     @patch.object(HPSpace, 'verify_kube_config')
     def test_delete_success(self, mock_verify_config, mock_custom_api_class):
-        """Test successful dev space deletion"""
+        """Test successful space deletion"""
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
         
@@ -421,7 +421,7 @@ class TestHPSpace(unittest.TestCase):
     @patch.object(HPSpace, 'verify_kube_config')
     @patch('sagemaker.hyperpod.space.hyperpod_space.handle_exception')
     def test_delete_failure(self, mock_handle_exception, mock_verify_config, mock_custom_api_class):
-        """Test dev space deletion failure"""
+        """Test space deletion failure"""
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
         mock_custom_api.delete_namespaced_custom_object.side_effect = Exception("Delete failed")
@@ -433,7 +433,7 @@ class TestHPSpace(unittest.TestCase):
     @patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi')
     @patch.object(HPSpace, 'verify_kube_config')
     def test_update_success(self, mock_verify_config, mock_custom_api_class):
-        """Test successful dev space update"""
+        """Test successful space update"""
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
         
@@ -459,7 +459,7 @@ class TestHPSpace(unittest.TestCase):
     @patch.object(HPSpace, 'verify_kube_config')
     @patch('sagemaker.hyperpod.space.hyperpod_space.handle_exception')
     def test_update_failure(self, mock_handle_exception, mock_verify_config, mock_custom_api_class):
-        """Test dev space update failure"""
+        """Test space update failure"""
         mock_custom_api = Mock()
         mock_custom_api_class.return_value = mock_custom_api
         mock_custom_api.patch_namespaced_custom_object.side_effect = Exception("Update failed")
@@ -473,13 +473,13 @@ class TestHPSpace(unittest.TestCase):
 
     @patch.object(HPSpace, 'update')
     def test_start(self, mock_update):
-        """Test dev space start"""
+        """Test space start"""
         self.hp_space.start()
         mock_update.assert_called_once_with(desired_status="Running")
 
     @patch.object(HPSpace, 'update')
     def test_stop(self, mock_update):
-        """Test dev space stop"""
+        """Test space stop"""
         self.hp_space.stop()
         mock_update.assert_called_once_with(desired_status="Stopped")
 
@@ -534,7 +534,8 @@ class TestHPSpace(unittest.TestCase):
         self.assertEqual(result, "test logs")
         mock_core_api.read_namespaced_pod_log.assert_called_once_with(
             name="test-pod",
-            namespace="test-namespace"
+            namespace="test-namespace",
+            container="workspace",
         )
         mock_list_pods.assert_not_called()
 
@@ -553,7 +554,8 @@ class TestHPSpace(unittest.TestCase):
         self.assertEqual(result, "test logs")
         mock_core_api.read_namespaced_pod_log.assert_called_once_with(
             name="pod1",
-            namespace="test-namespace"
+            namespace="test-namespace",
+            container="workspace",
         )
 
     @patch.object(HPSpace, 'verify_kube_config')

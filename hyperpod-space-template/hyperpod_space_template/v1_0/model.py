@@ -68,9 +68,9 @@ class IdleShutdownSpec(BaseModel):
     enabled: bool = Field(
         description="Enabled indicates if idle shutdown is enabled"
     )
-    timeout_minutes: int = Field(
-        alias="timeoutMinutes",
-        description="TimeoutMinutes specifies idle timeout in minutes",
+    idle_timeout_in_minutes: int = Field(
+        alias="idleTimeoutInMinutes",
+        description="IdleTimeoutInMinutes specifies idle timeout in minutes",
         ge=1
     )
     detection: IdleDetectionSpec = Field(

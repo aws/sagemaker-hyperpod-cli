@@ -197,10 +197,10 @@ class HPSpace(BaseModel):
                 )
 
                 for item in response.get("items", []):
-                    # Check if space was created by the caller
-                    # TODO: need to also check OwnershipType when it's implemented in the operator
+                    # Check if space was created by the caller or it's set as 'Public'
                     created_by = item.get('metadata', {}).get('annotations', {}).get('workspace.jupyter.org/created-by')
-                    if created_by == caller_arn:
+                    ownership_type = item.get('spec', {}).get('ownershipType', '')
+                    if created_by == caller_arn or ownership_type == "Public":
                         config_data = map_kubernetes_response_to_model(item, SpaceConfig)
                         space_config = SpaceConfig(**config_data)
                         
@@ -403,21 +403,17 @@ class HPSpace(BaseModel):
                 raise RuntimeError(f"No pods found for space '{self.config.name}'")
             pod_name = pods[0]
 
+        if not container:
+            container = "workspace"
+
         v1 = client.CoreV1Api()
         
         try:
-            if container:
-                logs = v1.read_namespaced_pod_log(
-                    name=pod_name,
-                    namespace=self.config.namespace,
-                    container=container
-                )
-            else:
-                logs = v1.read_namespaced_pod_log(
-                    name=pod_name,
-                    namespace=self.config.namespace
-                )
-            return logs
+            return v1.read_namespaced_pod_log(
+                name=pod_name,
+                namespace=self.config.namespace,
+                container=container
+            )
         except Exception as e:
             handle_exception(e, pod_name, self.config.namespace)
 

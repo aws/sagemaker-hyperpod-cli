@@ -41,32 +41,27 @@ class TestSpaceTemplateCommands(unittest.TestCase):
         """Test successful space template creation"""
         mock_template_instance = Mock()
         mock_template_instance.name = "test-template"
+        mock_template_instance.namespace = "default"
         mock_hp_space_template.return_value = mock_template_instance
         
         result = self.runner.invoke(space_template_create, ["--file", "test.yaml"])
         
         self.assertEqual(result.exit_code, 0)
-        self.assertIn("Space template 'test-template' created successfully", result.output)
+        self.assertIn("Space template 'test-template' in namespace 'default' created successfully", result.output)
         mock_hp_space_template.assert_called_once_with(file_path="test.yaml")
         mock_template_instance.create.assert_called_once()
-
-    @patch("sagemaker.hyperpod.cli.commands.space_template.HPSpaceTemplate")
-    def test_space_template_create_file_not_found(self, mock_hp_space_template):
-        """Test space template creation with missing file"""
-        mock_hp_space_template.side_effect = FileNotFoundError("File 'nonexistent.yaml' not found")
-        
-        result = self.runner.invoke(space_template_create, ["--file", "nonexistent.yaml"])
-        
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn("Error creating space template: File 'nonexistent.yaml' not found", result.output)
 
     @patch("sagemaker.hyperpod.cli.commands.space_template.HPSpaceTemplate")
     def test_space_template_list_table_output(self, mock_hp_space_template):
         """Test space template list with table output"""
         mock_template1 = Mock()
         mock_template1.name = "template1"
+        mock_template1.namespace = "default"
+        mock_template1.config_data = {"spec": {"displayName": "Template 1", "defaultImage": "image1"}}
         mock_template2 = Mock()
         mock_template2.name = "template2"
+        mock_template2.namespace = "test"
+        mock_template2.config_data = {"spec": {"displayName": "Template 2", "defaultImage": "image2"}}
         mock_hp_space_template.list.return_value = [mock_template1, mock_template2]
         
         result = self.runner.invoke(space_template_list, ["--output", "table"])
@@ -74,7 +69,9 @@ class TestSpaceTemplateCommands(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("template1", result.output)
         self.assertIn("template2", result.output)
+        self.assertIn("NAMESPACE", result.output)
         self.assertIn("NAME", result.output)
+        mock_hp_space_template.list.assert_called_once_with(None)
 
     @patch("sagemaker.hyperpod.cli.commands.space_template.HPSpaceTemplate")
     def test_space_template_list_json_output(self, mock_hp_space_template):
@@ -92,6 +89,7 @@ class TestSpaceTemplateCommands(unittest.TestCase):
         self.assertEqual(len(output_json), 2)
         self.assertEqual(output_json[0]["metadata"]["name"], "template1")
         self.assertEqual(output_json[1]["metadata"]["name"], "template2")
+        mock_hp_space_template.list.assert_called_once_with(None)
 
     @patch("sagemaker.hyperpod.cli.commands.space_template.HPSpaceTemplate")
     def test_space_template_list_empty(self, mock_hp_space_template):
@@ -102,16 +100,23 @@ class TestSpaceTemplateCommands(unittest.TestCase):
         
         self.assertEqual(result.exit_code, 0)
         self.assertIn("No space templates found", result.output)
+        mock_hp_space_template.list.assert_called_once_with(None)
 
     @patch("sagemaker.hyperpod.cli.commands.space_template.HPSpaceTemplate")
-    def test_space_template_list_error(self, mock_hp_space_template):
-        """Test space template list with error"""
-        mock_hp_space_template.list.side_effect = Exception("List error")
+    def test_space_template_list_with_namespace(self, mock_hp_space_template):
+        """Test space template list with namespace parameter"""
+        mock_template1 = Mock()
+        mock_template1.name = "template1"
+        mock_template1.namespace = "test-namespace"
+        mock_template1.config_data = {"spec": {"displayName": "Template 1", "defaultImage": "image1"}}
+        mock_hp_space_template.list.return_value = [mock_template1]
         
-        result = self.runner.invoke(space_template_list)
+        result = self.runner.invoke(space_template_list, ["--namespace", "test-namespace", "--output", "table"])
         
         self.assertEqual(result.exit_code, 0)
-        self.assertIn("Error listing space templates: List error", result.output)
+        self.assertIn("template1", result.output)
+        self.assertIn("test-namespace", result.output)
+        mock_hp_space_template.list.assert_called_once_with("test-namespace")
 
     @patch("sagemaker.hyperpod.cli.commands.space_template.HPSpaceTemplate")
     def test_space_template_describe_yaml_output(self, mock_hp_space_template):
@@ -125,7 +130,7 @@ class TestSpaceTemplateCommands(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("name: test-template", result.output)
         self.assertIn("displayName: Test Template", result.output)
-        mock_hp_space_template.get.assert_called_once_with("test-template")
+        mock_hp_space_template.get.assert_called_once_with("test-template", None)
 
     @patch("sagemaker.hyperpod.cli.commands.space_template.HPSpaceTemplate")
     def test_space_template_describe_json_output(self, mock_hp_space_template):
@@ -143,16 +148,7 @@ class TestSpaceTemplateCommands(unittest.TestCase):
         output_json = json.loads(result.output)
         self.assertEqual(output_json["metadata"]["name"], "test-template")
         self.assertEqual(output_json["spec"]["displayName"], "Test Template")
-
-    @patch("sagemaker.hyperpod.cli.commands.space_template.HPSpaceTemplate")
-    def test_space_template_describe_error(self, mock_hp_space_template):
-        """Test space template describe with error"""
-        mock_hp_space_template.get.side_effect = Exception("Not found")
-        
-        result = self.runner.invoke(space_template_describe, ["--name", "nonexistent"])
-        
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn("Error describing space template 'nonexistent': Not found", result.output)
+        mock_hp_space_template.get.assert_called_once_with("test-template", None)
 
     @patch("sagemaker.hyperpod.cli.commands.space_template.HPSpaceTemplate")
     def test_space_template_delete_success(self, mock_hp_space_template):
@@ -163,19 +159,9 @@ class TestSpaceTemplateCommands(unittest.TestCase):
         result = self.runner.invoke(space_template_delete, ["--name", "test-template"])
         
         self.assertEqual(result.exit_code, 0)
-        self.assertIn("Space template 'test-template' deleted successfully", result.output)
-        mock_hp_space_template.get.assert_called_once_with("test-template")
+        self.assertIn("Requested deletion for Space template 'test-template' in namespace 'None'", result.output)
+        mock_hp_space_template.get.assert_called_once_with("test-template", None)
         mock_template_instance.delete.assert_called_once()
-
-    @patch("sagemaker.hyperpod.cli.commands.space_template.HPSpaceTemplate")
-    def test_space_template_delete_error(self, mock_hp_space_template):
-        """Test space template deletion with error"""
-        mock_hp_space_template.get.side_effect = Exception("Delete error")
-        
-        result = self.runner.invoke(space_template_delete, ["--name", "test-template"])
-        
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn("Error deleting space template 'test-template': Delete error", result.output)
 
     @patch("sagemaker.hyperpod.cli.commands.space_template.HPSpaceTemplate")
     def test_space_template_update_success(self, mock_hp_space_template):
@@ -186,18 +172,6 @@ class TestSpaceTemplateCommands(unittest.TestCase):
         result = self.runner.invoke(space_template_update, ["--name", "test-template", "--file", "test.yaml"])
         
         self.assertEqual(result.exit_code, 0)
-        self.assertIn("Space template 'test-template' updated successfully", result.output)
-        mock_hp_space_template.get.assert_called_once_with("test-template")
+        self.assertIn("Space template 'test-template' in namespace 'None' updated successfully", result.output)
+        mock_hp_space_template.get.assert_called_once_with("test-template", None)
         mock_template_instance.update.assert_called_once_with("test.yaml")
-
-    @patch("sagemaker.hyperpod.cli.commands.space_template.HPSpaceTemplate")
-    def test_space_template_update_yaml_error(self, mock_hp_space_template):
-        """Test space template update with YAML parsing error"""
-        mock_template_instance = Mock()
-        mock_template_instance.update.side_effect = yaml.YAMLError("Invalid YAML")
-        mock_hp_space_template.get.return_value = mock_template_instance
-        
-        result = self.runner.invoke(space_template_update, ["--name", "test-template", "--file", "test.yaml"])
-        
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn("Error updating space template 'test-template': Invalid YAML", result.output)

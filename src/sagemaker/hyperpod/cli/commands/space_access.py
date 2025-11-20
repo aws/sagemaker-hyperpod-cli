@@ -16,10 +16,6 @@ from sagemaker.hyperpod.common.telemetry.constants import Feature
 )
 def space_access_create(name, namespace, connection_type):
     """Create a space access resource."""
-
-    try:
-        space = HPSpace.get(name=name, namespace=namespace)
-        response = space.create_space_access(connection_type=connection_type)
-        click.echo(response)
-    except Exception as e:
-        click.echo(f"Error creating space access: {e}", err=True)
+    space = HPSpace.get(name=name, namespace=namespace)
+    response = space.create_space_access(connection_type=connection_type)
+    click.echo(response)
