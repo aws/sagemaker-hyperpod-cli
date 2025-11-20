@@ -44,7 +44,7 @@ class ContainerConfig(BaseModel):
 
 
 class TemplateRef(BaseModel):
-    """ContainerConfig defines container command and args configuration"""
+    """TemplateRef defines a reference to a WorkspaceTemplate"""
     name: str = Field(
         description="Name of the WorkspaceTemplate"
     )
@@ -248,7 +248,7 @@ class SpaceConfig(BaseModel):
         if self.lifecycle is not None:
             spec["lifecycle"] = self.lifecycle
         if self.template_ref is not None:
-            spec["templateRef"] = self.template_ref
+            spec["templateRef"] = self.template_ref.model_dump(exclude_none=True, by_alias=True)
         if self.idle_shutdown is not None:
             spec["idleShutdown"] = self.idle_shutdown.model_dump(exclude_none=True, by_alias=True)
         if self.app_type is not None:

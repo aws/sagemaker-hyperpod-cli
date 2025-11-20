@@ -203,7 +203,7 @@
       "type": "object"
     },
     "TemplateRef": {
-      "description": "ContainerConfig defines container command and args configuration",
+      "description": "TemplateRef defines a reference to a WorkspaceTemplate",
       "properties": {
         "name": {
           "description": "Name of the WorkspaceTemplate",
