@@ -139,9 +139,9 @@ INSTANCE_RESOURCES = {
 
 def _has_compute_resource_quota_allocation_resources(memory_in_gib: Optional[float], vcpu: Optional[float], accelerators: Optional[int]) -> bool:
     return (
-        (memory_in_gib is not None) or
-        (vcpu is not None ) or
-        (accelerators is not None and accelerators > 0)  # Fix: treat accelerators=0 as not specified
+        (memory_in_gib is not None and memory_in_gib > 0) or
+        (vcpu is not None and vcpu > 0) or
+        (accelerators is not None and accelerators > 0)
     )
 
 # Gets resources from compute quotas that user provided; if not all provided, calculates defaults.
