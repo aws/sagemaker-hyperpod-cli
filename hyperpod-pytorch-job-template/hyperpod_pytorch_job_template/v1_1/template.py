@@ -84,7 +84,7 @@ spec:
 {%-             endfor %}
 {%-           endif %}
               resources:
-{%-           if accelerators or vcpu or memory %}
+{%-           if accelerators or vcpu or memory or (node_count and node_count > 1) %}
                 requests:
 {%-             if accelerators %}
                   nvidia.com/gpu: {{ accelerators }}
@@ -95,11 +95,14 @@ spec:
 {%-             if memory %}
                   memory: {{ memory }}Gi
 {%-             endif %}
+{%-             if (node_count and node_count > 1) %}
+                  vpc.amazonaws.com/efa: 1
+{%-             endif %}
 {%-           else %}
                 requests:
                   nvidia.com/gpu: "0"
 {%-           endif %}
-{%-           if accelerators_limit or vcpu_limit or memory_limit %}
+{%-           if accelerators_limit or vcpu_limit or memory_limit or (node_count and node_count > 1) %}
                 limits:
 {%-             if accelerators_limit %}
                   nvidia.com/gpu: {{ accelerators_limit }}
@@ -109,6 +112,9 @@ spec:
 {%-             endif %}
 {%-             if memory_limit %}
                   memory: {{ memory_limit }}Gi
+{%-             endif %}
+{%-             if (node_count and node_count > 1) %}
+                  vpc.amazonaws.com/efa: 1
 {%-             endif %}
 {%-           else %}
                 limits:

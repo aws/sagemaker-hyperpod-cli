@@ -333,19 +333,37 @@ class PyTorchJobConfig(BaseModel):
             return {k: v for k, v in kwargs.items() if v is not None}
         
         # Build resources
-        if self.instance_type is None:
-            requests_value = limits_value = {"nvidia.com/gpu": "0"}
-        else:
-            requests_value = build_dict(
-                accelerators=str(self.accelerators) if self.accelerators else None,
-                vcpu=str(self.vcpu) if self.vcpu else None,
-                memory=str(self.memory) if self.memory else None
-            )
-            limits_value = build_dict(
-                accelerators=str(self.accelerators_limit) if self.accelerators_limit else None,
-                vcpu=str(self.vcpu_limit) if self.vcpu_limit else None,
-                memory=str(self.memory_limit) if self.memory_limit else None
-            )
+        requests_value = {}
+        limits_value = {}
+        
+        # Add GPU resources (respect accelerators regardless of instance_type)
+        if self.accelerators:
+            requests_value["nvidia.com/gpu"] = str(self.accelerators)
+        if self.accelerators_limit:
+            limits_value["nvidia.com/gpu"] = str(self.accelerators_limit)
+            
+        # Add CPU resources
+        if self.vcpu:
+            requests_value["cpu"] = str(self.vcpu)
+        if self.vcpu_limit:
+            limits_value["cpu"] = str(self.vcpu_limit)
+            
+        # Add memory resources
+        if self.memory:
+            requests_value["memory"] = f"{self.memory}Gi"
+        if self.memory_limit:
+            limits_value["memory"] = f"{self.memory_limit}Gi"
+            
+        # Add EFA for multi-node jobs
+        if self.node_count and self.node_count > 1:
+            requests_value["vpc.amazonaws.com/efa"] = "1"
+            limits_value["vpc.amazonaws.com/efa"] = "1"
+        
+        # Set default GPU to "0" only if no resources specified at all
+        if not requests_value:
+            requests_value = {"nvidia.com/gpu": "0"}
+        if not limits_value:
+            limits_value = {"nvidia.com/gpu": "0"}
 
         # Build container
         container_kwargs = build_dict(
