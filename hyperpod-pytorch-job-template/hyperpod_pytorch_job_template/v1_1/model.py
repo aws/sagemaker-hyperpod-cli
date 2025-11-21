@@ -24,6 +24,9 @@ ALLOWED_TOPOLOGY_LABELS = {
     'topology.k8s.aws/network-node-layer-3'
 }
 
+from sagemaker.hyperpod.training.accelerator_partition_util import _validate_accelerator_partition_parameters
+from sagemaker.hyperpod.training.constants import ALLOWED_ACCELERATOR_PARTITION_TYPES
+
 class VolumeConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -191,6 +194,20 @@ class PyTorchJobConfig(BaseModel):
         default=None,
         description="Limit for the amount of memory in GiB",
     )
+    accelerator_partition_type: Optional[str] = Field(
+        default=None,
+        description="Type of accelerator partition"
+    )
+    accelerator_partition_count: Optional[int] = Field(
+        default=None,
+        description="Number of accelerator partitions to request",
+        ge=1
+    )
+    accelerator_partition_limit: Optional[int] = Field(
+        default=None,
+        description="Limit for the number of accelerator partitions",
+        ge=1
+    )
 
     max_retry: Optional[int] = Field(
         default=None, 
@@ -325,6 +342,29 @@ class PyTorchJobConfig(BaseModel):
         
         return v
 
+    @field_validator('accelerator_partition_type')
+    def validate_accelerator_partition_type(v):
+        """Basic validation for accelerator partition type."""
+        if v not in ALLOWED_ACCELERATOR_PARTITION_TYPES:
+            raise ValueError(f"Accelerator partition type '{v}' must be one of: {', '.join(sorted(ALLOWED_ACCELERATOR_PARTITION_TYPES))}")
+        
+        return v
+
+    @model_validator(mode='after')
+    def validate_accelerator_partition_options(self):
+        has_accelerator_partition_parameters = (self.accelerator_partition_type is not None or self.accelerator_partition_count is not None
+                                 or self.accelerator_partition_limit is not None)
+
+        if not has_accelerator_partition_parameters:
+            return self
+
+        valid, error = _validate_accelerator_partition_parameters(
+            self.accelerator_partition_type, self.accelerators, self.accelerators_limit, self.node_count, self.instance_type
+        )
+        if not valid:
+            raise ValueError(error)
+        return self
+
     def to_domain(self) -> Dict:
         """Convert flat config to domain model (HyperPodPytorchJobSpec)"""
         
@@ -333,37 +373,32 @@ class PyTorchJobConfig(BaseModel):
             return {k: v for k, v in kwargs.items() if v is not None}
         
         # Build resources
-        requests_value = {}
-        limits_value = {}
-        
-        # Add GPU resources (respect accelerators regardless of instance_type)
-        if self.accelerators:
-            requests_value["nvidia.com/gpu"] = str(self.accelerators)
-        if self.accelerators_limit:
-            limits_value["nvidia.com/gpu"] = str(self.accelerators_limit)
-            
-        # Add CPU resources
-        if self.vcpu:
-            requests_value["cpu"] = str(self.vcpu)
-        if self.vcpu_limit:
-            limits_value["cpu"] = str(self.vcpu_limit)
-            
-        # Add memory resources
-        if self.memory:
-            requests_value["memory"] = f"{self.memory}Gi"
-        if self.memory_limit:
-            limits_value["memory"] = f"{self.memory_limit}Gi"
-            
-        # Add EFA for multi-node jobs
-        if self.node_count and self.node_count > 1:
-            requests_value["vpc.amazonaws.com/efa"] = "1"
-            limits_value["vpc.amazonaws.com/efa"] = "1"
-        
-        # Set default GPU to "0" only if no resources specified at all
-        if not requests_value:
-            requests_value = {"nvidia.com/gpu": "0"}
-        if not limits_value:
-            limits_value = {"nvidia.com/gpu": "0"}
+        if self.instance_type is None:
+            requests_value = limits_value = {"nvidia.com/gpu": "0"}
+        else:
+            if self.accelerator_partition_type:
+                partition_resource_key = f"nvidia.com/{self.accelerator_partition_type}"
+                requests_value = build_dict(
+                    **{partition_resource_key: str(self.accelerator_partition_count)} if self.accelerator_partition_count else {},
+                    vcpu=str(self.vcpu) if self.vcpu else None,
+                    memory=str(self.memory) if self.memory else None
+                )
+                limits_value = build_dict(
+                    **{partition_resource_key: str(self.accelerator_partition_limit)} if self.accelerator_partition_limit else {},
+                    vcpu=str(self.vcpu_limit) if self.vcpu_limit else None,
+                    memory=str(self.memory_limit) if self.memory_limit else None
+                )
+            else:
+                requests_value = build_dict(
+                    accelerators=str(self.accelerators) if self.accelerators else None,
+                    vcpu=str(self.vcpu) if self.vcpu else None,
+                    memory=str(self.memory) if self.memory else None
+                )
+                limits_value = build_dict(
+                    accelerators=str(self.accelerators_limit) if self.accelerators_limit else None,
+                    vcpu=str(self.vcpu_limit) if self.vcpu_limit else None,
+                    memory=str(self.memory_limit) if self.memory_limit else None
+                )
 
         # Build container
         container_kwargs = build_dict(
@@ -397,7 +432,8 @@ class PyTorchJobConfig(BaseModel):
         node_selector = build_dict(
             **{"node.kubernetes.io/instance-type": self.instance_type} if self.instance_type else {},
             **self.label_selector if self.label_selector else {},
-            **{"deep-health-check-passed": "true"} if self.deep_health_check_passed_nodes_only else {}
+            **{"deep-health-check-passed": "true"} if self.deep_health_check_passed_nodes_only else {},
+            **{"nvidia.com/mig.config.state": "success"} if self.accelerator_partition_type else {}
         )
 
         # Build spec

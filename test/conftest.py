@@ -3,6 +3,7 @@ import sys
 import uuid
 import pytest
 import json
+import os
 from test.integration_tests.utils import execute_command
 from sagemaker.hyperpod.training import (
     HyperPodPytorchJob,
@@ -13,6 +14,7 @@ from sagemaker.hyperpod.training import (
     Spec,
     Template,
 )
+from sagemaker.hyperpod.training.constants import VALIDATE_PROFILE_IN_CLUSTER
 from sagemaker.hyperpod.common.config import Metadata
 
 @pytest.fixture(scope="session", autouse=True)
@@ -101,3 +103,8 @@ def pytorch_job(test_job_name, image_uri):
 
     return pytorch_job
 
+@pytest.fixture
+def skip_validate_accelerator_partition_in_cluster():
+    os.environ[VALIDATE_PROFILE_IN_CLUSTER] = 'false'
+    yield
+    os.environ.pop(VALIDATE_PROFILE_IN_CLUSTER, None)
