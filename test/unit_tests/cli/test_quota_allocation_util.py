@@ -52,10 +52,10 @@ class TestQuotaAllocationUtil:
             (16.0, None, 2, True),
             (None, 4.0, 2, True),
             (16.0, 4.0, 2, True),
-            # Zero values
-            (0, None, None, True),
-            (None, 0, None, True),
-            (None, None, 0, True),
+            # Zero values - all zeros treated as not specified for consistency
+            (0, None, None, False),
+            (None, 0, None, False),
+            (None, None, 0, False),
         ]
     )
     def test_has_gpu_quota_allocation_resources(self, memory_in_gib, vcpu, accelerators, expected):

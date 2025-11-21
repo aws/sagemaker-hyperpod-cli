@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-import logging
 import re
 from sagemaker.hyperpod.cli.constants.command_constants import NVIDIA_GPU_RESOURCE_LIMIT_KEY, NEURON_RESOURCE_LIMIT_KEY
 from sagemaker.hyperpod.cli.utils import (
@@ -140,9 +139,9 @@ INSTANCE_RESOURCES = {
 
 def _has_compute_resource_quota_allocation_resources(memory_in_gib: Optional[float], vcpu: Optional[float], accelerators: Optional[int]) -> bool:
     return (
-        (memory_in_gib is not None) or
-        (vcpu is not None ) or
-        (accelerators is not None)
+        (memory_in_gib is not None and memory_in_gib > 0) or
+        (vcpu is not None and vcpu > 0) or
+        (accelerators is not None and accelerators > 0)
     )
 
 # Gets resources from compute quotas that user provided; if not all provided, calculates defaults.
