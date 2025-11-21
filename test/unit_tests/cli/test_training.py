@@ -8,6 +8,7 @@ from sagemaker.hyperpod.cli.commands.training import (
     pytorch_describe,
     pytorch_get_operator_logs,
     pytorch_exec,
+    list_accelerator_partition_type,
 )
 from hyperpod_pytorch_job_template.v1_1.model import ALLOWED_TOPOLOGY_LABELS
 import sys
@@ -891,3 +892,60 @@ def test_pytorch_get_operator_logs(mock_hp):
     assert result.exit_code == 0
     assert 'operator logs' in result.output
     mock_hp.get_operator_logs.assert_called_once_with(since_hours=2.0)
+
+
+class TestListAcceleratorPartitionTypeCLI(unittest.TestCase):
+    def setUp(self):
+        self.runner = CliRunner()
+
+    @patch('sagemaker.hyperpod.training.hyperpod_pytorch_job.config.load_kube_config')
+    @patch('sagemaker.hyperpod.training.hyperpod_pytorch_job.client.CoreV1Api')
+    def test_list_accelerator_partition_type_success(self, mock_core_v1_api, mock_load_kube_config):
+        mock_node = MagicMock()
+        mock_node.status.allocatable = {
+            "nvidia.com/mig-1g.5gb": "2",
+            "nvidia.com/mig-2g.10gb": "1",
+            "nvidia.com/mig-7g.40gb": "1"
+        }
+        mock_api_instance = Mock()
+        mock_api_instance.list_node.return_value.items = [mock_node]
+        mock_core_v1_api.return_value = mock_api_instance
+        
+        result = self.runner.invoke(list_accelerator_partition_type, [
+            '--instance-type', 'ml.p4d.24xlarge'
+        ])
+        
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('mig-1g.5gb', result.output)
+        self.assertIn('mig-2g.10gb', result.output)
+        self.assertIn('mig-7g.40gb', result.output)
+
+    @patch('sagemaker.hyperpod.training.hyperpod_pytorch_job.config.load_kube_config')
+    @patch('sagemaker.hyperpod.training.hyperpod_pytorch_job.client.CoreV1Api')
+    def test_list_accelerator_partition_type_empty_result(self, mock_core_v1_api, mock_load_kube_config):
+        mock_api_instance = Mock()
+        mock_api_instance.list_node.return_value.items = []
+        mock_core_v1_api.return_value = mock_api_instance
+        
+        result = self.runner.invoke(list_accelerator_partition_type, [
+            '--instance-type', 'ml.p4d.24xlarge'
+        ])
+        
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.output.strip(), '')
+
+    @patch('sagemaker.hyperpod.training.hyperpod_pytorch_job.config.load_kube_config')
+    def test_list_accelerator_partition_type_invalid_instance(self, mock_load_kube_config):
+        result = self.runner.invoke(list_accelerator_partition_type, [
+            '--instance-type', 'ml.invalid'
+        ])
+        
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("Invalid instance type", result.output)
+
+    def test_list_accelerator_partition_type_missing_instance_type(self):
+        result = self.runner.invoke(list_accelerator_partition_type, [])
+        
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn('Missing option', result.output)
+        self.assertIn('--instance-type', result.output)

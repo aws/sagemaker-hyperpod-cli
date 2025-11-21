@@ -20,6 +20,7 @@ from sagemaker.hyperpod.cli.commands.training import (
     pytorch_get_logs,
     pytorch_get_operator_logs,
     pytorch_exec,
+    list_accelerator_partition_type,
 )
 from sagemaker.hyperpod.cli.commands.inference import (
     js_create,
@@ -265,6 +266,7 @@ cli.add_command(set_cluster_context)
 cli.add_command(get_cluster_context)
 cli.add_command(get_monitoring)
 # cli.add_command(create_cluster_stack) # Not supported yet
+cli.add_command(list_accelerator_partition_type)
 
 exec.add_command(pytorch_exec)
 
