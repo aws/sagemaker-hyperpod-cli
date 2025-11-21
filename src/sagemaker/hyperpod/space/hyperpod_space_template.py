@@ -24,20 +24,85 @@ class HPSpaceTemplate:
     """HyperPod Space Template on Amazon SageMaker HyperPod clusters.
 
     This class provides methods to create, manage, and monitor space templates
-    on SageMaker HyperPod clusters orchestrated by Amazon EKS.
+    on SageMaker HyperPod clusters orchestrated by Amazon EKS. Space templates
+    define reusable configurations for creating spaces with predefined settings,
+    resources, and constraints.
+
+    **Attributes:**
+
+    .. list-table::
+       :header-rows: 1
+       :widths: 20 20 60
+
+       * - Attribute
+         - Type
+         - Description
+       * - config_data
+         - Dict[str, Any]
+         - Dictionary containing the complete template configuration
+       * - name
+         - str
+         - Name of the space template extracted from metadata
+       * - namespace
+         - str
+         - Kubernetes namespace of the template extracted from metadata
+
+    .. dropdown:: Usage Examples
+       :open:
+
+       .. code-block:: python
+
+          >>> # Create template from YAML file
+          >>> template = HPSpaceTemplate(file_path="template.yaml")
+          >>> template.create()
+          
+          >>> # List all templates
+          >>> templates = HPSpaceTemplate.list()
+          >>> for template in templates:
+          ...     print(f"Template: {template.name}")
     """
     
     is_kubeconfig_loaded: ClassVar[bool] = False
 
     def __init__(self, *, file_path: Optional[str] = None, config_data: Optional[Dict[str, Any]] = None):
         """Initialize space template with config YAML file path or dictionary data.
-        
-        Args:
-            file_path: Path to YAML configuration file
-            config_data: Dictionary containing configuration data
-            
-        Raises:
-            ValueError: If both or neither parameters are provided
+
+        Creates a new HPSpaceTemplate instance from either a YAML configuration file
+        or a dictionary containing configuration data. Exactly one of the parameters
+        must be provided.
+
+        **Parameters:**
+
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - file_path
+             - str, optional
+             - Path to YAML configuration file (keyword-only)
+           * - config_data
+             - Dict[str, Any], optional
+             - Dictionary containing configuration data (keyword-only)
+
+        **Raises:**
+
+        ValueError: If both or neither parameters are provided, or if YAML parsing fails
+        FileNotFoundError: If the specified file path does not exist
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # Initialize from YAML file
+              >>> template = HPSpaceTemplate(file_path="my-template.yaml")
+              
+              >>> # Initialize from dictionary (e.g., from API response)
+              >>> config = {"metadata": {"name": "my-template"}, "spec": {...}}
+              >>> template = HPSpaceTemplate(config_data=config)
         """
         if (file_path is None) == (config_data is None):
             raise ValueError("Exactly one of 'file_path' or 'config_data' must be provided")
@@ -60,12 +125,42 @@ class HPSpaceTemplate:
 
     @classmethod
     def get_logger(cls):
-        """Get logger for the class."""
+        """Get logger for the HPSpaceTemplate class.
+
+        **Returns:**
+
+        logging.Logger: Logger instance configured for the HPSpaceTemplate class
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> logger = HPSpaceTemplate.get_logger()
+              >>> logger.info("Template operation completed")
+        """
         return logging.getLogger(__name__)
 
     @classmethod
     def verify_kube_config(cls):
-        """Verify and load Kubernetes configuration."""
+        """Verify and load Kubernetes configuration.
+
+        Loads the Kubernetes configuration from the default kubeconfig location
+        and verifies compatibility with the cluster. This method is called
+        automatically by other methods that interact with the Kubernetes API.
+
+        **Raises:**
+
+        Exception: If the kubeconfig cannot be loaded or is invalid
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # Verify kubeconfig before operations
+              >>> HPSpaceTemplate.verify_kube_config()
+        """
         if not cls.is_kubeconfig_loaded:
             config.load_kube_config()
             cls.is_kubeconfig_loaded = True
@@ -73,10 +168,30 @@ class HPSpaceTemplate:
 
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_space_template")
     def create(self) -> "HPSpaceTemplate":
-        """Create the space template in the cluster.
-        
-        Returns:
-            Updated HPSpaceTemplate instance with server response
+        """Create the space template in the Kubernetes cluster.
+
+        Submits the space template configuration to the Kubernetes cluster and
+        creates a new template resource. Updates the instance with the server
+        response including generated metadata.
+
+        **Returns:**
+
+        HPSpaceTemplate: Updated HPSpaceTemplate instance with server response data
+
+        **Raises:**
+
+        ApiException: If the Kubernetes API call fails
+        Exception: If template creation fails for other reasons
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # Create template from file
+              >>> template = HPSpaceTemplate(file_path="template.yaml")
+              >>> created_template = template.create()
+              >>> print(f"Created template: {created_template.name}")
         """
         self.verify_kube_config()
         
@@ -104,12 +219,45 @@ class HPSpaceTemplate:
     def list(cls, namespace: Optional[str] = None) -> List["HPSpaceTemplate"]:
         """List all space templates in the specified namespace.
 
-        Args:
-            namespace (str, optional): The Kubernetes namespace to list space templates from.
-                If None, uses the default namespace from current context.
-        
-        Returns:
-            List of HPSpaceTemplate instances
+        Retrieves all space template resources from the Kubernetes cluster in the
+        specified namespace. If no namespace is provided, uses the default namespace
+        from the current Kubernetes context.
+
+        **Parameters:**
+
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - namespace
+             - str, optional
+             - The Kubernetes namespace to list space templates from. If None, uses the default namespace from current context
+
+        **Returns:**
+
+        List[HPSpaceTemplate]: List of HPSpaceTemplate instances found in the namespace
+
+        **Raises:**
+
+        ApiException: If the Kubernetes API call fails
+        Exception: If template listing fails for other reasons
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # List templates in default namespace
+              >>> templates = HPSpaceTemplate.list()
+              >>> print(f"Found {len(templates)} templates")
+              
+              >>> # List templates in specific namespace
+              >>> templates = HPSpaceTemplate.list(namespace="production")
+              >>> for template in templates:
+              ...     print(f"Template: {template.name}")
         """
         cls.verify_kube_config()
 
@@ -141,14 +289,47 @@ class HPSpaceTemplate:
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "get_space_template")
     def get(cls, name: str, namespace: Optional[str] = None) -> "HPSpaceTemplate":
         """Get a specific space template by name.
-        
-        Args:
-            name: Name of the space template
-            namespace (str, optional): The Kubernetes namespace.
-                    If None, uses the default namespace from current context.
-            
-        Returns:
-            HPSpaceTemplate instance
+
+        Retrieves a single space template resource from the Kubernetes cluster
+        by name. Removes managedFields from the metadata for cleaner output.
+
+        **Parameters:**
+
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - name
+             - str
+             - Name of the space template to retrieve
+           * - namespace
+             - str, optional
+             - The Kubernetes namespace. If None, uses the default namespace from current context
+
+        **Returns:**
+
+        HPSpaceTemplate: The space template instance with configuration data
+
+        **Raises:**
+
+        ApiException: If the template is not found or Kubernetes API call fails
+        Exception: If template retrieval fails for other reasons
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # Get template from default namespace
+              >>> template = HPSpaceTemplate.get("my-template")
+              >>> print(f"Template display name: {template.config_data['spec']['displayName']}")
+              
+              >>> # Get template from specific namespace
+              >>> template = HPSpaceTemplate.get("my-template", namespace="production")
+              >>> print(template.to_yaml())
         """
         cls.verify_kube_config()
 
@@ -179,7 +360,26 @@ class HPSpaceTemplate:
 
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "delete_space_template")
     def delete(self) -> None:
-        """Delete the space template from the cluster."""
+        """Delete the space template from the Kubernetes cluster.
+
+        Permanently removes the space template resource from the Kubernetes cluster.
+        This operation cannot be undone. Any spaces created from this template
+        will continue to exist but will no longer reference the template.
+
+        **Raises:**
+
+        ApiException: If the deletion fails or Kubernetes API call fails
+        Exception: If template deletion fails for other reasons
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # Delete a template
+              >>> template = HPSpaceTemplate.get("my-template")
+              >>> template.delete()
+        """
         self.verify_kube_config()
         
         try:
@@ -202,13 +402,45 @@ class HPSpaceTemplate:
 
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "update_space_template")
     def update(self, file_path: str) -> "HPSpaceTemplate":
-        """Update the space template from a YAML file.
-        
-        Args:
-            file_path: Path to the YAML configuration file
-            
-        Returns:
-            Updated HPSpaceTemplate instance
+        """Update the space template from a YAML configuration file.
+
+        Updates the existing space template with new configuration from a YAML file.
+        Validates that the template name in the file matches the current template name
+        and removes immutable fields before applying the update.
+
+        **Parameters:**
+
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - file_path
+             - str
+             - Path to the YAML configuration file containing updated template configuration
+
+        **Returns:**
+
+        HPSpaceTemplate: Updated HPSpaceTemplate instance with server response data
+
+        **Raises:**
+
+        FileNotFoundError: If the specified file path does not exist
+        ValueError: If YAML parsing fails or template name mismatch occurs
+        ApiException: If the Kubernetes API call fails
+        Exception: If template update fails for other reasons
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # Update template from file
+              >>> template = HPSpaceTemplate.get("my-template")
+              >>> updated_template = template.update("updated-template.yaml")
+              >>> print(f"Updated template: {updated_template.name}")
         """
         self.verify_kube_config()
         
@@ -251,16 +483,53 @@ class HPSpaceTemplate:
 
     def to_yaml(self) -> str:
         """Convert the space template to YAML format.
-        
-        Returns:
-            YAML string representation
+
+        Serializes the template configuration data to a YAML string representation
+        with readable formatting (non-flow style).
+
+        **Returns:**
+
+        str: YAML string representation of the template configuration
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # Convert template to YAML
+              >>> template = HPSpaceTemplate.get("my-template")
+              >>> yaml_content = template.to_yaml()
+              >>> print(yaml_content)
+              
+              >>> # Save template to file
+              >>> with open("exported-template.yaml", "w") as f:
+              ...     f.write(template.to_yaml())
         """
         return yaml.dump(self.config_data, default_flow_style=False)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert the space template to dictionary format.
-        
-        Returns:
-            Dictionary representation
+
+        Returns the template configuration data as a dictionary, which can be
+        used for programmatic access to template properties or serialization
+        to other formats.
+
+        **Returns:**
+
+        Dict[str, Any]: Dictionary representation of the template configuration
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # Get template as dictionary
+              >>> template = HPSpaceTemplate.get("my-template")
+              >>> config_dict = template.to_dict()
+              >>> print(f"Template spec: {config_dict['spec']}")
+              
+              >>> # Access specific configuration values
+              >>> display_name = config_dict['spec']['displayName']
+              >>> default_image = config_dict['spec']['defaultImage']
         """
         return self.config_data

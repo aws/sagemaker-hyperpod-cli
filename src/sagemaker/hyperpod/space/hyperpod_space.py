@@ -45,7 +45,41 @@ class HPSpace(BaseModel):
     """HyperPod Space on Amazon SageMaker HyperPod clusters.
 
     This class provides methods to create, manage, and monitor spaces
-    on SageMaker HyperPod clusters orchestrated by Amazon EKS.
+    on SageMaker HyperPod clusters orchestrated by Amazon EKS. Spaces are
+    interactive workspaces that provide development environments with
+    configurable resources, storage, and access controls.
+
+    **Attributes:**
+
+    .. list-table::
+       :header-rows: 1
+       :widths: 20 20 60
+
+       * - Attribute
+         - Type
+         - Description
+       * - config
+         - SpaceConfig
+         - The space configuration using the space parameter model
+       * - raw_resource
+         - Dict[str, Any], optional
+         - The complete Kubernetes resource data including apiVersion, kind, metadata, and status
+
+    .. dropdown:: Usage Examples
+       :open:
+
+       .. code-block:: python
+
+          >>> # Create a new space
+          >>> from hyperpod_space_template.v1_0.model import SpaceConfig
+          >>> config = SpaceConfig(name="my-space", display_name="My Space")
+          >>> space = HPSpace(config=config)
+          >>> space.create()
+          
+          >>> # List all spaces
+          >>> spaces = HPSpace.list()
+          >>> for space in spaces:
+          ...     print(f"Space: {space.config.name}")
     """
     
     is_kubeconfig_loaded: ClassVar[bool] = False
@@ -62,32 +96,116 @@ class HPSpace(BaseModel):
 
     @classmethod
     def get_logger(cls):
-        """Get logger for the class."""
+        """Get logger for the HPSpace class.
+
+        **Returns:**
+
+        logging.Logger: Logger instance configured for the HPSpace class
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> logger = HPSpace.get_logger()
+              >>> logger.info("Space operation completed")
+        """
         return logging.getLogger(__name__)
 
     @property
     def api_version(self) -> Optional[str]:
-        """Get the apiVersion from the Kubernetes resource."""
+        """Get the apiVersion from the Kubernetes resource.
+
+        **Returns:**
+
+        str or None: The API version of the Kubernetes resource, or None if raw_resource is not available
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> space = HPSpace.get("my-space")
+              >>> print(f"API Version: {space.api_version}")
+        """
         return self.raw_resource.get("apiVersion") if self.raw_resource else None
 
     @property
     def kind(self) -> Optional[str]:
-        """Get the kind from the Kubernetes resource."""
+        """Get the kind from the Kubernetes resource.
+
+        **Returns:**
+
+        str or None: The kind of the Kubernetes resource, or None if raw_resource is not available
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> space = HPSpace.get("my-space")
+              >>> print(f"Resource Kind: {space.kind}")
+        """
         return self.raw_resource.get("kind") if self.raw_resource else None
 
     @property
     def metadata(self) -> Optional[Dict[str, Any]]:
-        """Get the metadata from the Kubernetes resource."""
+        """Get the metadata from the Kubernetes resource.
+
+        **Returns:**
+
+        Dict[str, Any] or None: The metadata section of the Kubernetes resource, or None if raw_resource is not available
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> space = HPSpace.get("my-space")
+              >>> print(f"Creation Time: {space.metadata['creationTimestamp']}")
+        """
         return self.raw_resource.get("metadata") if self.raw_resource else None
 
     @property
     def status(self) -> Optional[Dict[str, Any]]:
-        """Get the status from the Kubernetes resource."""
+        """Get the status from the Kubernetes resource.
+
+        **Returns:**
+
+        Dict[str, Any] or None: The status section of the Kubernetes resource, or None if raw_resource is not available
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> space = HPSpace.get("my-space")
+              >>> conditions = space.status.get('conditions', [])
+              >>> for condition in conditions:
+              ...     print(f"{condition['type']}: {condition['status']}")
+        """
         return self.raw_resource.get("status") if self.raw_resource else None
 
     @classmethod
     def verify_kube_config(cls):
-        """Verify and load Kubernetes configuration."""
+        """Verify and load Kubernetes configuration.
+
+        Loads the Kubernetes configuration from the default kubeconfig location
+        and verifies compatibility with the cluster. This method is called
+        automatically by other methods that interact with the Kubernetes API.
+
+        **Raises:**
+
+        RuntimeError: If the kubeconfig cannot be loaded or is invalid
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # Verify kubeconfig before operations
+              >>> HPSpace.verify_kube_config()
+        """
         if not cls.is_kubeconfig_loaded:
             try:
                 config.load_kube_config()
@@ -100,11 +218,39 @@ class HPSpace(BaseModel):
     def create(self, debug: bool = False):
         """Create and submit the HyperPod Space to the Kubernetes cluster.
 
-        Args:
-            debug (bool, optional): Enable debug logging. Defaults to False.
+        Creates a new space resource in the Kubernetes cluster based on the
+        configuration provided in the space config. Validates MIG profiles
+        if enabled and converts the configuration to the appropriate domain model.
 
-        Raises:
-            Exception: If the space creation fails or Kubernetes API call fails
+        **Parameters:**
+
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - debug
+             - bool, optional
+             - Enable debug logging (default: False)
+
+        **Raises:**
+
+        RuntimeError: If MIG profile validation fails or unsupported profiles are used
+        Exception: If the space creation fails or Kubernetes API call fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # Create a space with debug logging
+              >>> space = HPSpace(config=space_config)
+              >>> space.create(debug=True)
+              
+              >>> # Create a space with default settings
+              >>> space.create()
         """
 
         self.verify_kube_config()
@@ -162,15 +308,44 @@ class HPSpace(BaseModel):
     def list(cls, namespace: Optional[str] = None) -> List["HPSpace"]:
         """List all HyperPod Spaces in the specified namespace created by the caller.
 
-        Args:
-            namespace (str, optional): The Kubernetes namespace to list spaces from.
-                If None, uses the default namespace from current context.
+        Retrieves all spaces that were either created by the current caller (based on
+        AWS STS identity) or are marked as 'Public' ownership type. Uses pagination
+        to handle large numbers of spaces efficiently.
 
-        Returns:
-            List[HPSpace]: List of HPSpace instances created by the caller
+        **Parameters:**
 
-        Raises:
-            Exception: If the Kubernetes API call fails or spaces cannot be retrieved
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - namespace
+             - str, optional
+             - The Kubernetes namespace to list spaces from. If None, uses the default namespace from current context
+
+        **Returns:**
+
+        List[HPSpace]: List of HPSpace instances created by the caller or marked as public
+
+        **Raises:**
+
+        Exception: If the Kubernetes API call fails or spaces cannot be retrieved
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # List spaces in default namespace
+              >>> spaces = HPSpace.list()
+              >>> print(f"Found {len(spaces)} spaces")
+              
+              >>> # List spaces in specific namespace
+              >>> spaces = HPSpace.list(namespace="my-namespace")
+              >>> for space in spaces:
+              ...     print(f"Space: {space.config.name}")
         """
         cls.verify_kube_config()
         
@@ -224,16 +399,46 @@ class HPSpace(BaseModel):
     def get(cls, name: str, namespace: str = None) -> "HPSpace":
         """Get a specific HyperPod Space by name.
 
-        Args:
-            name (str): The name of the space to retrieve
-            namespace (str, optional): The Kubernetes namespace.
-                    If None, uses the default namespace from current context.
+        Retrieves a single space resource from the Kubernetes cluster and maps
+        the response to the SpaceConfig model for easy access to configuration
+        and status information.
 
-        Returns:
-            HPSpace: The space instance
+        **Parameters:**
 
-        Raises:
-            Exception: If the space is not found or Kubernetes API call fails
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - name
+             - str
+             - The name of the space to retrieve
+           * - namespace
+             - str, optional
+             - The Kubernetes namespace. If None, uses the default namespace from current context
+
+        **Returns:**
+
+        HPSpace: The space instance with configuration and raw Kubernetes resource data
+
+        **Raises:**
+
+        Exception: If the space is not found or Kubernetes API call fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # Get space from default namespace
+              >>> space = HPSpace.get("my-space")
+              >>> print(f"Space status: {space.status}")
+              
+              >>> # Get space from specific namespace
+              >>> space = HPSpace.get("my-space", namespace="production")
+              >>> print(f"Display name: {space.config.display_name}")
         """
         cls.verify_kube_config()
 
@@ -267,8 +472,22 @@ class HPSpace(BaseModel):
     def delete(self):
         """Delete the HyperPod Space from the Kubernetes cluster.
 
-        Raises:
-            Exception: If the deletion fails or Kubernetes API call fails
+        Permanently removes the space resource from the Kubernetes cluster.
+        This operation cannot be undone and will terminate any running
+        workloads associated with the space.
+
+        **Raises:**
+
+        Exception: If the deletion fails or Kubernetes API call fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # Delete a space
+              >>> space = HPSpace.get("my-space")
+              >>> space.delete()
         """
         self.verify_kube_config()
         logger = self.get_logger()
@@ -292,11 +511,42 @@ class HPSpace(BaseModel):
     def update(self, **kwargs):
         """Update the HyperPod Space configuration.
 
-        Args:
-            **kwargs: Configuration fields to update (e.g., desired_status="Stopped")
+        Updates the space configuration with the provided parameters. Validates
+        MIG profiles if resource updates are requested and ensures compatibility
+        with the current node instance type.
 
-        Raises:
-            Exception: If the update fails or Kubernetes API call fails
+        **Parameters:**
+
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - **kwargs
+             - Any
+             - Configuration fields to update (e.g., desired_status="Stopped", display_name="New Name")
+
+        **Raises:**
+
+        RuntimeError: If MIG profile validation fails or unsupported profiles are used
+        Exception: If the update fails or Kubernetes API call fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # Update space status
+              >>> space = HPSpace.get("my-space")
+              >>> space.update(desired_status="Stopped")
+              
+              >>> # Update display name and resources
+              >>> space.update(
+              ...     display_name="Updated Space",
+              ...     resources={"requests": {"cpu": "2", "memory": "4Gi"}}
+              ... )
         """
         self.verify_kube_config()
         logger = self.get_logger()
@@ -355,19 +605,63 @@ class HPSpace(BaseModel):
 
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "start_space")
     def start(self):
-        """Start the HyperPod Space by setting desired status to Running."""
+        """Start the HyperPod Space by setting desired status to Running.
+
+        Convenience method that updates the space's desired status to "Running",
+        which will cause the Kubernetes operator to start the space workloads.
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # Start a space
+              >>> space = HPSpace.get("my-space")
+              >>> space.start()
+        """
         self.update(desired_status="Running")
 
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "stop_space")
     def stop(self):
-        """Stop the HyperPod Space by setting desired status to Stopped."""
+        """Stop the HyperPod Space by setting desired status to Stopped.
+
+        Convenience method that updates the space's desired status to "Stopped",
+        which will cause the Kubernetes operator to stop the space workloads.
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # Stop a space
+              >>> space = HPSpace.get("my-space")
+              >>> space.stop()
+        """
         self.update(desired_status="Stopped")
 
     def list_pods(self) -> List[str]:
         """List all pods associated with this space.
 
-        Returns:
-            List[str]: List of pod names associated with the space
+        Retrieves all Kubernetes pods that are labeled as belonging to this
+        space using the workspace-name label selector.
+
+        **Returns:**
+
+        List[str]: List of pod names associated with the space
+
+        **Raises:**
+
+        Exception: If the Kubernetes API call fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # List pods for a space
+              >>> space = HPSpace.get("my-space")
+              >>> pods = space.list_pods()
+              >>> print(f"Found {len(pods)} pods: {pods}")
         """
         self.verify_kube_config()
         logger = self.get_logger()
@@ -386,13 +680,47 @@ class HPSpace(BaseModel):
     def get_logs(self, pod_name: Optional[str] = None, container: Optional[str] = None) -> str:
         """Get logs from a pod associated with this space.
 
-        Args:
-            pod_name (str, optional): Name of the pod to get logs from. 
-                If None, gets logs from the first available pod.
-            container (str, optional): Name of the container to get logs from.
+        Retrieves logs from a specific pod and container. If no pod is specified,
+        uses the first available pod. If no container is specified, defaults to
+        the "workspace" container.
 
-        Returns:
-            str: The pod logs
+        **Parameters:**
+
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - pod_name
+             - str, optional
+             - Name of the pod to get logs from. If None, gets logs from the first available pod
+           * - container
+             - str, optional
+             - Name of the container to get logs from. Defaults to "workspace"
+
+        **Returns:**
+
+        str: The pod logs as a string
+
+        **Raises:**
+
+        RuntimeError: If no pods are found for the space
+        Exception: If the Kubernetes API call fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # Get logs from default pod and container
+              >>> space = HPSpace.get("my-space")
+              >>> logs = space.get_logs()
+              >>> print(logs)
+              
+              >>> # Get logs from specific pod and container
+              >>> logs = space.get_logs(pod_name="my-pod", container="sidecar")
         """
         self.verify_kube_config()
         logger = self.get_logger()
@@ -421,14 +749,44 @@ class HPSpace(BaseModel):
     def create_space_access(self, connection_type: str = "vscode-remote") -> Dict[str, str]:
         """Create a space access for this space.
 
-        Args:
-            connection_type (str, optional): The IDE type for remote access. Defaults to "vscode-remote".
+        Creates a space access resource that provides remote connection capabilities
+        to the space. Supports VS Code remote development and web UI access types.
 
-        Returns:
-            Dict[str, str]: Dictionary with 'SpaceConnectionType' and 'SpaceConnectionUrl' keys
+        **Parameters:**
 
-        Raises:
-            Exception: If the space access creation fails
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - connection_type
+             - str, optional
+             - The IDE type for remote access. Must be "vscode-remote" or "web-ui" (default: "vscode-remote")
+
+        **Returns:**
+
+        Dict[str, str]: Dictionary containing 'SpaceConnectionType' and 'SpaceConnectionUrl' keys
+
+        **Raises:**
+
+        ValueError: If connection_type is not "vscode-remote" or "web-ui"
+        Exception: If the space access creation fails or Kubernetes API call fails
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> # Create VS Code remote access
+              >>> space = HPSpace.get("my-space")
+              >>> access = space.create_space_access("vscode-remote")
+              >>> print(f"Connection URL: {access['SpaceConnectionUrl']}")
+              
+              >>> # Create web UI access
+              >>> access = space.create_space_access("web-ui")
+              >>> print(f"Web UI URL: {access['SpaceConnectionUrl']}")
         """
         self.verify_kube_config()
         logger = self.get_logger()

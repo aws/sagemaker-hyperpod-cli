@@ -21,10 +21,12 @@ Note: Old `hyperpod`CLI V2 has been moved to `release_v2` branch. Please refer [
         - [Inference](#inference)
             - [Jumpstart Endpoint](#jumpstart-endpoint-creation)
             - [Custom Endpoint](#custom-endpoint-creation)
+        - [Space](#space)
     - [SDK](#sdk)
         - [Cluster Management](#cluster-management-sdk)
         - [Training](#training-sdk)
         - [Inference](#inference-sdk)
+        - [Space](#space-sdk)
 - [Examples](#examples)
   
 
@@ -614,6 +616,105 @@ hyp get-operator-logs hyp-custom-endpoint --since-hours 0.5
 hyp delete hyp-custom-endpoint --name endpoint-custom
 ```
 
+### Space
+
+#### Create a Space
+
+```bash
+hyp create hyp-space \
+    --name myspace \
+    --namespace default \
+    --display-name "My Space"
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `--name` | TEXT | Yes | Space name |
+| `--display-name` | TEXT | Yes | Display Name of the space |
+| `--namespace` | TEXT | No | Kubernetes namespace |
+| `--image` | TEXT | No | Image specifies the container image to use |
+| `--desired-status` | TEXT | No | DesiredStatus specifies the desired operational status |
+| `--ownership-type` | TEXT | No | OwnershipType specifies who can modify the space. 'Public' means anyone with RBAC permissions can update/delete the space. 'OwnerOnly' means only the creator can update/delete the space. |
+| `--node-selector` | TEXT | No | NodeSelector specifies node selection constraints for the space pod (JSON string) |
+| `--affinity` | TEXT | No | Affinity specifies node affinity and anti-affinity rules for the space pod (JSON string) |
+| `--tolerations` | TEXT | No | Tolerations specifies tolerations for the space pod to schedule on nodes with matching taints (JSON string) |
+| `--lifecycle` | TEXT | No | Lifecycle specifies actions that the management system should take in response to container lifecycle events (JSON string) |
+| `--app-type` | TEXT | No | AppType specifies the application type for this workspace |
+| `--service-account-name` | TEXT | No | ServiceAccountName specifies the name of the ServiceAccount to use for the workspace pod |
+| `--idle-shutdown` | TEXT | No | Idle shutdown configuration. Format: --idle-shutdown enabled=<bool>,idleTimeoutInMinutes=<int>,detection=<JSON string> |
+| `--template-ref` | TEXT | No | TemplateRef references a WorkspaceTemplate to use as base configuration. Format: --template-ref name=<name>,namespace=<namespace> |
+| `--container-config` | TEXT | No | Container configuration. Format: --container-config command=<cmd>,args=<arg1;arg2> |
+| `--storage` | TEXT | No | Storage configuration. Format: --storage storageClassName=<class>,size=<size>,mountPath=<path> |
+| `--volume` | TEXT | No | Volume configuration. Format: --volume name=<name>,mountPath=<path>,persistentVolumeClaimName=<pvc_name>. Use multiple --volume flags for multiple volumes. |
+| `--accelerator-partition-count` | TEXT | No | Fractional GPU partition count, e.g. '1' |
+| `--accelerator-partition-type` | TEXT | No | Fractional GPU partition type, e.g. 'mig-3g.20gb' |
+| `--gpu-limit` | TEXT | No | GPU resource limit, e.g. '1' |
+| `--gpu` | TEXT | No | GPU resource request, e.g. '1' |
+| `--memory-limit` | TEXT | No | Memory resource limit, e.g. '2Gi' |
+| `--memory` | TEXT | No | Memory resource request, e.g. '2Gi' |
+| `--cpu-limit` | TEXT | No | CPU resource limit, e.g. '500m' |
+| `--cpu` | TEXT | No | CPU resource request, e.g. '500m' |
+
+#### List Spaces
+
+```bash
+hyp list hyp-space
+```
+
+#### Describe a Space
+
+```bash
+hyp describe hyp-space --name myspace
+```
+
+#### Update a Space
+
+```bash
+hyp update hyp-space \
+    --name myspace \
+    --display-name "Updated Space Name"
+```
+
+#### Start/Stop a Space
+
+```bash
+hyp start hyp-space --name myspace
+hyp stop hyp-space --name myspace
+```
+
+#### Get Logs
+
+```bash
+hyp get-logs hyp-space --name myspace
+```
+
+#### Delete a Space
+
+```bash
+hyp delete hyp-space --name myspace
+```
+
+#### Space Template Management
+
+Create reusable space templates:
+
+```bash
+hyp create hyp-space-template --file template.yaml
+hyp list hyp-space-template
+hyp describe hyp-space-template --name <template-name>
+hyp update hyp-space-template --name <template-name> --file updated-template.yaml
+hyp delete hyp-space-template --name <template-name>
+```
+
+#### Space Access
+
+Create remote access to spaces:
+
+```bash
+hyp create hyp-space-access --name myspace --connection-type vscode-remote
+hyp create hyp-space-access --name myspace --connection-type web-ui
+```
+
 ## SDK 
 
 Along with the CLI, we also have SDKs available that can perform the cluster management, training and inference functionalities that the CLI performs
@@ -991,6 +1092,159 @@ custom_endpoint.delete()
 ```python
 from sagemaker.hyperpod.observability.utils import get_monitoring_config
 monitor_config = get_monitoring_config()
+```
+
+### Space SDK
+
+#### Creating a Space
+
+```python
+from sagemaker.hyperpod.space.hyperpod_space import HPSpace
+from hyperpod_space_template.v1_0.model import SpaceConfig
+
+# Create space configuration
+space_config = SpaceConfig(
+    name="myspace",
+    namespace="default",
+    display_name="My Space",
+)
+
+# Create and start the space
+space = HPSpace(config=space_config)
+space.create()
+```
+
+#### List Spaces
+
+```python
+from sagemaker.hyperpod.space.hyperpod_space import HPSpace
+
+# List all spaces in default namespace
+spaces = HPSpace.list()
+for space in spaces:
+    print(f"Space: {space.config.name}, Status: {space.status}")
+
+# List spaces in specific namespace
+spaces = HPSpace.list(namespace="your-namespace")
+```
+
+#### Get a Space
+
+```python
+from sagemaker.hyperpod.space.hyperpod_space import HPSpace
+
+# Get specific space
+space = HPSpace.get(name="myspace", namespace="default")
+print(f"Space name: {space.config.name}")
+print(f"Display name: {space.config.display_name}")
+```
+
+#### Update a Space
+
+```python
+from sagemaker.hyperpod.space.hyperpod_space import HPSpace
+
+# Get existing space
+space = HPSpace.get(name="myspace")
+
+# Update space configuration
+space.update(
+    display_name="Updated Space Name",
+)
+```
+
+#### Start/Stop a Space
+
+```python
+from sagemaker.hyperpod.space.hyperpod_space import HPSpace
+
+# Get existing space
+space = HPSpace.get(name="myspace")
+
+# Start the space
+space.start()
+
+# Stop the space
+space.stop()
+```
+
+#### Get Space Logs
+
+```python
+from sagemaker.hyperpod.space.hyperpod_space import HPSpace
+
+# Get space and retrieve logs
+space = HPSpace.get(name="myspace")
+
+# Get logs from default pod and container
+logs = space.get_logs()
+print(logs)
+```
+
+#### List Space Pods
+
+```python
+from sagemaker.hyperpod.space.hyperpod_space import HPSpace
+
+# Get space and list associated pods
+space = HPSpace.get(name="myspace")
+pods = space.list_pods()
+for pod in pods:
+    print(f"Pod: {pod}")
+```
+
+#### Create Space Access
+
+```python
+from sagemaker.hyperpod.space.hyperpod_space import HPSpace
+
+# Get existing space
+space = HPSpace.get(name="myspace")
+
+# Create VS Code remote access
+vscode_access = space.create_space_access(connection_type="vscode-remote")
+print(f"VS Code URL: {vscode_access['SpaceConnectionUrl']}")
+
+# Create web UI access
+web_access = space.create_space_access(connection_type="web-ui")
+print(f"Web UI URL: {web_access['SpaceConnectionUrl']}")
+```
+
+#### Delete a Space
+
+```python
+from sagemaker.hyperpod.space.hyperpod_space import HPSpace
+
+# Get existing space
+space = HPSpace.get(name="myspace")
+
+# Delete the space
+space.delete()
+```
+
+#### Space Template Management
+
+```python
+from sagemaker.hyperpod.space.hyperpod_space_template import HPSpaceTemplate
+
+# Create space template from YAML file
+template = HPSpaceTemplate(file_path="template.yaml")
+template.create()
+
+# List all space templates
+templates = HPSpaceTemplate.list()
+for template in templates:
+    print(f"Template: {template.name}")
+
+# Get specific space template
+template = HPSpaceTemplate.get(name="my-template")
+print(template.to_yaml())
+
+# Update space template
+template.update(file_path="updated-template.yaml")
+
+# Delete space template
+template.delete()
 ```
 
 ## Examples
