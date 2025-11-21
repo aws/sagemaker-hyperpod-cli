@@ -47,7 +47,7 @@ for root, dirs, files in os.walk(
 setup(
     data_files=sagemaker_hyperpod_recipes,
     name="sagemaker-hyperpod",
-    version="3.3.1",
+    version="3.4.0",
     description="Amazon SageMaker HyperPod SDK and CLI",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
@@ -91,7 +91,8 @@ setup(
         "hyperpod-custom-inference-template>=1.0.0, <2.0.0",
         "hyperpod-jumpstart-inference-template>=1.0.0, <2.0.0",
         "hyperpod-cluster-stack-template>=1.0.0, <2.0.0"
-        "hyperpod_dev_space_template>=1.0.0, <2.0.0" 
+        # TODO: need to uncomment before pushing to master
+        "hyperpod_space_template>=1.0.0, <2.0.0" 
     ],
     entry_points={
         "console_scripts": [
