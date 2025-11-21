@@ -696,7 +696,7 @@ spec:
                       l2CacheBackend:
                         description: L2 cache backend type. Required when L2CacheSpec
                           is provided.
-                        pattern: (?i)redis
+                        pattern: (?i)redis|tieredstorage
                         type: string
                       l2CacheLocalUrl:
                         description: Provide the L2 cache URL to local storage
@@ -721,6 +721,12 @@ spec:
                     - round_robin
                     type: string
                 type: object
+              maxDeployTimeInSeconds:
+                default: 3600
+                description: Maximum allowed time in seconds for the deployment to
+                  complete before timing out. Defaults to 1 hour (3600 seconds)
+                format: int32
+                type: integer
               metrics:
                 description: Configuration for metrics collection and exposure
                 properties:
@@ -1617,12 +1623,6 @@ spec:
                     - round_robin
                     type: string
                 type: object
-              maxDeployTimeInSeconds:
-                default: 3600
-                description: Maximum allowed time in seconds for the deployment to
-                  complete before timing out. Defaults to 1 hour (3600 seconds)
-                format: int32
-                type: integer
               metrics:
                 description: Configuration for metrics collection and exposure
                 properties:
