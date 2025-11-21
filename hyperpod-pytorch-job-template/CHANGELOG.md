@@ -1,3 +1,9 @@
+## v1.2.0 (2025-11-20)
+
+### Features
+
+* Support for fractional gpu
+
 ## v1.1.4 (2025-10-30)
 
 ### Features
