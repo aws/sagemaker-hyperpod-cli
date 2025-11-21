@@ -144,9 +144,6 @@ class TestSpaceCommands:
     def test_space_describe_yaml_output(self, mock_hp_space_class):
         """Test space describe with YAML output"""
         mock_resource = {"metadata": {"name": "test-space"}}
-        # mock_hp_space_instance = Mock()
-        # mock_hp_space_instance.raw_resource = mock_resource
-        # mock_hp_space_class.get.return_value = mock_hp_space_instance
 
         with patch('yaml.dump') as mock_yaml_dump:
             mock_yaml_dump.return_value = "yaml_output"
