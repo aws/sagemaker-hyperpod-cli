@@ -39,6 +39,16 @@ class TestHandleException(unittest.TestCase):
             str(context.exception),
         )
 
+    def test_handle_api_exception_403_without_namespace(self):
+        """Test handling 403 API exception"""
+        exception = ApiException(status=403)
+        with self.assertRaises(Exception) as context:
+            handle_exception(exception, "test-job", None)
+        self.assertIn(
+            "Access denied to resource 'test-job'",
+            str(context.exception),
+        )
+
     def test_handle_api_exception_404(self):
         """Test handling 404 API exception"""
         exception = ApiException(status=404)
@@ -49,6 +59,16 @@ class TestHandleException(unittest.TestCase):
             str(context.exception),
         )
 
+    def test_handle_api_exception_404_without_namespace(self):
+        """Test handling 404 API exception"""
+        exception = ApiException(status=404)
+        with self.assertRaises(Exception) as context:
+            handle_exception(exception, "test-job", None)
+        self.assertIn(
+            "Resource 'test-job' not found",
+            str(context.exception),
+        )
+
     def test_handle_api_exception_409(self):
         """Test handling 409 API exception"""
         exception = ApiException(status=409)
@@ -56,6 +76,16 @@ class TestHandleException(unittest.TestCase):
             handle_exception(exception, "test-job", "default")
         self.assertIn(
             "Resource 'test-job' already exists in namespace 'default'",
+            str(context.exception),
+        )
+
+    def test_handle_api_exception_409_without_namespace(self):
+        """Test handling 409 API exception"""
+        exception = ApiException(status=409)
+        with self.assertRaises(Exception) as context:
+            handle_exception(exception, "test-job", None)
+        self.assertIn(
+            "Resource 'test-job' already exists",
             str(context.exception),
         )
 

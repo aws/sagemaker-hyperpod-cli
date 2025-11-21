@@ -4,6 +4,7 @@
 
 * Support KVCache and Intelligent Routing support in template version 1.1
 * User can modify jinja template to add parameters supported by CRD through init experience, for further CLI customization
+* Support for MIG
 
 ## v1.0.1 (2025-08-27)
 

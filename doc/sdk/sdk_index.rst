@@ -9,12 +9,13 @@ SDK Reference
    cluster_management/hp_cluster_stack
    training/hyperpod_pytorch_job
    inference/hp_endpoint
+   space/hyperpod_space
 
 Complete reference for the SageMaker HyperPod SDK.
 
 .. container::
 
-   .. grid:: 1 1 3 3
+   .. grid:: 1 1 4 4
       :gutter: 3
 
       .. grid-item-card:: Cluster Management SDK
@@ -37,5 +38,12 @@ Complete reference for the SageMaker HyperPod SDK.
          :class-card: sd-border-secondary
 
          Inference SDK classes, methods and parameters.
+
+      .. grid-item-card:: Space SDK
+         :link: space/hyperpod_space
+         :link-type: doc
+         :class-card: sd-border-secondary
+
+         Space SDK classes, methods and parameters.
 
 

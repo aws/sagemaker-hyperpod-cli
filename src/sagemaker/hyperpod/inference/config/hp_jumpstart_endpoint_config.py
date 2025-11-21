@@ -255,6 +255,16 @@ class SageMakerEndpoint(BaseModel):
     )
 
 
+class Validations(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    acceleratorPartitionValidation: Optional[bool] = Field(
+        default=True, 
+        alias="accelerator_partition_validation", 
+        description="Enable MIG validation for GPU partitioning. Default is true."
+    )
+
+
 class Server(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -266,6 +276,17 @@ class Server(BaseModel):
     instanceType: str = Field(
         alias="instance_type",
         description="The EC2 instance type to use for the inference server. Must be one of the supported types.",
+    )
+
+    acceleratorPartitionType: Optional[str] = Field(
+        default=None, 
+        alias="accelerator_partition_type", 
+        description="MIG profile to use for GPU partitioning"
+    )
+    
+    validations: Optional[Validations] = Field(
+        default=None, 
+        description="Validations configuration for the server"
     )
 
 

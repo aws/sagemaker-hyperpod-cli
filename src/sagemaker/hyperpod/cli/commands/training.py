@@ -1,5 +1,5 @@
 import click
-from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob
+from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob, list_accelerator_partition_types
 from sagemaker.hyperpod.common.config import Metadata
 from sagemaker.hyperpod.cli.training_utils import generate_click_command
 from hyperpod_pytorch_job_template.registry import SCHEMA_REGISTRY
@@ -335,4 +335,23 @@ def pytorch_exec(job_name: str, pod: str, all_pods: bool, namespace: str, contai
         raise click.UsageError(str(e))
     except Exception as e:
         # Other errors (API, network, etc.)
+        raise click.UsageError(f"Failed to execute command: {str(e)}")
+
+@click.command("list-accelerator-partition-type")
+@click.option(
+    "--instance-type",
+    required=True,
+    help="The instance type to list accelerator partition types for."
+)
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_accelerator_partition_types_cli")
+@handle_cli_exceptions()
+def list_accelerator_partition_type(instance_type: str):
+    """List available accelerator partition types for an instance type."""
+    try:
+        partition_types = list_accelerator_partition_types(instance_type)
+        for partition_type in partition_types:
+            click.echo(partition_type)
+    except (ValueError, RuntimeError) as e:
+        raise click.UsageError(str(e))
+    except Exception as e:
         raise click.UsageError(f"Failed to execute command: {str(e)}")

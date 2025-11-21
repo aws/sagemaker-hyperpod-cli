@@ -697,3 +697,320 @@ class TestKubernetesClient(unittest.TestCase):
         test_client = KubernetesClient()
         result = test_client.check_if_namespace_exists("abcdef")
         self.assertFalse(result)
+
+    @patch("kubernetes.client.CustomObjectsApi.create_namespaced_custom_object")
+    def test_create_space(self, mock_create_namespaced_custom_object):
+        """Test creating a space"""
+        test_client = KubernetesClient()
+        space_spec = {"spec": {"image": "test-image"}}
+        
+        test_client.create_space("test-namespace", space_spec)
+        
+        mock_create_namespaced_custom_object.assert_called_once_with(
+            group="workspace.jupyter.org",
+            version="v1alpha1",
+            namespace="test-namespace",
+            plural="workspaces",
+            body=space_spec
+        )
+
+    @patch("kubernetes.client.CustomObjectsApi.list_namespaced_custom_object")
+    def test_list_spaces_with_namespace(self, mock_list_namespaced_custom_object):
+        """Test listing spaces in a specific namespace"""
+        test_client = KubernetesClient()
+        mock_list_namespaced_custom_object.return_value = {"items": []}
+        
+        result = test_client.list_spaces("test-namespace")
+        
+        mock_list_namespaced_custom_object.assert_called_once_with(
+            group="workspace.jupyter.org",
+            version="v1alpha1",
+            namespace="test-namespace",
+            plural="workspaces"
+        )
+        self.assertEqual(result, {"items": []})
+
+    @patch("kubernetes.client.CustomObjectsApi.list_cluster_custom_object")
+    def test_list_spaces_without_namespace(self, mock_list_cluster_custom_object):
+        """Test listing spaces across all namespaces"""
+        test_client = KubernetesClient()
+        mock_list_cluster_custom_object.return_value = {"items": []}
+        
+        result = test_client.list_spaces(None)
+        
+        mock_list_cluster_custom_object.assert_called_once_with(
+            group="workspace.jupyter.org",
+            version="v1alpha1",
+            plural="workspaces"
+        )
+        self.assertEqual(result, {"items": []})
+
+    @patch("kubernetes.client.CustomObjectsApi.get_namespaced_custom_object")
+    def test_get_space(self, mock_get_namespaced_custom_object):
+        """Test getting a specific space"""
+        test_client = KubernetesClient()
+        mock_space = {"metadata": {"name": "test-space"}}
+        mock_get_namespaced_custom_object.return_value = mock_space
+        
+        result = test_client.get_space("test-namespace", "test-space")
+        
+        mock_get_namespaced_custom_object.assert_called_once_with(
+            group="workspace.jupyter.org",
+            version="v1alpha1",
+            namespace="test-namespace",
+            plural="workspaces",
+            name="test-space"
+        )
+        self.assertEqual(result, mock_space)
+
+    @patch("kubernetes.client.CustomObjectsApi.delete_namespaced_custom_object")
+    def test_delete_space(self, mock_delete_namespaced_custom_object):
+        """Test deleting a space"""
+        test_client = KubernetesClient()
+        mock_delete_namespaced_custom_object.return_value = {}
+        
+        result = test_client.delete_space("test-namespace", "test-space")
+        
+        mock_delete_namespaced_custom_object.assert_called_once_with(
+            group="workspace.jupyter.org",
+            version="v1alpha1",
+            namespace="test-namespace",
+            plural="workspaces",
+            name="test-space"
+        )
+        self.assertEqual(result, {})
+
+    @patch("kubernetes.client.CustomObjectsApi.patch_namespaced_custom_object")
+    def test_patch_space(self, mock_patch_namespaced_custom_object):
+        """Test patching a space"""
+        test_client = KubernetesClient()
+        patch_body = {"spec": {"desiredStatus": "Running"}}
+        mock_patch_namespaced_custom_object.return_value = {}
+        
+        result = test_client.patch_space("test-namespace", "test-space", patch_body)
+        
+        mock_patch_namespaced_custom_object.assert_called_once_with(
+            group="workspace.jupyter.org",
+            version="v1alpha1",
+            namespace="test-namespace",
+            plural="workspaces",
+            name="test-space",
+            body=patch_body
+        )
+        self.assertEqual(result, {})
+
+    @patch("kubernetes.client.CustomObjectsApi.create_cluster_custom_object")
+    def test_create_space_template(self, mock_create_cluster_custom_object):
+        """Test creating a space template"""
+        test_client = KubernetesClient()
+        config_spec = {
+            "apiVersion": "workspace.jupyter.org/v1alpha1",
+            "kind": "WorkspaceTemplate",
+            "metadata": {"name": "test-template"},
+            "spec": {"displayName": "Test Template"}
+        }
+        mock_create_cluster_custom_object.return_value = config_spec
+        
+        result = test_client.create_space_template(config_spec)
+        
+        mock_create_cluster_custom_object.assert_called_once_with(
+            group="workspace.jupyter.org",
+            version="v1alpha1",
+            plural="workspacetemplates",
+            body=config_spec
+        )
+        self.assertEqual(result, config_spec)
+
+    @patch("kubernetes.client.CustomObjectsApi.create_cluster_custom_object")
+    def test_create_space_template_api_error(self, mock_create_cluster_custom_object):
+        """Test creating a space template with API error"""
+        test_client = KubernetesClient()
+        from kubernetes.client.rest import ApiException
+        config_spec = {"metadata": {"name": "test-template"}}
+        mock_create_cluster_custom_object.side_effect = ApiException(status=400, reason="Bad Request")
+        
+        with self.assertRaises(ApiException):
+            test_client.create_space_template(config_spec)
+
+    @patch("kubernetes.client.CustomObjectsApi.create_cluster_custom_object")
+    def test_create_space_template_with_complex_spec(self, mock_create_cluster_custom_object):
+        """Test creating a space template with complex specification"""
+        test_client = KubernetesClient()
+        config_spec = {
+            "apiVersion": "workspace.jupyter.org/v1alpha1",
+            "kind": "WorkspaceTemplate",
+            "metadata": {
+                "name": "production-template",
+                "labels": {"environment": "prod"}
+            },
+            "spec": {
+                "displayName": "Production Template",
+                "description": "Template for production workloads",
+                "defaultImage": "jupyter/scipy-notebook:latest",
+                "allowedImages": ["jupyter/scipy-notebook:latest", "jupyter/datascience-notebook:latest"],
+                "defaultResources": {
+                    "requests": {"cpu": "200m", "memory": "256Mi"},
+                    "limits": {"cpu": "500m", "memory": "512Mi"}
+                },
+                "resourceBounds": {
+                    "cpu": {"min": "100m", "max": "2"},
+                    "memory": {"min": "128Mi", "max": "4Gi"}
+                }
+            }
+        }
+        mock_create_cluster_custom_object.return_value = config_spec
+        
+        result = test_client.create_space_template(config_spec)
+        
+        mock_create_cluster_custom_object.assert_called_once_with(
+            group="workspace.jupyter.org",
+            version="v1alpha1",
+            plural="workspacetemplates",
+            body=config_spec
+        )
+        self.assertEqual(result, config_spec)
+
+    @patch("kubernetes.client.CustomObjectsApi.list_cluster_custom_object")
+    def test_list_space_templates(self, mock_list_cluster_custom_object):
+        """Test listing space templates"""
+        test_client = KubernetesClient()
+        mock_templates = {
+            "items": [
+                {"metadata": {"name": "template1"}},
+                {"metadata": {"name": "template2"}}
+            ]
+        }
+        mock_list_cluster_custom_object.return_value = mock_templates
+        
+        result = test_client.list_space_templates()
+        
+        mock_list_cluster_custom_object.assert_called_once_with(
+            group="workspace.jupyter.org",
+            version="v1alpha1",
+            plural="workspacetemplates"
+        )
+        self.assertEqual(result, mock_templates)
+
+    @patch("kubernetes.client.CustomObjectsApi.list_cluster_custom_object")
+    def test_list_space_templates_empty(self, mock_list_cluster_custom_object):
+        """Test listing space templates when none exist"""
+        test_client = KubernetesClient()
+        mock_list_cluster_custom_object.return_value = {"items": []}
+        
+        result = test_client.list_space_templates()
+        
+        mock_list_cluster_custom_object.assert_called_once_with(
+            group="workspace.jupyter.org",
+            version="v1alpha1",
+            plural="workspacetemplates"
+        )
+        self.assertEqual(result, {"items": []})
+
+    @patch("kubernetes.client.CustomObjectsApi.get_cluster_custom_object")
+    def test_get_space_template(self, mock_get_cluster_custom_object):
+        """Test getting a specific space template"""
+        test_client = KubernetesClient()
+        mock_template = {
+            "metadata": {"name": "test-template"},
+            "spec": {"displayName": "Test Template"}
+        }
+        mock_get_cluster_custom_object.return_value = mock_template
+        
+        result = test_client.get_space_template("test-template")
+        
+        mock_get_cluster_custom_object.assert_called_once_with(
+            group="workspace.jupyter.org",
+            version="v1alpha1",
+            plural="workspacetemplates",
+            name="test-template"
+        )
+        self.assertEqual(result, mock_template)
+
+    @patch("kubernetes.client.CustomObjectsApi.get_cluster_custom_object")
+    def test_get_space_template_not_found(self, mock_get_cluster_custom_object):
+        """Test getting a space template that doesn't exist"""
+        test_client = KubernetesClient()
+        from kubernetes.client.rest import ApiException
+        mock_get_cluster_custom_object.side_effect = ApiException(status=404, reason="Not Found")
+        
+        with self.assertRaises(ApiException):
+            test_client.get_space_template("nonexistent-template")
+
+    @patch("kubernetes.client.CustomObjectsApi.delete_cluster_custom_object")
+    def test_delete_space_template(self, mock_delete_cluster_custom_object):
+        """Test deleting a space template"""
+        test_client = KubernetesClient()
+        mock_delete_cluster_custom_object.return_value = {}
+        
+        result = test_client.delete_space_template("test-template")
+        
+        mock_delete_cluster_custom_object.assert_called_once_with(
+            group="workspace.jupyter.org",
+            version="v1alpha1",
+            plural="workspacetemplates",
+            name="test-template"
+        )
+        self.assertEqual(result, {})
+
+    @patch("kubernetes.client.CustomObjectsApi.delete_cluster_custom_object")
+    def test_delete_space_template_not_found(self, mock_delete_cluster_custom_object):
+        """Test deleting a space template that doesn't exist"""
+        test_client = KubernetesClient()
+        from kubernetes.client.rest import ApiException
+        mock_delete_cluster_custom_object.side_effect = ApiException(status=404, reason="Not Found")
+        
+        with self.assertRaises(ApiException):
+            test_client.delete_space_template("nonexistent-template")
+
+    @patch("kubernetes.client.CustomObjectsApi.patch_cluster_custom_object")
+    def test_patch_space_template_success(self, mock_patch_cluster_custom_object):
+        """Test successful space template patch"""
+        test_client = KubernetesClient()
+        patch_body = {
+            "spec": {
+                "displayName": "Updated Template",
+                "description": "Updated description"
+            }
+        }
+        mock_patch_cluster_custom_object.return_value = patch_body
+        
+        result = test_client.patch_space_template("test-template", patch_body)
+        
+        mock_patch_cluster_custom_object.assert_called_once_with(
+            group="workspace.jupyter.org",
+            version="v1alpha1",
+            plural="workspacetemplates",
+            name="test-template",
+            body=patch_body
+        )
+        self.assertEqual(result, patch_body)
+
+    @patch("kubernetes.client.CustomObjectsApi.patch_cluster_custom_object")
+    def test_patch_space_template_with_complex_body(self, mock_patch_cluster_custom_object):
+        """Test space template patch with complex body"""
+        test_client = KubernetesClient()
+        patch_body = {
+            "metadata": {
+                "labels": {"environment": "production", "version": "v2"}
+            },
+            "spec": {
+                "displayName": "Production Template v2",
+                "description": "Updated production template",
+                "defaultResources": {
+                    "requests": {"cpu": "500m", "memory": "1Gi"},
+                    "limits": {"cpu": "1", "memory": "2Gi"}
+                }
+            }
+        }
+        mock_patch_cluster_custom_object.return_value = patch_body
+        
+        result = test_client.patch_space_template("production-template", patch_body)
+        
+        mock_patch_cluster_custom_object.assert_called_once_with(
+            group="workspace.jupyter.org",
+            version="v1alpha1",
+            plural="workspacetemplates",
+            name="production-template",
+            body=patch_body
+        )
+        self.assertEqual(result, patch_body)
