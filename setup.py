@@ -90,9 +90,8 @@ setup(
         "hyperpod-pytorch-job-template>=1.0.0, <2.0.0",
         "hyperpod-custom-inference-template>=1.0.0, <2.0.0",
         "hyperpod-jumpstart-inference-template>=1.0.0, <2.0.0",
-        "hyperpod-cluster-stack-template>=1.0.0, <2.0.0"
-        # TODO: need to uncomment before pushing to master
-        # "hyperpod_space_template>=1.0.0, <2.0.0" 
+        "hyperpod-cluster-stack-template>=1.0.0, <2.0.0",
+        "hyperpod-space-template>=1.0.0, <2.0.0" 
     ],
     entry_points={
         "console_scripts": [
