@@ -350,6 +350,349 @@ spec:
                   type: object
                 maxItems: 100
                 type: array
+              intelligentRoutingSpec:
+                description: |-
+                  Configuration for intelligent routing
+                  This feature is currently not supported for existing deployments.
+                  Adding this configuration to an existing deployment will be rejected.
+                properties:
+                  autoScalingSpec:
+                    properties:
+                      cloudWatchTrigger:
+                        description: CloudWatch metric trigger to use for autoscaling
+                        properties:
+                          activationTargetValue:
+                            default: 0
+                            description: Activation Value for CloudWatch metric to
+                              scale from 0 to 1. Only applicable if minReplicaCount
+                              = 0
+                            type: number
+                          dimensions:
+                            description: Dimensions for Cloudwatch metrics
+                            items:
+                              properties:
+                                name:
+                                  description: CloudWatch Metric dimension name
+                                  type: string
+                                value:
+                                  description: CloudWatch Metric dimension value
+                                  type: string
+                              required:
+                              - name
+                              - value
+                              type: object
+                            type: array
+                          metricCollectionPeriod:
+                            default: 300
+                            description: Defines the Period for CloudWatch query
+                            format: int32
+                            type: integer
+                          metricCollectionStartTime:
+                            default: 300
+                            description: Defines the StartTime for CloudWatch query
+                            format: int32
+                            type: integer
+                          metricName:
+                            description: Metric name to query for Cloudwatch trigger
+                            type: string
+                          metricStat:
+                            default: Average
+                            description: Statistics metric to be used by Trigger.
+                              Used to define Stat for CloudWatch query. Default is
+                              Average.
+                            type: string
+                          metricType:
+                            default: Average
+                            description: 'The type of metric to be used by HPA. Enum:
+                              AverageValue - Uses average value of metric per pod,
+                              Value - Uses absolute metric value'
+                            enum:
+                            - Value
+                            - Average
+                            type: string
+                          minValue:
+                            default: 0
+                            description: Minimum metric value used in case of empty
+                              response from CloudWatch. Default is 0.
+                            type: number
+                          name:
+                            description: Name for the CloudWatch trigger
+                            type: string
+                          namespace:
+                            description: AWS CloudWatch namespace for metric
+                            type: string
+                          targetValue:
+                            description: TargetValue for CloudWatch metric
+                            type: number
+                          useCachedMetrics:
+                            default: true
+                            description: Enable caching of metric values during polling
+                              interval. Default is true
+                            type: boolean
+                        type: object
+                      cloudWatchTriggerList:
+                        description: Multiple CloudWatch metric triggers to use for
+                          autoscaling. Takes priority over CloudWatchTrigger if both
+                          are provided.
+                        items:
+                          properties:
+                            activationTargetValue:
+                              default: 0
+                              description: Activation Value for CloudWatch metric
+                                to scale from 0 to 1. Only applicable if minReplicaCount
+                                = 0
+                              type: number
+                            dimensions:
+                              description: Dimensions for Cloudwatch metrics
+                              items:
+                                properties:
+                                  name:
+                                    description: CloudWatch Metric dimension name
+                                    type: string
+                                  value:
+                                    description: CloudWatch Metric dimension value
+                                    type: string
+                                required:
+                                - name
+                                - value
+                                type: object
+                              type: array
+                            metricCollectionPeriod:
+                              default: 300
+                              description: Defines the Period for CloudWatch query
+                              format: int32
+                              type: integer
+                            metricCollectionStartTime:
+                              default: 300
+                              description: Defines the StartTime for CloudWatch query
+                              format: int32
+                              type: integer
+                            metricName:
+                              description: Metric name to query for Cloudwatch trigger
+                              type: string
+                            metricStat:
+                              default: Average
+                              description: Statistics metric to be used by Trigger.
+                                Used to define Stat for CloudWatch query. Default
+                                is Average.
+                              type: string
+                            metricType:
+                              default: Average
+                              description: 'The type of metric to be used by HPA.
+                                Enum: AverageValue - Uses average value of metric
+                                per pod, Value - Uses absolute metric value'
+                              enum:
+                              - Value
+                              - Average
+                              type: string
+                            minValue:
+                              default: 0
+                              description: Minimum metric value used in case of empty
+                                response from CloudWatch. Default is 0.
+                              type: number
+                            name:
+                              description: Name for the CloudWatch trigger
+                              type: string
+                            namespace:
+                              description: AWS CloudWatch namespace for metric
+                              type: string
+                            targetValue:
+                              description: TargetValue for CloudWatch metric
+                              type: number
+                            useCachedMetrics:
+                              default: true
+                              description: Enable caching of metric values during
+                                polling interval. Default is true
+                              type: boolean
+                          type: object
+                        maxItems: 100
+                        type: array
+                      cooldownPeriod:
+                        default: 300
+                        description: The period to wait after the last trigger reported
+                          active before scaling the resource back to 0. Default 300
+                          seconds.
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      initialCooldownPeriod:
+                        default: 300
+                        description: The delay before the cooldownPeriod starts after
+                          the initial creation of the ScaledObject. Default 300 seconds.
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      maxReplicaCount:
+                        default: 5
+                        description: The maximum number of model pods to scale to.
+                          Default 5.
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      minReplicaCount:
+                        default: 1
+                        description: The minimum number of model pods to scale down
+                          to. Default 1.
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      pollingInterval:
+                        default: 30
+                        description: This is the interval to check each trigger on.
+                          Default 30 seconds.
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      prometheusTrigger:
+                        description: Prometheus metric trigger to use for autoscaling
+                        properties:
+                          activationTargetValue:
+                            default: 0
+                            description: Activation Value for Prometheus metric to
+                              scale from 0 to 1. Only applicable if minReplicaCount
+                              = 0
+                            type: number
+                          customHeaders:
+                            description: Custom headers to include while querying
+                              the prometheus endpoint.
+                            type: string
+                          metricType:
+                            default: Average
+                            description: 'The type of metric to be used by HPA. Enum:
+                              AverageValue - Uses average value of metric per pod,
+                              Value - Uses absolute metric value'
+                            enum:
+                            - Value
+                            - Average
+                            type: string
+                          name:
+                            description: Name for the Prometheus trigger
+                            type: string
+                          namespace:
+                            description: Namespace for namespaced queries
+                            type: string
+                          query:
+                            description: PromQLQuery for the metric.
+                            type: string
+                          serverAddress:
+                            description: Server address for AMP workspace
+                            pattern: ^https:\/\/aps-workspaces\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.amazonaws\.com\/workspaces\/ws-[a-zA-Z0-9-]+\/[a-zA-Z0-9-]+$|^$
+                            type: string
+                          targetValue:
+                            description: Target metric value for scaling
+                            type: number
+                          useCachedMetrics:
+                            default: true
+                            description: Enable caching of metric values during polling
+                              interval. Default is true
+                            type: boolean
+                        type: object
+                      prometheusTriggerList:
+                        description: Multiple Prometheus metric triggers to use for
+                          autoscaling. Takes priority over PrometheusTrigger if both
+                          are provided.
+                        items:
+                          properties:
+                            activationTargetValue:
+                              default: 0
+                              description: Activation Value for Prometheus metric
+                                to scale from 0 to 1. Only applicable if minReplicaCount
+                                = 0
+                              type: number
+                            customHeaders:
+                              description: Custom headers to include while querying
+                                the prometheus endpoint.
+                              type: string
+                            metricType:
+                              default: Average
+                              description: 'The type of metric to be used by HPA.
+                                Enum: AverageValue - Uses average value of metric
+                                per pod, Value - Uses absolute metric value'
+                              enum:
+                              - Value
+                              - Average
+                              type: string
+                            name:
+                              description: Name for the Prometheus trigger
+                              type: string
+                            namespace:
+                              description: Namespace for namespaced queries
+                              type: string
+                            query:
+                              description: PromQLQuery for the metric.
+                              type: string
+                            serverAddress:
+                              description: Server address for AMP workspace
+                              pattern: ^https:\/\/aps-workspaces\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.amazonaws\.com\/workspaces\/ws-[a-zA-Z0-9-]+\/[a-zA-Z0-9-]+$|^$
+                              type: string
+                            targetValue:
+                              description: Target metric value for scaling
+                              type: number
+                            useCachedMetrics:
+                              default: true
+                              description: Enable caching of metric values during
+                                polling interval. Default is true
+                              type: boolean
+                          type: object
+                        maxItems: 100
+                        type: array
+                      scaleDownStabilizationTime:
+                        default: 300
+                        description: The time window to stabilize for HPA before scaling
+                          down. Default 300 seconds.
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      scaleUpStabilizationTime:
+                        default: 0
+                        description: The time window to stabilize for HPA before scaling
+                          up. Default 0 seconds.
+                        format: int32
+                        minimum: 0
+                        type: integer
+                    type: object
+                  enabled:
+                    default: false
+                    description: Once set, the enabled field cannot be modified
+                    type: boolean
+                  routingStrategy:
+                    default: prefixaware
+                    enum:
+                    - prefixaware
+                    - kvaware
+                    - session
+                    - roundrobin
+                    type: string
+                type: object
+              kvCacheSpec:
+                description: |-
+                  Configuration for KV Cache specification
+                  By default L1CacheOffloading will be enabled
+                properties:
+                  cacheConfigFile:
+                    description: KVCache configuration file path. If specified, override
+                      other configurations provided via spec
+                    type: string
+                  enableL1Cache:
+                    default: true
+                    description: Enable CPU offloading
+                    type: boolean
+                  enableL2Cache:
+                    default: false
+                    type: boolean
+                  l2CacheSpec:
+                    description: Configuration for providing L2 Cache offloading
+                    properties:
+                      l2CacheBackend:
+                        description: L2 cache backend type. Required when L2CacheSpec
+                          is provided.
+                        pattern: (?i)redis|tieredstorage
+                        type: string
+                      l2CacheLocalUrl:
+                        description: Provide the L2 cache URL to local storage
+                        type: string
+                    type: object
+                type: object
               loadBalancer:
                 description: Configuration for Application Load Balancer
                 properties:
@@ -477,6 +820,10 @@ spec:
                 type: object
               server:
                 properties:
+                  acceleratorPartitionType:
+                    description: MIG profile to use for GPU partitioning
+                    pattern: ^mig-.*$
+                    type: string
                   executionRole:
                     description: The Amazon Resource Name (ARN) of an IAM role that
                       will be used to deploy and manage the inference server
@@ -489,6 +836,15 @@ spec:
                       Must be one of the supported types.
                     pattern: ^ml\..*
                     type: string
+                  validations:
+                    description: Validations configuration for the server
+                    properties:
+                      acceleratorPartitionValidation:
+                        default: true
+                        description: Enable MIG validation for GPU partitioning. Default
+                          is true.
+                        type: boolean
+                    type: object
                 required:
                 - instanceType
                 type: object
