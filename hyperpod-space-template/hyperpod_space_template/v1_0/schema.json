@@ -1,0 +1,495 @@
+{
+  "$defs": {
+    "ContainerConfig": {
+      "description": "ContainerConfig defines container command and args configuration",
+      "properties": {
+        "command": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Command specifies the container command",
+          "title": "Command"
+        },
+        "args": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Args specifies the container arguments",
+          "title": "Args"
+        }
+      },
+      "title": "ContainerConfig",
+      "type": "object"
+    },
+    "DesiredStatus": {
+      "enum": [
+        "Running",
+        "Stopped"
+      ],
+      "title": "DesiredStatus",
+      "type": "string"
+    },
+    "IdleDetectionSpec": {
+      "description": "IdleDetectionSpec defines idle detection methods",
+      "properties": {
+        "httpGet": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "HTTPGet specifies the HTTP request to perform for idle detection",
+          "title": "Httpget"
+        }
+      },
+      "title": "IdleDetectionSpec",
+      "type": "object"
+    },
+    "IdleShutdownSpec": {
+      "description": "IdleShutdownSpec defines idle shutdown configuration",
+      "properties": {
+        "enabled": {
+          "description": "Enabled indicates if idle shutdown is enabled",
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "idleTimeoutInMinutes": {
+          "description": "IdleTimeoutInMinutes specifies idle timeout in minutes",
+          "minimum": 1,
+          "title": "Idletimeoutinminutes",
+          "type": "integer"
+        },
+        "detection": {
+          "$ref": "#/$defs/IdleDetectionSpec",
+          "description": "Detection specifies how to detect idle state"
+        }
+      },
+      "required": [
+        "enabled",
+        "idleTimeoutInMinutes",
+        "detection"
+      ],
+      "title": "IdleShutdownSpec",
+      "type": "object"
+    },
+    "OwnershipType": {
+      "enum": [
+        "Public",
+        "OwnerOnly"
+      ],
+      "title": "OwnershipType",
+      "type": "string"
+    },
+    "ResourceRequirements": {
+      "description": "ResourceRequirements describes the compute resource requirements",
+      "properties": {
+        "requests": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. Requests cannot exceed Limits.",
+          "title": "Requests"
+        },
+        "limits": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Limits describes the maximum amount of compute resources allowed.",
+          "title": "Limits"
+        }
+      },
+      "title": "ResourceRequirements",
+      "type": "object"
+    },
+    "StorageSpec": {
+      "description": "StorageSpec defines the storage configuration for Workspace",
+      "properties": {
+        "storageClassName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "StorageClassName specifies the storage class to use for persistent storage",
+          "title": "Storageclassname"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "10Gi",
+          "description": "Size specifies the size of the persistent volume. Supports standard Kubernetes resource quantities (e.g., '10Gi', '500Mi', '1Ti'). Integer values without units are interpreted as bytes",
+          "title": "Size"
+        },
+        "mountPath": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "/home",
+          "description": "MountPath specifies where to mount the persistent volume in the container. Default is /home/jovyan (jovyan is the standard user in Jupyter images)",
+          "title": "Mountpath"
+        }
+      },
+      "title": "StorageSpec",
+      "type": "object"
+    },
+    "TemplateRef": {
+      "description": "TemplateRef defines a reference to a WorkspaceTemplate",
+      "properties": {
+        "name": {
+          "description": "Name of the WorkspaceTemplate",
+          "title": "Name",
+          "type": "string"
+        },
+        "namespace": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Namespace where the WorkspaceTemplate is located",
+          "title": "Namespace"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "TemplateRef",
+      "type": "object"
+    },
+    "VolumeSpec": {
+      "description": "VolumeSpec defines a volume to mount from an existing PVC",
+      "properties": {
+        "name": {
+          "description": "Name is a unique identifier for this volume within the pod (maps to pod.spec.volumes[].name)",
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "mountPath": {
+          "description": "MountPath is the path where the volume should be mounted (Unix-style path, e.g. /data)",
+          "minLength": 1,
+          "title": "Mountpath",
+          "type": "string"
+        },
+        "persistentVolumeClaimName": {
+          "description": "PersistentVolumeClaimName is the name of the existing PVC to mount",
+          "minLength": 1,
+          "title": "Persistentvolumeclaimname",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "mountPath",
+        "persistentVolumeClaimName"
+      ],
+      "title": "VolumeSpec",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "SpaceConfig defines the desired state of a Space",
+  "properties": {
+    "name": {
+      "description": "Space name",
+      "maxLength": 63,
+      "minLength": 1,
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+      "title": "Name",
+      "type": "string"
+    },
+    "display_name": {
+      "description": "Display Name of the space",
+      "minLength": 1,
+      "title": "Display Name",
+      "type": "string"
+    },
+    "namespace": {
+      "default": "default",
+      "description": "Kubernetes namespace",
+      "minLength": 1,
+      "title": "Namespace",
+      "type": "string"
+    },
+    "image": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Image specifies the container image to use",
+      "title": "Image"
+    },
+    "desired_status": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DesiredStatus"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "DesiredStatus specifies the desired operational status"
+    },
+    "ownership_type": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/OwnershipType"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "OwnershipType specifies who can modify the space. 'Public' means anyone with RBAC permissions can update/delete the space. 'OwnerOnly' means only the creator can update/delete the space."
+    },
+    "resources": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ResourceRequirements"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Resources specifies the resource requirements"
+    },
+    "storage": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/StorageSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Storage specifies the storage configuration"
+    },
+    "volumes": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/VolumeSpec"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Volumes specifies additional volumes to mount from existing PersistentVolumeClaims",
+      "title": "Volumes"
+    },
+    "container_config": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ContainerConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "ContainerConfig specifies container command and args configuration"
+    },
+    "node_selector": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "NodeSelector specifies node selection constraints for the space pod (JSON string)",
+      "title": "Node Selector"
+    },
+    "affinity": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Affinity specifies node affinity and anti-affinity rules for the space pod (JSON string)",
+      "title": "Affinity"
+    },
+    "tolerations": {
+      "anyOf": [
+        {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Tolerations specifies tolerations for the space pod to schedule on nodes with matching taints (JSON string)",
+      "title": "Tolerations"
+    },
+    "lifecycle": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Lifecycle specifies actions that the management system should take in response to container lifecycle events (JSON string)",
+      "title": "Lifecycle"
+    },
+    "template_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TemplateRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "TemplateRef references a WorkspaceTemplate to use as base configuration. When set, template provides defaults and workspace spec fields act as overrides"
+    },
+    "idle_shutdown": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/IdleShutdownSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "IdleShutdown specifies idle shutdown configuration"
+    },
+    "app_type": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "AppType specifies the application type for this workspace",
+      "title": "App Type"
+    },
+    "service_account_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "ServiceAccountName specifies the name of the ServiceAccount to use for the workspace pod",
+      "title": "Service Account Name"
+    }
+  },
+  "required": [
+    "name",
+    "display_name"
+  ],
+  "title": "SpaceConfig",
+  "type": "object"
+}

@@ -1,3 +1,9 @@
+## v1.1.0 (2025-11-20)
+
+### Features
+
+* Support for KVCaching, intelligent routing, tiered storage, MIG
+
 ## v1.0.3 (2025-10-30)
 
 ### Features

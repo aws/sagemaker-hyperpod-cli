@@ -38,7 +38,7 @@ def get_default_namespace():
             "No active context. Please use set_cluster_context() method to set current context."
         )
 
-def handle_exception(e: Exception, name: str, namespace: str,
+def handle_exception(e: Exception, name: str, namespace: Optional[str],
                     operation_type: str = 'unknown', resource_type: str = 'unknown'):
     """
     Handle various Kubernetes API exceptions for SDK usage (non-CLI).
@@ -53,23 +53,39 @@ def handle_exception(e: Exception, name: str, namespace: str,
         operation_type: Operation type (legacy parameter, kept for backward compatibility)
         resource_type: Resource type (legacy parameter, kept for backward compatibility)
     """
+
     if isinstance(e, ApiException):
         if e.status == 401:
             raise Exception(f"Credentials unauthorized.") from e
         elif e.status == 403:
-            raise Exception(
-                f"Access denied to resource '{name}' in namespace '{namespace}'."
-            ) from e
+            if namespace:
+                raise Exception(
+                    f"Access denied to resource '{name}' in namespace '{namespace}'."
+                ) from e
+            else:
+                raise Exception(
+                    f"Access denied to resource '{name}'."
+                ) from e
         elif e.status == 404:
-            # Basic 404 for SDK usage - CLI commands get enhanced 404 via decorator
-            raise Exception(
-                f"Resource '{name}' not found in namespace '{namespace}'. "
-                f"Please check the resource name and namespace."
-            ) from e
+            if namespace:
+                # Basic 404 for SDK usage - CLI commands get enhanced 404 via decorator
+                raise Exception(
+                    f"Resource '{name}' not found in namespace '{namespace}'. "
+                    f"Please check the resource name and namespace."
+                ) from e
+            else:
+                raise Exception(
+                    f"Resource '{name}' not found. Please check the resource name."
+                ) from e
         elif e.status == 409:
-            raise Exception(
-                f"Resource '{name}' already exists in namespace '{namespace}'."
-            ) from e
+            if namespace:
+                raise Exception(
+                    f"Resource '{name}' already exists in namespace '{namespace}'."
+                ) from e
+            else:
+                raise Exception(
+                    f"Resource '{name}' already exists."
+                ) from e
         elif 500 <= e.status < 600:
             raise Exception("Kubernetes API internal server error.") from e
         else:
