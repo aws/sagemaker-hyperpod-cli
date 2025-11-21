@@ -1,0 +1,132 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "namespace": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Kubernetes namespace",
+      "title": "Namespace"
+    },
+    "accept_eula": {
+      "default": false,
+      "description": "Whether model terms of use have been accepted",
+      "title": "Accept Eula",
+      "type": "boolean"
+    },
+    "metadata_name": {
+      "anyOf": [
+        {
+          "maxLength": 63,
+          "pattern": "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Name of the jumpstart endpoint object",
+      "title": "Metadata Name"
+    },
+    "model_id": {
+      "description": "Unique identifier of the model within the hub",
+      "maxLength": 63,
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$",
+      "title": "Model Id",
+      "type": "string"
+    },
+    "model_version": {
+      "anyOf": [
+        {
+          "maxLength": 14,
+          "minLength": 5,
+          "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,4}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Semantic version of the model to deploy (e.g. 1.0.0)",
+      "title": "Model Version"
+    },
+    "instance_type": {
+      "description": "EC2 instance type for the inference server",
+      "pattern": "^ml\\..*",
+      "title": "Instance Type",
+      "type": "string"
+    },
+    "accelerator_partition_type": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "MIG profile to use for GPU partitioning",
+      "pattern": "^mig-.*$", 
+      "title": "Accelerator Partition Type"
+    },
+    "accelerator_partition_validation": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": true,
+      "description": "Enable MIG validation for GPU partitioning. Default is true.",
+      "title": "Accelerator Partition Validation"
+    },
+    "endpoint_name": {
+      "anyOf": [
+        {
+          "maxLength": 63,
+          "pattern": "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Name of SageMaker endpoint; empty string means no creation",
+      "title": "Endpoint Name"
+    },
+    "tls_certificate_output_s3_uri": {
+      "anyOf": [
+        {
+          "pattern": "^s3://([^/]+)/?(.*)$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "S3 URI to write the TLS certificate",
+      "title": "Tls Certificate Output S3 Uri"
+    }
+  },
+  "required": [
+    "model_id",
+    "instance_type"
+  ],
+  "title": "FlatHPJumpStartEndpoint",
+  "type": "object"
+}
