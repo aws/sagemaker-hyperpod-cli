@@ -274,8 +274,9 @@ def validate():
 @click.command(name="_default_create")
 @click.option("--region", "-r", default=None, help="Region to create cluster stack for, default to your region in aws configure. Not available for other templates.")
 @click.option("--template-version", type=click.INT, help="Version number of cluster creation template. Not available for other templates.")
+@click.option("--debug", is_flag=True, help="Enable debug logging")
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "init_create_cli")
-def _default_create(region, template_version):
+def _default_create(region, template_version, debug):
     """
     Validate configuration and render template files for deployment.
     
@@ -384,7 +385,7 @@ def _default_create(region, template_version):
             else:
                 # Create from k8s.yaml
                 k8s_file = out_dir / 'k8s.yaml'
-                create_from_k8s_yaml(str(k8s_file))
+                create_from_k8s_yaml(str(k8s_file), debug=debug)
 
 
     except Exception as e:
