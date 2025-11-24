@@ -373,33 +373,32 @@ class PyTorchJobConfig(BaseModel):
             return {k: v for k, v in kwargs.items() if v is not None}
         
         # Build resources
-        if self.accelerator_partition_type:
-            partition_resource_key = f"nvidia.com/{self.accelerator_partition_type}"
-            requests_value = build_dict(
-                **{partition_resource_key: str(self.accelerator_partition_count)} if self.accelerator_partition_count else {},
-                vcpu=str(self.vcpu) if self.vcpu else None,
-                memory=str(self.memory) if self.memory else None,
-                **{"vpc.amazonaws.com/efa": "1"} if self.instance_type and "p4d" in self.instance_type else {}
-            )
-            limits_value = build_dict(
-                **{partition_resource_key: str(self.accelerator_partition_limit)} if self.accelerator_partition_limit else {},
-                vcpu=str(self.vcpu_limit) if self.vcpu_limit else None,
-                memory=str(self.memory_limit) if self.memory_limit else None,
-                **{"vpc.amazonaws.com/efa": "1"} if self.instance_type and "p4d" in self.instance_type else {}
-            )
+        if self.instance_type is None:
+            requests_value = limits_value = {"nvidia.com/gpu": "0"}
         else:
-            requests_value = build_dict(
-                **{"nvidia.com/gpu": str(self.accelerators)} if self.accelerators else {},
-                vcpu=str(self.vcpu) if self.vcpu else None,
-                memory=str(self.memory) if self.memory else None,
-                **{"vpc.amazonaws.com/efa": "1"} if self.instance_type and "p4d" in self.instance_type else {}
-            )
-            limits_value = build_dict(
-                **{"nvidia.com/gpu": str(self.accelerators_limit)} if self.accelerators_limit else {},
-                vcpu=str(self.vcpu_limit) if self.vcpu_limit else None,
-                memory=str(self.memory_limit) if self.memory_limit else None,
-                **{"vpc.amazonaws.com/efa": "1"} if self.instance_type and "p4d" in self.instance_type else {}
-            )
+            if self.accelerator_partition_type:
+                partition_resource_key = f"nvidia.com/{self.accelerator_partition_type}"
+                requests_value = build_dict(
+                    **{partition_resource_key: str(self.accelerator_partition_count)} if self.accelerator_partition_count else {},
+                    vcpu=str(self.vcpu) if self.vcpu else None,
+                    memory=str(self.memory) if self.memory else None
+                )
+                limits_value = build_dict(
+                    **{partition_resource_key: str(self.accelerator_partition_limit)} if self.accelerator_partition_limit else {},
+                    vcpu=str(self.vcpu_limit) if self.vcpu_limit else None,
+                    memory=str(self.memory_limit) if self.memory_limit else None
+                )
+            else:
+                requests_value = build_dict(
+                    accelerators=str(self.accelerators) if self.accelerators else None,
+                    vcpu=str(self.vcpu) if self.vcpu else None,
+                    memory=str(self.memory) if self.memory else None
+                )
+                limits_value = build_dict(
+                    accelerators=str(self.accelerators_limit) if self.accelerators_limit else None,
+                    vcpu=str(self.vcpu_limit) if self.vcpu_limit else None,
+                    memory=str(self.memory_limit) if self.memory_limit else None
+                )
 
         # Build container
         container_kwargs = build_dict(
