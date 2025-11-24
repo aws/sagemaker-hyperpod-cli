@@ -291,10 +291,12 @@ def generate_click_command(
                 )
 
             # Call the original function with appropriate parameters
-            if is_update:
-                return func(version, config_dict)
-            else:
+            import inspect
+            sig = inspect.signature(func)
+            if 'debug' in sig.parameters:
                 return func(version, debug, config_dict)
+            else:
+                return func(version, config_dict)
         
         # 2) inject click options from JSON Schema
         wrapped_func = click.option(
