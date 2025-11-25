@@ -183,7 +183,7 @@ def test_list_pods(pytorch_job_name, test_directory):
     print(f"[INFO] Successfully listed pods for job: {pytorch_job_name}")
 
 
-@pytest.mark.dependency(depends=["list_pods"])
+@pytest.mark.dependency(depends=["create"])
 def test_pytorch_job_delete(pytorch_job_name, test_directory):
     """Clean up deployed PyTorch job using CLI delete command and verify deletion."""
     delete_result = execute_command([

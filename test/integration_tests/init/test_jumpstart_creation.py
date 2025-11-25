@@ -161,7 +161,7 @@ def test_custom_invoke(runner, js_endpoint_name, test_directory):
     assert "error" not in result.output.lower()
 
 
-@pytest.mark.dependency(depends=["invoke"])
+@pytest.mark.dependency(depends=["create"])
 def test_js_delete(runner, js_endpoint_name, test_directory):
     """Clean up deployed JumpStart endpoint using CLI delete command."""
     result = runner.invoke(delete, [
