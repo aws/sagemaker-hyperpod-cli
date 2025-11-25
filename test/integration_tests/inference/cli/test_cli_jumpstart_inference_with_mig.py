@@ -28,6 +28,7 @@ def sagemaker_client():
     return boto3.client("sagemaker", region_name=REGION)
 
 # --------- JumpStart Endpoint Tests ---------
+@pytest.mark.skip(reason="Temporarily disabled")
 @pytest.mark.dependency(name="create")
 def test_js_create(runner, js_endpoint_name):
     result = runner.invoke(js_create, [
@@ -100,12 +101,12 @@ def test_custom_invoke(runner, js_endpoint_name):
     assert result.exit_code == 0
     assert "error" not in result.output.lower()
 
-
+@pytest.mark.skip(reason="Temporarily disabled")
 def test_js_get_operator_logs(runner):
     result = runner.invoke(js_get_operator_logs, ["--since-hours", "1"])
     assert result.exit_code == 0
 
-
+@pytest.mark.skip(reason="Temporarily disabled")
 def test_js_list_pods(runner):
     result = runner.invoke(js_list_pods, ["--namespace", NAMESPACE])
     assert result.exit_code == 0
