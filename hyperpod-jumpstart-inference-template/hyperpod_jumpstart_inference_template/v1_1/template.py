@@ -1,8 +1,8 @@
 TEMPLATE_CONTENT = """
-apiVersion: inference.sagemaker.aws.amazon.com/v1alpha1
+apiVersion: inference.sagemaker.aws.amazon.com/v1
 kind: JumpStartModel
 metadata:
-  name:                {{ model_id }}
+  name:                {{ metadata_name or endpoint_name }}
   namespace:           {{ namespace or "default" }}
 spec:
   model:
@@ -18,4 +18,6 @@ spec:
     {% if accelerator_partition_validation is not none %}validations: 
     {% if accelerator_partition_validation is not none %}  acceleratorPartitionValidation: {{ accelerator_partition_validation }}{% endif %}
     {% endif %}
+  tlsConfig:
+    tlsCertificateOutputS3Uri: {{ tls_certificate_output_s3_uri or "" }}
 """
