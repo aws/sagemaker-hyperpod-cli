@@ -1,3 +1,9 @@
+## v1.1.1 (2025-11-25)
+
+### Features
+
+* Patch fix for template 1.1 issue
+
 ## v1.1.0 (2025-11-20)
 
 ### Features
