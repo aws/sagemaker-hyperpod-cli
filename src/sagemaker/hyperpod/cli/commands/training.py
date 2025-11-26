@@ -13,7 +13,7 @@ from sagemaker.hyperpod.common.utils import display_formatted_logs
 
 @click.command("hyp-pytorch-job")
 @click.option("--version", default="1.0", help="Schema version to use")
-@click.option("--debug", default=False, help="Enable debug mode")
+@click.option("--debug", is_flag=True, help="Enable debug mode")
 @generate_click_command(
     schema_pkg="hyperpod_pytorch_job_template",
     registry=SCHEMA_REGISTRY,

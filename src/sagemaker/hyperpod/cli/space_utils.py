@@ -200,6 +200,7 @@ def generate_click_command(
         # 1) the wrapper click will call
         def wrapped_func(*args, **kwargs):
             version = version_key or kwargs.pop("version", "1.0")
+            debug = kwargs.pop("debug", False)
 
             Model = registry.get(version)
             if Model is None:
@@ -241,6 +242,10 @@ def generate_click_command(
             # filter out None/empty values so Pydantic model defaults apply
             filtered_kwargs = {}
             for key, value in kwargs.items():
+                # Skip debug parameter as it's not part of the model
+                if key == "debug":
+                    continue
+                    
                 if value is not None:
                     # Parse JSON for object/array type parameters
                     spec = props.get(key, {})
@@ -285,7 +290,13 @@ def generate_click_command(
                     f"Configuration validation errors:\n" + "\n".join(error_messages)
                 )
 
-            return func(version, config_dict)
+            # Call the original function with appropriate parameters
+            import inspect
+            sig = inspect.signature(func)
+            if 'debug' in sig.parameters:
+                return func(version, debug, config_dict)
+            else:
+                return func(version, config_dict)
         
         # 2) inject click options from JSON Schema
         wrapped_func = click.option(
@@ -387,6 +398,7 @@ def generate_click_command(
                 "container_config",
                 "template_ref",
                 "idle_shutdown",
+                "debug",  # Exclude debug from validation
             ]
         )
 
