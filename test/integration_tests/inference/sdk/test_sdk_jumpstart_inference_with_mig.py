@@ -38,7 +38,6 @@ def endpoint_obj():
 
     return HPJumpStartEndpoint(metadata=metadata, model=model, server=server, sage_maker_endpoint=sm_endpoint)
 
-@pytest.mark.skip(reason="Temporarily disabled")
 @pytest.mark.dependency(name="create")
 def test_create_endpoint(endpoint_obj):
     endpoint_obj.create()
@@ -105,13 +104,11 @@ def test_invoke_endpoint(monkeypatch):
     assert "error" not in response.body.lower()
 
 
-@pytest.mark.skip(reason="Temporarily disabled")
 def test_get_operator_logs():
     ep = HPJumpStartEndpoint.get(name=ENDPOINT_NAME, namespace=NAMESPACE)
     logs = ep.get_operator_logs(since_hours=1)
     assert logs
 
-@pytest.mark.skip(reason="Temporarily disabled")
 def test_list_pods():
     ep = HPJumpStartEndpoint.get(name=ENDPOINT_NAME, namespace=NAMESPACE)
     pods = ep.list_pods(NAMESPACE)
