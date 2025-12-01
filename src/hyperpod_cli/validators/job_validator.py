@@ -292,6 +292,17 @@ def validate_scheduler_related_fields(
                 return False
     return True
 
+def skippable_recipe(model_type: str, recipe_path: str):
+    '''
+
+    :param model_type: Could be [nova-1, nova-2] for NovaModels and open source model types for others.
+    :param recipe_path: can contain possible values from sft, rft, cpt, eval,
+    :return: True if skippable, False if non-skippable
+    '''
+    return "nova-2" in model_type and any(x in recipe_path.lower() for x in ["sft", "rft", "cpt"])
+
+
+
 def validate_recipe_file(recipe: str):
     recipe_path = os.path.join(RECIPES_DIR, f"{recipe}.yaml")
 
@@ -314,6 +325,9 @@ def validate_recipe_file(recipe: str):
                 elif "nova" in model_type and "evaluation" in recipe_data:
                     NovaEvaluationRecipeSchema(**recipe_data)
                 elif "nova" in model_type:
+                    # Skip recipe validation for nova-2 models for beta
+                    if skippable_recipe(model_type, recipe_path):
+                        return True
                     NovaRecipeSchema(**recipe_data)
                 else:
                     raise Exception("Unsupported model_type {model_type}. Make sure the recipe exists in src/hyperpod_cli/sagemaker_hyperpod_recipes/recipes_collection/recipes")
