@@ -275,7 +275,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             logger.info(f"Successfully submitted HyperPodPytorchJob '{self.metadata.name}'!")
         except Exception as e:
             logger.error(f"Failed to create HyperPodPytorchJob {self.metadata.name}!")
-            handle_exception(e, self.metadata.name, self.metadata.namespace)
+            handle_exception(e, self.metadata.name, self.metadata.namespace, debug=debug)
 
 
 
