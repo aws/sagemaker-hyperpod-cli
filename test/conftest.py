@@ -47,6 +47,16 @@ def test_job_name():
     return f"test-pytorch-job-{str(uuid.uuid4())[:8]}"
 
 @pytest.fixture(scope="class")
+def test_elastic_job_name_increment():
+    """Generate a unique job name for elastic training with increment step."""
+    return f"test-increment-{str(uuid.uuid4())[:8]}"
+
+@pytest.fixture(scope="class")
+def test_elastic_job_name_discrete():
+    """Generate a unique job name for elastic training with discrete values."""
+    return f"test-discrete-{str(uuid.uuid4())[:8]}"
+
+@pytest.fixture(scope="class")
 def image_uri():
     """Return a standard PyTorch image URI for testing."""
     return "448049793756.dkr.ecr.us-west-2.amazonaws.com/ptjob:mnist"

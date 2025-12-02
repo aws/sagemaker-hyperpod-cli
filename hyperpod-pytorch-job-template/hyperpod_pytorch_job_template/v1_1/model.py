@@ -11,7 +11,8 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config impo
     Metadata,
     Volumes,
     HostPath, 
-    PersistentVolumeClaim
+    PersistentVolumeClaim,
+    ElasticPolicy
 )
 from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob
 import yaml
@@ -239,6 +240,38 @@ class PyTorchJobConfig(BaseModel):
         alias="required_topology",
         description="Required topology annotation for scheduling",
     )
+    elastic_replica_increment_step: Optional[int] = Field(
+        default=None,
+        alias="elastic_replica_increment_step",
+        description="Scaling step size for elastic training",
+        ge=1,
+    )
+    max_node_count: Optional[int] = Field(
+        default=None,
+        alias="max_node_count",
+        description="Maximum number of nodes for elastic training",
+        ge=1,
+    )
+    elastic_graceful_shutdown_timeout_in_seconds: Optional[int] = Field(
+        default=None,
+        alias="elastic_graceful_shutdown_timeout_in_seconds",
+        description="Graceful shutdown timeout in seconds for elastic scaling operations"
+    )
+    elastic_scaling_timeout_in_seconds: Optional[int] = Field(
+        default=None,
+        alias="elastic_scaling_timeout_in_seconds",
+        description="Scaling timeout for elastic training"
+    )
+    elastic_scale_up_snooze_time_in_seconds: Optional[int] = Field(
+        default=None,
+        alias="elastic_scale_up_snooze_time_in_seconds",
+        description="Timeout period after job restart during which no scale up/workload admission is allowed"
+    )
+    elastic_replica_discrete_values: Optional[List[int]] = Field(
+        default=None,
+        alias="elastic_replica_discrete_values",
+        description="Alternative to replica increment step. Provides exact values for total replicas count"
+    )
 
     @field_validator('tasks_per_node', mode='before')
     @classmethod
@@ -363,6 +396,45 @@ class PyTorchJobConfig(BaseModel):
         )
         if not valid:
             raise ValueError(error)
+        
+        return self
+
+    @model_validator(mode='after')
+    def validate_elastic_replica_config(self):
+        """Validate elastic replica configuration."""
+        has_increment_step = self.elastic_replica_increment_step is not None
+        has_discrete_values = self.elastic_replica_discrete_values is not None
+        
+        # Check mutual exclusivity
+        if has_increment_step and has_discrete_values:
+            raise ValueError(
+                "Only one of 'elastic_replica_increment_step' or 'elastic_replica_discrete_values' "
+                "can be specified, not both. Please use either:\n"
+                "  - elastic_replica_increment_step for uniform scaling steps, or\n"
+                "  - elastic_replica_discrete_values for specific replica counts"
+            )
+        
+        # Validate discrete values are within valid range
+        if has_discrete_values:
+            discrete_values = self.elastic_replica_discrete_values
+
+            # Check that all values are positive
+            if any(val <= 0 for val in discrete_values):
+                raise ValueError(
+                    f"All values in 'elastic_replica_discrete_values' must be positive integers. "
+                    f"Got: {discrete_values}"
+                )
+
+            # Check against max_node_count if specified
+            if self.max_node_count is not None:
+                invalid_values = [val for val in discrete_values if val > self.max_node_count]
+                if invalid_values:
+                    raise ValueError(
+                        f"All values in 'elastic_replica_discrete_values' must be ≤ max_node_count ({self.max_node_count}). "
+                        f"Invalid values: {invalid_values}. "
+                        f"Please either increase max_node_count or remove values exceeding it."
+                    )
+
         return self
 
     def to_domain(self) -> Dict:
@@ -467,15 +539,61 @@ class PyTorchJobConfig(BaseModel):
         replica_kwargs = build_dict(
             name="pod",
             template=Template(metadata=Metadata(**metadata_kwargs), spec=Spec(**spec_kwargs)),
-            replicas=self.node_count
+            replicas=self.node_count,
+            max_replicas=self.max_node_count
         )
+
+        # Build elastic policy
+        elastic_policy = None
+        if any([
+            self.elastic_replica_increment_step is not None,
+            self.max_node_count is not None,
+            self.elastic_graceful_shutdown_timeout_in_seconds is not None,
+            self.elastic_scaling_timeout_in_seconds is not None,
+            self.elastic_replica_discrete_values is not None
+        ]):
+            # Build base elastic policy kwargs
+            elastic_policy_kwargs = build_dict(
+                min_replicas=self.node_count,
+                max_replicas=self.max_node_count,
+                graceful_shutdown_timeout_in_seconds=self.elastic_graceful_shutdown_timeout_in_seconds,
+                scaling_timeout_in_seconds=self.elastic_scaling_timeout_in_seconds
+            )
+
+            if self.elastic_replica_discrete_values is not None:
+                elastic_policy_kwargs['replica_discrete_values'] = self.elastic_replica_discrete_values
+            elif self.elastic_replica_increment_step is not None:
+                elastic_policy_kwargs['replica_increment_step'] = self.elastic_replica_increment_step
+
+            elastic_policy = ElasticPolicy(**elastic_policy_kwargs)
+
+        # Build run policy
+        run_policy = None
+        if self.max_retry is not None or self.elastic_scale_up_snooze_time_in_seconds is not None:
+            from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config import RestartPolicy
+
+            run_policy_kwargs = build_dict(
+                clean_pod_policy="None",
+                job_max_retry_count=self.max_retry
+            )
+
+            # Add restart policy if scale_up_snooze_interval is provided
+            if self.elastic_scale_up_snooze_time_in_seconds is not None:
+                restart_policy = RestartPolicy(
+                    eval_period_seconds=3600,
+                    scale_up_snooze_time_in_seconds=self.elastic_scale_up_snooze_time_in_seconds
+                )
+                run_policy_kwargs['restart_policy'] = restart_policy
+
+            run_policy = RunPolicy(**run_policy_kwargs)
 
         # Build job
         job_kwargs = build_dict(
             metadata=metadata_kwargs,
             replica_specs=[ReplicaSpec(**replica_kwargs)],
             nproc_per_node=str(self.tasks_per_node) if self.tasks_per_node else None,
-            run_policy=RunPolicy(clean_pod_policy="None", job_max_retry_count=self.max_retry) if self.max_retry else None
+            run_policy=run_policy,
+            elastic_policy=elastic_policy
         )
 
         result = HyperPodPytorchJob(**job_kwargs)
