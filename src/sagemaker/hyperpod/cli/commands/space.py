@@ -13,15 +13,16 @@ from sagemaker.hyperpod.common.telemetry.constants import Feature
 
 
 @click.command("hyp-space")
+@click.option("--debug", is_flag=True, help="Enable debug mode")
 @generate_click_command(
     schema_pkg="hyperpod_space_template",
     registry=SCHEMA_REGISTRY,
 )
-def space_create(version, config):
+def space_create(version, debug, config):
     """Create a space resource."""
     space_config = SpaceConfig(**config)
     space = HPSpace(config=space_config)
-    space.create()
+    space.create(debug=debug)
     click.echo(f"Space '{space_config.name}' created successfully in namespace '{space_config.namespace}'")
 
 

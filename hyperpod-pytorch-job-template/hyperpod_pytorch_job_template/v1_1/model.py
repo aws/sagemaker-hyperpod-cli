@@ -598,16 +598,6 @@ class PyTorchJobConfig(BaseModel):
 
         result = HyperPodPytorchJob(**job_kwargs)
         return result
-    
-    def create_from_k8s_yaml(self, yaml_file_path: str) -> None:
-        """Create HyperPodPytorchJob from k8s YAML file."""
-        with open(yaml_file_path, 'r') as f:
-            yaml_data = yaml.safe_load(f)
-        
-        # Combine metadata and spec for full validation
-        full_data = {**yaml_data['spec'], 'metadata': yaml_data['metadata']}
-        job = HyperPodPytorchJob.model_validate(full_data, by_name=True)
-        job.create()
 
 
 # Volume-specific type handlers - only override what's needed

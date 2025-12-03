@@ -301,7 +301,7 @@ class HPSpace(BaseModel):
             logger.debug(f"Successfully created HyperPod Space '{self.config.name}'!")
         except Exception as e:
             logger.error(f"Failed to create HyperPod Space {self.config.name}!")
-            handle_exception(e, self.config.name, self.config.namespace)
+            handle_exception(e, self.config.name, self.config.namespace, debug=debug)
 
     @classmethod
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "list_spaces")
