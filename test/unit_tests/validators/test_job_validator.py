@@ -23,7 +23,50 @@ from hyperpod_cli.validators.job_validator import (
     verify_and_load_yaml,
     validate_yaml_content,
     validate_hyperpod_related_fields,
+    validate_recipe_file,
 )
+
+
+class TestRecipeValidator(unittest.TestCase):
+
+    @patch("os.path.exists", return_value=True)
+    @patch("builtins.open", mock_open(read_data="""
+run:
+  model_type: hyperpod_checkpointless_nemo
+  name: test-recipe
+"""))
+    def test_validate_recipe_file_hp_v2_hyperpod_checkpointless_nemo(self, mock_exists):
+        """Test validation skips for hyperpod_checkpointless_nemo model type"""
+        result = validate_recipe_file("test_recipe")
+        self.assertTrue(result)
+
+    @patch("os.path.exists", return_value=True)
+    @patch("builtins.open", mock_open(read_data="""
+run:
+  model_type: llm_finetuning_aws
+  name: test-recipe
+"""))
+    def test_validate_recipe_file_hp_v2_llm_finetuning_aws(self, mock_exists):
+        """Test validation skips for llm_finetuning_aws model type"""
+        result = validate_recipe_file("test_recipe")
+        self.assertTrue(result)
+
+    @patch("os.path.exists", return_value=True)
+    @patch("builtins.open", mock_open(read_data="""
+run:
+  model_type: verl
+  name: test-recipe
+"""))
+    def test_validate_recipe_file_hp_v2_verl(self, mock_exists):
+        """Test validation skips for verl model type"""
+        result = validate_recipe_file("test_recipe")
+        self.assertTrue(result)
+
+    @patch("os.path.exists", return_value=False)
+    def test_validate_recipe_file_not_found(self, mock_exists):
+        """Test validation fails when recipe file doesn't exist"""
+        result = validate_recipe_file("nonexistent_recipe")
+        self.assertFalse(result)
 
 
 class TestJobValidator(unittest.TestCase):
