@@ -211,7 +211,7 @@ hyp create hyp-pytorch-job [OPTIONS]
 | `--elastic-graceful-shutdown-timeout-in-seconds` | INTEGER | No | Graceful shutdown timeout in seconds for elastic scaling operations|
 | `--elastic-scaling-timeout-in-seconds` | INTEGER | No | Scaling timeout for elastic training|
 | `--elastic-scale-up-snooze-time-in-seconds` | INTEGER | No | Timeout period after job restart during which no scale up/workload admission is allowed|
-| `--elastic-replica-discrete-values` | ARRAY | No | Alternative to elastic-replica-increment-step. Provides exact values for total replicas count|
+| `--elastic-replica-discrete-values` | ARRAY | No | Alternative to elastic-replica-increment-step. Provides exact values for total replicas count (array of integers)|
 | `--debug` | FLAG | No | Enable debug mode (default: false) |
 
 ### Volume Configuration
