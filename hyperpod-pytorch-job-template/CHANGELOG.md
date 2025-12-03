@@ -1,3 +1,9 @@
+## v1.3.0 (2025-12-03)
+
+### Features
+
+* Support for elastic training
+
 ## v1.2.0 (2025-11-20)
 
 ### Features

@@ -1,5 +1,11 @@
 # Changelog
 
+## v.3.5.0 (2025-12-03)
+
+### Features
+  * Elastic training support for HyperPodTrainingOperator that is released in Reinvent 2025 keynote 3. This is a method that dynamically scales distributed machine learning operations.
+
+
 ## v.3.4.0 (2025-11-20)
 
 ### Features

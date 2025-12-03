@@ -42,7 +42,16 @@ def generate_click_command(
                 return None
             # Remove brackets and split by comma
             value = value.strip("[]")
-            return [item.strip() for item in value.split(",") if item.strip()]
+            items = [item.strip() for item in value.split(",") if item.strip()]
+
+            # Convert to integers for elastic_replica_discrete_values
+            if param and hasattr(param, 'name') and param.name == 'elastic_replica_discrete_values':
+                try:
+                    return [int(item) for item in items]
+                except ValueError as e:
+                    raise click.BadParameter(f"elastic-replica-discrete-values must contain only integers: {e}")
+
+            return items
 
         def _parse_volume_param(ctx, param, value):
             """Parse volume parameters from command line format to dictionary format."""
@@ -134,11 +143,12 @@ def generate_click_command(
         list_params = {
             "command": "List of command arguments",
             "args": "List of script arguments, e.g. '[--batch-size, 32, --learning-rate, 0.001]'",
+            "elastic_replica_discrete_values": "List of discrete replica values for elastic training, e.g. '[2, 4, 8, 16]'",
         }
 
         for param_name, help_text in list_params.items():
             wrapped_func = click.option(
-                f"--{param_name}",
+                f"--{param_name.replace('_', '-')}",
                 callback=_parse_list_flag,
                 type=str,
                 default=None,
@@ -154,6 +164,7 @@ def generate_click_command(
                 "command",
                 "args",
                 "volume",
+                "elastic_replica_discrete_values"
             ]
         )
 

@@ -47,7 +47,7 @@ for root, dirs, files in os.walk(
 setup(
     data_files=sagemaker_hyperpod_recipes,
     name="sagemaker-hyperpod",
-    version="3.4.0",
+    version="3.5.0",
     description="Amazon SageMaker HyperPod SDK and CLI",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
