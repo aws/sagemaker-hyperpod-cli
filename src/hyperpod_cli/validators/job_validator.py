@@ -38,6 +38,7 @@ from hyperpod_cli.validators.recipe_models import HfRecipeSchema, NovaRecipeSche
 logger = setup_logger(__name__)
 
 RECIPES_DIR = os.path.join(SAGEMAKER_TRAINING_LAUNCHER_DIR, "recipes_collection/recipes")
+HP_V2_RECIPE_MODEL_TYPES = ["hyperpod_checkpointless_nemo", "llm_finetuning_aws", "verl"]
 
 class JobValidator(Validator):
     def __init__(self):
@@ -329,6 +330,9 @@ def validate_recipe_file(recipe: str):
                     if skippable_recipe(model_type, recipe_path):
                         return True
                     NovaRecipeSchema(**recipe_data)
+                elif model_type in HP_V2_RECIPE_MODEL_TYPES:
+                    # TODO: Add validation logics for HP v2 recipes.
+                    return True
                 else:
                     raise Exception("Unsupported model_type {model_type}. Make sure the recipe exists in src/hyperpod_cli/sagemaker_hyperpod_recipes/recipes_collection/recipes")
                 return True
