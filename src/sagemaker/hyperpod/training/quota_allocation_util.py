@@ -73,12 +73,9 @@ def _get_resources_from_compute_quotas(instance_type: str,
         result["memory"] = memory_value
         result[type_of_accelerator] = accelerators
 
-        if efa is not None:
-            result["vpc.amazonaws.com/efa"] = efa
-        else:
-            efa_count = instance.get("efa", 0)
-            if efa_count > 0:
-                result["vpc.amazonaws.com/efa"] = efa_count
+        efa_count = efa or instance.get("efa", 0)
+        if efa_count > 0:
+            result["vpc.amazonaws.com/efa"] = efa_count
     
     else:
         result["cpu"] = vcpu or 0

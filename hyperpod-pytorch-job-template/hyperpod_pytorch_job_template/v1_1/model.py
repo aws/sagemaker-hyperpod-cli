@@ -464,26 +464,26 @@ class PyTorchJobConfig(BaseModel):
                     **{partition_resource_key: str(self.accelerator_partition_count)} if self.accelerator_partition_count else {},
                     vcpu=str(self.vcpu) if self.vcpu else None,
                     memory=str(self.memory) if self.memory else None,
-                    **{"vpc.amazonaws.com/efa": str(self.efa)} if self.efa else {}
+                    **{"vpc.amazonaws.com/efa": str(self.efa)} if self.efa else {},
                 )
                 limits_value = build_dict(
                     **{partition_resource_key: str(self.accelerator_partition_limit)} if self.accelerator_partition_limit else {},
                     vcpu=str(self.vcpu_limit) if self.vcpu_limit else None,
                     memory=str(self.memory_limit) if self.memory_limit else None,
-                    **{"vpc.amazonaws.com/efa": str(self.efa_limit)} if self.efa_limit else {}
+                    **{"vpc.amazonaws.com/efa": str(self.efa_limit)} if self.efa_limit else {},
                 )
             else:
                 requests_value = build_dict(
                     accelerators=str(self.accelerators) if self.accelerators else None,
                     vcpu=str(self.vcpu) if self.vcpu else None,
                     memory=str(self.memory) if self.memory else None,
-                    **{"vpc.amazonaws.com/efa": str(self.efa)} if self.efa else {}
+                    **{"vpc.amazonaws.com/efa": str(self.efa)} if self.efa else {},
                 )
                 limits_value = build_dict(
                     accelerators=str(self.accelerators_limit) if self.accelerators_limit else None,
                     vcpu=str(self.vcpu_limit) if self.vcpu_limit else None,
                     memory=str(self.memory_limit) if self.memory_limit else None,
-                    **{"vpc.amazonaws.com/efa": str(self.efa_limit)} if self.efa_limit else {}
+                    **{"vpc.amazonaws.com/efa": str(self.efa_limit)} if self.efa_limit else {},
                 )
 
         # Build container

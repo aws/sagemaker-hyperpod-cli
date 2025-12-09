@@ -1,7 +1,11 @@
 from pydantic import ConfigDict, Field
 
-from sagemaker.hyperpod.cli.constants.command_constants import INSTANCE_TYPE_LABEL, NEURON_RESOURCE_LIMIT_KEY, \
-    NVIDIA_GPU_RESOURCE_LIMIT_KEY
+from sagemaker.hyperpod.cli.constants.command_constants import (
+    INSTANCE_TYPE_LABEL,
+    NEURON_RESOURCE_LIMIT_KEY,
+    NVIDIA_GPU_RESOURCE_LIMIT_KEY,
+    EFA_RESOURCE_LIMIT_KEY,
+)
 from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config import (
     _HyperPodPytorchJob, HyperPodPytorchJobStatus
 )
@@ -47,6 +51,7 @@ TRAINING_OPERATOR_NAMESPACE = "aws-hyperpod"
 TRAINING_OPERATOR_LABEL = "hp-training-control-plane"
 NVIDIA_RESOURCE_KEY = NVIDIA_GPU_RESOURCE_LIMIT_KEY
 NEURON_RESOURCE_KEY = NEURON_RESOURCE_LIMIT_KEY
+EFA_RESOURCE_KEY = EFA_RESOURCE_LIMIT_KEY
 
 class HyperPodPytorchJob(_HyperPodPytorchJob):
     """HyperPod PyTorch job for distributed training on Amazon SageMaker HyperPod clusters.
@@ -148,12 +153,12 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             _validate_accelerators_inputs(instance_type, acc_req, acc_lim)
 
             efa = None
-            if requests.get('vpc.amazonaws.com/efa'):
-                efa = int(requests.get('vpc.amazonaws.com/efa'))
+            if requests.get(EFA_RESOURCE_KEY):
+                efa = int(requests.get(EFA_RESOURCE_KEY))
 
             efa_limit = None
-            if limits.get('vpc.amazonaws.com/efa'):
-                efa_limit = int(limits.get('vpc.amazonaws.com/efa'))
+            if limits.get(EFA_RESOURCE_KEY):
+                efa_limit = int(limits.get(EFA_RESOURCE_KEY))
 
             _validate_efa_inputs(instance_type, efa, efa_limit)
 
@@ -178,10 +183,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
                 elif NEURON_RESOURCE_KEY in requests_values:
                     acc_lim = requests_values[NEURON_RESOURCE_KEY]
 
-                if efa is not None:
-                    requests_values["vpc.amazonaws.com/efa"] = efa
-
-            efa_lim = requests_values.get("vpc.amazonaws.com/efa")
+            efa_lim = requests_values.get(EFA_RESOURCE_KEY)
             if efa_lim is not None:
                 efa_lim = int(efa_lim)
 
