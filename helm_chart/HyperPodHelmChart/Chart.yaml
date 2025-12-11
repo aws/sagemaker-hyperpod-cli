@@ -81,7 +81,7 @@ dependencies:
     repository: "file://charts/team-role-and-bindings"
     condition: team-role-and-bindings.enabled
   - name: hyperpod-inference-operator
-    version: "1.1.0"
+    version: "1.2.0"
     repository: "file://charts/inference-operator"
     condition: inferenceOperators.enabled 
   - name: hyperpod-patching
