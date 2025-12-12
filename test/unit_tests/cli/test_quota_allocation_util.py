@@ -110,8 +110,8 @@ class TestQuotaAllocationUtil:
 
     def test_get_resources_from_compute_quotas_gpu_instance_with_accelerators_ratio_half(self):
         result = _get_resources_from_compute_quotas("ml.g6e.48xlarge", None, None, 4)
-        # ml.g5.xlarge has 8 GPU, 192 CPUs, 1536GiB memory
-        assert result == {"cpu": "96.0", "memory": "768.0Gi", "nvidia.com/gpu": 4}
+        # ml.g6e.48xlarge has 8 GPU, 192 CPUs, 1536GiB memory, 4 EFA
+        assert result == {"cpu": "96.0", "memory": "768.0Gi", "nvidia.com/gpu": 4, "vpc.amazonaws.com/efa": 4}
 
     def test_get_resources_from_compute_quotas_gpu_instance_all_params(self):
         result = _get_resources_from_compute_quotas("ml.g5.xlarge", 2.0, 8.0, 1)
@@ -119,9 +119,9 @@ class TestQuotaAllocationUtil:
 
     def test_get_resources_from_compute_quotas_trainium_instance(self):
         result = _get_resources_from_compute_quotas("ml.trn1.32xlarge", None, None, 8)
-        # ml.trn1.32xlarge has 16 trainium, 128 CPUs, 512GB memory
+        # ml.trn1.32xlarge has 16 trainium, 128 CPUs, 512GB memory, 8 EFA
         # 8 trainium is half, so we should get half of CPU and memory
-        assert result == {"cpu": "64.0", "memory": "256.0Gi", "aws.amazon.com/neurondevice": 8}
+        assert result == {"cpu": "64.0", "memory": "256.0Gi", "aws.amazon.com/neurondevice": 8, "vpc.amazonaws.com/efa": 8}
 
     def test_get_resources_from_compute_quotas_cpu_only_instance(self):
         result = _get_resources_from_compute_quotas("ml.c5.large", 1.0, 2.0, 1)
@@ -142,14 +142,15 @@ class TestQuotaAllocationUtil:
     @pytest.mark.parametrize(
         "instance_type,node_count,expected",
         [
-            # GPU instances
-            ("ml.p4d.24xlarge", 1, {"cpu": "96", "memory": "1152Gi", "nvidia.com/gpu": 8}),
-            ("ml.p4d.24xlarge", 2, {"cpu": "192", "memory": "2304Gi", "nvidia.com/gpu": 16}),
+            # GPU instances with EFA support
+            ("ml.p4d.24xlarge", 1, {"cpu": "96", "memory": "1152Gi", "nvidia.com/gpu": 8, "vpc.amazonaws.com/efa": 4}),
+            ("ml.p4d.24xlarge", 2, {"cpu": "192", "memory": "2304Gi", "nvidia.com/gpu": 16, "vpc.amazonaws.com/efa": 4}),
+            # GPU instances without EFA support
             ("ml.g5.xlarge", 1, {"cpu": "4", "memory": "16Gi", "nvidia.com/gpu": 1}),
             ("ml.g5.xlarge", 3, {"cpu": "12", "memory": "48Gi", "nvidia.com/gpu": 3}),
             # Trainium instances
-            ("ml.trn1.32xlarge", 1, {"cpu": "128", "memory": "512Gi", "aws.amazon.com/neurondevice": 16}),
-            ("ml.trn1.32xlarge", 2, {"cpu": "256", "memory": "1024Gi", "aws.amazon.com/neurondevice": 32}),
+            ("ml.trn1.32xlarge", 1, {"cpu": "128", "memory": "512Gi", "aws.amazon.com/neurondevice": 16, "vpc.amazonaws.com/efa": 8}),
+            ("ml.trn1.32xlarge", 2, {"cpu": "256", "memory": "1024Gi", "aws.amazon.com/neurondevice": 32, "vpc.amazonaws.com/efa": 8}),
             # CPU-only instances
             ("ml.c5.large", 1, {"cpu": "2", "memory": "4Gi"}),
             ("ml.c5.large", 5, {"cpu": "10", "memory": "20Gi"}),
