@@ -1309,6 +1309,14 @@ template.delete()
 ```
 
 ## Examples
+
+This repository provides both a **full end-to-end example walkthrough** of using the CLI for real-world training and inference workloads as well as **standalone** example notebooks for individual features.
+
+### End-to-End Walkthrough
+[End-to-End Walkthrough Example](https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/end_to_end_walkthrough/README.md)
+
+### Standalone Examples
+
 #### Cluster Management Example Notebooks
 
 [CLI Cluster Management Example](https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/cluster_management/cluster_creation_init_experience.ipynb)
