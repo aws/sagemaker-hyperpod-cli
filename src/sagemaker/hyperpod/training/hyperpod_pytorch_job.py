@@ -152,15 +152,15 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             acc_req, acc_lim = _set_default_accelerators_val(instance_type, accelerators, accelerators_limit)
             _validate_accelerators_inputs(instance_type, acc_req, acc_lim)
 
-            efa = None
+            efa_interfaces = None
             if requests.get(EFA_RESOURCE_KEY):
-                efa = int(requests.get(EFA_RESOURCE_KEY))
+                efa_interfaces = int(requests.get(EFA_RESOURCE_KEY))
 
-            efa_limit = None
+            efa_interfaces_limit = None
             if limits.get(EFA_RESOURCE_KEY):
-                efa_limit = int(limits.get(EFA_RESOURCE_KEY))
+                efa_interfaces_limit = int(limits.get(EFA_RESOURCE_KEY))
 
-            _validate_efa_inputs(instance_type, efa, efa_limit)
+            _validate_efa_inputs(instance_type, efa_interfaces, efa_interfaces_limit)
 
             accelerator_partition_type, accelerator_partition_count, accelerator_partition_limit = (
                 _get_accelerator_partition(requests, limits)
@@ -174,7 +174,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
 
             acc_partition_req, acc_partition_lim = _set_default_accelerator_partition_val(accelerator_partition_count, accelerator_partition_limit)
 
-            requests_values = _get_resources_from_compute_quotas(instance_type, vcpu, memory, acc_req, accelerator_partition_type, acc_partition_req, efa)
+            requests_values = _get_resources_from_compute_quotas(instance_type, vcpu, memory, acc_req, accelerator_partition_type, acc_partition_req, efa_interfaces)
             if requests_values is None:
                 requests_values = _get_resources_from_instance(instance_type, node_count=1)
                 _trim_resource_requests(instance_type, requests_values)

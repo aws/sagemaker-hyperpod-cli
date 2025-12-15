@@ -97,7 +97,7 @@ class TestPyTorchJobConfigEFA(unittest.TestCase):
             job_name="test-custom-efa",
             image="pytorch:latest",
             accelerators=4,
-            efa=2,
+            efa_interfaces=2,
             instance_type="ml.p4d.24xlarge"
         )
 
