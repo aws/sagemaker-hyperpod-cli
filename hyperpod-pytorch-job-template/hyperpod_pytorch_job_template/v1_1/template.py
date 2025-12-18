@@ -97,14 +97,14 @@ spec:
 {%-             if memory %}
                   memory: {{ memory }}Gi
 {%-             endif %}
-{%-             if (node_count and node_count > 1) %}
-                  vpc.amazonaws.com/efa: 1
+{%-             if efa and efa > 0 %}
+                  vpc.amazonaws.com/efa: {{ efa }}
 {%-             endif %}
 {%-           else %}
                 requests:
                   nvidia.com/gpu: "0"
 {%-           endif %}
-{%-           if accelerator_partition_limit or accelerators_limit or vcpu_limit or memory_limit %}
+{%-           if accelerator_partition_limit or accelerators_limit or vcpu_limit or memory_limit or efa_limit%}
                 limits:
 {%-             if accelerator_partition_type and accelerator_partition_limit %}
                   nvidia.com/{{ accelerator_partition_type }}: {{ accelerator_partition_limit }}
@@ -117,8 +117,8 @@ spec:
 {%-             if memory_limit %}
                   memory: {{ memory_limit }}Gi
 {%-             endif %}
-{%-             if (node_count and node_count > 1) %}
-                  vpc.amazonaws.com/efa: 1
+{%-             if efa_limit and efa_limit > 0 %}
+                  vpc.amazonaws.com/efa: {{ efa_limit }}
 {%-             endif %}
 {%-           else %}
                 limits:

@@ -53,8 +53,8 @@ class TestGpuQuotaAllocationIntegration:
         result = execute_command(describe_cmd)
         logger.info(f"describe result: {result}")
         assert result.returncode == 0
-        assert "      Limits:   {'cpu': '4', 'memory': '2Gi', 'nvidia.com/gpu': '1'}" in result.stdout
-        assert "      Requests: {'cpu': '3', 'memory': '1Gi', 'nvidia.com/gpu': '1'}" in result.stdout
+        assert "      Limits:   {'cpu': '4', 'memory': '2Gi', 'nvidia.com/gpu': '1', 'vpc.amazonaws.com/efa': '1'}" in result.stdout
+        assert "      Requests: {'cpu': '3', 'memory': '1Gi', 'nvidia.com/gpu': '1', 'vpc.amazonaws.com/efa': '1'}" in result.stdout
 
         delete_cmd = [
             "hyp", "delete", "hyp-pytorch-job",
@@ -103,8 +103,8 @@ class TestGpuQuotaAllocationIntegration:
         ]
         result = execute_command(describe_cmd)
         assert result.returncode == 0
-        assert "      Limits:   {'cpu': '4800m', 'memory': '2899102924800m', 'nvidia.com/gpu': '1'}" in result.stdout
-        assert "      Requests: {'cpu': '3600m', 'memory': '1Gi', 'nvidia.com/gpu': '1'}" in result.stdout
+        assert "      Limits:   {'cpu': '4800m', 'memory': '2899102924800m', 'nvidia.com/gpu': '1', 'vpc.amazonaws.com/efa': '1'}" in result.stdout
+        assert "      Requests: {'cpu': '3600m', 'memory': '1Gi', 'nvidia.com/gpu': '1', 'vpc.amazonaws.com/efa': '1'}" in result.stdout
 
         delete_cmd = [
             "hyp", "delete", "hyp-pytorch-job",
@@ -149,8 +149,8 @@ class TestGpuQuotaAllocationIntegration:
         ]
         result = execute_command(describe_cmd)
         assert result.returncode == 0
-        assert "      Limits:   {'memory': '104Gi', 'nvidia.com/gpu': '1'}" in result.stdout
-        assert "      Requests: {'cpu': '29', 'memory': '104Gi', 'nvidia.com/gpu': '1'}" in result.stdout
+        assert "      Limits:   {'memory': '104Gi', 'nvidia.com/gpu': '1', 'vpc.amazonaws.com/efa': '1'}" in result.stdout
+        assert "      Requests: {'cpu': '29', 'memory': '104Gi', 'nvidia.com/gpu': '1', 'vpc.amazonaws.com/efa': '1'}" in result.stdout
 
         delete_cmd = [
             "hyp", "delete", "hyp-pytorch-job",
@@ -196,8 +196,8 @@ class TestGpuQuotaAllocationIntegration:
         time.sleep(5)
 
         assert result.returncode == 0
-        assert "      Limits:   {'memory': '2899102924800m', 'nvidia.com/gpu': '1'}" in result.stdout
-        assert "      Requests: {'cpu': '29', 'memory': '2040109465600m', 'nvidia.com/gpu': '1'}" in result.stdout
+        assert "      Limits:   {'memory': '2899102924800m', 'nvidia.com/gpu': '1', 'vpc.amazonaws.com/efa': '1'}" in result.stdout
+        assert "      Requests: {'cpu': '29', 'memory': '2040109465600m', 'nvidia.com/gpu': '1', 'vpc.amazonaws.com/efa': '1'}" in result.stdout
 
         delete_cmd = [
             "hyp", "delete", "hyp-pytorch-job",

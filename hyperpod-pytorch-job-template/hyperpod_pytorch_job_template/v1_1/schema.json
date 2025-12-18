@@ -305,6 +305,16 @@
       "minimum": 0,
       "description": "Limit for the amount of memory in GiB"
     },
+    "efa_interfaces": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of EFA interfaces for the instance"
+    },
+    "efa_interfaces_limit": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Limit for the number of EFA interfaces"
+    },
     "accelerator_partition_type": {
       "type": "string",
       "enum": [

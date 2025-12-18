@@ -195,6 +195,16 @@ class PyTorchJobConfig(BaseModel):
         default=None,
         description="Limit for the amount of memory in GiB",
     )
+    efa_interfaces: Optional[int] = Field(
+        default=None,
+        description="Number of EFA interfaces for the instance",
+        ge=0
+    )
+    efa_interfaces_limit: Optional[int] = Field(
+        default=None,
+        description="Limit for the number of EFA interfaces",
+        ge=0
+    )
     accelerator_partition_type: Optional[str] = Field(
         default=None,
         description="Type of accelerator partition"
@@ -453,23 +463,27 @@ class PyTorchJobConfig(BaseModel):
                 requests_value = build_dict(
                     **{partition_resource_key: str(self.accelerator_partition_count)} if self.accelerator_partition_count else {},
                     vcpu=str(self.vcpu) if self.vcpu else None,
-                    memory=str(self.memory) if self.memory else None
+                    memory=str(self.memory) if self.memory else None,
+                    **{"vpc.amazonaws.com/efa": str(self.efa_interfaces)} if self.efa_interfaces else {},
                 )
                 limits_value = build_dict(
                     **{partition_resource_key: str(self.accelerator_partition_limit)} if self.accelerator_partition_limit else {},
                     vcpu=str(self.vcpu_limit) if self.vcpu_limit else None,
-                    memory=str(self.memory_limit) if self.memory_limit else None
+                    memory=str(self.memory_limit) if self.memory_limit else None,
+                    **{"vpc.amazonaws.com/efa": str(self.efa_interfaces_limit)} if self.efa_interfaces_limit else {},
                 )
             else:
                 requests_value = build_dict(
                     accelerators=str(self.accelerators) if self.accelerators else None,
                     vcpu=str(self.vcpu) if self.vcpu else None,
-                    memory=str(self.memory) if self.memory else None
+                    memory=str(self.memory) if self.memory else None,
+                    **{"vpc.amazonaws.com/efa": str(self.efa_interfaces)} if self.efa_interfaces else {},
                 )
                 limits_value = build_dict(
                     accelerators=str(self.accelerators_limit) if self.accelerators_limit else None,
                     vcpu=str(self.vcpu_limit) if self.vcpu_limit else None,
-                    memory=str(self.memory_limit) if self.memory_limit else None
+                    memory=str(self.memory_limit) if self.memory_limit else None,
+                    **{"vpc.amazonaws.com/efa": str(self.efa_interfaces_limit)} if self.efa_interfaces_limit else {},
                 )
 
         # Build container
