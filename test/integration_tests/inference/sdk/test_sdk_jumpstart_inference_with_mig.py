@@ -38,6 +38,7 @@ def endpoint_obj():
 
     return HPJumpStartEndpoint(metadata=metadata, model=model, server=server, sage_maker_endpoint=sm_endpoint)
 
+@pytest.mark.skip(reason="Skipping expensive ml.p4d.24xlarge MIG tests to reduce costs")
 @pytest.mark.dependency(name="create")
 def test_create_endpoint(endpoint_obj):
     endpoint_obj.create()
