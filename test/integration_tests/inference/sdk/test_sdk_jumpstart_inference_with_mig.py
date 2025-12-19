@@ -9,6 +9,8 @@ import sagemaker_core.main.code_injection.codec as codec
 from test.integration_tests.utils import get_time_str
 from sagemaker.hyperpod.common.config.metadata import Metadata
 
+pytestmark = pytest.mark.skip(reason="Skipping expensive ml.p4d.24xlarge MIG tests to reduce costs")
+
 # --------- Config ---------
 NAMESPACE = "integration"
 REGION = "us-east-2"
