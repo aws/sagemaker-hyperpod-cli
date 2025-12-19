@@ -260,6 +260,15 @@ class TestGpuQuotaAllocationIntegration:
         )
         assert result.returncode == 0
 
+        delete_cmd = [
+            "hyp", "delete", "hyp-pytorch-job",
+            "--job-name", test_job_name,
+            "--namespace", NAMESPACE
+        ]
+        result = execute_command(delete_cmd)
+        assert result.returncode == 0
+        logger.info(f"Successfully deleted job: {test_job_name}")
+
     def test_invalid_instance_type_parameter(self, test_job_name):
         """Test case where invalid instance type parameter is provided"""
 
