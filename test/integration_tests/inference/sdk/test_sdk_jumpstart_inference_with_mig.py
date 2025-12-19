@@ -9,6 +9,8 @@ import sagemaker_core.main.code_injection.codec as codec
 from test.integration_tests.utils import get_time_str
 from sagemaker.hyperpod.common.config.metadata import Metadata
 
+pytestmark = pytest.mark.skip(reason="Skipping expensive ml.p4d.24xlarge MIG tests to reduce costs")
+
 # --------- Config ---------
 NAMESPACE = "integration"
 REGION = "us-east-2"
@@ -38,7 +40,6 @@ def endpoint_obj():
 
     return HPJumpStartEndpoint(metadata=metadata, model=model, server=server, sage_maker_endpoint=sm_endpoint)
 
-@pytest.mark.skip(reason="Skipping expensive ml.p4d.24xlarge MIG tests to reduce costs")
 @pytest.mark.dependency(name="create")
 def test_create_endpoint(endpoint_obj):
     endpoint_obj.create()

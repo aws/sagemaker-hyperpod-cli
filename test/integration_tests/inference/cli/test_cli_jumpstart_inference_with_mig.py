@@ -8,6 +8,8 @@ from sagemaker.hyperpod.cli.commands.inference import (
 from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
 from test.integration_tests.utils import get_time_str
 
+pytestmark = pytest.mark.skip(reason="Skipping expensive ml.p4d.24xlarge MIG tests to reduce costs")
+
 # --------- Test Configuration ---------
 NAMESPACE = "integration"
 VERSION = "1.1"
@@ -28,7 +30,6 @@ def sagemaker_client():
     return boto3.client("sagemaker", region_name=REGION)
 
 # --------- JumpStart Endpoint Tests ---------
-@pytest.mark.skip(reason="Skipping expensive ml.p4d.24xlarge MIG tests to reduce costs")
 @pytest.mark.dependency(name="create")
 def test_js_create(runner, js_endpoint_name):
     result = runner.invoke(js_create, [
