@@ -187,41 +187,6 @@ This will create the team-specific compute quotas as well as the corresponding K
 
 ![Team Quotas](../images/team-quotas.png)
 
-#### Disable `kueue` Topology Aware Scheduling (TAS)
-
-Currently, the task preemption functionality of Task Governance is incompatible with `kueue`'s Topology Aware Scheduling (TAS) feature. Thus, we need to disable it before continuing. This can be done by:
-To disable topology aware scheduling in Kueue, you have to edit the Kueue configuration.
-
-Open the `kueue` config map:
-```bash
-kubectl edit configmap kueue-manager-config -n kueue-system
-```
-This will per default open `vim` as editor.
-Set `featureGates: TopologyAwareScheduling` to `false`:
-
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: kueue-manager-config
-  namespace: kueue-system
-data:
-  controller_manager_config.yaml: |
-    ... scroll down ...
-    resources:
-      excludeResourcePrefixes:
-      - vpc.amazonaws.com/efa
-    featureGates:
-      TopologyAwareScheduling: false
-```
-Close and save the config by typing `:wq!`.
-
-After saving, restart the Kueue controller:
-
-```bash
-kubectl rollout restart deployment kueue-controller-manager -n kueue-system
-```
-
 #### FSx for Lustre Configuration
 
 In this section you will link your cluster's FSx for Lustre filesystem to an S3 bucket via Data Repository Association and enable the newly created Task Governance team namespaces to access the filesytem.
