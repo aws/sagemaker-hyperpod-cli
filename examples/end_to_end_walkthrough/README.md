@@ -1,6 +1,8 @@
 # End-to-End Walkthrough - Amazon SageMaker HyperPod CLI and SDK
 This folder contains a full, end-to-end walkthrough of the HyperPod CLI and SDK functionalities for cluster management, training job submission, inference deployments, task governance as well as spaces (IDE) deployment.
 
+A recording of the full walkthrough as part of re:invent 2025 session 371 is available on [Youtube](https://www.youtube.com/watch?v=6hrqologUZE).
+
 - [**Getting Started**](./00-getting-started/)
     - [00-setup.md](./00-getting-started/00-setup.md) - Instructions on how to install the CLI and setting up prerequisites you should have in your AWS account for running the examples.
     - [01-(optional)-cluster-creation.md](./00-getting-started/01-(optional)-cluster-creation.md) - Optional instructions on how to create a new HyperPod cluster using the CLI. Alternatively an existing cluster can be used for the examples, or one can be created using the console UI.
