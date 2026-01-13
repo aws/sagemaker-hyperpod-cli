@@ -23,7 +23,7 @@ mig-configs:
       mig-enabled: true
       mig-devices:
         "1g.18gb": 7
-
+        
   # Profile 5
   all-3g.40gb:
     - devices: all
@@ -42,7 +42,7 @@ mig-configs:
       mig-enabled: true
       mig-devices:
         "3g.71gb": 2
-
+        
   # Profile 1
   all-7g.80gb:
     - devices: all
@@ -108,7 +108,7 @@ mig-configs:
         "1g.18gb": 1
         "2g.35gb": 1
         "4g.71gb": 1
-
+        
   # Profile 4
   mixed-3-1g.10gb-1-4g.40gb:
     - devices: all
@@ -132,7 +132,7 @@ mig-configs:
         "4g.71gb": 1
 
   # Profile 6
-  mixed-1g.10gb-1-2g.20gb-1-3g.40gb:
+  mixed-1-1g.10gb-1-2g.20gb-1-3g.40gb:
     - devices: all
       mig-enabled: true
       mig-devices:
@@ -140,7 +140,7 @@ mig-configs:
         "2g.20gb": 1
         "3g.40gb": 1
 
-  mixed-1g.5gb-1-2g.10gb-1-3g.20gb:
+  mixed-1-1g.5gb-1-2g.10gb-1-3g.20gb:
     - devices: all
       mig-enabled: true
       mig-devices:
@@ -148,7 +148,7 @@ mig-configs:
         "2g.10gb": 1
         "3g.20gb": 1
 
-  mixed-1g.18gb-1-2g.35gb-1-3g.71gb:
+  mixed-1-1g.18gb-1-2g.35gb-1-3g.71gb:
     - devices: all
       mig-enabled: true
       mig-devices:
@@ -171,7 +171,7 @@ mig-configs:
         "1g.5gb": 3
         "3g.20gb": 1
 
-  mixed-3-1g.18gb-1-3g.70gb:
+  mixed-3-1g.18gb-1-3g.71gb:
     - devices: all
       mig-enabled: true
       mig-devices:
@@ -209,7 +209,7 @@ mig-configs:
         "2g.20gb": 1
         "3g.40gb": 1
 
-  mixed-2-1g.5gb-1-2g.20gb-1-3g.20gb:
+  mixed-2-1g.5gb-1-2g.10gb-1-3g.20gb:
     - devices: all
       mig-enabled: true
       mig-devices:
@@ -217,12 +217,12 @@ mig-configs:
         "2g.10gb": 1
         "3g.20gb": 1
 
-  mixed-2-1g.18gb-1-2g.47gb-1-3g.71gb:
+  mixed-2-1g.18gb-1-2g.35gb-1-3g.71gb:
     - devices: all
       mig-enabled: true
       mig-devices:
         "1g.18gb": 2
-        "2g.47gb": 1
+        "2g.35gb": 1
         "3g.71gb": 1
 
   # Profile 11
