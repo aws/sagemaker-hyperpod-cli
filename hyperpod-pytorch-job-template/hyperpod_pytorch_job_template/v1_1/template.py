@@ -84,9 +84,11 @@ spec:
 {%-             endfor %}
 {%-           endif %}
               resources:
-{%-           if accelerators or vcpu or memory %}
+{%-           if accelerator_partition_count or accelerators or vcpu or memory %}
                 requests:
-{%-             if accelerators %}
+{%-             if accelerator_partition_type and accelerator_partition_count %}
+                  nvidia.com/{{ accelerator_partition_type }}: {{ accelerator_partition_count }}
+{%-             elif accelerators %}
                   nvidia.com/gpu: {{ accelerators }}
 {%-             endif %}
 {%-             if vcpu %}
@@ -95,13 +97,18 @@ spec:
 {%-             if memory %}
                   memory: {{ memory }}Gi
 {%-             endif %}
+{%-             if efa and efa > 0 %}
+                  vpc.amazonaws.com/efa: {{ efa }}
+{%-             endif %}
 {%-           else %}
                 requests:
                   nvidia.com/gpu: "0"
 {%-           endif %}
-{%-           if accelerators_limit or vcpu_limit or memory_limit %}
+{%-           if accelerator_partition_limit or accelerators_limit or vcpu_limit or memory_limit or efa_limit%}
                 limits:
-{%-             if accelerators_limit %}
+{%-             if accelerator_partition_type and accelerator_partition_limit %}
+                  nvidia.com/{{ accelerator_partition_type }}: {{ accelerator_partition_limit }}
+{%-             elif accelerators_limit %}
                   nvidia.com/gpu: {{ accelerators_limit }}
 {%-             endif %}
 {%-             if vcpu_limit %}
@@ -110,11 +117,14 @@ spec:
 {%-             if memory_limit %}
                   memory: {{ memory_limit }}Gi
 {%-             endif %}
+{%-             if efa_limit and efa_limit > 0 %}
+                  vpc.amazonaws.com/efa: {{ efa_limit }}
+{%-             endif %}
 {%-           else %}
                 limits:
                   nvidia.com/gpu: "0"
 {%-           endif %}
-{%-         if instance_type or label_selector or deep_health_check_passed_nodes_only %}
+{%-         if instance_type or label_selector or deep_health_check_passed_nodes_only or accelerator_partition_type %}
           nodeSelector:
 {%-           if instance_type %}
             node.kubernetes.io/instance-type: {{ instance_type }}
@@ -126,6 +136,9 @@ spec:
 {%-           endif %}
 {%-           if deep_health_check_passed_nodes_only %}
             deep-health-check-passed: "true"
+{%-           endif %}
+{%-           if accelerator_partition_type %}
+            nvidia.com/mig.config.state: "success"
 {%-           endif %}
 {%-         endif %}
 {%-         if service_account_name %}

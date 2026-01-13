@@ -127,7 +127,7 @@ class HPEndpointBase:
             )
         except Exception as e:
             logger.error(f"Failed to create endpoint in namespace {metadata.namespace}!")
-            handle_exception(e, metadata.name, metadata.namespace)
+            handle_exception(e, metadata.name, metadata.namespace, debug=debug)
 
     @classmethod
     def call_list_api(

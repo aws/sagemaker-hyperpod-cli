@@ -198,7 +198,7 @@ def test_custom_invoke(runner, custom_endpoint_name, test_directory):
     assert "error" not in result.output.lower()
 
 
-@pytest.mark.dependency(depends=["invoke"])
+@pytest.mark.dependency(depends=["create"])
 def test_custom_delete(runner, custom_endpoint_name, test_directory):
     """Clean up deployed custom endpoint using CLI delete command."""
     result = runner.invoke(delete, [

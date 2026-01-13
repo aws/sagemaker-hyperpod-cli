@@ -264,6 +264,7 @@ aws-efa-k8s-device-plugin:
       - ml.r7i.48xlarge
       - ml.trn1.32xlarge
       - ml.trn1n.32xlarge
+      - ml.trn2.3xlarge
       - ml.trn2.48xlarge
   tolerations:
     - key: CriticalAddonsOnly

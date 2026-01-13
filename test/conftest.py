@@ -3,6 +3,7 @@ import sys
 import uuid
 import pytest
 import json
+import os
 from test.integration_tests.utils import execute_command
 from sagemaker.hyperpod.training import (
     HyperPodPytorchJob,
@@ -13,6 +14,7 @@ from sagemaker.hyperpod.training import (
     Spec,
     Template,
 )
+from sagemaker.hyperpod.training.constants import VALIDATE_PROFILE_IN_CLUSTER
 from sagemaker.hyperpod.common.config import Metadata
 
 @pytest.fixture(scope="session", autouse=True)
@@ -43,6 +45,16 @@ def pytest_configure(config):
 def test_job_name():
     """Generate a unique job name for testing."""
     return f"test-pytorch-job-{str(uuid.uuid4())[:8]}"
+
+@pytest.fixture(scope="class")
+def test_elastic_job_name_increment():
+    """Generate a unique job name for elastic training with increment step."""
+    return f"test-increment-{str(uuid.uuid4())[:8]}"
+
+@pytest.fixture(scope="class")
+def test_elastic_job_name_discrete():
+    """Generate a unique job name for elastic training with discrete values."""
+    return f"test-discrete-{str(uuid.uuid4())[:8]}"
 
 @pytest.fixture(scope="class")
 def image_uri():
@@ -101,3 +113,8 @@ def pytorch_job(test_job_name, image_uri):
 
     return pytorch_job
 
+@pytest.fixture
+def skip_validate_accelerator_partition_in_cluster():
+    os.environ[VALIDATE_PROFILE_IN_CLUSTER] = 'false'
+    yield
+    os.environ.pop(VALIDATE_PROFILE_IN_CLUSTER, None)

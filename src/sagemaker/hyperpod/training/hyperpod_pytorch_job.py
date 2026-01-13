@@ -1,7 +1,11 @@
 from pydantic import ConfigDict, Field
 
-from sagemaker.hyperpod.cli.constants.command_constants import INSTANCE_TYPE_LABEL, NEURON_RESOURCE_LIMIT_KEY, \
-    NVIDIA_GPU_RESOURCE_LIMIT_KEY
+from sagemaker.hyperpod.cli.constants.command_constants import (
+    INSTANCE_TYPE_LABEL,
+    NEURON_RESOURCE_LIMIT_KEY,
+    NVIDIA_GPU_RESOURCE_LIMIT_KEY,
+    EFA_RESOURCE_LIMIT_KEY,
+)
 from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config import (
     _HyperPodPytorchJob, HyperPodPytorchJobStatus
 )
@@ -29,8 +33,14 @@ from sagemaker.hyperpod.training.quota_allocation_util import (
     _resolve_default_memory_values,
     _set_default_accelerators_val,
     _validate_accelerators_inputs,
+    _validate_efa_inputs,
     _resolve_default_cpu_values,
-    _trim_resource_requests
+    _trim_resource_requests,
+)
+from sagemaker.hyperpod.training.constants import INSTANCE_RESOURCES, INSTANCE_TYPE_MIG_PROFILES
+from sagemaker.hyperpod.training.accelerator_partition_util import (
+    _get_accelerator_partition,
+    _set_default_accelerator_partition_val,
 )
 
 TRAINING_GROUP = "sagemaker.amazonaws.com"
@@ -41,6 +51,7 @@ TRAINING_OPERATOR_NAMESPACE = "aws-hyperpod"
 TRAINING_OPERATOR_LABEL = "hp-training-control-plane"
 NVIDIA_RESOURCE_KEY = NVIDIA_GPU_RESOURCE_LIMIT_KEY
 NEURON_RESOURCE_KEY = NEURON_RESOURCE_LIMIT_KEY
+EFA_RESOURCE_KEY = EFA_RESOURCE_LIMIT_KEY
 
 class HyperPodPytorchJob(_HyperPodPytorchJob):
     """HyperPod PyTorch job for distributed training on Amazon SageMaker HyperPod clusters.
@@ -141,13 +152,29 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             acc_req, acc_lim = _set_default_accelerators_val(instance_type, accelerators, accelerators_limit)
             _validate_accelerators_inputs(instance_type, acc_req, acc_lim)
 
-            # Validate configuration
-            valid, error = _is_valid(vcpu, memory, acc_req, node_count, instance_type)
+            efa_interfaces = None
+            if requests.get(EFA_RESOURCE_KEY):
+                efa_interfaces = int(requests.get(EFA_RESOURCE_KEY))
+
+            efa_interfaces_limit = None
+            if limits.get(EFA_RESOURCE_KEY):
+                efa_interfaces_limit = int(limits.get(EFA_RESOURCE_KEY))
+
+            _validate_efa_inputs(instance_type, efa_interfaces, efa_interfaces_limit)
+
+            accelerator_partition_type, accelerator_partition_count, accelerator_partition_limit = (
+                _get_accelerator_partition(requests, limits)
+            )
+
+        # Validate configuration
+            valid, error = _is_valid(vcpu, memory, acc_req, acc_lim, node_count, instance_type, accelerator_partition_type,
+                                     accelerator_partition_count, accelerator_partition_limit)
             if not valid:
                 raise ValueError(error)
 
-            # Calculate resource values
-            requests_values = _get_resources_from_compute_quotas(instance_type, vcpu, memory, acc_req)
+            acc_partition_req, acc_partition_lim = _set_default_accelerator_partition_val(accelerator_partition_count, accelerator_partition_limit)
+
+            requests_values = _get_resources_from_compute_quotas(instance_type, vcpu, memory, acc_req, accelerator_partition_type, acc_partition_req, efa_interfaces)
             if requests_values is None:
                 requests_values = _get_resources_from_instance(instance_type, node_count=1)
                 _trim_resource_requests(instance_type, requests_values)
@@ -156,7 +183,11 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
                 elif NEURON_RESOURCE_KEY in requests_values:
                     acc_lim = requests_values[NEURON_RESOURCE_KEY]
 
-            limits_values = _get_limits(instance_type, vcpu_limit, memory_limit, acc_lim)
+            efa_lim = requests_values.get(EFA_RESOURCE_KEY)
+            if efa_lim is not None:
+                efa_lim = int(efa_lim)
+
+            limits_values = _get_limits(instance_type, vcpu_limit, memory_limit, acc_lim, accelerator_partition_type, acc_partition_lim, efa_lim)
             _resolve_default_memory_values(instance_type, requests_values, limits_values)
             _resolve_default_cpu_values(instance_type, requests_values)
 
@@ -263,7 +294,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             logger.info(f"Successfully submitted HyperPodPytorchJob '{self.metadata.name}'!")
         except Exception as e:
             logger.error(f"Failed to create HyperPodPytorchJob {self.metadata.name}!")
-            handle_exception(e, self.metadata.name, self.metadata.namespace)
+            handle_exception(e, self.metadata.name, self.metadata.namespace, debug=debug)
 
 
 
@@ -668,6 +699,43 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             handle_exception(e, pod_name, TRAINING_OPERATOR_NAMESPACE)
 
         return logs
+
+
+def list_accelerator_partition_types(instance_type: str) -> List[str]:
+    """List available accelerator partition types for an instance type."""
+    config.load_kube_config()
+    
+    if instance_type not in INSTANCE_RESOURCES:
+        raise ValueError(f"Invalid instance type '{instance_type}'")
+    
+    if instance_type not in INSTANCE_TYPE_MIG_PROFILES:
+        raise ValueError(f"Instance type '{instance_type}' does not support accelerator partitions")
+
+    try:
+        possible_partition_types = set(INSTANCE_TYPE_MIG_PROFILES[instance_type])
+        available_partition_types = set()
+        
+        v1 = client.CoreV1Api()
+        label_selector = f"node.kubernetes.io/instance-type={instance_type}"
+        nodes = v1.list_node(label_selector=label_selector).items
+        
+        for node in nodes:
+            if not node.status or not node.status.allocatable:
+                continue
+                
+            for partition_type in possible_partition_types:
+                if partition_type in available_partition_types:
+                    continue
+                    
+                resource_key = f"nvidia.com/{partition_type}"
+                allocatable_partitions = node.status.allocatable.get(resource_key)
+                if allocatable_partitions and int(allocatable_partitions) > 0:
+                    available_partition_types.add(partition_type)
+        
+        return sorted(available_partition_types)
+        
+    except Exception as e:
+        raise RuntimeError(f"Failed to query cluster for accelerator partitions: {e}")
 
 
 def _load_hp_job(response: dict) -> HyperPodPytorchJob:

@@ -1,3 +1,15 @@
+## v1.1.1 (2025-11-25)
+
+### Features
+
+* Patch fix for template 1.1 issue
+
+## v1.1.0 (2025-11-20)
+
+### Features
+
+* Support for KVCaching, intelligent routing, tiered storage, MIG
+
 ## v1.0.3 (2025-10-30)
 
 ### Features

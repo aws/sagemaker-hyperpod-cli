@@ -20,8 +20,8 @@ from sagemaker.hyperpod.common.utils import display_formatted_logs
 
 # CREATE
 @click.command("hyp-jumpstart-endpoint")
-@click.option("--version", default="1.0", help="Schema version to use")
-@click.option("--debug", default=False, help="Enable debug mode")
+@click.option("--version", default="1.1", help="Schema version to use")
+@click.option("--debug", is_flag=True, help="Enable debug mode")
 @generate_click_command(
     schema_pkg="hyperpod_jumpstart_inference_template",
     registry=JS_REG,
@@ -37,8 +37,8 @@ def js_create(version, debug, js_endpoint):
 
 
 @click.command("hyp-custom-endpoint")
-@click.option("--version", default="1.0", help="Schema version to use")
-@click.option("--debug", default=False, help="Enable debug mode")
+@click.option("--version", default="1.1", help="Schema version to use")
+@click.option("--debug", is_flag=True, help="Enable debug mode")
 @generate_click_command(
     schema_pkg="hyperpod_custom_inference_template",
     registry=C_REG,

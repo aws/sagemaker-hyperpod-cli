@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: fsx-pv-${TEAM_A_NAMESPACE}
+spec:
+  capacity:
+    storage: ${FSX_CAPACITY_GIB}Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  mountOptions:
+    - flock
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""   # static PV (no dynamic provisioning)
+  csi:
+    driver: fsx.csi.aws.com
+    volumeHandle: ${FSX_FILESYSTEM_ID}
+    volumeAttributes:
+      dnsname: ${FSX_DNS_NAME}
+      mountname: ${FSX_MOUNT_NAME}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: fsx-pv-${TEAM_B_NAMESPACE}
+spec:
+  capacity:
+    storage: ${FSX_CAPACITY_GIB}Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  mountOptions:
+    - flock
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""   # static PV (no dynamic provisioning)
+  csi:
+    driver: fsx.csi.aws.com
+    volumeHandle: ${FSX_FILESYSTEM_ID}
+    volumeAttributes:
+      dnsname: ${FSX_DNS_NAME}
+      mountname: ${FSX_MOUNT_NAME}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fsx-pvc-${TEAM_A_NAMESPACE}
+  namespace: ${TEAM_A_NAMESPACE}
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""   # must match PV
+  resources:
+    requests:
+      storage: ${FSX_CAPACITY_GIB}Gi
+  volumeName: fsx-pv-${TEAM_A_NAMESPACE}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fsx-pvc-${TEAM_B_NAMESPACE}
+  namespace: ${TEAM_B_NAMESPACE}
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""   # must match PV
+  resources:
+    requests:
+      storage: ${FSX_CAPACITY_GIB}Gi
+  volumeName: fsx-pv-${TEAM_B_NAMESPACE}

@@ -1,5 +1,23 @@
 # Changelog
 
+## v.3.5.0 (2025-12-03)
+
+### Features
+  * Elastic training support for HyperPodTrainingOperator that is released in Reinvent 2025 keynote 3. This is a method that dynamically scales distributed machine learning operations.
+
+
+## v.3.4.0 (2025-11-20)
+
+### Features
+
+  * HyperPod Dev Spaces template for data scientists to create, manage, and access interactive ML development environments with configurable resource allocation and namespace isolation
+  * Support for KVCaching, intelligent routing, tiered storage, MIG
+  * Support for fractional gpu
+  * Support KVCache and Intelligent Routing support in template version 1.1
+  * User can modify jinja template to add parameters supported by CRD through init experience, for further CLI customization
+  * MIG support for model deployment on SageMaker Hyperpod Inference
+
+
 ## v.3.3.1 (2025-10-30)
 
 ### Features

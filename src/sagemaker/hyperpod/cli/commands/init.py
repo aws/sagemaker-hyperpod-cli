@@ -11,6 +11,7 @@ from sagemaker.hyperpod.cli.constants.init_constants import (
     CFN
 )
 from sagemaker.hyperpod.cluster_management.hp_cluster_stack import HpClusterStack
+from sagemaker.hyperpod.cli.commands.cluster_stack import get_newest_template_version
 from sagemaker.hyperpod.cli.init_utils import (
     generate_click_command,
     save_config_yaml,
@@ -273,8 +274,9 @@ def validate():
 @click.command(name="_default_create")
 @click.option("--region", "-r", default=None, help="Region to create cluster stack for, default to your region in aws configure. Not available for other templates.")
 @click.option("--template-version", type=click.INT, help="Version number of cluster creation template. Not available for other templates.")
+@click.option("--debug", is_flag=True, help="Enable debug logging")
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "init_create_cli")
-def _default_create(region, template_version):
+def _default_create(region, template_version, debug):
     """
     Validate configuration and render template files for deployment.
     
@@ -375,11 +377,15 @@ def _default_create(region, template_version):
             # Pass region to to_domain for cluster stack template
             if template == "cluster-stack":
                 config = template_model.to_config(region=region)
+                # Use newest template version if not provided
+                if template_version is None:
+                    template_version = get_newest_template_version()
+                    click.secho(f"No template version specified, using newest version: {template_version}", fg="yellow")
                 HpClusterStack(**config).create(region, template_version)
             else:
                 # Create from k8s.yaml
                 k8s_file = out_dir / 'k8s.yaml'
-                create_from_k8s_yaml(str(k8s_file))
+                create_from_k8s_yaml(str(k8s_file), debug=debug)
 
 
     except Exception as e:

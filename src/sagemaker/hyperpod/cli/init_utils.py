@@ -536,7 +536,7 @@ def build_config_from_schema(template: str, version: str, model_config=None, exi
     return full_cfg, comment_map
 
 
-def create_from_k8s_yaml(yaml_file_path: str) -> None:
+def create_from_k8s_yaml(yaml_file_path: str, debug: bool = False) -> None:
     """Create HyperPod resource from K8s YAML file based on kind mapping."""
     from sagemaker.hyperpod.cli.constants.init_constants import K8S_KIND_MAPPING
     
@@ -563,4 +563,4 @@ def create_from_k8s_yaml(yaml_file_path: str) -> None:
         resource = resource_class.model_validate(yaml_data['spec'], by_name=True)
         resource.metadata = Metadata.model_validate(yaml_data['metadata'], by_name=True)
     
-    resource.create()
+    resource.create(debug=debug)

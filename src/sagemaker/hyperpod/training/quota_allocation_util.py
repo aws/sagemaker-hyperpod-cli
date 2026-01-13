@@ -10,154 +10,46 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-import logging
 import re
 from sagemaker.hyperpod.cli.constants.command_constants import NVIDIA_GPU_RESOURCE_LIMIT_KEY, NEURON_RESOURCE_LIMIT_KEY
 from sagemaker.hyperpod.cli.utils import (
     setup_logger
 )
 from typing import Optional, Tuple
-
+from sagemaker.hyperpod.training.accelerator_partition_util import _validate_accelerator_partition, _get_accelerator_partition_defaults
+from sagemaker.hyperpod.training.constants import INSTANCE_RESOURCES
 logger = setup_logger(__name__)
-
-# TODO: currently there is no API for instances and they are hardcoded; post GA work with partner team on adding support for such API
-INSTANCE_RESOURCES = {
-    "ml.p4d.24xlarge": {"cpu": 96, "gpu": 8, "trainium": 0, "memory": 1152},
-    "ml.p4de.24xlarge": {"cpu": 96, "gpu": 8, "trainium": 0, "memory": 1152},
-    "ml.p5.48xlarge": {"cpu": 192, "gpu": 8, "trainium": 0, "memory": 2048},
-    "ml.p5.4xlarge": {"cpu": 16, "gpu": 1, "trainium": 0, "memory": 256},
-    "ml.trn1.32xlarge": {"cpu": 128, "gpu": 0, "trainium": 16, "memory": 512},
-    "ml.trn1n.32xlarge": {"cpu": 128, "gpu": 0, "trainium": 16, "memory": 512},
-    "ml.g5.xlarge": {"cpu": 4, "gpu": 1, "trainium": 0, "memory": 16},
-    "ml.g5.2xlarge": {"cpu": 8, "gpu": 1, "trainium": 0, "memory": 32},
-    "ml.g5.4xlarge": {"cpu": 16, "gpu": 1, "trainium": 0, "memory": 64},
-    "ml.g5.8xlarge": {"cpu": 32, "gpu": 1, "trainium": 0, "memory": 128},
-    "ml.g5.12xlarge": {"cpu": 48, "gpu": 4, "trainium": 0, "memory": 192},
-    "ml.g5.16xlarge": {"cpu": 64, "gpu": 1, "trainium": 0, "memory": 256},
-    "ml.g5.24xlarge": {"cpu": 96, "gpu": 4, "trainium": 0, "memory": 384},
-    "ml.g5.48xlarge": {"cpu": 192, "gpu": 8, "trainium": 0, "memory": 768},
-    "ml.g6.xlarge": {"cpu": 4, "gpu": 1, "trainium": 0, "memory": 16},
-    "ml.g6.2xlarge": {"cpu": 8, "gpu": 1, "trainium": 0, "memory": 32},
-    "ml.g6.4xlarge": {"cpu": 16, "gpu": 1, "trainium": 0, "memory": 64},
-    "ml.g6.8xlarge": {"cpu": 32, "gpu": 1, "trainium": 0, "memory": 128},
-    "ml.g6.16xlarge": {"cpu": 64, "gpu": 1, "trainium": 0, "memory": 256},
-    "ml.g6.12xlarge": {"cpu": 48, "gpu": 4, "trainium": 0, "memory": 192},
-    "ml.g6.24xlarge": {"cpu": 96, "gpu": 4, "trainium": 0, "memory": 384},
-    "ml.g6.48xlarge": {"cpu": 192, "gpu": 8, "trainium": 0, "memory": 768},
-    "ml.gr6.4xlarge": {"cpu": 16, "gpu": 1, "trainium": 0, "memory": 128},
-    "ml.gr6.8xlarge": {"cpu": 32, "gpu": 1, "trainium": 0, "memory": 256},
-    "ml.g6e.xlarge": {"cpu": 4, "gpu": 1, "trainium": 0, "memory": 32},
-    "ml.g6e.2xlarge": {"cpu": 8, "gpu": 1, "trainium": 0, "memory": 64},
-    "ml.g6e.4xlarge": {"cpu": 16, "gpu": 1, "trainium": 0, "memory": 128},
-    "ml.g6e.8xlarge": {"cpu": 32, "gpu": 1, "trainium": 0, "memory": 256},
-    "ml.g6e.16xlarge": {"cpu": 64, "gpu": 1, "trainium": 0, "memory": 512},
-    "ml.g6e.12xlarge": {"cpu": 48, "gpu": 4, "trainium": 0, "memory": 384},
-    "ml.g6e.24xlarge": {"cpu": 96, "gpu": 4, "trainium": 0, "memory": 768},
-    "ml.g6e.48xlarge": {"cpu": 192, "gpu": 8, "trainium": 0, "memory": 1536},
-    "ml.p5e.48xlarge": {"cpu": 192, "gpu": 8, "trainium": 0, "memory": 2048},
-    "ml.p5en.48xlarge": {"cpu": 192, "gpu": 8, "trainium": 0, "memory": 2048},
-    "ml.trn2.48xlarge": {"cpu": 192, "gpu": 0, "trainium": 16, "memory": 2048},
-    "ml.p6e-gb200.36xlarge": {"cpu": 144, "gpu": 4, "trainium": 0, "memory": 960},
-    "ml.p6-b200.48xlarge": {"cpu": 192, "gpu": 8, "trainium": 0, "memory": 2024},
-    "ml.c5.large": {"cpu": 2, "gpu": 0, "trainium": 0, "memory": 4},
-    "ml.c5.xlarge": {"cpu": 4, "gpu": 0, "trainium": 0, "memory": 8},
-    "ml.c5.2xlarge": {"cpu": 8, "gpu": 0, "trainium": 0, "memory": 16},
-    "ml.c5.4xlarge": {"cpu": 16, "gpu": 0, "trainium": 0, "memory": 32},
-    "ml.c5.9xlarge": {"cpu": 36, "gpu": 0, "trainium": 0, "memory": 72},
-    "ml.c5.12xlarge": {"cpu": 48, "gpu": 0, "trainium": 0, "memory": 96},
-    "ml.c5.18xlarge": {"cpu": 72, "gpu": 0, "trainium": 0, "memory": 144},
-    "ml.c5.24xlarge": {"cpu": 96, "gpu": 0, "trainium": 0, "memory": 192},
-    "ml.c5n.large": {"cpu": 2, "gpu": 0, "trainium": 0, "memory": 5},
-    "ml.c5n.2xlarge": {"cpu": 8, "gpu": 0, "trainium": 0, "memory": 21},
-    "ml.c5n.4xlarge": {"cpu": 16, "gpu": 0, "trainium": 0, "memory": 42},
-    "ml.c5n.9xlarge": {"cpu": 36, "gpu": 0, "trainium": 0, "memory": 96},
-    "ml.c5n.18xlarge": {"cpu": 72, "gpu": 0, "trainium": 0, "memory": 192},
-    "ml.m5.large": {"cpu": 2, "gpu": 0, "trainium": 0, "memory": 8},
-    "ml.m5.xlarge": {"cpu": 4, "gpu": 0, "trainium": 0, "memory": 16},
-    "ml.m5.2xlarge": {"cpu": 8, "gpu": 0, "trainium": 0, "memory": 32},
-    "ml.m5.4xlarge": {"cpu": 16, "gpu": 0, "trainium": 0, "memory": 64},
-    "ml.m5.8xlarge": {"cpu": 32, "gpu": 0, "trainium": 0, "memory": 128},
-    "ml.m5.12xlarge": {"cpu": 48, "gpu": 0, "trainium": 0, "memory": 192},
-    "ml.m5.16xlarge": {"cpu": 64, "gpu": 0, "trainium": 0, "memory": 256},
-    "ml.m5.24xlarge": {"cpu": 96, "gpu": 0, "trainium": 0, "memory": 384},
-    "ml.t3.medium": {"cpu": 2, "gpu": 0, "trainium": 0, "memory": 4},
-    "ml.t3.large": {"cpu": 2, "gpu": 0, "trainium": 0, "memory": 8},
-    "ml.t3.xlarge": {"cpu": 4, "gpu": 0, "trainium": 0, "memory": 16},
-    "ml.t3.2xlarge": {"cpu": 8, "gpu": 0, "trainium": 0, "memory": 32},
-    "ml.c6i.large": {"cpu": 2, "gpu": 0, "trainium": 0, "memory": 4},
-    "ml.c6i.xlarge": {"cpu": 4, "gpu": 0, "trainium": 0, "memory": 8},
-    "ml.c6i.2xlarge": {"cpu": 8, "gpu": 0, "trainium": 0, "memory": 16},
-    "ml.c6i.4xlarge": {"cpu": 16, "gpu": 0, "trainium": 0, "memory": 32},
-    "ml.c6i.8xlarge": {"cpu": 32, "gpu": 0, "trainium": 0, "memory": 64},
-    "ml.c6i.12xlarge": {"cpu": 48, "gpu": 0, "trainium": 0, "memory": 96},
-    "ml.c6i.16xlarge": {"cpu": 64, "gpu": 0, "trainium": 0, "memory": 128},
-    "ml.c6i.24xlarge": {"cpu": 96, "gpu": 0, "trainium": 0, "memory": 192},
-    "ml.c6i.32xlarge": {"cpu": 128, "gpu": 0, "trainium": 0, "memory": 256},
-    "ml.m6i.large": {"cpu": 2, "gpu": 0, "trainium": 0, "memory": 8},
-    "ml.m6i.xlarge": {"cpu": 4, "gpu": 0, "trainium": 0, "memory": 16},
-    "ml.m6i.2xlarge": {"cpu": 8, "gpu": 0, "trainium": 0, "memory": 32},
-    "ml.m6i.4xlarge": {"cpu": 16, "gpu": 0, "trainium": 0, "memory": 64},
-    "ml.m6i.8xlarge": {"cpu": 32, "gpu": 0, "trainium": 0, "memory": 128},
-    "ml.m6i.12xlarge": {"cpu": 48, "gpu": 0, "trainium": 0, "memory": 192},
-    "ml.m6i.16xlarge": {"cpu": 64, "gpu": 0, "trainium": 0, "memory": 256},
-    "ml.m6i.24xlarge": {"cpu": 96, "gpu": 0, "trainium": 0, "memory": 384},
-    "ml.m6i.32xlarge": {"cpu": 128, "gpu": 0, "trainium": 0, "memory": 512},
-    "ml.r6i.large": {"cpu": 2, "gpu": 0, "trainium": 0, "memory": 16},
-    "ml.r6i.xlarge": {"cpu": 4, "gpu": 0, "trainium": 0, "memory": 32},
-    "ml.r6i.2xlarge": {"cpu": 8, "gpu": 0, "trainium": 0, "memory": 64},
-    "ml.r6i.4xlarge": {"cpu": 16, "gpu": 0, "trainium": 0, "memory": 128},
-    "ml.r6i.8xlarge": {"cpu": 32, "gpu": 0, "trainium": 0, "memory": 256},
-    "ml.r6i.12xlarge": {"cpu": 48, "gpu": 0, "trainium": 0, "memory": 384},
-    "ml.r6i.16xlarge": {"cpu": 64, "gpu": 0, "trainium": 0, "memory": 512},
-    "ml.r6i.24xlarge": {"cpu": 96, "gpu": 0, "trainium": 0, "memory": 768},
-    "ml.r6i.32xlarge": {"cpu": 128, "gpu": 0, "trainium": 0, "memory": 1024},
-    "ml.m7i.large": {"cpu": 2, "gpu": 0, "trainium": 0, "memory": 8},
-    "ml.m7i.xlarge": {"cpu": 4, "gpu": 0, "trainium": 0, "memory": 16},
-    "ml.m7i.2xlarge": {"cpu": 8, "gpu": 0, "trainium": 0, "memory": 32},
-    "ml.m7i.4xlarge": {"cpu": 16, "gpu": 0, "trainium": 0, "memory": 64},
-    "ml.m7i.8xlarge": {"cpu": 32, "gpu": 0, "trainium": 0, "memory": 128},
-    "ml.m7i.12xlarge": {"cpu": 48, "gpu": 0, "trainium": 0, "memory": 192},
-    "ml.m7i.16xlarge": {"cpu": 64, "gpu": 0, "trainium": 0, "memory": 256},
-    "ml.m7i.24xlarge": {"cpu": 96, "gpu": 0, "trainium": 0, "memory": 384},
-    "ml.m7i.48xlarge": {"cpu": 192, "gpu": 0, "trainium": 0, "memory": 768},
-    "ml.r7i.large": {"cpu": 2, "gpu": 0, "trainium": 0, "memory": 16},
-    "ml.r7i.xlarge": {"cpu": 4, "gpu": 0, "trainium": 0, "memory": 32},
-    "ml.r7i.2xlarge": {"cpu": 8, "gpu": 0, "trainium": 0, "memory": 64},
-    "ml.r7i.4xlarge": {"cpu": 16, "gpu": 0, "trainium": 0, "memory": 128},
-    "ml.r7i.8xlarge": {"cpu": 32, "gpu": 0, "trainium": 0, "memory": 256},
-    "ml.r7i.12xlarge": {"cpu": 48, "gpu": 0, "trainium": 0, "memory": 384},
-    "ml.r7i.16xlarge": {"cpu": 64, "gpu": 0, "trainium": 0, "memory": 512},
-    "ml.r7i.24xlarge": {"cpu": 96, "gpu": 0, "trainium": 0, "memory": 768},
-    "ml.r7i.48xlarge": {"cpu": 192, "gpu": 0, "trainium": 0, "memory": 1536},
-    "ml.i3en.large": {"cpu": 2, "gpu": 0, "trainium": 0, "memory": 16},
-    "ml.i3en.xlarge": {"cpu": 4, "gpu": 0, "trainium": 0, "memory": 32},
-    "ml.i3en.2xlarge": {"cpu": 8, "gpu": 0, "trainium": 0, "memory": 64},
-    "ml.i3en.3xlarge": {"cpu": 12, "gpu": 0, "trainium": 0, "memory": 96},
-    "ml.i3en.6xlarge": {"cpu": 24, "gpu": 0, "trainium": 0, "memory": 192},
-    "ml.i3en.12xlarge": {"cpu": 48, "gpu": 0, "trainium": 0, "memory": 384},
-    "ml.i3en.24xlarge": {"cpu": 96, "gpu": 0, "trainium": 0, "memory": 768}
-}
 
 def _has_compute_resource_quota_allocation_resources(memory_in_gib: Optional[float], vcpu: Optional[float], accelerators: Optional[int]) -> bool:
     return (
-        (memory_in_gib is not None) or
-        (vcpu is not None ) or
-        (accelerators is not None)
+        (memory_in_gib is not None and memory_in_gib > 0) or
+        (vcpu is not None and vcpu > 0) or
+        (accelerators is not None and accelerators > 0)
     )
 
 # Gets resources from compute quotas that user provided; if not all provided, calculates defaults.
 def _get_resources_from_compute_quotas(instance_type: str, 
                                        vcpu: Optional[float], 
                                        memory_in_gib: Optional[float], 
-                                       accelerators: Optional[int] = 0) -> Optional[dict]:
-    if not _has_compute_resource_quota_allocation_resources(memory_in_gib, vcpu, accelerators):
+                                       accelerators: Optional[int] = 0,
+                                       accelerator_partition_type: Optional[str] = None,
+                                       accelerator_partition_count: Optional[int] = None,
+                                       efa_interfaces: Optional[int] = None) -> Optional[dict]:
+    has_accelerator_partition = accelerator_partition_type is not None and accelerator_partition_count is not None
+    has_compute_resources = _has_compute_resource_quota_allocation_resources(memory_in_gib, vcpu, accelerators)
+
+    if not has_compute_resources and not has_accelerator_partition:
         return None
 
+    result = {}
+    if has_accelerator_partition:
+        return _process_accelerator_partition_allocation(
+            instance_type, vcpu, memory_in_gib, accelerator_partition_type, accelerator_partition_count
+        )
+    
     type_of_accelerator, _max_accelerator_per_instance = _get_accelerator_type_and_count(instance_type)
 
     instance = INSTANCE_RESOURCES.get(instance_type, {})
-
-    result = {}
 
     # if only memory set, then default cpu to (allocated memory/instance memory) ratio
     if (vcpu is None and accelerators is None):
@@ -180,6 +72,10 @@ def _get_resources_from_compute_quotas(instance_type: str,
         memory_value = memory_in_gib or (gpu_ratio * instance.get("memory", 0))
         result["memory"] = memory_value
         result[type_of_accelerator] = accelerators
+
+        efa_count = efa_interfaces or instance.get("efa", 0)
+        if efa_count > 0:
+            result["vpc.amazonaws.com/efa"] = efa_count
     
     else:
         result["cpu"] = vcpu or 0
@@ -208,6 +104,10 @@ def _get_resources_from_instance(instance_type: str, node_count: int) -> dict:
     if type_of_accelerator is not None:
         result[type_of_accelerator] = max_accelerator_per_instance * node_count
 
+        efa_count = instance.get("efa", 0)
+        if efa_count > 0:
+            result["vpc.amazonaws.com/efa"] = efa_count
+
     result["cpu"] = f"{result['cpu']}"
     result["memory"] = f"{result['memory']}Gi"
     return result
@@ -235,7 +135,7 @@ def _trim_resource_requests(instance_type: str, requests_values: dict) -> dict:
     return requests_values
 
 
-def _get_limits(instance_type: str, vcpu_limit: Optional[float], memory_in_gib_limit: Optional[float], accelerators_limit: Optional[int]) -> dict:
+def _get_limits(instance_type: str, vcpu_limit: Optional[float], memory_in_gib_limit: Optional[float], accelerators_limit: Optional[int], accelerator_partition_type: Optional[str], accelerator_partition_limit: Optional[int], efa_interfaces_limit: Optional[int] = None) -> dict:
 
     result = {}
     type_of_accelerator, _max_accelerator_per_instance = _get_accelerator_type_and_count(instance_type)
@@ -249,8 +149,13 @@ def _get_limits(instance_type: str, vcpu_limit: Optional[float], memory_in_gib_l
         else: 
             # user specified accelerator limit but the instance type wasn't found, set limit to 0 as a precaution 
             result["nvidia.com/gpu"] = 0
+    if accelerator_partition_limit is not None:
+        result[f"nvidia.com/{accelerator_partition_type}"] = accelerator_partition_limit
     if memory_in_gib_limit is not None:
         result["memory"] = str(memory_in_gib_limit) + "Gi"
+
+    if efa_interfaces_limit is not None and efa_interfaces_limit > 0:
+        result["vpc.amazonaws.com/efa"] = efa_interfaces_limit
 
     return result
 
@@ -321,6 +226,31 @@ def _validate_accelerators_inputs(instance_type: str, accelerators_request: int,
                 raise ValueError('Requested accelerators exceeds capacity')
 
 
+def _validate_efa_inputs(instance_type: str, efa_interfaces: Optional[int], efa_interfaces_limit: Optional[int]) -> None:
+    """Validate EFA inputs similar to accelerator validation."""
+    instance = INSTANCE_RESOURCES.get(instance_type, {})
+    max_efa_per_instance = instance.get("efa", 0)
+
+    # Check if user provided EFA values but instance doesn't support EFA
+    if max_efa_per_instance == 0 and (efa_interfaces is not None or efa_interfaces_limit is not None):
+        raise ValueError(
+            f"Instance type {instance_type} does not support EFA, but EFA values were provided.")
+
+    # Validate EFA values if instance supports EFA
+    if max_efa_per_instance > 0:
+        if efa_interfaces is not None and efa_interfaces_limit is not None:
+            if efa_interfaces != efa_interfaces_limit:
+                raise ValueError('EFA request must equal EFA limit')
+            if efa_interfaces_limit > max_efa_per_instance:
+                raise ValueError(f'Requested EFA limit ({efa_interfaces_limit}) exceeds instance capacity ({max_efa_per_instance})')
+            if efa_interfaces > max_efa_per_instance:
+                raise ValueError(f'Requested EFA ({efa_interfaces}) exceeds instance capacity ({max_efa_per_instance})')
+        elif efa_interfaces is not None and efa_interfaces > max_efa_per_instance:
+            raise ValueError(f'Requested EFA ({efa_interfaces}) exceeds instance capacity ({max_efa_per_instance})')
+        elif efa_interfaces_limit is not None and efa_interfaces_limit > max_efa_per_instance:
+            raise ValueError(f'Requested EFA limit ({efa_interfaces_limit}) exceeds instance capacity ({max_efa_per_instance})')
+
+
 def _set_default_accelerators_val(instance_type: Optional[str], accelerators_request: Optional[int], accelerators_limit: Optional[int]) -> Tuple[Optional[int], Optional[int]]:
     type_of_accelerator, _max_accelerator_per_instance = _get_accelerator_type_and_count(instance_type)
     if type_of_accelerator is not None:
@@ -335,13 +265,22 @@ def _set_default_accelerators_val(instance_type: Optional[str], accelerators_req
     return None, None
 
 
-def _is_valid(vcpu: Optional[float], memory_in_gib: Optional[float], accelerators: Optional[int], 
-              node_count: Optional[int], instance_type: Optional[str]) -> tuple[bool, str]:
+def _is_valid(vcpu: Optional[float], memory_in_gib: Optional[float], accelerators: Optional[int], accelerators_limit: Optional[int],
+              node_count: Optional[int], instance_type: Optional[str],
+              accelerator_partition_type: Optional[str] = None,
+              accelerator_partition_count: Optional[int] = None,
+              accelerator_partition_limit: Optional[int] = None) -> Tuple[bool, str]:
+
+    if accelerator_partition_type or accelerator_partition_count or accelerator_partition_limit:
+        partition_valid, partition_error = _validate_accelerator_partition(
+            accelerator_partition_type, accelerators, accelerators_limit, node_count, instance_type)
+        if not partition_valid:
+            return False, partition_error
             
     has_gpu_quota_allocation = _has_compute_resource_quota_allocation_resources(memory_in_gib, vcpu, accelerators)
 
-    if instance_type is None and has_gpu_quota_allocation:
-        return False, "Instance-type must be specified when accelerators, vcpu, or memory-in-gib specified"
+    if (instance_type is None and has_gpu_quota_allocation) or (instance_type is None and accelerator_partition_type):
+        return False, "Instance-type must be specified when accelerators, accelerator_partition_type, vcpu, or memory-in-gib specified"
 
     node_specified = node_count is not None and node_count > 0
 
@@ -442,3 +381,32 @@ def _calculate_cpu_reservation(cpu_count: int) -> float:
 
     return reserved_cpu
 
+def _process_accelerator_partition_allocation(instance_type: str,
+                                            vcpu: Optional[float],
+                                            memory_in_gib: Optional[float],
+                                            accelerator_partition_type: str,
+                                            accelerator_partition_count: int) -> dict:
+    instance = INSTANCE_RESOURCES.get(instance_type, {})
+    instance_vcpu = instance.get("cpu", 0)
+    instance_memory = instance.get("memory", 0)
+
+    # Case 1: both vCpu and memoryInGiB are provided
+    if vcpu is not None and memory_in_gib is not None:
+        result = {"cpu": str(vcpu), "memory": f"{memory_in_gib}Gi"}
+    # Case 2: vCpu is provided but not memoryInGiB
+    elif vcpu is not None and memory_in_gib is None:
+        memory_in_gib = float(int((vcpu / instance_vcpu) * instance_memory))
+        result = {"cpu": str(vcpu), "memory": f"{memory_in_gib}Gi"}
+    # Case 3: memory is provided but not vcpu
+    elif vcpu is None and memory_in_gib is not None:
+        vcpu = float(int((memory_in_gib / instance_memory) * instance_vcpu))
+        result = {"cpu": str(vcpu), "memory": f"{memory_in_gib}Gi"}
+    # Case 4: neither vcpu or memory is provided
+    else:
+        result = _get_accelerator_partition_defaults(instance_type, accelerator_partition_type, accelerator_partition_count)
+
+    accelerator_partition_resource_key = f"nvidia.com/{accelerator_partition_type}"
+    result[accelerator_partition_resource_key] = str(accelerator_partition_count)
+
+    _trim_resource_requests(instance_type, result)
+    return result

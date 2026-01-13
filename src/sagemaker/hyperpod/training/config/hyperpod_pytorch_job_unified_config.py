@@ -2982,6 +2982,11 @@ class ReplicaSpec(BaseModel):
         default=0,
         description="Replicas is the desired number of replicas of the given template.",
     )
+    maxReplicas: Optional[int] = Field(
+        default=None,
+        alias="max_replicas",
+        description="Maximum replicas for elastic training"
+    )
     spares: Optional[int] = Field(
         default=0,
         description="Spares requests spare resources from Kueue. E.g. If a job is configured with 4 replicas and 2 spares, job requests resources required to run 6 pods such as cpu, gpu",
@@ -2989,6 +2994,47 @@ class ReplicaSpec(BaseModel):
     template: Optional[Template] = Field(
         default=None,
         description="Template is the object that describes the pod that will be created for this replica.",
+    )
+
+class ElasticPolicy(BaseModel):
+    """ElasticPolicy defines the elastic training policy"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    minReplicas: Optional[int] = Field(
+        default=None,
+        alias="min_replicas",
+        description="Minimum number of replicas"
+    )
+    maxReplicas: Optional[int] = Field(
+        default=None,
+        alias="max_replicas",
+        description="Maximum number of replicas"
+    )
+    replicaIncrementStep: Optional[int] = Field(
+        default=None,
+        alias="replica_increment_step",
+        description="Step size for elastic replica scaling"
+    )
+    replicaDiscreteValues: Optional[List[int]] = Field(
+        default=None,
+        alias="replica_discrete_values",
+        description="Alternative to ReplicaIncrementStep. Provides exact values for total replicas count"
+    )
+    scalingTimeoutInSeconds: Optional[int] = Field(
+        default=None,
+        alias="scaling_timeout_in_seconds",
+        description="Timeout for scaling operations"
+    )
+    gracefulShutdownTimeoutInSeconds: Optional[int] = Field(
+        default=None,
+        alias="graceful_shutdown_timeout_in_seconds",
+        description="Graceful shutdown timeout in seconds for elastic scaling operations"
+    )
+    faultyScaleDownTimeoutInSeconds: Optional[int] = Field(
+        default=None,
+        alias="faulty_scale_down_timeout_in_seconds",
+        description="Timeout in seconds after entering Faulted state before triggering faulty pod scale-down"
     )
 
 
@@ -3052,6 +3098,16 @@ class RestartPolicy(BaseModel):
         alias="num_restart_before_full_job_restart",
         description="The number of standard restarts before a full job restart",
     )
+    maxNumRepeatOffendersToAvoid: Optional[int] = Field(
+        default=None,
+        alias="max_num_repeat_offenders_to_avoid",
+        description="The max repeat offenders to exclude in next job level restart",
+    )
+    scaleUpSnoozeTimeInSeconds: Optional[int] = Field(
+        default=0,
+        alias="scale_up_snooze_time_in_seconds",
+        description="Timeout period after job restart during which no scale up/workload admission is allowed",
+    )
 
 
 class RunPolicy(BaseModel):
@@ -3097,6 +3153,11 @@ class RunPolicy(BaseModel):
         default=0,
         alias="ttl_seconds_after_finished",
         description="TTLSecondsAfterFinished is the TTL to clean up jobs. Set to -1 for infinite",
+    )
+    workloadMode: Optional[str] = Field(
+        default=None,
+        alias="workload_mode",
+        description="Workload deployment mode for elastic training (e.g., 'Deployment')",
     )
 
 
@@ -3153,6 +3214,48 @@ class Pods(BaseModel):
     )
 
 
+class ElasticScalingStatus(BaseModel):
+    """ElasticScalingStatus represents the current state of elastic scaling operations"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    targetReplicas: Optional[Dict[str, int]] = Field(
+        default=None,
+        alias="target_replicas",
+        description="TargetReplicas contains the desired replica counts per ReplicaSpec name",
+    )
+    lastUpdated: Optional[str] = Field(
+        default=None,
+        alias="last_updated",
+        description="LastUpdated is the timestamp when this status was last modified",
+    )
+    lastScalingTime: Optional[str] = Field(
+        default=None,
+        alias="last_scaling_time",
+        description="LastScalingTime tracks when the last scaling operation completed",
+    )
+    lastRestartTime: Optional[str] = Field(
+        default=None,
+        alias="last_restart_time",
+        description="LastRestartTime tracks when the job was last restarted for scaleUpRestartTimeout",
+    )
+    podsScaled: Optional[bool] = Field(
+        default=None,
+        alias="pods_scaled",
+        description="PodsScaled indicates whether pods have already been scaled in this scaling round",
+    )
+    isFaultyPodScaleDown: Optional[bool] = Field(
+        default=None,
+        alias="is_faulty_pod_scale_down",
+        description="IsFaultyPodScaleDown indicates this scaling operation is removing faulty pods",
+    )
+    consecutiveScalingFailures: Optional[int] = Field(
+        default=None,
+        alias="consecutive_scaling_failures",
+        description="ConsecutiveScalingFailures tracks the number of consecutive elastic scaling failures",
+    )
+
+
 class RestartStatus(BaseModel):
     """Additional restart limiting status"""
 
@@ -3171,6 +3274,33 @@ class RestartStatus(BaseModel):
     )
 
 
+class FaultyPodInstanceList(BaseModel):
+    """FaultyPodInstanceRecord tracks faulty pod/instances for each restart"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    restartType: Optional[str] = Field(
+        default=None,
+        alias="restart_type",
+        description="RestartType indicates whether this was a PLR or JLR"
+    )
+    faultyInstanceIdList: Optional[List[str]] = Field(
+        default_factory=list,
+        alias="faulty_instance_id_list",
+        description="FaultyInstanceIdList tracks faulty instance ids"
+    )
+    faultyPodList: Optional[List[str]] = Field(
+        default_factory=list,
+        alias="faulty_pod_list",
+        description="FaultyPodList tracks faulty pod names"
+    )
+    faultyRankList: Optional[List[str]] = Field(
+        default_factory=list,
+        alias="faulty_rank_list",
+        description="FaultyRankList tracks faulty pod ranks"
+    )
+
+
 class HyperPodPytorchJobStatus(BaseModel):
     """HyperPodPytorchJobStatus defines the observed state of HyperPodPytorchJob"""
 
@@ -3186,6 +3316,11 @@ class HyperPodPytorchJobStatus(BaseModel):
         default=None,
         alias="job_pods",
         description="The StatefulSet containing the training pods",
+    )
+    latestFaultyPodInstanceList: Optional[FaultyPodInstanceList] = Field(
+        default=None,
+        alias="latest_faulty_pod_instance_list",
+        description="LatestFaultyPodInstanceList tracks faulty pods/nodes of latest restart"
     )
     managerPods: Optional[ManagerPods] = Field(
         default=None, alias="manager_pods", description="Pod Manager pods"
@@ -3221,6 +3356,16 @@ class HyperPodPytorchJobStatus(BaseModel):
         alias="restart_status",
         description="Additional restart limiting status",
     )
+    elasticScalingStatus: Optional[ElasticScalingStatus] = Field(
+        default=None,
+        alias="elastic_scaling_status",
+        description="ElasticScalingStatus contains the current state of elastic scaling operations",
+    )
+    elasticWorkloadRef: Optional[Dict[str, str]] = Field(
+        default=None,
+        alias="elastic_workload_ref",
+        description="Reference to associated ElasticWorkload (optional, only set when ElasticPolicy is present)",
+    )
     startTime: Optional[str] = Field(
         default=None,
         alias="start_time",
@@ -3245,4 +3390,9 @@ class _HyperPodPytorchJob(BaseModel):
     )
     runPolicy: Optional[RunPolicy] = Field(
         default=None, alias="run_policy", description="RunPolicy"
+    )
+    elasticPolicy: Optional[ElasticPolicy] = Field(
+        default=None,
+        alias="elastic_policy",
+        description="ElasticPolicy for elastic training"
     )

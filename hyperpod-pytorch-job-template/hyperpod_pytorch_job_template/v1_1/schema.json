@@ -305,6 +305,39 @@
       "minimum": 0,
       "description": "Limit for the amount of memory in GiB"
     },
+    "efa_interfaces": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of EFA interfaces for the instance"
+    },
+    "efa_interfaces_limit": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Limit for the number of EFA interfaces"
+    },
+    "accelerator_partition_type": {
+      "type": "string",
+      "enum": [
+        "mig-1g.5gb", "mig-1g.10gb", "mig-1g.18gb", "mig-1g.20gb", "mig-1g.23gb", "mig-1g.35gb",
+        "mig-1g.45gb", "mig-1g.47gb", "mig-2g.10gb", "mig-2g.20gb", "mig-2g.35gb", "mig-2g.45gb",
+        "mig-2g.47gb", "mig-3g.20gb", "mig-3g.40gb", "mig-3g.71gb", "mig-3g.90gb", "mig-3g.93gb",
+        "mig-4g.20gb", "mig-4g.40gb", "mig-4g.71gb", "mig-4g.90gb", "mig-4g.93gb", "mig-7g.40gb",
+        "mig-7g.80gb", "mig-7g.141gb", "mig-7g.180gb", "mig-7g.186gb"
+      ],
+      "default": null,
+      "description": "Type of accelerator partition",
+      "title": "Accelerator Partition Type"
+    },
+    "accelerator_partition_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of accelerator partitions to request"
+    },
+    "accelerator_partition_limit": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Limit for the number of accelerator partitions"
+    },
     "priority": {
       "anyOf": [
         {
@@ -372,7 +405,94 @@
       "type": "string", 
       "description": "Required topology annotation for scheduling",
       "$ref": "#/$defs/topologyLabels"
+        },
+    "elastic_replica_increment_step": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
         }
+      ],
+      "default": null,
+      "description": "Scaling step size for elastic training",
+      "title": "Elastic Training Replica Increment Step"
+    },
+    "max_node_count": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Maximum number of nodes for elastic training",
+      "title": "Max Node Count"
+    },
+    "elastic_graceful_shutdown_timeout_in_seconds": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Graceful shutdown timeout in seconds for elastic scaling operations",
+      "title": "Elastic Graceful Shutdown Timeout In Seconds"
+    },
+    "elastic_scaling_timeout_in_seconds": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Scaling timeout for elastic training",
+      "title": "Elastic Scaling Timeout In Seconds"
+    },
+    "elastic_scale_up_snooze_time_in_seconds": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Timeout period after job restart during which no scale up/workload admission is allowed",
+      "title": "Elastic Scale Up Snooze Time In Seconds"
+    },
+    "elastic_replica_discrete_values": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Alternative to replica increment step. Provides exact values for total replicas count",
+      "title": "Elastic Replica Discrete Values"
+    }
+
   },
   "required": [
     "job_name",

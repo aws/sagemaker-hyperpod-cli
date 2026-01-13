@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import re
+from unittest.mock import patch, MagicMock
 
 import pytest
 from sagemaker.hyperpod.training.quota_allocation_util import (
@@ -27,8 +28,9 @@ from sagemaker.hyperpod.training.quota_allocation_util import (
     _trim_resource_requests,
     _calculate_memory_reservation,
     _calculate_cpu_reservation,
-    INSTANCE_RESOURCES
+    _process_accelerator_partition_allocation,
 )
+from sagemaker.hyperpod.training.constants import INSTANCE_RESOURCES
 
 def float_equals(a, b, tolerance=0.0001):
     return abs(a - b) <= tolerance
@@ -52,10 +54,10 @@ class TestQuotaAllocationUtil:
             (16.0, None, 2, True),
             (None, 4.0, 2, True),
             (16.0, 4.0, 2, True),
-            # Zero values
-            (0, None, None, True),
-            (None, 0, None, True),
-            (None, None, 0, True),
+            # Zero values - all zeros treated as not specified for consistency
+            (0, None, None, False),
+            (None, 0, None, False),
+            (None, None, 0, False),
         ]
     )
     def test_has_gpu_quota_allocation_resources(self, memory_in_gib, vcpu, accelerators, expected):
@@ -108,8 +110,8 @@ class TestQuotaAllocationUtil:
 
     def test_get_resources_from_compute_quotas_gpu_instance_with_accelerators_ratio_half(self):
         result = _get_resources_from_compute_quotas("ml.g6e.48xlarge", None, None, 4)
-        # ml.g5.xlarge has 8 GPU, 192 CPUs, 1536GiB memory
-        assert result == {"cpu": "96.0", "memory": "768.0Gi", "nvidia.com/gpu": 4}
+        # ml.g6e.48xlarge has 8 GPU, 192 CPUs, 1536GiB memory, 4 EFA
+        assert result == {"cpu": "96.0", "memory": "768.0Gi", "nvidia.com/gpu": 4, "vpc.amazonaws.com/efa": 4}
 
     def test_get_resources_from_compute_quotas_gpu_instance_all_params(self):
         result = _get_resources_from_compute_quotas("ml.g5.xlarge", 2.0, 8.0, 1)
@@ -117,9 +119,9 @@ class TestQuotaAllocationUtil:
 
     def test_get_resources_from_compute_quotas_trainium_instance(self):
         result = _get_resources_from_compute_quotas("ml.trn1.32xlarge", None, None, 8)
-        # ml.trn1.32xlarge has 16 trainium, 128 CPUs, 512GB memory
+        # ml.trn1.32xlarge has 16 trainium, 128 CPUs, 512GB memory, 8 EFA
         # 8 trainium is half, so we should get half of CPU and memory
-        assert result == {"cpu": "64.0", "memory": "256.0Gi", "aws.amazon.com/neurondevice": 8}
+        assert result == {"cpu": "64.0", "memory": "256.0Gi", "aws.amazon.com/neurondevice": 8, "vpc.amazonaws.com/efa": 8}
 
     def test_get_resources_from_compute_quotas_cpu_only_instance(self):
         result = _get_resources_from_compute_quotas("ml.c5.large", 1.0, 2.0, 1)
@@ -140,14 +142,15 @@ class TestQuotaAllocationUtil:
     @pytest.mark.parametrize(
         "instance_type,node_count,expected",
         [
-            # GPU instances
-            ("ml.p4d.24xlarge", 1, {"cpu": "96", "memory": "1152Gi", "nvidia.com/gpu": 8}),
-            ("ml.p4d.24xlarge", 2, {"cpu": "192", "memory": "2304Gi", "nvidia.com/gpu": 16}),
+            # GPU instances with EFA support
+            ("ml.p4d.24xlarge", 1, {"cpu": "96", "memory": "1152Gi", "nvidia.com/gpu": 8, "vpc.amazonaws.com/efa": 4}),
+            ("ml.p4d.24xlarge", 2, {"cpu": "192", "memory": "2304Gi", "nvidia.com/gpu": 16, "vpc.amazonaws.com/efa": 4}),
+            # GPU instances without EFA support
             ("ml.g5.xlarge", 1, {"cpu": "4", "memory": "16Gi", "nvidia.com/gpu": 1}),
             ("ml.g5.xlarge", 3, {"cpu": "12", "memory": "48Gi", "nvidia.com/gpu": 3}),
             # Trainium instances
-            ("ml.trn1.32xlarge", 1, {"cpu": "128", "memory": "512Gi", "aws.amazon.com/neurondevice": 16}),
-            ("ml.trn1.32xlarge", 2, {"cpu": "256", "memory": "1024Gi", "aws.amazon.com/neurondevice": 32}),
+            ("ml.trn1.32xlarge", 1, {"cpu": "128", "memory": "512Gi", "aws.amazon.com/neurondevice": 16, "vpc.amazonaws.com/efa": 8}),
+            ("ml.trn1.32xlarge", 2, {"cpu": "256", "memory": "1024Gi", "aws.amazon.com/neurondevice": 32, "vpc.amazonaws.com/efa": 8}),
             # CPU-only instances
             ("ml.c5.large", 1, {"cpu": "2", "memory": "4Gi"}),
             ("ml.c5.large", 5, {"cpu": "10", "memory": "20Gi"}),
@@ -165,76 +168,76 @@ class TestQuotaAllocationUtil:
 
     # Tests for _get_limits method
     def test_get_limits_all_none(self):
-        result = _get_limits("ml.g5.xlarge", None, None, None)
+        result = _get_limits("ml.g5.xlarge", None, None, None, None, None)
         assert result == {}
 
     def test_get_limits_all_values(self):
-        result = _get_limits("ml.g5.xlarge", 8.0, 32.0, 2)
+        result = _get_limits("ml.g5.xlarge", 8.0, 32.0, 2, None, None)
         assert result == {"cpu": "8.0", "memory": "32.0Gi", "nvidia.com/gpu": 2}
 
     def test_get_limits_partial_values(self):
-        result = _get_limits("ml.g5.xlarge", 4.0, None, 1)
+        result = _get_limits("ml.g5.xlarge", 4.0, None, 1, None, None)
         assert result == {"cpu": "4.0", "nvidia.com/gpu": 1}
 
     def test_get_limits_memory_only(self):
-        result = _get_limits("ml.g5.xlarge", None, 16.0, None)
+        result = _get_limits("ml.g5.xlarge", None, 16.0, None, None, None)
         assert result == {"memory": "16.0Gi"}
 
     def test_get_limits_zero_values(self):
-        result = _get_limits("ml.g5.xlarge", 0, 0, 0)
+        result = _get_limits("ml.g5.xlarge", 0, 0, 0, None, None)
         assert result == {"cpu": "0", "memory": "0Gi", "nvidia.com/gpu": 0}
 
     def test_get_limits_trainium_instance(self):
-        result = _get_limits("ml.trn1.32xlarge", 8.0, 32.0, 4)
+        result = _get_limits("ml.trn1.32xlarge", 8.0, 32.0, 4, None, None)
         assert result == {"cpu": "8.0", "memory": "32.0Gi", "aws.amazon.com/neurondevice": 4}
 
     def test_get_limits_cpu_only_instance(self):
-        result = _get_limits("ml.c5.large", 2.0, 8.0, 1)
+        result = _get_limits("ml.c5.large", 2.0, 8.0, 1, None, None)
         # CPU-only instance should set accelerator limit to 0 as precaution
         assert result == {"cpu": "2.0", "memory": "8.0Gi", "nvidia.com/gpu": 0}
 
     def test_get_limits_invalid_instance_type(self):
-        result = _get_limits("invalid-instance", 4.0, 16.0, 2)
+        result = _get_limits("invalid-instance", 4.0, 16.0, 2, None, None)
         # Invalid instance type should set accelerator limit to 0 as precaution
         assert result == {"cpu": "4.0", "memory": "16.0Gi", "nvidia.com/gpu": 0}
 
     def test_get_limits_cpu_instance_r7i(self):
-        result = _get_limits("ml.r7i.48xlarge", 16.0, 64.0, 2)
+        result = _get_limits("ml.r7i.48xlarge", 16.0, 64.0, 2, None, None)
         # CPU-only instance (ml.r7i.48xlarge) should set accelerator limit to 0 as precaution
         assert result == {"cpu": "16.0", "memory": "64.0Gi", "nvidia.com/gpu": 0}
 
     def test_is_valid_no_instance_type_with_resources(self):
-        valid, message = _is_valid(4.0, 16.0, None, None, None)
+        valid, message = _is_valid(4.0, 16.0, None, None, None, None)
         assert not valid
-        assert message == "Instance-type must be specified when accelerators, vcpu, or memory-in-gib specified"
+        assert message == "Instance-type must be specified when accelerators, accelerator_partition_type, vcpu, or memory-in-gib specified"
 
     def test_is_valid_invalid_instance_type(self):
-        valid, message = _is_valid(None, None, None, 1, "ml-123")
+        valid, message = _is_valid(None, None, None, None, 1, "ml-123")
         assert not valid
         assert message == "Invalid instance-type ml-123. Please re-check the instance type and contact AWS for support."
 
     def test_is_valid_both_node_count_and_resources(self):
-        valid, message = _is_valid(4.0, None, None, 2, "ml.g5.xlarge")
+        valid, message = _is_valid(4.0, None, None, None, 2, "ml.g5.xlarge")
         assert not valid
         assert message == "Either node-count OR a combination of accelerators, vcpu, memory-in-gib must be specified for instance-type ml.g5.xlarge"
 
     def test_is_valid_both_node_count_and_limits(self):
-        valid, message = _is_valid(None, None, None, 2, "ml.g5.xlarge")
+        valid, message = _is_valid(None, None, None, None, 2, "ml.g5.xlarge")
         assert valid
         assert message == ""
 
     def test_is_valid_node_count_only(self):
-        valid, message = _is_valid(None, None, None, 2, "ml.g5.xlarge")
+        valid, message = _is_valid(None, None, None, None, 2, "ml.g5.xlarge")
         assert valid
         assert message == ""
 
     def test_is_valid_resources_only(self):
-        valid, message = _is_valid(4.0, 16.0, 1, None, "ml.g5.xlarge")
+        valid, message = _is_valid(4.0, 16.0, 1, None, None, "ml.g5.xlarge")
         assert valid
         assert message == ""
 
     def test_is_valid_single_resource(self):
-        valid, message = _is_valid(None, 16.0, None, None, "ml.g5.xlarge")
+        valid, message = _is_valid(None, 16.0, None, None, None, "ml.g5.xlarge")
         assert valid
         assert message == ""
 
@@ -461,3 +464,44 @@ class TestQuotaAllocationUtil:
         reserved = _calculate_cpu_reservation(cpu_count)
         # Should only return static overhead
         assert (float_equals(reserved, 0.1))
+
+    @pytest.mark.parametrize(
+        "vcpu,memory_in_gib,expected_result",
+        [
+            # Defaults - uses MIG slice ratios: (2 * 1) / (8 * 7) = 0.0357 ratio
+            (None, None, {"cpu": "3.0", "memory": "41.0Gi", "nvidia.com/mig-1g.5gb": "2"}),
+            # Both CPU and memory provided
+            (4.0, 16.0, {"cpu": "4.0", "memory": "16.0Gi", "nvidia.com/mig-1g.5gb": "2"}),
+            # CPU only - memory calculated from ratio: (4/96) * 1152 = 48
+            (4.0, None, {"cpu": "4.0", "memory": "48.0Gi", "nvidia.com/mig-1g.5gb": "2"}),
+            # Memory only - CPU calculated from ratio: (48/1152) * 96 = 4
+            (None, 48.0, {"cpu": "4.0", "memory": "48.0Gi", "nvidia.com/mig-1g.5gb": "2"}),
+        ]
+    )
+    def test_process_accelerator_partition_allocation(self, vcpu, memory_in_gib, expected_result):
+        result = _process_accelerator_partition_allocation(
+            "ml.p4d.24xlarge", vcpu, memory_in_gib, "mig-1g.5gb", 2
+        )
+        assert result == expected_result
+
+    @patch('sagemaker.hyperpod.training.accelerator_partition_util.KubernetesClient')
+    def test_is_valid_with_accelerator_partitions(self, mock_k8s_client):
+        # Test case 1: Valid case - cluster has MIG resources
+        mock_node = MagicMock()
+        mock_node.status.allocatable = {"nvidia.com/mig-1g.5gb": "2"}
+        mock_k8s_client.return_value.get_core_v1_api.return_value.list_node.return_value.items = [mock_node]
+        
+        valid, error = _is_valid(
+            None, None, None, None, None, "ml.p4d.24xlarge", 
+            "mig-1g.5gb", 1, 1
+        )
+        assert valid is True
+        assert error == ""
+
+        # Test case 2: Invalid case - node_count conflicts with accelerator partitions
+        valid, error = _is_valid(
+            None, None, None, None, 2, "ml.p4d.24xlarge",
+            "mig-1g.5gb", 1, 1
+        )
+        assert valid is False
+        assert "accelerator_partition_type cannot be used together with node_count." == error
