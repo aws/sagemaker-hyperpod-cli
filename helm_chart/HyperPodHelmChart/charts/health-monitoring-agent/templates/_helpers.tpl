@@ -149,15 +149,27 @@ Generate the health monitoring agent image URI based on AWS region
   "eu-north-1" "654654141839"
   "eu-west-1" "533267293120"
   "eu-west-2" "011528288831"
+  "eu-south-2" "626887787726"
   "ap-northeast-1" "533267052152"
   "ap-south-1" "011528288864"
   "ap-southeast-1" "905418428165"
   "ap-southeast-2" "851725636348"
+  "ap-southeast-3" "971422672635"
+  "ap-southeast-4" "084375568333"
+  "ca-central-1" "843976229209"
   "sa-east-1" "025066253954"
 -}}
 
-{{/* Get the account ID for the region, default to us-west-2 account if region not found */}}
-{{- $accountId := index $regionAccountMap $region | default "767398015722" -}}
+{{/* Get the account ID for the region, fallback to us-east-1 if region not found */}}
+{{- $accountId := index $regionAccountMap $region -}}
+{{- if not $accountId -}}
+  {{/* Region not in map - fallback both region and account to us-east-1 */}}
+  {{- $region = "us-east-1" -}}
+  {{- $accountId = "767398015722" -}}
+  {{- if .Values.debug -}}
+    {{/* DEBUG: Region not in mapping, falling back to us-east-1 */}}
+  {{- end -}}
+{{- end -}}
 
 {{/* Debug: Show final region and account mapping */}}
 {{- if .Values.debug -}}
