@@ -351,9 +351,19 @@ spec:
                 pattern: ^$|^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$
                 type: string
               instanceType:
-                description: Instance Type to deploy the model on
+                description: |-
+                  Single instance type to deploy the model on.
+                  This field is mutually exclusive with instanceTypes. 
+                  Use this when you want to deploy on a specific instance type.
                 pattern: ^ml\..*
                 type: string
+              instanceTypes:
+                description: |-
+                  List of instance types to deploy the model on, in order of preference.
+                  Instance types are selected based on the order specified, selecting the first available type.
+                items:
+                  type: string
+                type: array
               intelligentRoutingSpec:
                 description: |-
                   Configuration for intelligent routing
