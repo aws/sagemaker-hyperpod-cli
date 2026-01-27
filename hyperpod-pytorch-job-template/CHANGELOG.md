@@ -1,3 +1,9 @@
+## v1.4.0 (2026-01-27)
+
+### Features
+
+* Add EFA support for training jobs
+
 ## v1.3.0 (2025-12-03)
 
 ### Features
