@@ -1,5 +1,24 @@
 # Changelog
 
+## v3.5.1 (2026-01-27)
+
+### Features
+* Add EFA support in manifest for training jobs (#345)
+* Add end-to-end example documentation (#350)
+* Add 4 new HyperPod GA regions (ca-central-1, ap-southeast-3, ap-southeast-4, eu-south-2) (#360)
+
+### Enhancements
+* Update documentation for elastic training arguments (#343)
+* Upgrade Inference Operator helm chart (#346)
+* Update MIG config for GPU operator (#358)
+* Release Health Monitoring Agent 1.0.1249.0_1.0.359.0 with enhanced Nvidia timeout analysis and bug fixes (#361)
+
+### Bug Fixes
+* Fix canary test failures for GPU quota allocation integration tests (#356)
+* Fix region fallback logic for health-monitoring-agent image URIs (#360)
+* Remove command flag from init pytorch job integration test (#351)
+* Skip expensive integration tests to improve CI performance (#355)
+
 ## v.3.5.0 (2025-12-03)
 
 ### Features
