@@ -944,8 +944,8 @@ spec:
                     description: Status of the Deployment Object
                     properties:
                       availableReplicas:
-                        description: Total number of available pods (ready for at
-                          least minReadySeconds) targeted by this deployment.
+                        description: Total number of available non-terminating pods
+                          (ready for at least minReadySeconds) targeted by this deployment.
                         format: int32
                         type: integer
                       collisionCount:
@@ -998,13 +998,21 @@ spec:
                         format: int64
                         type: integer
                       readyReplicas:
-                        description: readyReplicas is the number of pods targeted
+                        description: Total number of non-terminating pods targeted
                           by this Deployment with a Ready Condition.
                         format: int32
                         type: integer
                       replicas:
-                        description: Total number of non-terminated pods targeted
+                        description: Total number of non-terminating pods targeted
                           by this deployment (their labels match the selector).
+                        format: int32
+                        type: integer
+                      terminatingReplicas:
+                        description: |-
+                          Total number of terminating pods targeted by this deployment. Terminating pods have a non-null
+                          .metadata.deletionTimestamp and have not yet reached the Failed or Succeeded .status.phase.
+
+                          This is an alpha field. Enable DeploymentReplicaSetTerminatingReplicas to be able to use this field.
                         format: int32
                         type: integer
                       unavailableReplicas:
@@ -1015,7 +1023,7 @@ spec:
                         format: int32
                         type: integer
                       updatedReplicas:
-                        description: Total number of non-terminated pods targeted
+                        description: Total number of non-terminating pods targeted
                           by this deployment that have the desired template spec.
                         format: int32
                         type: integer
@@ -1598,8 +1606,8 @@ spec:
                     description: Status of the Deployment Object
                     properties:
                       availableReplicas:
-                        description: Total number of available pods (ready for at
-                          least minReadySeconds) targeted by this deployment.
+                        description: Total number of available non-terminating pods
+                          (ready for at least minReadySeconds) targeted by this deployment.
                         format: int32
                         type: integer
                       collisionCount:
@@ -1652,13 +1660,21 @@ spec:
                         format: int64
                         type: integer
                       readyReplicas:
-                        description: readyReplicas is the number of pods targeted
+                        description: Total number of non-terminating pods targeted
                           by this Deployment with a Ready Condition.
                         format: int32
                         type: integer
                       replicas:
-                        description: Total number of non-terminated pods targeted
+                        description: Total number of non-terminating pods targeted
                           by this deployment (their labels match the selector).
+                        format: int32
+                        type: integer
+                      terminatingReplicas:
+                        description: |-
+                          Total number of terminating pods targeted by this deployment. Terminating pods have a non-null
+                          .metadata.deletionTimestamp and have not yet reached the Failed or Succeeded .status.phase.
+
+                          This is an alpha field. Enable DeploymentReplicaSetTerminatingReplicas to be able to use this field.
                         format: int32
                         type: integer
                       unavailableReplicas:
@@ -1669,7 +1685,7 @@ spec:
                         format: int32
                         type: integer
                       updatedReplicas:
-                        description: Total number of non-terminated pods targeted
+                        description: Total number of non-terminating pods targeted
                           by this deployment that have the desired template spec.
                         format: int32
                         type: integer
