@@ -41,7 +41,7 @@ dependencies:
     repository: https://nvidia.github.io/k8s-device-plugin
     condition: nvidia-device-plugin.devicePlugin.enabled    
   - name: aws-efa-k8s-device-plugin
-    version: "0.5.10"
+    version: "0.5.20"
     repository: https://aws.github.io/eks-charts/
     condition: aws-efa-k8s-device-plugin.devicePlugin.enabled
   - name: neuron-device-plugin
