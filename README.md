@@ -364,6 +364,12 @@ hyp create hyp-pytorch-job \
 | `--accelerator-partition-limit` | INTEGER | No | Limit for the number of accelerator partitions (minimum: 1) |
 | `--preferred-topology` | TEXT | No | Preferred topology annotation for scheduling |
 | `--required-topology` | TEXT | No | Required topology annotation for scheduling |
+| `--max-node-count` | INTEGER | No | Maximum number of nodes|
+| `--elastic-replica-increment-step` | INTEGER | No | Scaling step size for elastic training. Provide either this or elastic-replica-discrete-values|
+| `--elastic-graceful-shutdown-timeout-in-seconds` | INTEGER | No | Graceful shutdown timeout in seconds for elastic scaling operations|
+| `--elastic-scaling-timeout-in-seconds` | INTEGER | No | Scaling timeout for elastic training|
+| `--elastic-scale-up-snooze-time-in-seconds` | INTEGER | No | Timeout period after job restart during which no scale up/workload admission is allowed|
+| `--elastic-replica-discrete-values` | ARRAY | No | Alternative to elastic-replica-increment-step. Provides exact values for total replicas count (array of integers)|
 | `--debug` | FLAG | No | Enable debug mode (default: false) |
 
 #### List Available Accelerator Partition Types
@@ -1303,6 +1309,14 @@ template.delete()
 ```
 
 ## Examples
+
+This repository provides both a **full end-to-end example walkthrough** of using the CLI for real-world training and inference workloads as well as **standalone** example notebooks for individual features.
+
+### End-to-End Walkthrough
+[End-to-End Walkthrough Example](https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/end_to_end_walkthrough/README.md)
+
+### Standalone Examples
+
 #### Cluster Management Example Notebooks
 
 [CLI Cluster Management Example](https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/cluster_management/cluster_creation_init_experience.ipynb)

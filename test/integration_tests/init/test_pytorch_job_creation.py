@@ -90,8 +90,10 @@ def test_configure_pytorch_job(runner, pytorch_job_name, test_directory):
         configure, [
         # Required fields only
         "--job-name", pytorch_job_name,
-        "--image", "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-devel",
-        "--command", '["python", "-c", "import torch; print(torch.__version__); import time; time.sleep(3600)"]',
+        "--image", "448049793756.dkr.ecr.us-west-2.amazonaws.com/ptjob:mnist",
+        "--pull-policy", "Always",
+        "--tasks-per-node", "1",
+        "--max-retry", "1"
     ], catch_exceptions=False
     )
     assert_command_succeeded(result)
@@ -99,8 +101,10 @@ def test_configure_pytorch_job(runner, pytorch_job_name, test_directory):
     # Simplified expected_config
     expected_config = {
         "job_name": pytorch_job_name,
-        "image": "pytorch/pytorch:2.0.1-cuda11.7-cudnn8-devel",
-        "command": ["python", "-c", "import torch; print(torch.__version__); import time; time.sleep(3600)"],
+        "image": "448049793756.dkr.ecr.us-west-2.amazonaws.com/ptjob:mnist",
+        "pull_policy": "Always",
+        "tasks_per_node": 1,
+        "max_retry": 1
     }
     assert_config_values("./", expected_config)
 
@@ -122,6 +126,31 @@ def test_create_pytorch_job(runner, pytorch_job_name, test_directory):
     assert "Submitted!" in result.output
     assert "Successfully submitted HyperPodPytorchJob" in result.output
     assert pytorch_job_name in result.output
+
+
+@pytest.mark.dependency(name="list_pods", depends=["create"])
+def test_list_pods(pytorch_job_name, test_directory):
+    """Test listing pods for a specific job."""
+    # Wait a moment to ensure pods are created
+    time.sleep(10)
+
+    list_pods_result = execute_command([
+        "hyp", "list-pods", "hyp-pytorch-job",
+        "--job-name", pytorch_job_name,
+        "--namespace", NAMESPACE
+    ])
+    assert list_pods_result.returncode == 0
+
+    # Verify the output contains expected headers and job name
+    output = list_pods_result.stdout.strip()
+    assert f"Pods for job: {pytorch_job_name}" in output
+    assert "POD NAME" in output
+    assert "NAMESPACE" in output
+
+    # Verify at least one pod is listed (should contain the job name in the pod name)
+    assert f"{pytorch_job_name}-pod-" in output
+
+    print(f"[INFO] Successfully listed pods for job: {pytorch_job_name}")
 
 
 @pytest.mark.dependency(name="wait", depends=["create"])
@@ -158,31 +187,7 @@ def test_wait_for_job_running(pytorch_job_name, test_directory):
     pytest.fail(f"[ERROR] Timed out waiting for job {pytorch_job_name} to be Running")
 
 
-@pytest.mark.dependency(name="list_pods", depends=["wait"])
-def test_list_pods(pytorch_job_name, test_directory):
-    """Test listing pods for a specific job."""
-    # Wait a moment to ensure pods are created
-    time.sleep(10)
-
-    list_pods_result = execute_command([
-        "hyp", "list-pods", "hyp-pytorch-job",
-        "--job-name", pytorch_job_name,
-        "--namespace", NAMESPACE
-    ])
-    assert list_pods_result.returncode == 0
-
-    # Verify the output contains expected headers and job name
-    output = list_pods_result.stdout.strip()
-    assert f"Pods for job: {pytorch_job_name}" in output
-    assert "POD NAME" in output
-    assert "NAMESPACE" in output
-
-    # Verify at least one pod is listed (should contain the job name in the pod name)
-    assert f"{pytorch_job_name}-pod-" in output
-
-    print(f"[INFO] Successfully listed pods for job: {pytorch_job_name}")
-
-
+@pytest.mark.run(order=99)
 @pytest.mark.dependency(depends=["create"])
 def test_pytorch_job_delete(pytorch_job_name, test_directory):
     """Clean up deployed PyTorch job using CLI delete command and verify deletion."""
@@ -198,7 +203,7 @@ def test_pytorch_job_delete(pytorch_job_name, test_directory):
     time.sleep(5)
 
     # Verify the job is no longer listed
-    list_result = execute_command(["hyp", "list", "hyp-pytorch-job", "--namespace", NAMESPACE])
+    list_result = execute_command(["hyp", "list", "hyp-pytorch-job"])
     assert list_result.returncode == 0
 
     # The job name should no longer be in the output

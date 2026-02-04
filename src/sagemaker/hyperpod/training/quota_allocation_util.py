@@ -33,7 +33,8 @@ def _get_resources_from_compute_quotas(instance_type: str,
                                        memory_in_gib: Optional[float], 
                                        accelerators: Optional[int] = 0,
                                        accelerator_partition_type: Optional[str] = None,
-                                       accelerator_partition_count: Optional[int] = None) -> Optional[dict]:
+                                       accelerator_partition_count: Optional[int] = None,
+                                       efa_interfaces: Optional[int] = None) -> Optional[dict]:
     has_accelerator_partition = accelerator_partition_type is not None and accelerator_partition_count is not None
     has_compute_resources = _has_compute_resource_quota_allocation_resources(memory_in_gib, vcpu, accelerators)
 
@@ -71,6 +72,10 @@ def _get_resources_from_compute_quotas(instance_type: str,
         memory_value = memory_in_gib or (gpu_ratio * instance.get("memory", 0))
         result["memory"] = memory_value
         result[type_of_accelerator] = accelerators
+
+        efa_count = efa_interfaces or instance.get("efa", 0)
+        if efa_count > 0:
+            result["vpc.amazonaws.com/efa"] = efa_count
     
     else:
         result["cpu"] = vcpu or 0
@@ -99,6 +104,10 @@ def _get_resources_from_instance(instance_type: str, node_count: int) -> dict:
     if type_of_accelerator is not None:
         result[type_of_accelerator] = max_accelerator_per_instance * node_count
 
+        efa_count = instance.get("efa", 0)
+        if efa_count > 0:
+            result["vpc.amazonaws.com/efa"] = efa_count
+
     result["cpu"] = f"{result['cpu']}"
     result["memory"] = f"{result['memory']}Gi"
     return result
@@ -126,7 +135,7 @@ def _trim_resource_requests(instance_type: str, requests_values: dict) -> dict:
     return requests_values
 
 
-def _get_limits(instance_type: str, vcpu_limit: Optional[float], memory_in_gib_limit: Optional[float], accelerators_limit: Optional[int], accelerator_partition_type: Optional[str], accelerator_partition_limit: Optional[int]) -> dict:
+def _get_limits(instance_type: str, vcpu_limit: Optional[float], memory_in_gib_limit: Optional[float], accelerators_limit: Optional[int], accelerator_partition_type: Optional[str], accelerator_partition_limit: Optional[int], efa_interfaces_limit: Optional[int] = None) -> dict:
 
     result = {}
     type_of_accelerator, _max_accelerator_per_instance = _get_accelerator_type_and_count(instance_type)
@@ -144,6 +153,9 @@ def _get_limits(instance_type: str, vcpu_limit: Optional[float], memory_in_gib_l
         result[f"nvidia.com/{accelerator_partition_type}"] = accelerator_partition_limit
     if memory_in_gib_limit is not None:
         result["memory"] = str(memory_in_gib_limit) + "Gi"
+
+    if efa_interfaces_limit is not None and efa_interfaces_limit > 0:
+        result["vpc.amazonaws.com/efa"] = efa_interfaces_limit
 
     return result
 
@@ -212,6 +224,31 @@ def _validate_accelerators_inputs(instance_type: str, accelerators_request: int,
                 raise ValueError('Requested accelerators exceeds capacity')
             if accelerators_request > _max_accelerator_per_instance:
                 raise ValueError('Requested accelerators exceeds capacity')
+
+
+def _validate_efa_inputs(instance_type: str, efa_interfaces: Optional[int], efa_interfaces_limit: Optional[int]) -> None:
+    """Validate EFA inputs similar to accelerator validation."""
+    instance = INSTANCE_RESOURCES.get(instance_type, {})
+    max_efa_per_instance = instance.get("efa", 0)
+
+    # Check if user provided EFA values but instance doesn't support EFA
+    if max_efa_per_instance == 0 and (efa_interfaces is not None or efa_interfaces_limit is not None):
+        raise ValueError(
+            f"Instance type {instance_type} does not support EFA, but EFA values were provided.")
+
+    # Validate EFA values if instance supports EFA
+    if max_efa_per_instance > 0:
+        if efa_interfaces is not None and efa_interfaces_limit is not None:
+            if efa_interfaces != efa_interfaces_limit:
+                raise ValueError('EFA request must equal EFA limit')
+            if efa_interfaces_limit > max_efa_per_instance:
+                raise ValueError(f'Requested EFA limit ({efa_interfaces_limit}) exceeds instance capacity ({max_efa_per_instance})')
+            if efa_interfaces > max_efa_per_instance:
+                raise ValueError(f'Requested EFA ({efa_interfaces}) exceeds instance capacity ({max_efa_per_instance})')
+        elif efa_interfaces is not None and efa_interfaces > max_efa_per_instance:
+            raise ValueError(f'Requested EFA ({efa_interfaces}) exceeds instance capacity ({max_efa_per_instance})')
+        elif efa_interfaces_limit is not None and efa_interfaces_limit > max_efa_per_instance:
+            raise ValueError(f'Requested EFA limit ({efa_interfaces_limit}) exceeds instance capacity ({max_efa_per_instance})')
 
 
 def _set_default_accelerators_val(instance_type: Optional[str], accelerators_request: Optional[int], accelerators_limit: Optional[int]) -> Tuple[Optional[int], Optional[int]]:

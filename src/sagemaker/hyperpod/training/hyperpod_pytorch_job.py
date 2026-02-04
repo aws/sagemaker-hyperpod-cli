@@ -1,7 +1,11 @@
 from pydantic import ConfigDict, Field
 
-from sagemaker.hyperpod.cli.constants.command_constants import INSTANCE_TYPE_LABEL, NEURON_RESOURCE_LIMIT_KEY, \
-    NVIDIA_GPU_RESOURCE_LIMIT_KEY
+from sagemaker.hyperpod.cli.constants.command_constants import (
+    INSTANCE_TYPE_LABEL,
+    NEURON_RESOURCE_LIMIT_KEY,
+    NVIDIA_GPU_RESOURCE_LIMIT_KEY,
+    EFA_RESOURCE_LIMIT_KEY,
+)
 from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config import (
     _HyperPodPytorchJob, HyperPodPytorchJobStatus
 )
@@ -29,6 +33,7 @@ from sagemaker.hyperpod.training.quota_allocation_util import (
     _resolve_default_memory_values,
     _set_default_accelerators_val,
     _validate_accelerators_inputs,
+    _validate_efa_inputs,
     _resolve_default_cpu_values,
     _trim_resource_requests,
 )
@@ -46,6 +51,7 @@ TRAINING_OPERATOR_NAMESPACE = "aws-hyperpod"
 TRAINING_OPERATOR_LABEL = "hp-training-control-plane"
 NVIDIA_RESOURCE_KEY = NVIDIA_GPU_RESOURCE_LIMIT_KEY
 NEURON_RESOURCE_KEY = NEURON_RESOURCE_LIMIT_KEY
+EFA_RESOURCE_KEY = EFA_RESOURCE_LIMIT_KEY
 
 class HyperPodPytorchJob(_HyperPodPytorchJob):
     """HyperPod PyTorch job for distributed training on Amazon SageMaker HyperPod clusters.
@@ -146,6 +152,16 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             acc_req, acc_lim = _set_default_accelerators_val(instance_type, accelerators, accelerators_limit)
             _validate_accelerators_inputs(instance_type, acc_req, acc_lim)
 
+            efa_interfaces = None
+            if requests.get(EFA_RESOURCE_KEY):
+                efa_interfaces = int(requests.get(EFA_RESOURCE_KEY))
+
+            efa_interfaces_limit = None
+            if limits.get(EFA_RESOURCE_KEY):
+                efa_interfaces_limit = int(limits.get(EFA_RESOURCE_KEY))
+
+            _validate_efa_inputs(instance_type, efa_interfaces, efa_interfaces_limit)
+
             accelerator_partition_type, accelerator_partition_count, accelerator_partition_limit = (
                 _get_accelerator_partition(requests, limits)
             )
@@ -158,8 +174,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
 
             acc_partition_req, acc_partition_lim = _set_default_accelerator_partition_val(accelerator_partition_count, accelerator_partition_limit)
 
-            # Calculate resource values
-            requests_values = _get_resources_from_compute_quotas(instance_type, vcpu, memory, acc_req, accelerator_partition_type, acc_partition_req)
+            requests_values = _get_resources_from_compute_quotas(instance_type, vcpu, memory, acc_req, accelerator_partition_type, acc_partition_req, efa_interfaces)
             if requests_values is None:
                 requests_values = _get_resources_from_instance(instance_type, node_count=1)
                 _trim_resource_requests(instance_type, requests_values)
@@ -168,7 +183,11 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
                 elif NEURON_RESOURCE_KEY in requests_values:
                     acc_lim = requests_values[NEURON_RESOURCE_KEY]
 
-            limits_values = _get_limits(instance_type, vcpu_limit, memory_limit, acc_lim, accelerator_partition_type, acc_partition_lim)
+            efa_lim = requests_values.get(EFA_RESOURCE_KEY)
+            if efa_lim is not None:
+                efa_lim = int(efa_lim)
+
+            limits_values = _get_limits(instance_type, vcpu_limit, memory_limit, acc_lim, accelerator_partition_type, acc_partition_lim, efa_lim)
             _resolve_default_memory_values(instance_type, requests_values, limits_values)
             _resolve_default_cpu_values(instance_type, requests_values)
 

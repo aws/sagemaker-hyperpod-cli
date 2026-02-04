@@ -1,6 +1,19 @@
 (examples)=
 
-# Example Notebooks
+# End-to-End Example and Notebooks
+
+## End-to-End Walkthrough Example
+
+::::{grid} 1
+:gutter: 3
+
+:::{grid-item-card} End-to-End Walkthrough Example
+:link: https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/cluster_management/cluster_creation_init_experience.ipynb
+:class-card: sd-border-primary
+
+**End-to-End Walkthrough Example** End-to-End walkthrough showing cluster setup; training, inference and spaces deployment as well as task governance usage. 
+:::
+::::
 
 ## Cluster Management Example Notebooks
 
