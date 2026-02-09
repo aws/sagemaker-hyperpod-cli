@@ -1,0 +1,17 @@
+# The following manifests contain a self-signed issuer CR and a certificate CR.
+# More documentation can be found at https://docs.cert-manager.io
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    app.kubernetes.io/name: {{ .Values.namePrefix }}
+  name: serving-cert
+  namespace: {{ .Values.shortPrefix }}-system
+spec:
+  dnsNames:
+  - {{ .Values.namePrefix }}-conversion-webhook.{{ .Values.shortPrefix }}-system.svc
+  - {{ .Values.namePrefix }}-conversion-webhook.{{ .Values.shortPrefix }}-system.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: selfsigned-issuer
+  secretName: webhook-server-cert

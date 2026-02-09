@@ -48,6 +48,94 @@ spec:
         # versions < 1.19 or on vendors versions which do NOT support this field by default (i.e. Openshift < 4.11 ).
         # seccompProfile:
         #   type: RuntimeDefault
+      initContainers:
+        - command:
+            - bash
+            - -lc
+            - |
+              set -euo pipefail
+              KUBECTL="$(command -v kubectl || true)"
+              if [ -z "${KUBECTL}" ]; then
+                for p in /opt/bitnami/kubectl/bin/kubectl /usr/local/bin/kubectl /usr/bin/kubectl /bin/kubectl; do
+                if [ -x "$p" ]; then KUBECTL="$p"; break; fi
+              done
+              fi
+              if [ -z "${KUBECTL}" ]; then
+                echo "kubectl not found in PATH or common locations" > /dev/termination-log
+                exit 2
+              fi
+
+              CHECKS="${CHECKS:-drivers crds}"
+
+              log() { echo "$1" > /dev/termination-log; }
+
+              require_csidriver() {
+                local provisioner="$1"
+                local friendly="$2"
+
+                # Try with error capture so we can disambiguate RBAC vs missing
+                if "${KUBECTL}" get csidriver "$provisioner" >/dev/null 2>&1 || \
+                   "${KUBECTL}" get csidrivers.storage.k8s.io "$provisioner" >/dev/null 2>&1; then
+                  return 0
+                fi
+
+
+                # Final attempt to capture the real error
+                err_msg="$("${KUBECTL}" get csidriver "$provisioner" 2>&1 || true)"
+                [ -z "$err_msg" ] && err_msg="$("${KUBECTL}" get csidrivers.storage.k8s.io "$provisioner" 2>&1 || true)"
+
+                if echo "$err_msg" | grep -qiE 'forbidden|permission|unauthorized|cannot.*get'; then
+                  log "$friendly check failed: RBAC insufficient to read CSIDriver $provisioner. "${KUBECTL}" said: ${err_msg}"
+                  exit 2
+                fi
+
+                log "$friendly not installed (missing CSIDriver $provisioner). kubectl said: ${err_msg}"
+                exit 1
+              }
+
+              require_crd() {
+                local crd="$1"
+                # Same idea: attempt and parse error text
+                if "${KUBECTL}" get crd "$crd" >/dev/null 2>&1; then
+                  return 0
+                fi
+                err="$("${KUBECTL}" get crd "$crd" 2>&1 || true)"
+                if echo "$err" | grep -qiE 'forbidden|permission|unauthorized|cannot.*get'; then
+                  log "CRD check failed: RBAC insufficient to read $crd. "${KUBECTL}" said: ${err}"
+                  exit 2
+                fi
+                log "Missing required CRD: $crd. "${KUBECTL}" said: ${err}"
+                exit 1
+              }
+
+              # Dispatch selected checks
+              for c in $CHECKS; do
+                case "$c" in
+                  drivers)
+                    require_csidriver "s3.csi.aws.com" "S3 CSI driver"
+                    require_csidriver "fsx.csi.aws.com" "FSx CSI driver"
+                    ;;
+                  crds)
+                    require_crd "certificaterequests.cert-manager.io" "cert-manager CRD"
+                    require_crd "certificates.cert-manager.io" "cert-manager CRD"
+                    ;;
+                  *)
+                    log "Unknown check: $c"
+                    exit 1
+                    ;;
+                esac
+              done
+
+              log "Checks passed: $CHECKS"
+              exit 0
+          env:
+            - name: CHECKS
+              value: "drivers crds"
+          image: "public.ecr.aws/bitnami/kubectl:1.30"
+          imagePullPolicy: Always
+          name: check-csi-drivers
+          resources: { }
+          terminationMessagePath: /dev/termination-log
       containers:
       - command:
         - /hyperpod-inference-manager
@@ -55,9 +143,14 @@ spec:
           - --metrics-bind-address=:8443
           - --leader-elect
           - --health-probe-bind-address=:8081
+          - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
         image: "{{ .Values.image.repository }}/hyperpod-inference-operator:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: manager
+        ports:
+        - containerPort: 9443
+          name: webhook-server
+          protocol: TCP
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -73,8 +166,10 @@ spec:
           httpGet:
             path: /healthz
             port: 8081
+          initialDelaySeconds: 180
           failureThreshold: 120
           periodSeconds: 60
+          timeoutSeconds: 5
         readinessProbe:
           httpGet:
             path: /readyz
@@ -86,10 +181,14 @@ spec:
         resources:
           limits:
             cpu: 500m
-            memory: 128Mi
+            memory: 256Mi
           requests:
             cpu: 10m
             memory: 64Mi
+        volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: webhook-certs
+          readOnly: true
         env:
           - name: HYPERPOD_CLUSTER_ARN
             value: {{ .Values.hyperpodClusterArn }}
@@ -103,5 +202,15 @@ spec:
             value: {{ .Values.eksClusterName }}
           - name: TLS_CERTIFICATE_OUTPUT_S3URI
             value: {{ .Values.tlsCertificateS3Bucket }}
+          - name: ENABLE_WEBHOOKS
+            value: "{{ .Values.enableWebhooks }}"
+          - name: CHART_VERSION
+            value: {{ .Chart.Version | quote }}
+          - name: APP_VERSION
+            value: {{ .Chart.AppVersion | quote }}
       serviceAccountName: {{ .Values.namePrefix }}-controller-manager
       terminationGracePeriodSeconds: 10
+      volumes:
+      - name: webhook-certs
+        secret:
+          secretName: webhook-server-cert

@@ -41,11 +41,11 @@ dependencies:
     repository: https://nvidia.github.io/k8s-device-plugin
     condition: nvidia-device-plugin.devicePlugin.enabled    
   - name: aws-efa-k8s-device-plugin
-    version: "0.5.10"
+    version: "0.5.20"
     repository: https://aws.github.io/eks-charts/
     condition: aws-efa-k8s-device-plugin.devicePlugin.enabled
   - name: neuron-device-plugin
-    version: "0.1.0"
+    version: "v0.1.0"
     repository: "file://charts/neuron-device-plugin"
     condition: neuron-device-plugin.devicePlugin.enabled
   - name: storage
@@ -81,10 +81,14 @@ dependencies:
     repository: "file://charts/team-role-and-bindings"
     condition: team-role-and-bindings.enabled
   - name: hyperpod-inference-operator
-    version: "0.1.0"
+    version: "1.3.0"
     repository: "file://charts/inference-operator"
     condition: inferenceOperators.enabled 
   - name: hyperpod-patching
     version: "0.1.0"
     repository: "file://charts/hyperpod-patching"
     condition: hyperpod-patching.enabled
+  - name: gpu-operator
+    version: "0.1.0"
+    repository: "file://charts/gpu-operator"
+    condition: gpu-operator.enabled

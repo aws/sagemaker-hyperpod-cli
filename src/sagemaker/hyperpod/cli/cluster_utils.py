@@ -24,7 +24,7 @@ def _get_current_aws_identity(session: boto3.Session) -> Tuple[str, str]:
     """
     sts_client = session.client('sts')
     identity = sts_client.get_caller_identity()
-    
+
     arn = identity['Arn']
     
     # Determine identity type
@@ -39,10 +39,22 @@ def _get_current_aws_identity(session: boto3.Session) -> Tuple[str, str]:
         # becomes arn:aws:iam::123456789012:role/MyRole
         parts = arn.split('/')
         if len(parts) >= 3:
-            base_arn = arn.replace(':sts:', ':iam:').replace(':assumed-role/', ':role/').rsplit('/', 1)[0]
-            arn = base_arn
+            role_name = parts[1]  # Extract role name from ARN
+        
+            # Try IAM API first (preferred method)
+            try:
+                iam_client = session.client('iam')
+                role_response = iam_client.get_role(RoleName=role_name)
+                # Use actual ARN from IAM API
+                arn = role_response['Role']['Arn']
+                logger.debug(f"Retrieved base role ARN from IAM API: {arn}")
+            except Exception as e:
+                logger.debug(f"IAM API failed, falling back to string replacement: {e}")
+                arn = arn.replace(':sts:', ':iam:').replace(':assumed-role/', ':role/').rsplit('/', 1)[0]
     else:
         identity_type = 'unknown'
+
+    logger.debug(f"Resolved identity - ARN: {arn}, Type: {identity_type}")
     
     return arn, identity_type
 

@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock, Mock
+import pytest
 from kubernetes.client.exceptions import ApiException
 
 from sagemaker.hyperpod.training import (
@@ -14,6 +15,7 @@ from sagemaker.hyperpod.training import (
     _load_hp_job,
     _load_hp_job_list,
 )
+from sagemaker.hyperpod.training.hyperpod_pytorch_job import list_accelerator_partition_types
 from sagemaker.hyperpod.common.config import Metadata
 
 
@@ -375,4 +377,84 @@ class TestLoadHpJobList(unittest.TestCase):
         result = _load_hp_job_list(response)
 
         self.assertEqual(len(result), 0)
+        self.assertEqual(result, [])
+
+
+class TestJobWithAcceleratorPartition(unittest.TestCase):
+    @patch.object(HyperPodPytorchJob, "verify_kube_config")
+    @patch("sagemaker.hyperpod.training.hyperpod_pytorch_job.client.CustomObjectsApi")
+    def test_create_success_with_accelerator_partitions(self, mock_custom_api, mock_verify_config):
+        # Create job with MIG partition resources
+        replica_specs = [
+            ReplicaSpec(
+                name="pod",
+                template=Template(
+                    spec=Spec(
+                        containers=[
+                            Containers(
+                                name="test-container",
+                                image="test-image",
+                                resources=Resources(
+                                    requests={"nvidia.com/mig-1g.5gb": "2"},
+                                    limits={"nvidia.com/mig-1g.5gb": "2"},
+                                ),
+                            )
+                        ]
+                    )
+                ),
+            )
+        ]
+        job_with_partitions = HyperPodPytorchJob(
+            metadata=Metadata(name="test-job", namespace="default"),
+            nproc_per_node="auto",
+            replica_specs=replica_specs,
+            run_policy=RunPolicy(clean_pod_policy="None"),
+        )
+        
+        mock_api_instance = MagicMock()
+        mock_custom_api.return_value = mock_api_instance
+
+        job_with_partitions.create(debug=True)
+
+        mock_verify_config.assert_called_once()
+        mock_custom_api.assert_called_once()
+        mock_api_instance.create_namespaced_custom_object.assert_called_once()
+
+
+class TestListAcceleratorPartitionTypes(unittest.TestCase):
+    
+    @patch('sagemaker.hyperpod.training.hyperpod_pytorch_job.config.load_kube_config')
+    @patch('sagemaker.hyperpod.training.hyperpod_pytorch_job.client.CoreV1Api')
+    def test_list_accelerator_partition_types_success(self, mock_core_v1_api, mock_load_kube_config):
+        """Test listing partition types for valid instance type with available partitions."""
+        mock_node = Mock()
+        mock_node.status.allocatable = {
+            'nvidia.com/mig-1g.5gb': '7',
+            'nvidia.com/mig-2g.10gb': '3'
+        }
+
+        mock_api_instance = Mock()
+        mock_api_instance.list_node.return_value.items = [mock_node]
+        mock_core_v1_api.return_value = mock_api_instance
+
+        result = list_accelerator_partition_types('ml.p4d.24xlarge')
+
+        self.assertEqual(result, ['mig-1g.5gb', 'mig-2g.10gb'])
+        mock_api_instance.list_node.assert_called_once_with(
+            label_selector='node.kubernetes.io/instance-type=ml.p4d.24xlarge'
+        )
+
+    @patch('sagemaker.hyperpod.training.hyperpod_pytorch_job.config.load_kube_config')
+    @patch('sagemaker.hyperpod.training.hyperpod_pytorch_job.client.CoreV1Api')
+    def test_nodes_without_allocatable_resources(self, mock_core_v1_api, mock_load_kube_config):
+        """Test nodes without allocatable resources."""
+        mock_node = Mock()
+        mock_node.status = None
+
+        mock_api_instance = Mock()
+        mock_api_instance.list_node.return_value.items = [mock_node]
+        mock_core_v1_api.return_value = mock_api_instance
+
+        result = list_accelerator_partition_types('ml.p4d.24xlarge')
+
         self.assertEqual(result, [])

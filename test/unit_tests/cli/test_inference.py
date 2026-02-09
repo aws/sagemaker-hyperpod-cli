@@ -9,43 +9,129 @@ import hyperpod_custom_inference_template.registry as creg
 
 # Import the non-create commands that don't need special handling
 from sagemaker.hyperpod.cli.commands.inference import (
-    js_create, custom_create, custom_invoke,
-    js_list, custom_list,
-    js_describe, custom_describe,
-    js_delete, custom_delete,
-    js_list_pods, custom_list_pods,
-    js_get_logs, custom_get_logs,
-    js_get_operator_logs, custom_get_operator_logs
+    js_create,
+    custom_create,
+    custom_invoke,
+    js_list,
+    custom_list,
+    js_describe,
+    custom_describe,
+    js_delete,
+    custom_delete,
+    js_list_pods,
+    custom_list_pods,
+    js_get_logs,
+    custom_get_logs,
+    js_get_operator_logs,
+    custom_get_operator_logs,
 )
 
+
 # --------- JumpStart Commands ---------
-@patch('sys.argv', ['pytest', '--version', '1.0'])
+@patch("sys.argv", ["pytest", "--version", "1.0"])
+
 def test_js_create_with_required_args():
     """
     Test js_create with all required options via CLI runner, mocking schema and endpoint.
     """
     # Reload the inference module with mocked sys.argv
-    if 'sagemaker.hyperpod.cli.commands.inference' in sys.modules:
-        importlib.reload(sys.modules['sagemaker.hyperpod.cli.commands.inference'])
+    if "sagemaker.hyperpod.cli.commands.inference" in sys.modules:
+        importlib.reload(sys.modules["sagemaker.hyperpod.cli.commands.inference"])
 
     from sagemaker.hyperpod.cli.commands.inference import js_create
 
-    with patch('sagemaker.hyperpod.cli.inference_utils.load_schema_for_version') as mock_load_schema, \
-         patch('sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint') as mock_endpoint_class, \
-         patch('sagemaker.hyperpod.common.cli_decorators._is_valid_jumpstart_model_id') as mock_model_validation, \
-         patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists') as mock_namespace_exists:
+    with patch(
+        "sagemaker.hyperpod.cli.inference_utils.load_schema_for_version"
+    ) as mock_load_schema, patch(
+        "sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint"
+    ) as mock_endpoint_class, patch(
+        "sagemaker.hyperpod.common.cli_decorators._is_valid_jumpstart_model_id"
+    ) as mock_model_validation, patch(
+        "sagemaker.hyperpod.common.cli_decorators._namespace_exists"
+    ) as mock_namespace_exists, patch(
+        "sagemaker.hyperpod.inference.hp_jumpstart_endpoint.HPJumpStartEndpoint.validate_instance_type"
+    ) as mock_validate_instance, patch(
+        "sagemaker.hyperpod.common.utils.get_jumpstart_model_instance_types"
+    ) as mock_get_instance_types, patch(
+        "sagemaker.hyperpod.common.utils.get_cluster_instance_types"
+    ) as mock_get_cluster_types, patch(
+        "sagemaker.hyperpod.inference.hp_jumpstart_endpoint.HPJumpStartEndpoint.create"
+    ) as mock_create:
 
         # Mock enhanced error handling
         mock_model_validation.return_value = True  # Allow test model-id
         mock_namespace_exists.return_value = True  # Allow test namespace
+        mock_validate_instance.return_value = None  # Skip validation
+        mock_get_instance_types.return_value = [
+            "ml.p4d.24xlarge"
+        ]  # Mock supported types
+        mock_get_cluster_types.return_value = ["ml.p4d.24xlarge"]  # Mock cluster types
+        mock_create.return_value = None  # Mock successful creation
+
+        # Prepare mock model-to-domain mapping
+        mock_model_class = Mock()
+        mock_model_instance = Mock()
+        domain_obj = Mock()
+        domain_obj.create = mock_create
+        mock_model_instance.to_domain.return_value = domain_obj
+        mock_model_class.return_value = mock_model_instance
+
+        # Set up the registry for version 1.0
+        jreg.SCHEMA_REGISTRY["1.0"] = mock_model_class
+
+        runner = CliRunner()
+        result = runner.invoke(
+            js_create,
+            [
+                "--namespace",
+                "test-ns",
+                "--version",
+                "1.0",
+                "--model-id",
+                "test-model-id",
+                "--instance-type",
+                "ml.p4d.24xlarge",  # Use a supported instance type
+                "--endpoint-name",
+                "test-endpoint",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        mock_create.assert_called_once_with(debug=False)
+
+
+def test_js_create_missing_required_args():
+    runner = CliRunner()
+    result = runner.invoke(js_create, [])
+    assert result.exit_code != 0
+    assert "Missing option" in result.output
+
+
+def test_js_create_with_mig_profile():
+    """
+    Test js_create with MIG profile (accelerator partition) options using v1.1 schema.
+    """
+    with patch(
+        "sagemaker.hyperpod.cli.inference_utils.load_schema_for_version"
+    ) as mock_load_schema, patch(
+        "sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint"
+    ) as mock_endpoint_class, patch(
+        "sagemaker.hyperpod.common.cli_decorators._is_valid_jumpstart_model_id"
+    ) as mock_model_validation, patch(
+        "sagemaker.hyperpod.common.cli_decorators._namespace_exists"
+    ) as mock_namespace_exists:
+
+        # Mock enhanced error handling
+        mock_model_validation.return_value = True
+        mock_namespace_exists.return_value = True
 
         # Mock schema loading
         mock_load_schema.return_value = {
             "properties": {
                 "model_id": {"type": "string"},
-                "instance_type": {"type": "string"}
+                "instance_type": {"type": "string"},
             },
-            "required": ["model_id", "instance_type"]
+            "required": ["model_id", "instance_type"],
         }
         # Prepare mock model-to-domain mapping
         mock_model_class = Mock()
@@ -57,56 +143,131 @@ def test_js_create_with_required_args():
         mock_endpoint_class.model_construct.return_value = domain_obj
 
         jreg.SCHEMA_REGISTRY.clear()
-        jreg.SCHEMA_REGISTRY['1.0'] = mock_model_class
+        jreg.SCHEMA_REGISTRY["1.1"] = mock_model_class
 
         runner = CliRunner()
-        result = runner.invoke(js_create, [
-            '--namespace', 'test-ns',
-            '--version', '1.0',
-            '--model-id', 'test-model-id',
-            '--instance-type', 'ml.t2.micro',
-            '--endpoint-name', 'test-endpoint'
-        ])
+        result = runner.invoke(
+            js_create,
+            [
+                "--namespace",
+                "test-ns",
+                "--version",
+                "1.1",
+                "--model-id",
+                "test-model-id",
+                "--instance-type",
+                "ml.p4d.24xlarge",
+                "--accelerator-partition-type",
+                "mig-1g.5gb",
+                "--accelerator-partition-validation",
+                "true",
+                "--endpoint-name",
+                "test-endpoint",
+            ],
+        )
 
         assert result.exit_code == 0, result.output
         domain_obj.create.assert_called_once_with(debug=False)
+
+        # Verify the model instance was created with MIG profile parameters
+        mock_model_class.assert_called_once()
+        call_args = mock_model_class.call_args[1]
+        assert "accelerator_partition_type" in call_args
+        assert "accelerator_partition_validation" in call_args
 
 
 def test_js_create_missing_required_args():
     runner = CliRunner()
     result = runner.invoke(js_create, [])
     assert result.exit_code != 0
-    assert 'Missing option' in result.output
+    assert "Missing option" in result.output
 
 
-@patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
-@patch('sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint')
+def test_js_create_mig_validation_error_handling():
+    """
+    Test js_create properly handles MIG profile validation errors using v1.1 schema.
+    """
+    with patch(
+        "sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint"
+    ) as mock_endpoint_class, patch(
+        "sagemaker.hyperpod.common.cli_decorators._is_valid_jumpstart_model_id"
+    ) as mock_model_validation, patch(
+        "sagemaker.hyperpod.common.cli_decorators._namespace_exists"
+    ) as mock_namespace_exists:
+
+        # Mock enhanced error handling
+        mock_model_validation.return_value = True
+        mock_namespace_exists.return_value = True
+
+        # Prepare mock model-to-domain mapping that raises validation error
+        mock_model_class = Mock()
+        mock_model_instance = Mock()
+        domain_obj = Mock()
+        # Simulate MIG validation error during create
+        domain_obj.create.side_effect = ValueError(
+            "MIG profile '1g.5gb' is not supported for instance type 'ml.c5.2xlarge'"
+        )
+        mock_model_instance.to_domain.return_value = domain_obj
+        mock_model_class.return_value = mock_model_instance
+        mock_endpoint_class.model_construct.return_value = domain_obj
+
+        # Set up the registry for version 1.1
+        jreg.SCHEMA_REGISTRY["1.1"] = mock_model_class
+
+        runner = CliRunner()
+        result = runner.invoke(
+            js_create,
+            [
+                "--namespace",
+                "test-ns",
+                "--version",
+                "1.1",
+                "--model-id",
+                "test-model-id",
+                "--instance-type",
+                "ml.c5.2xlarge",  # Instance type that doesn't support MIG
+                "--accelerator-partition-type",
+                "1g.5gb",  # Invalid MIG profile for this instance
+                "--accelerator-partition-validation",
+                "true",
+                "--endpoint-name",
+                "test-endpoint",
+            ],
+        )
+
+        # Should fail due to MIG validation error
+        assert result.exit_code != 0
+        assert "MIG profile" in result.output or "not supported" in result.output
+
+
+@patch("sagemaker.hyperpod.common.cli_decorators._namespace_exists")
+@patch("sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint")
 def test_js_list(mock_hp, mock_namespace_exists):
     mock_namespace_exists.return_value = True
     inst = Mock()
     inst.list.return_value = [Mock(metadata=Mock(model_dump=lambda: {"name": "e"}))]
     mock_hp.model_construct.return_value = inst
     runner = CliRunner()
-    result = runner.invoke(js_list, ['--namespace', 'ns'])
+    result = runner.invoke(js_list, ["--namespace", "ns"])
     assert result.exit_code == 0
-    inst.list.assert_called_once_with('ns')
+    inst.list.assert_called_once_with("ns")
 
 
-@patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
-@patch('sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint')
+@patch("sagemaker.hyperpod.common.cli_decorators._namespace_exists")
+@patch("sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint")
 def test_js_describe(mock_hp, mock_namespace_exists):
     mock_namespace_exists.return_value = True
     inst = Mock()
     inst.get.return_value = Mock(model_dump=lambda: {"name": "e"})
     mock_hp.model_construct.return_value = inst
     runner = CliRunner()
-    result = runner.invoke(js_describe, ['--name', 'n', '--namespace', 'ns'])
+    result = runner.invoke(js_describe, ["--name", "n", "--namespace", "ns"])
     assert result.exit_code == 0
-    inst.get.assert_called_once_with('n', 'ns')
+    inst.get.assert_called_once_with("n", "ns")
 
 
-@patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
-@patch('sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint')
+@patch("sagemaker.hyperpod.common.cli_decorators._namespace_exists")
+@patch("sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint")
 def test_js_delete(mock_hp, mock_namespace_exists):
     mock_namespace_exists.return_value = True
     inst = Mock()
@@ -115,38 +276,42 @@ def test_js_delete(mock_hp, mock_namespace_exists):
     inst.get.return_value = ep
     mock_hp.model_construct.return_value = inst
     runner = CliRunner()
-    result = runner.invoke(js_delete, ['--name', 'n', '--namespace', 'ns'])
+    result = runner.invoke(js_delete, ["--name", "n", "--namespace", "ns"])
     assert result.exit_code == 0
     ep.delete.assert_called_once()
 
 
-@patch('sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint')
+@patch("sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint")
 def test_js_get_operator_logs(mock_hp):
     inst = Mock(get_operator_logs=Mock(return_value="ol"))
     mock_hp.model_construct.return_value = inst
     runner = CliRunner()
-    result = runner.invoke(js_get_operator_logs, ['--since-hours', '2'])
+    result = runner.invoke(js_get_operator_logs, ["--since-hours", "2"])
     assert result.exit_code == 0
-    assert 'ol' in result.output
+    assert "ol" in result.output
 
 
 # --------- Custom Commands ---------
 
-@patch('sys.argv', ['pytest', '--version', '1.0'])
+
+@patch("sys.argv", ["pytest", "--version", "1.0"])
 def test_custom_create_with_required_args():
     """
     Test custom_create with all required options via CLI runner, mocking schema and endpoint.
     """
     # Reload the inference module with mocked sys.argv
-    if 'sagemaker.hyperpod.cli.commands.inference' in sys.modules:
-        importlib.reload(sys.modules['sagemaker.hyperpod.cli.commands.inference'])
+    if "sagemaker.hyperpod.cli.commands.inference" in sys.modules:
+        importlib.reload(sys.modules["sagemaker.hyperpod.cli.commands.inference"])
 
     from sagemaker.hyperpod.cli.commands.inference import custom_create
 
-    with patch('sagemaker.hyperpod.cli.inference_utils.load_schema_for_version') as mock_load_schema, \
-         patch('sagemaker.hyperpod.cli.commands.inference.HPEndpoint') as mock_endpoint_class:
+    with patch(
+        "sagemaker.hyperpod.cli.inference_utils.load_schema_for_version"
+    ) as mock_load_schema, patch(
+        "sagemaker.hyperpod.cli.commands.inference.HPEndpoint"
+    ) as mock_endpoint_class:
 
-        # Mock schema loading to include storage flags
+        # Mock schema loading to include storage flags (v1.0 - no intelligent routing/KV cache)
         mock_load_schema.return_value = {
             "properties": {
                 "instance_type": {"type": "string"},
@@ -156,13 +321,18 @@ def test_custom_create_with_required_args():
                 "s3_region": {"type": "string"},
                 "image_uri": {"type": "string"},
                 "container_port": {"type": "integer"},
-                "model_volume_mount_name": {"type": "string"}
+                "model_volume_mount_name": {"type": "string"},
             },
             "required": [
-                "instance_type", "model_name", "model_source_type",
-                "s3_bucket_name", "s3_region",
-                "image_uri", "container_port", "model_volume_mount_name"
-            ]
+                "instance_type",
+                "model_name",
+                "model_source_type",
+                "s3_bucket_name",
+                "s3_region",
+                "image_uri",
+                "container_port",
+                "model_volume_mount_name",
+            ],
         }
         # Prepare mock model class
         mock_model_class = Mock()
@@ -175,21 +345,35 @@ def test_custom_create_with_required_args():
 
         # Patch the registry mapping
         creg.SCHEMA_REGISTRY.clear()
-        creg.SCHEMA_REGISTRY['1.0'] = mock_model_class
+        creg.SCHEMA_REGISTRY["1.0"] = mock_model_class
         runner = CliRunner()
-        result = runner.invoke(custom_create, [
-            '--namespace', 'test-ns',
-            '--version', '1.0',
-            '--instance-type', 'ml.t2.micro',
-            '--model-name', 'test-model',
-            '--model-source-type', 's3',
-            '--s3-bucket-name', 'test-bucket',
-            '--s3-region', 'us-west-2',
-            '--image-uri', 'test-image:latest',
-            '--container-port', '8080',
-            '--model-volume-mount-name', 'model-volume',
-            '--endpoint-name', 'test-endpoint'
-        ])
+        result = runner.invoke(
+            custom_create,
+            [
+                "--namespace",
+                "test-ns",
+                "--version",
+                "1.0",
+                "--instance-type",
+                "ml.t2.micro",
+                "--model-name",
+                "test-model",
+                "--model-source-type",
+                "s3",
+                "--s3-bucket-name",
+                "test-bucket",
+                "--s3-region",
+                "us-west-2",
+                "--image-uri",
+                "test-image:latest",
+                "--container-port",
+                "8080",
+                "--model-volume-mount-name",
+                "model-volume",
+                "--endpoint-name",
+                "test-endpoint",
+            ],
+        )
 
         assert result.exit_code == 0, result.output
         domain_obj.create.assert_called_once_with(debug=False)
@@ -199,11 +383,11 @@ def test_custom_create_missing_required_args():
     runner = CliRunner()
     result = runner.invoke(custom_create, [])
     assert result.exit_code != 0
-    assert 'Missing option' in result.output
+    assert "Missing option" in result.output
 
 
-@patch('sagemaker.hyperpod.cli.commands.inference.Endpoint.get')
-@patch('sagemaker.hyperpod.cli.commands.inference.boto3')
+@patch("sagemaker.hyperpod.cli.commands.inference.Endpoint.get")
+@patch("sagemaker.hyperpod.cli.commands.inference.boto3")
 def test_custom_invoke_success(mock_boto3, mock_endpoint_get):
     mock_endpoint = Mock()
     mock_endpoint.endpoint_status = "InService"
@@ -211,54 +395,53 @@ def test_custom_invoke_success(mock_boto3, mock_endpoint_get):
 
     mock_body = Mock()
     mock_body.read.return_value.decode.return_value = '{"ok": true}'
-    mock_boto3.client.return_value.invoke_endpoint.return_value = {'Body': mock_body}
+    mock_boto3.client.return_value.invoke_endpoint.return_value = {"Body": mock_body}
 
     runner = CliRunner()
-    result = runner.invoke(custom_invoke, [
-        '--endpoint-name', 'ep',
-        '--body', '{"x": 1}'
-    ])
+    result = runner.invoke(
+        custom_invoke, ["--endpoint-name", "ep", "--body", '{"x": 1}']
+    )
 
     assert result.exit_code == 0, result.output
     assert '"ok": true' in result.output
 
 
-@patch('sagemaker.hyperpod.cli.commands.inference.boto3')
+@patch("sagemaker.hyperpod.cli.commands.inference.boto3")
 def test_custom_invoke_invalid_json(mock_boto3):
     runner = CliRunner()
-    result = runner.invoke(custom_invoke, ['--endpoint-name', 'ep', '--body', 'bad'])
+    result = runner.invoke(custom_invoke, ["--endpoint-name", "ep", "--body", "bad"])
     assert result.exit_code != 0
-    assert 'must be valid JSON' in result.output
+    assert "must be valid JSON" in result.output
 
 
-@patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
-@patch('sagemaker.hyperpod.cli.commands.inference.HPEndpoint')
+@patch("sagemaker.hyperpod.common.cli_decorators._namespace_exists")
+@patch("sagemaker.hyperpod.cli.commands.inference.HPEndpoint")
 def test_custom_list(mock_hp, mock_namespace_exists):
     mock_namespace_exists.return_value = True
     inst = Mock()
     inst.list.return_value = [Mock(metadata=Mock(model_dump=lambda: {"name": "e"}))]
     mock_hp.model_construct.return_value = inst
     runner = CliRunner()
-    result = runner.invoke(custom_list, ['--namespace', 'ns'])
+    result = runner.invoke(custom_list, ["--namespace", "ns"])
     assert result.exit_code == 0
-    inst.list.assert_called_once_with('ns')
+    inst.list.assert_called_once_with("ns")
 
 
-@patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
-@patch('sagemaker.hyperpod.cli.commands.inference.HPEndpoint')
+@patch("sagemaker.hyperpod.common.cli_decorators._namespace_exists")
+@patch("sagemaker.hyperpod.cli.commands.inference.HPEndpoint")
 def test_custom_describe(mock_hp, mock_namespace_exists):
     mock_namespace_exists.return_value = True
     inst = Mock()
     inst.get.return_value = Mock(model_dump=lambda: {"name": "e"})
     mock_hp.model_construct.return_value = inst
     runner = CliRunner()
-    result = runner.invoke(custom_describe, ['--name', 'n', '--namespace', 'ns'])
+    result = runner.invoke(custom_describe, ["--name", "n", "--namespace", "ns"])
     assert result.exit_code == 0
-    inst.get.assert_called_once_with('n', 'ns')
+    inst.get.assert_called_once_with("n", "ns")
 
 
-@patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
-@patch('sagemaker.hyperpod.cli.commands.inference.HPEndpoint')
+@patch("sagemaker.hyperpod.common.cli_decorators._namespace_exists")
+@patch("sagemaker.hyperpod.cli.commands.inference.HPEndpoint")
 def test_custom_delete(mock_hp, mock_namespace_exists):
     mock_namespace_exists.return_value = True
     inst = Mock()
@@ -267,81 +450,190 @@ def test_custom_delete(mock_hp, mock_namespace_exists):
     inst.get.return_value = ep
     mock_hp.model_construct.return_value = inst
     runner = CliRunner()
-    result = runner.invoke(custom_delete, ['--name', 'n', '--namespace', 'ns'])
+    result = runner.invoke(custom_delete, ["--name", "n", "--namespace", "ns"])
     assert result.exit_code == 0
     ep.delete.assert_called_once()
 
 
-@patch('sagemaker.hyperpod.cli.commands.inference.HPEndpoint')
+@patch("sagemaker.hyperpod.cli.commands.inference.HPEndpoint")
 def test_custom_get_operator_logs(mock_hp):
-    inst = Mock(get_operator_logs=Mock(return_value='ol'))
+    inst = Mock(get_operator_logs=Mock(return_value="ol"))
     mock_hp.model_construct.return_value = inst
     runner = CliRunner()
-    result = runner.invoke(custom_get_operator_logs, ['--since-hours', '2'])
+    result = runner.invoke(custom_get_operator_logs, ["--since-hours", "2"])
     assert result.exit_code == 0
-    assert 'ol' in result.output
+    assert "ol" in result.output
 
 
 # --------- Default Namespace Tests ---------
 
-@patch('sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint')
+
+@patch("sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint")
 def test_js_list_default_namespace(mock_hp):
     inst = Mock(list=Mock(return_value=[]))
     mock_hp.model_construct.return_value = inst
     runner = CliRunner()
     result = runner.invoke(js_list, [])
     assert result.exit_code == 0
-    inst.list.assert_called_once_with('default')
+    inst.list.assert_called_once_with("default")
 
-@patch('sagemaker.hyperpod.cli.commands.inference.HPEndpoint')
+
+@patch("sagemaker.hyperpod.cli.commands.inference.HPEndpoint")
 def test_custom_list_default_namespace(mock_hp):
     inst = Mock(list=Mock(return_value=[]))
     mock_hp.model_construct.return_value = inst
     runner = CliRunner()
     result = runner.invoke(custom_list, [])
     assert result.exit_code == 0
-    inst.list.assert_called_once_with('default')
+    inst.list.assert_called_once_with("default")
 
-@patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
-@patch('sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint')
+
+@patch("sagemaker.hyperpod.common.cli_decorators._namespace_exists")
+@patch("sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint")
 def test_js_list_pods(mock_hp, mock_namespace_exists):
     mock_namespace_exists.return_value = True
     inst = Mock(list_pods=Mock(return_value="pods"))
     mock_hp.model_construct.return_value = inst
     runner = CliRunner()
-    result = runner.invoke(js_list_pods, ['--namespace', 'ns', '--endpoint-name', 'js-endpoint'])
+    result = runner.invoke(
+        js_list_pods, ["--namespace", "ns", "--endpoint-name", "js-endpoint"]
+    )
     assert result.exit_code == 0
-    assert 'pods' in result.output
+    assert "pods" in result.output
 
-@patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
-@patch('sagemaker.hyperpod.cli.commands.inference.HPEndpoint')
+
+@patch("sagemaker.hyperpod.common.cli_decorators._namespace_exists")
+@patch("sagemaker.hyperpod.cli.commands.inference.HPEndpoint")
 def test_custom_list_pods(mock_hp, mock_namespace_exists):
     mock_namespace_exists.return_value = True
     inst = Mock(list_pods=Mock(return_value="pods"))
     mock_hp.model_construct.return_value = inst
     runner = CliRunner()
-    result = runner.invoke(custom_list_pods, ['--namespace', 'ns', '--endpoint-name', 'custom-endpoint'])
+    result = runner.invoke(
+        custom_list_pods, ["--namespace", "ns", "--endpoint-name", "custom-endpoint"]
+    )
     assert result.exit_code == 0
-    assert 'pods' in result.output
+    assert "pods" in result.output
 
-@patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
-@patch('sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint')
+
+@patch("sagemaker.hyperpod.common.cli_decorators._namespace_exists")
+@patch("sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint")
 def test_js_get_logs(mock_hp, mock_namespace_exists):
     mock_namespace_exists.return_value = True
     inst = Mock(get_logs=Mock(return_value="logs"))
     mock_hp.model_construct.return_value = inst
     runner = CliRunner()
-    result = runner.invoke(js_get_logs, ['--pod-name', 'p', '--namespace', 'ns'])
+    result = runner.invoke(js_get_logs, ["--pod-name", "p", "--namespace", "ns"])
     assert result.exit_code == 0
-    assert 'logs' in result.output
+    assert "logs" in result.output
 
-@patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
-@patch('sagemaker.hyperpod.cli.commands.inference.HPEndpoint')
+
+@patch("sagemaker.hyperpod.common.cli_decorators._namespace_exists")
+@patch("sagemaker.hyperpod.cli.commands.inference.HPEndpoint")
 def test_custom_get_logs(mock_hp, mock_namespace_exists):
     mock_namespace_exists.return_value = True
-    inst = Mock(get_logs=Mock(return_value='l'))
+    inst = Mock(get_logs=Mock(return_value="l"))
     mock_hp.model_construct.return_value = inst
     runner = CliRunner()
-    result = runner.invoke(custom_get_logs, ['--pod-name', 'p', '--namespace', 'ns'])
+    result = runner.invoke(custom_get_logs, ["--pod-name", "p", "--namespace", "ns"])
     assert result.exit_code == 0
-    assert 'l' in result.output
+    assert "l" in result.output
+
+
+@patch("sys.argv", ["pytest", "--version", "1.1"])
+def test_custom_create_with_intelligent_routing_and_kv_cache():
+    """Test custom_create with intelligent routing and KV cache options."""
+
+    # Patch BEFORE reloading the module
+    with patch(
+        "sagemaker.hyperpod.cli.inference_utils.load_schema_for_version"
+    ) as mock_load_schema, patch(
+        "sagemaker.hyperpod.cli.commands.inference.HPEndpoint"
+    ) as mock_endpoint_class:
+        # Set up the schema mock first
+        mock_load_schema.return_value = {
+            "properties": {
+                "instance_type": {"type": "string"},
+                "model_name": {"type": "string"},
+                "model_source_type": {"type": "string", "enum": ["s3", "fsx"]},
+                "s3_bucket_name": {"type": "string"},
+                "s3_region": {"type": "string"},
+                "image_uri": {"type": "string"},
+                "container_port": {"type": "integer"},
+                "model_volume_mount_name": {"type": "string"},
+                "intelligent_routing_enabled": {"type": "boolean"},
+                "routing_strategy": {"type": "string"},
+                "enable_l1_cache": {"type": "boolean"},
+                "enable_l2_cache": {"type": "boolean"},
+                "l2_cache_backend": {"type": "string"},
+                "l2_cache_local_url": {"type": "string"},
+            },
+            "required": [
+                "instance_type",
+                "model_name",
+                "model_source_type",
+                "s3_bucket_name",
+                "s3_region",
+                "image_uri",
+                "container_port",
+                "model_volume_mount_name",
+            ],
+        }
+
+        # Set up the registry mock
+        mock_model_class = Mock()
+        mock_model_instance = Mock()
+        domain_obj = Mock()
+        domain_obj.create = Mock()
+        mock_model_instance.to_domain.return_value = domain_obj
+        mock_model_class.return_value = mock_model_instance
+        mock_endpoint_class.model_construct.return_value = domain_obj
+
+        with patch.object(creg, "SCHEMA_REGISTRY", new={"1.1": mock_model_class}):
+            # NOW reload the module with all patches in place
+            if "sagemaker.hyperpod.cli.commands.inference" in sys.modules:
+                importlib.reload(
+                    sys.modules["sagemaker.hyperpod.cli.commands.inference"]
+                )
+
+            from sagemaker.hyperpod.cli.commands.inference import custom_create
+
+            runner = CliRunner()
+            result = runner.invoke(
+                custom_create,
+                [
+                    "--version",
+                    "1.1",
+                    "--instance-type",
+                    "ml.g5.xlarge",
+                    "--model-name",
+                    "test-model",
+                    "--model-source-type",
+                    "s3",
+                    "--s3-bucket-name",
+                    "test-bucket",
+                    "--s3-region",
+                    "us-west-2",
+                    "--image-uri",
+                    "test-image:latest",
+                    "--container-port",
+                    "8080",
+                    "--model-volume-mount-name",
+                    "model-volume",
+                    "--intelligent-routing-enabled",
+                    "true",
+                    "--routing-strategy",
+                    "prefixaware",
+                    "--enable-l1-cache",
+                    "true",
+                    "--enable-l2-cache",
+                    "true",
+                    "--l2-cache-backend",
+                    "redis/sagemaker",
+                    "--l2-cache-local-url",
+                    "redis://redis.redis-system.svc.cluster.local:6379",
+                ],
+            )
+
+            assert result.exit_code == 0, result.output
+            domain_obj.create.assert_called_once_with(debug=False)

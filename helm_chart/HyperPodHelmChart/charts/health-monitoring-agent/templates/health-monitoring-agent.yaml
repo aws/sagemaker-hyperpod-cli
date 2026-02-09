@@ -75,6 +75,7 @@ spec:
                       - ml.p5en.48xlarge
                       - ml.p5e.48xlarge
                       - ml.p5.48xlarge
+                      - ml.p5.4xlarge
                       - ml.p4d.24xlarge
                       - ml.p4de.24xlarge
                       - ml.g5.xlarge
@@ -107,9 +108,6 @@ spec:
                       - ml.p6e-gb200.36xlarge
       containers:
         - name: health-monitoring-agent
-          args:
-            - --enable-k8s-exporter=false
-            - --config.system-log-monitor=/config/system-message-monitor.json
           image: {{ include "health-monitoring-agent.imageUri" . }}
           resources:
             limits:
@@ -190,6 +188,7 @@ spec:
                       - ml.inf2.48xlarge
                       - ml.trn1.32xlarge
                       - ml.trn1n.32xlarge
+                      - ml.trn2.3xlarge
                       - ml.trn2.48xlarge
       containers:
         - name: health-monitoring-agent-non-nvidia

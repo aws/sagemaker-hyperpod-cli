@@ -148,3 +148,104 @@ class TestHyperPodSDKResourceProcessing:
         assert 'resources' in container
         
         logger.info("Successfully processed replica resources with float values")
+
+    def test_process_replicas_with_only_accelerator_partitions(self, skip_validate_accelerator_partition_in_cluster):
+        
+        data = {
+            'template': {
+                'spec': {
+                    'nodeSelector': {'node.kubernetes.io/instance-type': 'ml.p4d.24xlarge'},
+                    'containers': [{
+                        'resources': {
+                            'requests': {'nvidia.com/mig-1g.5gb': '2'},
+                            'limits': {'nvidia.com/mig-1g.5gb': '2'}
+                        }
+                    }]
+                }
+            }
+        }
+
+        result = HyperPodPytorchJob._process_replica_resources(data)
+
+        # For ml.p4d.24xlarge: 96 CPU, 1152 GB memory, 8 GPUs
+        # MIG ratio: (2 * 1) / (8 * 7) = 2/56 = 0.0357
+        # Expected CPU: int(0.0357 * 96) = 3
+        # Expected memory: int(0.0357 * 1152) = 41
+        requests = result['template']['spec']['containers'][0]['resources']['requests']
+        assert requests['cpu'] == '3.0'
+        assert requests['memory'] == '41.0Gi'
+        assert requests['nvidia.com/mig-1g.5gb'] == '2'
+
+        logger.info("Successfully verified MIG partition CPU/memory allocation")
+
+    def test_process_replicas_with_accelerator_partitions_and_cpu(self, skip_validate_accelerator_partition_in_cluster):
+        data = {
+            'template': {
+                'spec': {
+                    'nodeSelector': {'node.kubernetes.io/instance-type': 'ml.p4d.24xlarge'},
+                    'containers': [{
+                        'resources': {
+                            'requests': {'cpu': '10', 'nvidia.com/mig-1g.5gb': '2'},
+                            'limits': {'nvidia.com/mig-1g.5gb': '2'}
+                        }
+                    }]
+                }
+            }
+        }
+
+        result = HyperPodPytorchJob._process_replica_resources(data)
+
+        # CPU specified as 10, memory calculated as: int((10/96) * 1152) = 120
+        requests = result['template']['spec']['containers'][0]['resources']['requests']
+        assert requests['cpu'] == '10.0'
+        assert requests['memory'] == '120.0Gi'
+
+        logger.info("Successfully verified MIG partition with CPU-only allocation")
+
+    def test_process_replicas_with_accelerator_partitions_and_memory(self, skip_validate_accelerator_partition_in_cluster):
+        data = {
+            'template': {
+                'spec': {
+                    'nodeSelector': {'node.kubernetes.io/instance-type': 'ml.p4d.24xlarge'},
+                    'containers': [{
+                        'resources': {
+                            'requests': {'memory': '100Gi', 'nvidia.com/mig-1g.5gb': '2'},
+                            'limits': {'nvidia.com/mig-1g.5gb': '2'}
+                        }
+                    }]
+                }
+            }
+        }
+
+        result = HyperPodPytorchJob._process_replica_resources(data)
+
+        # Memory specified as 100, CPU calculated as: int((100/1152) * 96) = 8
+        requests = result['template']['spec']['containers'][0]['resources']['requests']
+        assert requests['cpu'] == '8.0'
+        assert requests['memory'] == '100.0Gi'
+
+        logger.info("Successfully verified MIG partition with memory-only allocation")
+
+    def test_process_replicas_accelerator_partition(self, skip_validate_accelerator_partition_in_cluster):
+        data = {
+            'template': {
+                'spec': {
+                    'nodeSelector': {'node.kubernetes.io/instance-type': 'ml.p4d.24xlarge'},
+                    'containers': [{
+                        'resources': {
+                            'requests': {'cpu': '15', 'memory': '200Gi', 'nvidia.com/mig-1g.5gb': '2'},
+                            'limits': {'nvidia.com/mig-1g.5gb': '2'}
+                        }
+                    }]
+                }
+            }
+        }
+
+        result = HyperPodPytorchJob._process_replica_resources(data)
+
+        # Both CPU and memory specified, should use exact values
+        requests = result['template']['spec']['containers'][0]['resources']['requests']
+        assert requests['cpu'] == '15.0'
+        assert requests['memory'] == '200.0Gi'
+
+        logger.info("Successfully verified MIG partition with both CPU and memory specified")

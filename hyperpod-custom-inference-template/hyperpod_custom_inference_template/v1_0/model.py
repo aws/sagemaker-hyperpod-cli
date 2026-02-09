@@ -27,7 +27,7 @@ from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     Worker,
     Dimensions,
     AutoScalingSpec,
-    CloudWatchTrigger
+    CloudWatchTrigger,
 )
 from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
 from sagemaker.hyperpod.common.config.metadata import Metadata
@@ -37,12 +37,10 @@ class FlatHPEndpoint(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     namespace: Optional[str] = Field(
-        default=None, 
-        description="Kubernetes namespace",
-        min_length=1
+        default=None, description="Kubernetes namespace", min_length=1
     )
 
-    metadata_name: Optional[str]  = Field(
+    metadata_name: Optional[str] = Field(
         None,
         alias="metadata_name",
         description="Name of the custom endpoint object",
@@ -75,14 +73,15 @@ class FlatHPEndpoint(BaseModel):
 
     # metrics.*
     metrics_enabled: Optional[bool] = Field(
-        False, alias="metrics_enabled",
+        False,
+        alias="metrics_enabled",
         description="Enable metrics collection",
     )
 
     # model_name and version
     model_name: str = Field(
-        ..., 
-        alias="model_name", 
+        ...,
+        alias="model_name",
         description="Name of model to create on SageMaker",
         min_length=1,
         max_length=63,
@@ -100,15 +99,18 @@ class FlatHPEndpoint(BaseModel):
 
     # model_source_config.*
     model_source_type: Literal["fsx", "s3"] = Field(
-        ..., alias="model_source_type",
+        ...,
+        alias="model_source_type",
         description="Source type: fsx or s3",
     )
     model_location: Optional[str] = Field(
-        None, alias="model_location",
+        None,
+        alias="model_location",
         description="Specific model data location",
     )
     prefetch_enabled: Optional[bool] = Field(
-        False, alias="prefetch_enabled",
+        False,
+        alias="prefetch_enabled",
         description="Whether to pre-fetch model data",
     )
 
@@ -122,11 +124,12 @@ class FlatHPEndpoint(BaseModel):
 
     # worker.*
     image_uri: str = Field(
-        ..., alias="image_uri",
+        ...,
+        alias="image_uri",
         description="Inference server image name",
     )
     container_port: int = Field(
-        ..., 
+        ...,
         alias="container_port",
         description="Port on which the model server listens",
         ge=1,
@@ -138,7 +141,8 @@ class FlatHPEndpoint(BaseModel):
         description="Path inside container for model volume",
     )
     model_volume_mount_name: str = Field(
-        ..., alias="model_volume_mount_name",
+        ...,
+        alias="model_volume_mount_name",
         description="Name of the model volume mount",
     )
 
@@ -149,7 +153,7 @@ class FlatHPEndpoint(BaseModel):
         description="FSX File System DNS Name",
     )
     fsx_file_system_id: Optional[str] = Field(
-        None,  
+        None,
         alias="fsx_file_system_id",
         description="FSX File System ID",
     )
@@ -161,23 +165,23 @@ class FlatHPEndpoint(BaseModel):
 
     # S3Storage
     s3_bucket_name: Optional[str] = Field(
-        None, 
+        None,
         alias="s3_bucket_name",
         description="S3 bucket location",
     )
     s3_region: Optional[str] = Field(
-        None, 
+        None,
         alias="s3_region",
         description="S3 bucket region",
     )
 
     # Resources
-    resources_limits: Optional[Dict[str, Union[int,str]]] = Field(
+    resources_limits: Optional[Dict[str, Union[int, str]]] = Field(
         None,
         alias="resources_limits",
         description="Resource limits for the worker",
     )
-    resources_requests: Optional[Dict[str, Union[int,str]]] = Field(
+    resources_requests: Optional[Dict[str, Union[int, str]]] = Field(
         None,
         alias="resources_requests",
         description="Resource requests for the worker",
@@ -187,28 +191,25 @@ class FlatHPEndpoint(BaseModel):
     dimensions: Optional[Dict[str, str]] = Field(
         None,
         alias="dimensions",
-        description="CloudWatch Metric dimensions as key–value pairs"
+        description="CloudWatch Metric dimensions as key–value pairs",
     )
 
     # CloudWatch Trigger
     metric_collection_period: Optional[int] = Field(
-        300,
-        description="Defines the Period for CloudWatch query"
+        300, description="Defines the Period for CloudWatch query"
     )
     metric_collection_start_time: Optional[int] = Field(
-        300,
-        description="Defines the StartTime for CloudWatch query"
+        300, description="Defines the StartTime for CloudWatch query"
     )
     metric_name: Optional[str] = Field(
-        None,
-        description="Metric name to query for CloudWatch trigger"
+        None, description="Metric name to query for CloudWatch trigger"
     )
     metric_stat: Optional[str] = Field(
         "Average",
         description=(
             "Statistics metric to be used by Trigger. "
             "Defines the Stat for the CloudWatch query. Default is Average."
-        )
+        ),
     )
     metric_type: Optional[Literal["Value", "Average"]] = Field(
         "Average",
@@ -216,33 +217,30 @@ class FlatHPEndpoint(BaseModel):
             "The type of metric to be used by HPA. "
             "`Average` – Uses average value per pod; "
             "`Value` – Uses absolute metric value."
-        )
+        ),
     )
     min_value: Optional[float] = Field(
         0,
         description=(
             "Minimum metric value used in case of empty response "
             "from CloudWatch. Default is 0."
-        )
+        ),
     )
     cloud_watch_trigger_name: Optional[str] = Field(
-        None,
-        description="Name for the CloudWatch trigger"
+        None, description="Name for the CloudWatch trigger"
     )
     cloud_watch_trigger_namespace: Optional[str] = Field(
-        None,
-        description="AWS CloudWatch namespace for the metric"
+        None, description="AWS CloudWatch namespace for the metric"
     )
     target_value: Optional[float] = Field(
-        None,
-        description="Target value for the CloudWatch metric"
+        None, description="Target value for the CloudWatch metric"
     )
     use_cached_metrics: Optional[bool] = Field(
         True,
         description=(
             "Enable caching of metric values during polling interval. "
             "Default is true."
-        )
+        ),
     )
 
     invocation_endpoint: Optional[str] = Field(
@@ -250,21 +248,25 @@ class FlatHPEndpoint(BaseModel):
         description=(
             "The invocation endpoint of the model server. http://<host>:<port>/ would be pre-populated based on the other fields. "
             "Please fill in the path after http://<host>:<port>/ specific to your model server.",
-        )
+        ),
     )
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_model_source_config(self):
         """Validate that required fields are provided based on model_source_type"""
         if self.model_source_type == "s3":
             if not self.s3_bucket_name or not self.s3_region:
-                raise ValueError("s3_bucket_name and s3_region are required when model_source_type is 's3'")
+                raise ValueError(
+                    "s3_bucket_name and s3_region are required when model_source_type is 's3'"
+                )
         elif self.model_source_type == "fsx":
             if not self.fsx_file_system_id:
-                raise ValueError("fsx_file_system_id is required when model_source_type is 'fsx'")
+                raise ValueError(
+                    "fsx_file_system_id is required when model_source_type is 'fsx'"
+                )
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_name(self):
         if not self.metadata_name and not self.endpoint_name:
             raise ValueError("Either metadata_name or endpoint_name must be provided")
@@ -273,21 +275,20 @@ class FlatHPEndpoint(BaseModel):
     def to_domain(self) -> HPEndpoint:
         if self.endpoint_name and not self.metadata_name:
             self.metadata_name = self.endpoint_name
-            
+
         metadata = Metadata(name=self.metadata_name, namespace=self.namespace)
 
         env_vars = None
         if self.env:
             env_vars = [
-                EnvironmentVariables(name=k, value=v)
-                for k, v in self.env.items()
+                EnvironmentVariables(name=k, value=v) for k, v in self.env.items()
             ]
 
         dim_vars: list[Dimensions] = []
         if self.dimensions:
             for name, value in self.dimensions.items():
                 dim_vars.append(Dimensions(name=name, value=value))
-        
+
         cloud_watch_trigger = CloudWatchTrigger(
             dimensions=dim_vars,
             metric_collection_period=self.metric_collection_period,
@@ -300,11 +301,9 @@ class FlatHPEndpoint(BaseModel):
             namespace=self.cloud_watch_trigger_namespace,
             target_value=self.target_value,
             use_cached_metrics=self.use_cached_metrics,
-        ) 
-
-        auto_scaling_spec = AutoScalingSpec(
-            cloud_watch_trigger = cloud_watch_trigger
         )
+
+        auto_scaling_spec = AutoScalingSpec(cloud_watch_trigger=cloud_watch_trigger)
 
         # nested metrics
         metrics = Metrics(
@@ -336,7 +335,9 @@ class FlatHPEndpoint(BaseModel):
             fsx_storage=fsx,
         )
 
-        tls = TlsConfig(tls_certificate_output_s3_uri=self.tls_certificate_output_s3_uri)
+        tls = TlsConfig(
+            tls_certificate_output_s3_uri=self.tls_certificate_output_s3_uri
+        )
 
         invocation_port = ModelInvocationPort(
             container_port=self.container_port,

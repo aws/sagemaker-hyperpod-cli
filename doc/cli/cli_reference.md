@@ -9,12 +9,13 @@
 cli_training
 cli_inference
 cli_cluster_management
+cli_space
 ```
 
 Complete reference for the SageMaker HyperPod Command Line Interface.
 
 ::::{container}
-::::{grid} 1 1 3 3
+::::{grid} 1 1 4 4
 :gutter: 3
 
 :::{grid-item-card} Training CLI
@@ -39,6 +40,14 @@ Inference CLI commands, options and parameters.
 :class-card: sd-border-secondary
 
 Cluster stack management commands, options and parameters.
+:::
+
+:::{grid-item-card} Space CLI
+:link: cli_space
+:link-type: ref
+:class-card: sd-border-secondary
+
+Space management commands, options and parameters.
 :::
 
 ::::

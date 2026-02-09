@@ -1,0 +1,44 @@
+apiVersion: inference.sagemaker.aws.amazon.com/v1
+kind: InferenceEndpointConfig
+metadata:
+    name: llama-8b-kv-cache-l1-l2
+    namespace: ns-team-a
+spec:
+    endpointName: llama-8b-sme
+    modelName: Llama-3.1-8B-Instruct
+    instanceType: ml.g5.8xlarge
+    invocationEndpoint: v1/chat/completions
+    modelSourceConfig:
+        modelSourceType: s3
+        s3Storage:
+            bucketName: <PLACEHOLDER_MODEL_STORAGE_BUCKET>
+            region: us-west-2
+        modelLocation: llama31_8b
+        prefetchEnabled: false
+    kvCacheSpec:
+        enableL1Cache: true
+        enableL2Cache: true
+        l2CacheSpec:
+            l2CacheBackend: redis
+            l2CacheLocalUrl: <PLACEHOLDER_L2_CACHE_LOCAL_URL> # e.g.: redis://redis.ns-team-a.svc.cluster.local:6379
+    tlsConfig: # optional field, default value from operator deployment used if tlsConfig is omitted
+        tlsCertificateOutputS3Uri: <PLACEHOLDER_TLS_CERT_S3_URI> # e.g.: s3://tls-certs-bucket/certs
+    worker:
+        resources:
+            limits:
+                nvidia.com/gpu: "1"
+            requests:
+                cpu: "6"
+                memory: 30Gi
+                nvidia.com/gpu: "1"
+        image: lmcache/vllm-openai:v0.3.7
+        args:
+        - "/opt/ml/model"
+        - "--max-model-len"
+        - "4096"
+        modelInvocationPort:
+            containerPort: 8000
+            name: http
+        modelVolumeMount:
+            name: model-weights
+            mountPath: /opt/ml/model

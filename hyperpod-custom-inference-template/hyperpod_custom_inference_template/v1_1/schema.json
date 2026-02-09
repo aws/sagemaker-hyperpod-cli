@@ -1,0 +1,568 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "namespace": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Kubernetes namespace",
+      "title": "Namespace"
+    },
+    "metadata_name": {
+      "anyOf": [
+        {
+          "maxLength": 63,
+          "pattern": "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Name of the custom endpoint object",
+      "title": "Metadata Name"
+    },
+    "endpoint_name": {
+      "anyOf": [
+        {
+          "maxLength": 63,
+          "pattern": "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Name of SageMaker endpoint; empty string means no creation",
+      "title": "Endpoint Name"
+    },
+    "env": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Map of environment variable names to their values",
+      "title": "Env"
+    },
+    "instance_type": {
+      "description": "EC2 instance type for the inference server",
+      "pattern": "^ml\\..*",
+      "title": "Instance Type",
+      "type": "string"
+    },
+    "metrics_enabled": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": false,
+      "description": "Enable metrics collection",
+      "title": "Metrics Enabled"
+    },
+    "model_name": {
+      "description": "Name of model to create on SageMaker",
+      "maxLength": 63,
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$",
+      "title": "Model Name",
+      "type": "string"
+    },
+    "model_version": {
+      "anyOf": [
+        {
+          "maxLength": 14,
+          "minLength": 5,
+          "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,4}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Version of the model for the endpoint",
+      "title": "Model Version"
+    },
+    "model_source_type": {
+      "description": "Source type: fsx or s3",
+      "enum": [
+        "fsx",
+        "s3"
+      ],
+      "title": "Model Source Type",
+      "type": "string"
+    },
+    "model_location": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Specific model data location",
+      "title": "Model Location"
+    },
+    "prefetch_enabled": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": false,
+      "description": "Whether to pre-fetch model data",
+      "title": "Prefetch Enabled"
+    },
+    "tls_certificate_output_s3_uri": {
+      "anyOf": [
+        {
+          "pattern": "^s3://([^/]+)/?(.*)$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "S3 URI for TLS certificate output",
+      "title": "Tls Certificate Output S3 Uri"
+    },
+    "image_uri": {
+      "description": "Inference server image name",
+      "title": "Image Uri",
+      "type": "string"
+    },
+    "container_port": {
+      "description": "Port on which the model server listens",
+      "maximum": 65535,
+      "minimum": 1,
+      "title": "Container Port",
+      "type": "integer"
+    },
+    "model_volume_mount_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "/opt/ml/model",
+      "description": "Path inside container for model volume",
+      "title": "Model Volume Mount Path"
+    },
+    "model_volume_mount_name": {
+      "description": "Name of the model volume mount",
+      "title": "Model Volume Mount Name",
+      "type": "string"
+    },
+    "fsx_dns_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "FSX File System DNS Name",
+      "title": "Fsx Dns Name"
+    },
+    "fsx_file_system_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "FSX File System ID",
+      "title": "Fsx File System Id"
+    },
+    "fsx_mount_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "FSX File System Mount Name",
+      "title": "Fsx Mount Name"
+    },
+    "s3_bucket_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "S3 bucket location",
+      "title": "S3 Bucket Name"
+    },
+    "s3_region": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "S3 bucket region",
+      "title": "S3 Region"
+    },
+    "resources_limits": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Resource limits for the worker",
+      "title": "Resources Limits"
+    },
+    "resources_requests": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Resource requests for the worker",
+      "title": "Resources Requests"
+    },
+    "dimensions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "CloudWatch Metric dimensions as key\u2013value pairs",
+      "title": "Dimensions"
+    },
+    "metric_collection_period": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": 300,
+      "description": "Defines the Period for CloudWatch query",
+      "title": "Metric Collection Period"
+    },
+    "metric_collection_start_time": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": 300,
+      "description": "Defines the StartTime for CloudWatch query",
+      "title": "Metric Collection Start Time"
+    },
+    "metric_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Metric name to query for CloudWatch trigger",
+      "title": "Metric Name"
+    },
+    "metric_stat": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "Average",
+      "description": "Statistics metric to be used by Trigger. Defines the Stat for the CloudWatch query. Default is Average.",
+      "title": "Metric Stat"
+    },
+    "metric_type": {
+      "anyOf": [
+        {
+          "enum": [
+            "Value",
+            "Average"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "Average",
+      "description": "The type of metric to be used by HPA. `Average` \u2013 Uses average value per pod; `Value` \u2013 Uses absolute metric value.",
+      "title": "Metric Type"
+    },
+    "min_value": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": 0,
+      "description": "Minimum metric value used in case of empty response from CloudWatch. Default is 0.",
+      "title": "Min Value"
+    },
+    "cloud_watch_trigger_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Name for the CloudWatch trigger",
+      "title": "Cloud Watch Trigger Name"
+    },
+    "cloud_watch_trigger_namespace": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "AWS CloudWatch namespace for the metric",
+      "title": "Cloud Watch Trigger Namespace"
+    },
+    "target_value": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Target value for the CloudWatch metric",
+      "title": "Target Value"
+    },
+    "use_cached_metrics": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": true,
+      "description": "Enable caching of metric values during polling interval. Default is true.",
+      "title": "Use Cached Metrics"
+    },
+    "invocation_endpoint": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "invocations",
+      "description": "The invocation endpoint of the model server. http://<host>:<port>/ would be pre-populated based on the other fields. Please fill in the path after http://<host>:<port>/ specific to your model server.",
+      "title": "Invocation Endpoint"
+    },
+    "intelligent_routing_enabled": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Enable intelligent routing",
+      "title": "Intelligent Routing Enabled"
+    },
+    "routing_strategy": {
+      "anyOf": [
+        {
+          "enum": [
+            "prefixaware",
+            "kvaware",
+            "session",
+            "roundrobin"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Routing strategy for intelligent routing",
+      "title": "Routing Strategy"
+    },
+    "enable_l1_cache": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Enable L1 cache (CPU offloading)",
+      "title": "Enable L1 Cache"
+    },
+    "enable_l2_cache": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Enable L2 cache",
+      "title": "Enable L2 Cache"
+    },
+    "l2_cache_backend": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "L2 cache backend type",
+      "title": "L2 Cache Backend"
+    },
+    "l2_cache_local_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "L2 cache URL to local storage",
+      "title": "L2 Cache Local Url"
+    },
+    "cache_config_file": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "KV cache configuration file path",
+      "title": "Cache Config File"
+    }
+  },
+  "required": [
+    "instance_type",
+    "model_name",
+    "model_source_type",
+    "image_uri",
+    "container_port",
+    "model_volume_mount_name"
+  ],
+  "title": "FlatHPEndpoint",
+  "type": "object"
+}

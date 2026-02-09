@@ -8,6 +8,7 @@ from sagemaker.hyperpod.cli.commands.training import (
     pytorch_describe,
     pytorch_get_operator_logs,
     pytorch_exec,
+    list_accelerator_partition_type,
 )
 from hyperpod_pytorch_job_template.v1_1.model import ALLOWED_TOPOLOGY_LABELS
 import sys
@@ -155,6 +156,122 @@ class TestTrainingCommands(unittest.TestCase):
             self.assertEqual(call_args["metadata"]["namespace"], "test-namespace")
             self.assertEqual(call_args["metadata"]["labels"]["kueue.x-k8s.io/queue-name"], "localqueue")
             self.assertEqual(call_args["metadata"]["annotations"]["kueue.x-k8s.io/podset-required-topology"], "topology.k8s.aws/ultraserver-id")
+
+    @patch('sys.argv', ['pytest', '--version', '1.1'])
+    def test_elastic_training_params(self):
+        """Test job creation with elastic training parameters"""
+        # Reload the training module with mocked sys.argv
+        if 'sagemaker.hyperpod.cli.commands.training' in sys.modules:
+            importlib.reload(sys.modules['sagemaker.hyperpod.cli.commands.training'])
+
+        from sagemaker.hyperpod.cli.commands.training import pytorch_create
+
+        # Test case 1: providing elastic-replica-increment-step
+        with patch("hyperpod_pytorch_job_template.v1_1.model.HyperPodPytorchJob") as mock_hyperpod_job:
+            mock_instance = Mock()
+            mock_hyperpod_job.return_value = mock_instance
+
+            result = self.runner.invoke(
+                pytorch_create,
+                [
+                    "--version",
+                    "1.1",
+                    "--job-name",
+                    "elastic-test-job",
+                    "--image",
+                    "pytorch:latest",
+                    "--elastic-replica-increment-step",
+                    "2",
+                    "--max-node-count",
+                    "4",
+                    "--elastic-graceful-shutdown-timeout-in-seconds",
+                    "180",
+                    "--elastic-scaling-timeout-in-seconds",
+                    "90",
+                    "--elastic-scale-up-snooze-time-in-seconds",
+                    "120"
+                ],
+            )
+
+            print(f"Command output: {result.output}")
+
+            # Verify command succeeded
+            self.assertEqual(result.exit_code, 0)
+            self.assertIn("Using version: 1.1", result.output)
+
+            # Verify HyperPodPytorchJob was created with elastic parameters
+            mock_hyperpod_job.assert_called_once()
+            call_args = mock_hyperpod_job.call_args[1]
+
+            # Validate basic job configuration
+            self.assertEqual(call_args["metadata"]["name"], "elastic-test-job")
+
+            # Validate elastic policy configuration
+            self.assertIsNotNone(call_args.get("elastic_policy"))
+            elastic_policy = call_args["elastic_policy"]
+            self.assertEqual(elastic_policy.replicaIncrementStep, 2)
+            self.assertEqual(elastic_policy.maxReplicas, 4)
+            self.assertEqual(elastic_policy.gracefulShutdownTimeoutInSeconds, 180)
+            self.assertEqual(elastic_policy.scalingTimeoutInSeconds, 90)
+
+            self.assertIsNotNone(call_args.get("run_policy"))
+            run_policy = call_args["run_policy"]
+            self.assertIsNotNone(run_policy.restartPolicy)
+            restart_policy = run_policy.restartPolicy
+            self.assertEqual(restart_policy.scaleUpSnoozeTimeInSeconds, 120)
+
+            mock_instance.create.assert_called_once()
+
+        # Test case 2: providing elastic-replica-discrete-values 
+        with patch("hyperpod_pytorch_job_template.v1_1.model.HyperPodPytorchJob") as mock_hyperpod_job:
+            mock_instance = Mock()
+            mock_hyperpod_job.return_value = mock_instance
+
+            result = self.runner.invoke(
+                pytorch_create,
+                [
+                    "--version",
+                    "1.1",
+                    "--job-name",
+                    "elastic-discrete-test-job",
+                    "--image",
+                    "pytorch:latest",
+                    "--elastic-replica-discrete-values",
+                    "[2, 4, 8]",
+                    "--max-node-count",
+                    "8",
+                    "--elastic-graceful-shutdown-timeout-in-seconds",
+                    "180",
+                    "--elastic-scaling-timeout-in-seconds",
+                    "90",
+                ],
+            )
+
+            print(f"Command output: {result.output}")
+
+            # Verify command succeeded
+            self.assertEqual(result.exit_code, 0)
+            self.assertIn("Using version: 1.1", result.output)
+
+            # Verify HyperPodPytorchJob was created with elastic parameters
+            mock_hyperpod_job.assert_called_once()
+            call_args = mock_hyperpod_job.call_args[1]
+
+            # Validate basic job configuration
+            self.assertEqual(call_args["metadata"]["name"], "elastic-discrete-test-job")
+
+            # Validate elastic policy configuration
+            self.assertIsNotNone(call_args.get("elastic_policy"))
+            elastic_policy = call_args["elastic_policy"]
+
+            self.assertEqual(elastic_policy.replicaDiscreteValues, [2, 4, 8])
+            self.assertIsNone(elastic_policy.replicaIncrementStep)
+
+            self.assertEqual(elastic_policy.maxReplicas, 8)
+            self.assertEqual(elastic_policy.gracefulShutdownTimeoutInSeconds, 180)
+            self.assertEqual(elastic_policy.scalingTimeoutInSeconds, 90)
+
+            mock_instance.create.assert_called_once()
 
     @patch('sagemaker.hyperpod.common.cli_decorators._namespace_exists')
     @patch("sagemaker.hyperpod.cli.commands.training.HyperPodPytorchJob")
@@ -891,3 +1008,60 @@ def test_pytorch_get_operator_logs(mock_hp):
     assert result.exit_code == 0
     assert 'operator logs' in result.output
     mock_hp.get_operator_logs.assert_called_once_with(since_hours=2.0)
+
+
+class TestListAcceleratorPartitionTypeCLI(unittest.TestCase):
+    def setUp(self):
+        self.runner = CliRunner()
+
+    @patch('sagemaker.hyperpod.training.hyperpod_pytorch_job.config.load_kube_config')
+    @patch('sagemaker.hyperpod.training.hyperpod_pytorch_job.client.CoreV1Api')
+    def test_list_accelerator_partition_type_success(self, mock_core_v1_api, mock_load_kube_config):
+        mock_node = MagicMock()
+        mock_node.status.allocatable = {
+            "nvidia.com/mig-1g.5gb": "2",
+            "nvidia.com/mig-2g.10gb": "1",
+            "nvidia.com/mig-7g.40gb": "1"
+        }
+        mock_api_instance = Mock()
+        mock_api_instance.list_node.return_value.items = [mock_node]
+        mock_core_v1_api.return_value = mock_api_instance
+        
+        result = self.runner.invoke(list_accelerator_partition_type, [
+            '--instance-type', 'ml.p4d.24xlarge'
+        ])
+        
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('mig-1g.5gb', result.output)
+        self.assertIn('mig-2g.10gb', result.output)
+        self.assertIn('mig-7g.40gb', result.output)
+
+    @patch('sagemaker.hyperpod.training.hyperpod_pytorch_job.config.load_kube_config')
+    @patch('sagemaker.hyperpod.training.hyperpod_pytorch_job.client.CoreV1Api')
+    def test_list_accelerator_partition_type_empty_result(self, mock_core_v1_api, mock_load_kube_config):
+        mock_api_instance = Mock()
+        mock_api_instance.list_node.return_value.items = []
+        mock_core_v1_api.return_value = mock_api_instance
+        
+        result = self.runner.invoke(list_accelerator_partition_type, [
+            '--instance-type', 'ml.p4d.24xlarge'
+        ])
+        
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.output.strip(), '')
+
+    @patch('sagemaker.hyperpod.training.hyperpod_pytorch_job.config.load_kube_config')
+    def test_list_accelerator_partition_type_invalid_instance(self, mock_load_kube_config):
+        result = self.runner.invoke(list_accelerator_partition_type, [
+            '--instance-type', 'ml.invalid'
+        ])
+        
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("Invalid instance type", result.output)
+
+    def test_list_accelerator_partition_type_missing_instance_type(self):
+        result = self.runner.invoke(list_accelerator_partition_type, [])
+        
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn('Missing option', result.output)
+        self.assertIn('--instance-type', result.output)

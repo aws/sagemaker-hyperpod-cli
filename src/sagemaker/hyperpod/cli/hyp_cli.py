@@ -20,6 +20,7 @@ from sagemaker.hyperpod.cli.commands.training import (
     pytorch_get_logs,
     pytorch_get_operator_logs,
     pytorch_exec,
+    list_accelerator_partition_type,
 )
 from sagemaker.hyperpod.cli.commands.inference import (
     js_create,
@@ -38,6 +39,24 @@ from sagemaker.hyperpod.cli.commands.inference import (
     js_get_operator_logs,
     custom_get_operator_logs,
 )
+from sagemaker.hyperpod.cli.commands.space import (
+    space_create,
+    space_list,
+    space_describe,
+    space_delete,
+    space_update,
+    space_start,
+    space_stop,
+    space_get_logs,
+)
+from sagemaker.hyperpod.cli.commands.space_template import (
+    space_template_create,
+    space_template_list,
+    space_template_describe,
+    space_template_delete,
+    space_template_update,
+)
+from sagemaker.hyperpod.cli.commands.space_access import space_access_create
 
 from sagemaker.hyperpod.cli.commands.init import (
     init,
@@ -97,7 +116,7 @@ class CLICommand(click.Group):
 @cli.group(cls=CLICommand, default_cmd='_default_create')
 def create():
     """
-    Create endpoints, pytorch jobs or cluster stacks.
+    Create endpoints, pytorch jobs, cluster stacks, space, space access or space admin config.
 
     If only used as 'hyp create' without [OPTIONS] COMMAND [ARGS] during init experience,
     then it will validate configuration and render template files for deployment.
@@ -113,24 +132,39 @@ def create():
 
 @cli.group(cls=CLICommand)
 def list():
-    """List endpoints, pytorch jobs or cluster stacks."""
+    """List endpoints, pytorch jobs, cluster stacks, spaces, and space templates."""
     pass
 
 
 @cli.group(cls=CLICommand)
 def describe():
-    """Describe endpoints, pytorch jobs or cluster stacks."""
+    """Describe endpoints, pytorch jobs or cluster stacks, spaces or space template."""
     pass
 
 @cli.group(cls=CLICommand)
 def update():
-    """Update an existing HyperPod cluster configuration."""
+    """Update an existing HyperPod cluster configuration, space, or space template."""
     pass
 
 @cli.group(cls=CLICommand)
 def delete():
-    """Delete endpoints or pytorch jobs."""
+    """Delete endpoints, pytorch jobs, space, space access or space template."""
     pass
+
+
+@cli.group(cls=CLICommand)
+def start():
+    """Start space resources."""
+    pass
+
+
+@cli.group(cls=CLICommand)
+def stop():
+    """Stop space resources."""
+    pass
+
+
+
 
 
 @cli.group(cls=CLICommand)
@@ -141,7 +175,7 @@ def list_pods():
 
 @cli.group(cls=CLICommand)
 def get_logs():
-    """Get pod logs for endpoints or pytorch jobs."""
+    """Get pod logs for endpoints, pytorch jobs or spaces."""
     pass
 
 
@@ -171,26 +205,43 @@ cli.add_command(validate)
 create.add_command(pytorch_create)
 create.add_command(js_create)
 create.add_command(custom_create)
+
 _default_create.hidden = True
 create.add_command(_default_create)
+create.add_command(space_create)
+create.add_command(space_template_create)
+create.add_command(space_access_create)
 
 list.add_command(list_jobs)
 list.add_command(js_list)
 list.add_command(custom_list)
 list.add_command(list_cluster_stacks)
+list.add_command(space_list)
+list.add_command(space_template_list)
 
 describe.add_command(pytorch_describe)
 describe.add_command(js_describe)
 describe.add_command(custom_describe)
 describe.add_command(describe_cluster_stack)
+
 describe.add_command(describe_cluster)
+describe.add_command(space_describe)
+describe.add_command(space_template_describe)
 
 update.add_command(update_cluster)
+update.add_command(space_update)
+update.add_command(space_template_update)
 
 delete.add_command(pytorch_delete)
 delete.add_command(js_delete)
 delete.add_command(custom_delete)
 delete.add_command(delete_cluster_stack)
+delete.add_command(space_delete)
+delete.add_command(space_template_delete)
+
+start.add_command(space_start)
+
+stop.add_command(space_stop)
 
 list_pods.add_command(pytorch_list_pods)
 list_pods.add_command(js_list_pods)
@@ -199,6 +250,9 @@ list_pods.add_command(custom_list_pods)
 get_logs.add_command(pytorch_get_logs)
 get_logs.add_command(js_get_logs)
 get_logs.add_command(custom_get_logs)
+get_logs.add_command(space_get_logs)
+
+
 
 get_operator_logs.add_command(pytorch_get_operator_logs)
 get_operator_logs.add_command(js_get_operator_logs)
@@ -212,6 +266,7 @@ cli.add_command(set_cluster_context)
 cli.add_command(get_cluster_context)
 cli.add_command(get_monitoring)
 # cli.add_command(create_cluster_stack) # Not supported yet
+cli.add_command(list_accelerator_partition_type)
 
 exec.add_command(pytorch_exec)
 

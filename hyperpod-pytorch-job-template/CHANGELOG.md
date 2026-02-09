@@ -1,3 +1,27 @@
+## v1.4.0 (2026-01-27)
+
+### Features
+
+* Add EFA support for training jobs
+
+## v1.3.0 (2025-12-03)
+
+### Features
+
+* Support for elastic training
+
+## v1.2.0 (2025-11-20)
+
+### Features
+
+* Support for fractional gpu
+
+## v1.1.4 (2025-10-30)
+
+### Features
+
+* User can modify jinja template to add parameters supported by CRD through init experience, for further CLI customization
+
 ## v1.1.2 (2025-09-10)
 
 ### Features
