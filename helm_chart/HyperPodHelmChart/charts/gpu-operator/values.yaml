@@ -15,7 +15,7 @@ gpu-operator:
     enabled: false
   toolkit:
     image: "container-toolkit"
-    version: "v1.13.1-centos7"
+    version: "v1.17.9-ubi8"
   devicePlugin:
     enabled: true
     image: "mirror-k8s-device-plugin"
