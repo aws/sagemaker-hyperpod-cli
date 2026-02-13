@@ -1,9 +1,17 @@
 """Unit tests for space utils module."""
 
+import os
 import unittest
 from unittest.mock import Mock, patch
 from kubernetes import client
-from sagemaker.hyperpod.space.utils import camel_to_snake, get_model_fields, map_kubernetes_response_to_model, get_pod_instance_type
+from sagemaker.hyperpod.space.utils import (
+    camel_to_snake,
+    get_model_fields,
+    map_kubernetes_response_to_model,
+    get_pod_instance_type,
+    validate_space_mig_resources,
+    validate_mig_profile_in_cluster,
+)
 from hyperpod_space_template.v1_0.model import SpaceConfig
 
 
@@ -133,3 +141,142 @@ class TestSpaceUtils(unittest.TestCase):
             get_pod_instance_type('test-pod')
         
         self.assertIn("Instance type not found for node 'test-node'", str(context.exception))
+
+    def test_validate_space_mig_resources_none(self):
+        """Test validation with None resources."""
+        valid, err = validate_space_mig_resources(None)
+        self.assertTrue(valid)
+        self.assertEqual(err, "")
+
+    def test_validate_space_mig_resources_empty(self):
+        """Test validation with empty resources."""
+        valid, err = validate_space_mig_resources({})
+        self.assertTrue(valid)
+        self.assertEqual(err, "")
+
+    def test_validate_space_mig_resources_single_mig_profile(self):
+        """Test validation with single MIG profile."""
+        resources = {"nvidia.com/mig-1g.5gb": "2", "cpu": "4"}
+        valid, err = validate_space_mig_resources(resources)
+        self.assertTrue(valid)
+        self.assertEqual(err, "")
+
+    def test_validate_space_mig_resources_multiple_mig_profiles(self):
+        """Test validation fails with multiple MIG profiles."""
+        resources = {
+            "nvidia.com/mig-1g.5gb": "2",
+            "nvidia.com/mig-2g.10gb": "1",
+            "cpu": "4"
+        }
+        valid, err = validate_space_mig_resources(resources)
+        self.assertFalse(valid)
+        self.assertEqual(err, "Space only supports one MIG profile")
+
+    def test_validate_space_mig_resources_mixed_gpu_and_mig(self):
+        """Test validation fails when mixing full GPU with MIG."""
+        resources = {
+            "nvidia.com/gpu": "1",
+            "nvidia.com/mig-1g.5gb": "2",
+            "cpu": "4"
+        }
+        valid, err = validate_space_mig_resources(resources)
+        self.assertFalse(valid)
+        self.assertEqual(err, "Cannot mix full GPU (nvidia.com/gpu) with MIG partitions (nvidia.com/mig-*)")
+
+    def test_validate_space_mig_resources_full_gpu_only(self):
+        """Test validation passes with full GPU only."""
+        resources = {"nvidia.com/gpu": "1", "cpu": "4", "memory": "8Gi"}
+        valid, err = validate_space_mig_resources(resources)
+        self.assertTrue(valid)
+        self.assertEqual(err, "")
+
+    @patch.dict(os.environ, {"VALIDATE_PROFILE_IN_CLUSTER": "false"})
+    def test_validate_mig_profile_in_cluster_disabled(self):
+        """Test validation skipped when env var is false."""
+        valid, err = validate_mig_profile_in_cluster("nvidia.com/mig-1g.5gb")
+        self.assertTrue(valid)
+        self.assertEqual(err, "")
+
+    @patch('sagemaker.hyperpod.space.utils.client.CoreV1Api')
+    def test_validate_mig_profile_in_cluster_found(self, mock_core_v1):
+        """Test validation succeeds when MIG profile exists on a node."""
+        # Mock node with MIG profile
+        mock_node1 = Mock()
+        mock_node1.status.allocatable = {"nvidia.com/mig-1g.5gb": "7"}
+        
+        mock_node2 = Mock()
+        mock_node2.status.allocatable = {"nvidia.com/gpu": "8"}
+        
+        mock_nodes = Mock()
+        mock_nodes.items = [mock_node1, mock_node2]
+        
+        mock_api = Mock()
+        mock_api.list_node.return_value = mock_nodes
+        mock_core_v1.return_value = mock_api
+        
+        valid, err = validate_mig_profile_in_cluster("nvidia.com/mig-1g.5gb")
+        
+        self.assertTrue(valid)
+        self.assertEqual(err, "")
+
+    @patch('sagemaker.hyperpod.space.utils.client.CoreV1Api')
+    def test_validate_mig_profile_in_cluster_not_found(self, mock_core_v1):
+        """Test validation fails when MIG profile doesn't exist on any node."""
+        # Mock nodes without the requested MIG profile
+        mock_node1 = Mock()
+        mock_node1.status.allocatable = {"nvidia.com/mig-2g.10gb": "4"}
+        
+        mock_node2 = Mock()
+        mock_node2.status.allocatable = {"nvidia.com/gpu": "8"}
+        
+        mock_nodes = Mock()
+        mock_nodes.items = [mock_node1, mock_node2]
+        
+        mock_api = Mock()
+        mock_api.list_node.return_value = mock_nodes
+        mock_core_v1.return_value = mock_api
+        
+        valid, err = validate_mig_profile_in_cluster("nvidia.com/mig-1g.5gb")
+        
+        self.assertFalse(valid)
+        self.assertIn("Accelerator partition type 'nvidia.com/mig-1g.5gb' does not exist", err)
+        self.assertIn("Use 'hyp list-accelerator-partition-type'", err)
+
+    @patch('sagemaker.hyperpod.space.utils.client.CoreV1Api')
+    def test_validate_mig_profile_in_cluster_zero_allocatable(self, mock_core_v1):
+        """Test validation fails when MIG profile exists but has zero allocatable."""
+        mock_node = Mock()
+        mock_node.status.allocatable = {"nvidia.com/mig-1g.5gb": "0"}
+        
+        mock_nodes = Mock()
+        mock_nodes.items = [mock_node]
+        
+        mock_api = Mock()
+        mock_api.list_node.return_value = mock_nodes
+        mock_core_v1.return_value = mock_api
+        
+        valid, err = validate_mig_profile_in_cluster("nvidia.com/mig-1g.5gb")
+        
+        self.assertFalse(valid)
+        self.assertIn("does not exist in this cluster", err)
+
+    @patch('sagemaker.hyperpod.space.utils.client.CoreV1Api')
+    def test_validate_mig_profile_in_cluster_no_status(self, mock_core_v1):
+        """Test validation handles nodes without status."""
+        mock_node1 = Mock()
+        mock_node1.status = None
+        
+        mock_node2 = Mock()
+        mock_node2.status.allocatable = {"nvidia.com/mig-1g.5gb": "7"}
+        
+        mock_nodes = Mock()
+        mock_nodes.items = [mock_node1, mock_node2]
+        
+        mock_api = Mock()
+        mock_api.list_node.return_value = mock_nodes
+        mock_core_v1.return_value = mock_api
+        
+        valid, err = validate_mig_profile_in_cluster("nvidia.com/mig-1g.5gb")
+        
+        self.assertTrue(valid)
+        self.assertEqual(err, "")

@@ -1,24 +1,24 @@
 import logging
 import yaml
 import boto3
-from typing import List, Optional, ClassVar, Dict, Any
+from typing import List, Optional, ClassVar, Dict, Set, Any
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
+from kr8s.objects import Pod
 
 from sagemaker.hyperpod.common.config.metadata import Metadata
+from hyperpod_space_template.v1_0.model import ResourceRequirements
 from sagemaker.hyperpod.common.utils import (
     handle_exception,
     get_default_namespace,
     setup_logging,
     verify_kubernetes_version_compatibility,
-    get_current_cluster,
-    get_current_region,
-    get_cluster_instance_types,
 )
 from sagemaker.hyperpod.space.utils import (
     map_kubernetes_response_to_model,
-    get_pod_instance_type,
+    validate_space_mig_resources,
+    validate_mig_profile_in_cluster,
 )
 from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
     _hyperpod_telemetry_emitter,
@@ -28,17 +28,14 @@ from sagemaker.hyperpod.cli.constants.space_constants import (
     SPACE_GROUP,
     SPACE_VERSION,
     SPACE_PLURAL,
-    ENABLE_MIG_PROFILE_VALIDATION,
+    DEFAULT_SPACE_PORT,
 )
 from sagemaker.hyperpod.cli.constants.space_access_constants import (
     SPACE_ACCESS_GROUP,
     SPACE_ACCESS_VERSION,
     SPACE_ACCESS_PLURAL,
 )
-from hyperpod_space_template.v1_0.model import SpaceConfig
-
-if ENABLE_MIG_PROFILE_VALIDATION:
-    from sagemaker.hyperpod.training.hyperpod_pytorch_job import list_accelerator_partition_types
+from hyperpod_space_template.v1_0.model import SpaceConfig, ResourceRequirements
 
 
 class HPSpace(BaseModel):
@@ -214,6 +211,104 @@ class HPSpace(BaseModel):
             except Exception as e:
                 raise RuntimeError(f"Failed to load kubeconfig: {e}")
 
+    @staticmethod
+    def _extract_mig_profiles(resources: Optional[ResourceRequirements]) -> Set[str]:
+        """Extract MIG profile resource keys from resources without validation.
+
+        **Parameters:**
+
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - resources
+             - ResourceRequirements or None
+             - The resource requirements to extract MIG profiles from
+
+        **Returns:**
+
+        set: Set of MIG profile resource keys found in the resources
+        """
+        if not resources:
+            return set()
+
+        mig_profiles = set()
+
+        if resources.requests:
+            mig_profiles.update([
+                key for key in resources.requests.keys()
+                if key.startswith("nvidia.com/mig-")
+            ])
+
+        if resources.limits:
+            mig_profiles.update([
+                key for key in resources.limits.keys()
+                if key.startswith("nvidia.com/mig-")
+            ])
+
+        return mig_profiles
+
+    def _validate_and_extract_mig_profiles(self, resources: Optional[ResourceRequirements]) -> Set[str]:
+        """Validate MIG resources and extract MIG profiles.
+
+        **Parameters:**
+
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - resources
+             - ResourceRequirements or None
+             - The resource requirements to validate
+
+        **Returns:**
+
+        set: Set of MIG profile resource keys found in the resources
+
+        **Raises:**
+
+        RuntimeError: If MIG validation fails or profiles are invalid
+        """
+        if not resources:
+            return set()
+
+        # Validate requests
+        if resources.requests:
+            valid, err = validate_space_mig_resources(resources.requests)
+            if not valid:
+                raise RuntimeError(err)
+
+        # Validate limits
+        if resources.limits:
+            valid, err = validate_space_mig_resources(resources.limits)
+            if not valid:
+                raise RuntimeError(err)
+
+        # Extract MIG profiles
+        mig_profiles = self._extract_mig_profiles(resources)
+
+        # Validate that requests and limits use the same MIG profile
+        if len(mig_profiles) > 1:
+            raise RuntimeError(
+                "MIG profile mismatch: requests and limits must use the same MIG profile. "
+                f"Found: {', '.join(mig_profiles)}"
+            )
+
+        # Validate MIG profile exists in cluster
+        if mig_profiles:
+            mig_profile = list(mig_profiles)[0]
+            valid, err = validate_mig_profile_in_cluster(mig_profile)
+            if not valid:
+                raise RuntimeError(err)
+
+        return mig_profiles
+
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_space")
     def create(self, debug: bool = False):
         """Create and submit the HyperPod Space to the Kubernetes cluster.
@@ -252,32 +347,13 @@ class HPSpace(BaseModel):
               >>> # Create a space with default settings
               >>> space.create()
         """
-
         self.verify_kube_config()
         
         logger = self.get_logger()
         logger = setup_logging(logger, debug)
 
-        # Validate supported MIG profiles for the cluster
-        if ENABLE_MIG_PROFILE_VALIDATION:
-            if self.config.resources:
-                mig_profiles = set()
-                if self.config.resources.requests:
-                    mig_profiles.update([key for key in self.config.resources.requests.keys() if key.startswith("nvidia.com/mig")])
-                if self.config.resources.limits:
-                    mig_profiles.update([key for key in self.config.resources.limits.keys() if key.startswith("nvidia.com/mig")])
-
-                if len(mig_profiles) > 1:
-                    raise RuntimeError("Space only supports one MIG profile")
-
-                if mig_profiles:
-                    cluster_instance_types = get_cluster_instance_types(
-                        get_current_cluster(),
-                        get_current_region()
-                    )
-                    supported_mig_profiles = {profile for instance_type in cluster_instance_types for profile in list_accelerator_partition_types(instance_type)}
-                    if list(mig_profiles)[0] not in supported_mig_profiles:
-                        raise RuntimeError(f"Accelerator partition type '{list(mig_profiles)[0]}' does not exist in this cluster. Use 'hyp list-accelerator-partition-type' to check for available resources.")
+        # Validate and extract MIG profiles
+        self._validate_and_extract_mig_profiles(self.config.resources)
 
         # Convert config to domain model
         domain_config = self.config.to_domain()
@@ -551,32 +627,29 @@ class HPSpace(BaseModel):
         self.verify_kube_config()
         logger = self.get_logger()
 
-        # Validate supported MIG profile for node which the Space is running on
-        if ENABLE_MIG_PROFILE_VALIDATION:
-            if "resources" in kwargs:
-                mig_profiles = set()
-                mig_profiles.update([key for key in kwargs["resources"].get("requests", {}).keys() if key.startswith("nvidia.com/mig")])
-                mig_profiles.update([key for key in kwargs["resources"].get("limits", {}).keys() if key.startswith("nvidia.com/mig")])
+        # Validate MIG profile configuration
+        if "resources" in kwargs:
+            resources = kwargs["resources"]
 
-                if len(mig_profiles) > 1:
-                    raise RuntimeError("Space only supports one MIG profile")
+            if isinstance(resources, dict):
+                resources = ResourceRequirements(**resources)
 
-                if mig_profiles:
-                    pods = self.list_pods()
-                    if not pods:
-                        raise RuntimeError(f"No pods found for space '{self.config.name}'")
+            # Validate and extract MIG profiles
+            mig_profiles = self._validate_and_extract_mig_profiles(resources)
 
-                    node_instance_type = get_pod_instance_type(pods[0], self.config.namespace)
-                    supported_mig_profiles = set(list_accelerator_partition_types(node_instance_type))
-                    if list(mig_profiles)[0] not in supported_mig_profiles:
-                        raise RuntimeError(f"Accelerator partition type '{list(mig_profiles)[0]}' does not exist in this cluster. Use 'hyp list-accelerator-partition-type' to check for available resources.")
+            # Remove existing MIG profiles if changing to a different one
+            if mig_profiles:
+                mig_profile = list(mig_profiles)[0]
 
-                    # Ensure existing MIG profile gets removed before setting a new one
-                    existing_config = HPSpace.get(self.config.name, self.config.namespace).config
-                    existing_mig_profiles = [key for key in existing_config.resources.requests.keys() if key.startswith("nvidia.com/mig")]
-                    if existing_mig_profiles:
-                        kwargs["resources"]["requests"].update({existing_mig_profiles[0]: None})
-                        kwargs["resources"]["limits"].update({existing_mig_profiles[0]: None})
+                existing_config = HPSpace.get(self.config.name, self.config.namespace).config
+                existing_mig_profiles = self._extract_mig_profiles(existing_config.resources)
+
+                if existing_mig_profiles and mig_profile not in existing_mig_profiles:
+                    # Remove existing MIG profiles by setting to None
+                    for existing_profile in existing_mig_profiles:
+                        if existing_profile != mig_profile:
+                            kwargs["resources"].setdefault("requests", {})[existing_profile] = None
+                            kwargs["resources"].setdefault("limits", {})[existing_profile] = None
 
         custom_api = client.CustomObjectsApi()
 
@@ -822,3 +895,80 @@ class HPSpace(BaseModel):
         except Exception as e:
             logger.error(f"Failed to create space access for {self.config.name}!")
             handle_exception(e, self.config.name, self.config.namespace)
+
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "portforward_space")
+    def portforward_space(self, local_port: str, remote_port: str = DEFAULT_SPACE_PORT):
+        """Forward local port to the space pod for development access.
+
+        Creates a port forwarding connection from a local port to a remote port
+        on the space pod, enabling direct access to services running inside the
+        space.
+
+        **Parameters:**
+
+        .. list-table::
+        :header-rows: 1
+        :widths: 20 20 60
+
+        * - Parameter
+            - Type
+            - Description
+        * - local_port
+            - str
+            - The local port to forward from
+        * - remote_port
+            - str, optional
+            - The remote port on the space pod to forward to (default: DEFAULT_SPACE_PORT)
+
+        **Raises:**
+
+        RuntimeError: If no pods are found for the space or if the space is not in Available status
+        KeyboardInterrupt: When the user stops the port forwarding with Ctrl+C
+        Exception: If the port forwarding setup fails or Kubernetes API call fails
+
+        .. dropdown:: Usage Examples
+        :open:
+
+        .. code-block:: python
+
+            >>> # Forward local port 8080 to default remote port
+            >>> space = HPSpace.get("myspace")
+            >>> space.portforward_space("8080")
+            
+            >>> # Forward local port 3000 to remote port 8888
+            >>> space.portforward_space("3000", "8888")
+            
+            >>> # Access forwarded service (in another terminal)
+            >>> # curl http://localhost:8080
+        """
+
+        self.verify_kube_config()
+        logger = self.get_logger()
+
+        # Check if space is in Available status
+        if self.status and self.status.get("conditions"):
+            is_available = False
+            for condition in self.status["conditions"]:
+                if condition.get("type") == "Available" and condition.get("status") == "True":
+                    is_available = True
+                    break
+            
+            if not is_available:
+                raise RuntimeError(f"Space '{self.config.name}' is not in Available status. Port forwarding is only allowed for available spaces.")
+
+        pods = self.list_pods()
+        if not pods:
+            raise RuntimeError(f"No pods found for space '{self.config.name}'")
+
+        pod_name = pods[0]
+        pod = Pod.get(name=pod_name, namespace=self.config.namespace)
+        pf = pod.portforward(remote_port=int(remote_port), local_port=int(local_port))
+
+        logger.debug(f"Forwarding from local port {local_port} to space pod: {pod_name}.")
+
+        try:
+            pf.run_forever()
+        except KeyboardInterrupt:
+            logger.debug("Stopping space port forward...")
+        finally:
+            pf.stop()

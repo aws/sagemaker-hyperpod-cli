@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch, MagicMock
 from kubernetes.client.rest import ApiException
 
 from sagemaker.hyperpod.space.hyperpod_space import HPSpace
-from hyperpod_space_template.v1_0.model import SpaceConfig
+from hyperpod_space_template.v1_0.model import SpaceConfig, ResourceRequirements
 
 
 class TestHPSpace(unittest.TestCase):
@@ -723,3 +723,357 @@ class TestHPSpace(unittest.TestCase):
             "test-space",
             "test-namespace"
         )
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.Pod')
+    @patch.object(HPSpace, 'verify_kube_config')
+    @patch.object(HPSpace, 'list_pods')
+    def test_portforward_space_success(self, mock_list_pods, mock_verify_config, mock_pod_class):
+        """Test successful port forwarding"""
+        mock_list_pods.return_value = ["test-pod"]
+
+        mock_pod = Mock()
+        mock_pf = Mock()
+        mock_pod.portforward.return_value = mock_pf
+        mock_pod_class.get.return_value = mock_pod
+
+        self.hp_space.portforward_space("8080", "8888")
+
+        mock_verify_config.assert_called_once()
+        mock_list_pods.assert_called_once()
+        mock_pod_class.get.assert_called_once_with(name="test-pod", namespace="test-namespace")
+        mock_pod.portforward.assert_called_once_with(remote_port=8888, local_port=8080)
+        mock_pf.run_forever.assert_called_once()
+        mock_pf.stop.assert_called_once()
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.Pod')
+    @patch.object(HPSpace, 'verify_kube_config')
+    @patch.object(HPSpace, 'list_pods')
+    def test_portforward_space_default_remote_port(self, mock_list_pods, mock_verify_config, mock_pod_class):
+        """Test port forwarding with default remote port"""
+        mock_list_pods.return_value = ["test-pod"]
+        
+        mock_pod = Mock()
+        mock_pf = Mock()
+        mock_pod.portforward.return_value = mock_pf
+        mock_pod_class.get.return_value = mock_pod
+
+        self.hp_space.portforward_space("8080")
+
+        mock_pod.portforward.assert_called_once_with(remote_port=8888, local_port=8080)
+
+    @patch.object(HPSpace, 'verify_kube_config')
+    @patch.object(HPSpace, 'list_pods')
+    def test_portforward_space_no_pods(self, mock_list_pods, mock_verify_config):
+        """Test port forwarding when no pods are found"""
+        mock_list_pods.return_value = []
+        
+        with self.assertRaises(RuntimeError) as context:
+            self.hp_space.portforward_space("8080")
+        
+        self.assertIn("No pods found for space 'test-space'", str(context.exception))
+        mock_verify_config.assert_called_once()
+        mock_list_pods.assert_called_once()
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.Pod')
+    @patch.object(HPSpace, 'verify_kube_config')
+    @patch.object(HPSpace, 'list_pods')
+    def test_portforward_space_keyboard_interrupt(self, mock_list_pods, mock_verify_config, mock_pod_class):
+        """Test port forwarding with KeyboardInterrupt"""
+        mock_list_pods.return_value = ["test-pod"]
+        
+        mock_pod = Mock()
+        mock_pf = Mock()
+        mock_pf.run_forever.side_effect = KeyboardInterrupt()
+        mock_pod.portforward.return_value = mock_pf
+        mock_pod_class.get.return_value = mock_pod
+        
+        # Should not raise exception, should handle gracefully
+        self.hp_space.portforward_space("8080", "8888")
+        
+        mock_pf.run_forever.assert_called_once()
+        mock_pf.stop.assert_called_once()
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.Pod')
+    @patch.object(HPSpace, 'verify_kube_config')
+    @patch.object(HPSpace, 'list_pods')
+    def test_portforward_space_exception_in_finally(self, mock_list_pods, mock_verify_config, mock_pod_class):
+        """Test port forwarding ensures cleanup even with exceptions"""
+        mock_list_pods.return_value = ["test-pod"]
+
+        mock_pod = Mock()
+        mock_pf = Mock()
+        mock_pf.run_forever.side_effect = Exception("Port forward failed")
+        mock_pod.portforward.return_value = mock_pf
+        mock_pod_class.get.return_value = mock_pod
+
+        with self.assertRaises(Exception) as context:
+            self.hp_space.portforward_space("8080", "8888")
+
+        self.assertIn("Port forward failed", str(context.exception))
+        mock_pf.run_forever.assert_called_once()
+        mock_pf.stop.assert_called_once()  # Ensure cleanup happens
+
+    def test_extract_mig_profiles_no_mig(self):
+        """Test extraction with no MIG profiles"""
+        resources = ResourceRequirements(
+            requests={"cpu": "2", "memory": "4Gi"},
+            limits={"cpu": "4", "memory": "8Gi"}
+        )
+        
+        result = HPSpace._extract_mig_profiles(resources)
+        self.assertEqual(result, set())
+
+    def test_extract_mig_profiles_requests_only(self):
+        """Test extraction with MIG profiles in requests only"""
+        resources = ResourceRequirements(
+            requests={"nvidia.com/mig-1g.5gb": "2", "cpu": "2"}
+        )
+        
+        result = HPSpace._extract_mig_profiles(resources)
+        self.assertEqual(result, {"nvidia.com/mig-1g.5gb"})
+
+    def test_extract_mig_profiles_limits_only(self):
+        """Test extraction with MIG profiles in limits only"""
+        resources = ResourceRequirements(
+            limits={"nvidia.com/mig-2g.10gb": "4", "memory": "8Gi"}
+        )
+        
+        result = HPSpace._extract_mig_profiles(resources)
+        self.assertEqual(result, {"nvidia.com/mig-2g.10gb"})
+
+    def test_extract_mig_profiles_both_same(self):
+        """Test extraction with same MIG profile in both requests and limits"""
+        resources = ResourceRequirements(
+            requests={"nvidia.com/mig-1g.5gb": "2", "cpu": "2"},
+            limits={"nvidia.com/mig-1g.5gb": "2", "cpu": "4"}
+        )
+        
+        result = HPSpace._extract_mig_profiles(resources)
+        self.assertEqual(result, {"nvidia.com/mig-1g.5gb"})
+
+    def test_extract_mig_profiles_both_different(self):
+        """Test extraction with different MIG profiles in requests and limits"""
+        resources = ResourceRequirements(
+            requests={"nvidia.com/mig-1g.5gb": "2"},
+            limits={"nvidia.com/mig-2g.10gb": "2"}
+        )
+        
+        result = HPSpace._extract_mig_profiles(resources)
+        self.assertEqual(result, {"nvidia.com/mig-1g.5gb", "nvidia.com/mig-2g.10gb"})
+
+    def test_extract_mig_profiles_multiple_in_requests(self):
+        """Test extraction with multiple MIG profiles in requests"""
+        resources = ResourceRequirements(
+            requests={
+                "nvidia.com/mig-1g.5gb": "2",
+                "nvidia.com/mig-2g.10gb": "1",
+                "cpu": "4"
+            }
+        )
+        
+        result = HPSpace._extract_mig_profiles(resources)
+        self.assertEqual(result, {"nvidia.com/mig-1g.5gb", "nvidia.com/mig-2g.10gb"})
+
+    def test_validate_and_extract_mig_profiles_none_resources(self):
+        """Test validation with None resources"""
+        result = self.hp_space._validate_and_extract_mig_profiles(None)
+        self.assertEqual(result, set())
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.validate_space_mig_resources')
+    def test_validate_and_extract_mig_profiles_no_mig(self, mock_validate):
+        """Test validation with no MIG profiles"""
+        
+        mock_validate.return_value = (True, "")
+        resources = ResourceRequirements(
+            requests={"cpu": "2", "memory": "4Gi"},
+            limits={"cpu": "4", "memory": "8Gi"}
+        )
+        
+        result = self.hp_space._validate_and_extract_mig_profiles(resources)
+        
+        self.assertEqual(result, set())
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.validate_mig_profile_in_cluster')
+    @patch('sagemaker.hyperpod.space.hyperpod_space.validate_space_mig_resources')
+    def test_validate_and_extract_mig_profiles_single_mig(self, mock_validate_resources, mock_validate_cluster):
+        """Test validation with single MIG profile"""
+        
+        mock_validate_resources.return_value = (True, "")
+        mock_validate_cluster.return_value = (True, "")
+        
+        resources = ResourceRequirements(
+            requests={"nvidia.com/mig-1g.5gb": "2", "cpu": "2"},
+            limits={"nvidia.com/mig-1g.5gb": "2", "cpu": "4"}
+        )
+        
+        result = self.hp_space._validate_and_extract_mig_profiles(resources)
+        
+        self.assertEqual(result, {"nvidia.com/mig-1g.5gb"})
+        mock_validate_cluster.assert_called_once_with("nvidia.com/mig-1g.5gb")
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.validate_space_mig_resources')
+    def test_validate_and_extract_mig_profiles_mismatch(self, mock_validate):
+        """Test validation fails with mismatched MIG profiles in requests and limits"""
+        
+        mock_validate.return_value = (True, "")
+        
+        resources = ResourceRequirements(
+            requests={"nvidia.com/mig-1g.5gb": "2"},
+            limits={"nvidia.com/mig-2g.10gb": "2"}
+        )
+        
+        with self.assertRaises(RuntimeError) as context:
+            self.hp_space._validate_and_extract_mig_profiles(resources)
+        
+        self.assertIn("MIG profile mismatch", str(context.exception))
+        self.assertIn("nvidia.com/mig-1g.5gb", str(context.exception))
+        self.assertIn("nvidia.com/mig-2g.10gb", str(context.exception))
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.validate_space_mig_resources')
+    def test_validate_and_extract_mig_profiles_validation_fails_requests(self, mock_validate):
+        """Test validation fails when requests validation fails"""
+        
+        mock_validate.return_value = (False, "Multiple MIG profiles not allowed")
+        
+        resources = ResourceRequirements(
+            requests={"nvidia.com/mig-1g.5gb": "2", "nvidia.com/mig-2g.10gb": "1"}
+        )
+        
+        with self.assertRaises(RuntimeError) as context:
+            self.hp_space._validate_and_extract_mig_profiles(resources)
+        
+        self.assertIn("Multiple MIG profiles not allowed", str(context.exception))
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.validate_mig_profile_in_cluster')
+    @patch('sagemaker.hyperpod.space.hyperpod_space.validate_space_mig_resources')
+    def test_validate_and_extract_mig_profiles_cluster_validation_fails(self, mock_validate_resources, mock_validate_cluster):
+        """Test validation fails when cluster validation fails"""
+        
+        mock_validate_resources.return_value = (True, "")
+        mock_validate_cluster.return_value = (False, "MIG profile not found in cluster")
+        
+        resources = ResourceRequirements(
+            requests={"nvidia.com/mig-1g.5gb": "2"}
+        )
+        
+        with self.assertRaises(RuntimeError) as context:
+            self.hp_space._validate_and_extract_mig_profiles(resources)
+        
+        self.assertIn("MIG profile not found in cluster", str(context.exception))
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi')
+    @patch.object(HPSpace, 'verify_kube_config')
+    @patch.object(HPSpace, '_validate_and_extract_mig_profiles')
+    def test_create_with_mig_validation(self, mock_validate_mig, mock_verify_config, mock_custom_api_class):
+        """Test create calls MIG validation"""
+        
+        mock_validate_mig.return_value = {"nvidia.com/mig-1g.5gb"}
+        mock_custom_api = Mock()
+        mock_custom_api_class.return_value = mock_custom_api
+        
+        self.hp_space.config.resources = ResourceRequirements(
+            requests={"nvidia.com/mig-1g.5gb": "2"}
+        )
+        
+        mock_domain_config = {
+            "space_spec": {
+                "apiVersion": "workspace.jupyter.org/v1alpha1",
+                "kind": "Workspace",
+                "metadata": {"name": "test-space", "namespace": "test-namespace"},
+                "spec": {"image": "test-image:latest"}
+            }
+        }
+        
+        with patch('hyperpod_space_template.v1_0.model.SpaceConfig.to_domain', return_value=mock_domain_config):
+            self.hp_space.create()
+        
+        mock_validate_mig.assert_called_once_with(self.hp_space.config.resources)
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi')
+    @patch.object(HPSpace, 'verify_kube_config')
+    @patch.object(HPSpace, 'get')
+    @patch.object(HPSpace, '_validate_and_extract_mig_profiles')
+    def test_update_with_mig_profile_change(self, mock_validate_mig, mock_get, mock_verify_config, mock_custom_api_class):
+        """Test update removes existing MIG profile when changing to new one"""
+        
+        # Setup existing space with existing MIG profile
+        existing_space = HPSpace(config=SpaceConfig(
+            name="test-space",
+            display_name="Test Space",
+            namespace="test-namespace",
+            resources=ResourceRequirements(
+                requests={"nvidia.com/mig-1g.5gb": "2"},
+                limits={"nvidia.com/mig-1g.5gb": "2"}
+            )
+        ))
+        mock_get.return_value = existing_space
+        
+        # New MIG profile
+        mock_validate_mig.return_value = {"nvidia.com/mig-2g.10gb"}
+        mock_custom_api = Mock()
+        mock_custom_api_class.return_value = mock_custom_api
+        
+        # Update with new MIG profile
+        new_resources = {
+            "requests": {"nvidia.com/mig-2g.10gb": "1"},
+            "limits": {"nvidia.com/mig-2g.10gb": "1"}
+        }
+        
+        self.hp_space.update(resources=new_resources)
+        
+        # Verify old MIG profile is set to None
+        self.assertEqual(new_resources["requests"]["nvidia.com/mig-1g.5gb"], None)
+        self.assertEqual(new_resources["limits"]["nvidia.com/mig-1g.5gb"], None)
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi')
+    @patch.object(HPSpace, 'verify_kube_config')
+    @patch.object(HPSpace, 'get')
+    @patch.object(HPSpace, '_validate_and_extract_mig_profiles')
+    def test_update_with_same_mig_profile(self, mock_validate_mig, mock_get, mock_verify_config, mock_custom_api_class):
+        """Test update doesn't remove MIG profile when it's the same"""
+        
+        # Setup existing space with MIG profile
+        existing_space = HPSpace(config=SpaceConfig(
+            name="test-space",
+            display_name="Test Space",
+            namespace="test-namespace",
+            resources=ResourceRequirements(
+                requests={"nvidia.com/mig-1g.5gb": "2"}
+            )
+        ))
+        mock_get.return_value = existing_space
+        
+        # Same MIG profile
+        mock_validate_mig.return_value = {"nvidia.com/mig-1g.5gb"}
+        mock_custom_api = Mock()
+        mock_custom_api_class.return_value = mock_custom_api
+        
+        # Update with same MIG profile
+        new_resources = {
+            "requests": {"nvidia.com/mig-1g.5gb": "4"}
+        }
+        
+        self.hp_space.update(resources=new_resources)
+        
+        # Verify MIG profile value remains "4" (not changed to "0")
+        self.assertEqual(new_resources["requests"]["nvidia.com/mig-1g.5gb"], "4")
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi')
+    @patch.object(HPSpace, 'verify_kube_config')
+    @patch.object(HPSpace, '_validate_and_extract_mig_profiles')
+    def test_update_converts_dict_to_resource_requirements(self, mock_validate_mig, mock_verify_config, mock_custom_api_class):
+        """Test update converts dict resources to ResourceRequirements"""
+        mock_validate_mig.return_value = set()
+        mock_custom_api = Mock()
+        mock_custom_api_class.return_value = mock_custom_api
+        
+        # Pass resources as dict
+        resources_dict = {
+            "requests": {"cpu": "2", "memory": "4Gi"}
+        }
+        
+        self.hp_space.update(resources=resources_dict)
+        
+        # Verify _validate_and_extract_mig_profiles was called with ResourceRequirements object
+        call_args = mock_validate_mig.call_args[0][0]
+        self.assertIsInstance(call_args, ResourceRequirements)

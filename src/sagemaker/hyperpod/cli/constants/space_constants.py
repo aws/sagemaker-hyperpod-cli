@@ -13,8 +13,8 @@
 SPACE_GROUP = "workspace.jupyter.org"
 SPACE_VERSION = "v1alpha1"
 SPACE_PLURAL = "workspaces"
+DEFAULT_SPACE_PORT = "8888"
 # Immutable fields that cannot be updated after space creation
 IMMUTABLE_FIELDS = {
     "storage",  # storage is immutable per Go struct validation
 }
-ENABLE_MIG_PROFILE_VALIDATION = False

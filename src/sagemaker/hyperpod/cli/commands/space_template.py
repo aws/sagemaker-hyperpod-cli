@@ -3,10 +3,12 @@ import json
 import yaml
 from tabulate import tabulate
 from sagemaker.hyperpod.space.hyperpod_space_template import HPSpaceTemplate
+from sagemaker.hyperpod.common.cli_decorators import handle_cli_exceptions
 
 
 @click.command("hyp-space-template")
 @click.option("--file", "-f", required=True, help="YAML file containing the configuration")
+@handle_cli_exceptions()
 def space_template_create(file):
     """Create a space-template resource."""
     template = HPSpaceTemplate(file_path=file)
@@ -17,6 +19,7 @@ def space_template_create(file):
 @click.command("hyp-space-template")
 @click.option("--namespace", "-n", required=False, default=None, help="Kubernetes namespace")
 @click.option("--output", "-o", type=click.Choice(["table", "json"]), default="table")
+@handle_cli_exceptions()
 def space_template_list(namespace, output):
     """List space-template resources."""
     templates = HPSpaceTemplate.list(namespace)
@@ -43,6 +46,7 @@ def space_template_list(namespace, output):
 @click.option("--name", required=True, help="Name of the space template")
 @click.option("--namespace", "-n", required=False, default=None, help="Kubernetes namespace")
 @click.option("--output", "-o", type=click.Choice(["yaml", "json"]), default="yaml")
+@handle_cli_exceptions()
 def space_template_describe(name, namespace, output):
     """Describe a space-template resource."""
     template = HPSpaceTemplate.get(name, namespace)
@@ -56,6 +60,7 @@ def space_template_describe(name, namespace, output):
 @click.command("hyp-space-template")
 @click.option("--name", required=True, help="Name of the space template")
 @click.option("--namespace", "-n", required=False, default=None, help="Kubernetes namespace")
+@handle_cli_exceptions()
 def space_template_delete(name, namespace):
     """Delete a space-template resource."""
     template = HPSpaceTemplate.get(name, namespace)
@@ -67,6 +72,7 @@ def space_template_delete(name, namespace):
 @click.option("--name", required=True, help="Name of the space template")
 @click.option("--namespace", "-n", required=False, default=None, help="Kubernetes namespace")
 @click.option("--file", "-f", required=True, help="YAML file containing the updated template")
+@handle_cli_exceptions()
 def space_template_update(name, namespace, file):
     """Update a space-template resource."""
     template = HPSpaceTemplate.get(name, namespace)

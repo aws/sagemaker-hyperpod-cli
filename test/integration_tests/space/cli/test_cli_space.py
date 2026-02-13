@@ -1,10 +1,14 @@
 import time
 import pytest
+import threading
+import socket
+import requests
 from click.testing import CliRunner
 from sagemaker.hyperpod.cli.commands.space import (
     space_create, space_list, space_describe, space_delete, 
-    space_update, space_start, space_stop, space_get_logs
+    space_update, space_start, space_stop, space_get_logs, space_portforward
 )
+from sagemaker.hyperpod.space.hyperpod_space import HPSpace
 from test.integration_tests.utils import get_time_str
 
 # --------- Test Configuration ---------
@@ -24,6 +28,44 @@ def space_name():
 
 class TestSpaceCLI:
     """Integration tests for HyperPod Space CLI commands."""
+
+    def _wait_for_space_available(self, space_name, namespace="default", timeout=300):
+        """Wait for space to become available."""
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            try:
+                space = HPSpace.get(name=space_name, namespace=namespace)
+                status = space.status
+                if status and status.get("conditions"):
+                    for condition in status["conditions"]:
+                        if condition.get("type") == "Available" and condition.get("status") == "True":
+                            return True
+                time.sleep(10)
+            except Exception as e:
+                print(f"Error checking space status: {e}")
+                time.sleep(10)
+        return False
+
+    def _is_port_available(self, port):
+        """Check if a port is available for use."""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(('localhost', port))
+                return True
+            except OSError:
+                return False
+
+    def _test_http_endpoint(self, port, timeout=30):
+        """Test if HTTP endpoint responds with 200."""
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            try:
+                response = requests.get(f"http://localhost:{port}", timeout=5)
+                if response.status_code == 200:
+                    return True
+            except (requests.exceptions.RequestException, requests.exceptions.ConnectionError):
+                time.sleep(3)
+        return False
 
     @pytest.mark.dependency(name="create")
     def test_space_create(self, runner, space_name):
@@ -86,6 +128,7 @@ class TestSpaceCLI:
         assert "{" in result.output and "}" in result.output
 
     @pytest.mark.dependency(depends=["create"])
+    @pytest.mark.dependency(name="stop")
     def test_space_stop(self, runner, space_name):
         """Test stopping a space."""
         result = runner.invoke(space_stop, [
@@ -95,7 +138,8 @@ class TestSpaceCLI:
         assert result.exit_code == 0, result.output
         assert f"Space '{space_name}' stop requested" in result.output
 
-    @pytest.mark.dependency(depends=["create"])
+    @pytest.mark.dependency(depends=["stop"])
+    @pytest.mark.dependency(name="start")
     def test_space_start(self, runner, space_name):
         """Test starting a space."""
         result = runner.invoke(space_start, [
@@ -115,6 +159,53 @@ class TestSpaceCLI:
         ])
         assert result.exit_code == 0, result.output
         assert f"Space '{space_name}' updated successfully" in result.output
+
+    @pytest.mark.dependency(depends=["start"])
+    def test_space_portforward(self, runner, space_name):
+        """Test port forwarding to a space."""
+        # Find an available port
+        test_port = 8080
+        while not self._is_port_available(test_port) and test_port < 9000:
+            test_port += 1
+        
+        if test_port >= 9000:
+            pytest.skip("No available ports found for testing")
+
+        # Wait for space to become available
+        print(f"Waiting for space '{space_name}' to become available...")
+        if not self._wait_for_space_available(space_name, NAMESPACE):
+            pytest.skip(f"Space '{space_name}' did not become available within timeout")
+
+        # Start port forwarding in a separate thread
+        portforward_thread = None
+        portforward_exception = None
+        
+        def run_portforward():
+            nonlocal portforward_exception
+            try:
+                result = runner.invoke(space_portforward, [
+                    "--name", space_name,
+                    "--namespace", NAMESPACE,
+                    "--local-port", str(test_port)
+                ], catch_exceptions=False)
+                if result.exit_code != 0:
+                    portforward_exception = Exception(f"Port forward failed: {result.output}")
+            except Exception as e:
+                portforward_exception = e
+
+        portforward_thread = threading.Thread(target=run_portforward, daemon=True)
+        portforward_thread.start()
+        
+        # Check if port forwarding thread encountered an error
+        if portforward_exception:
+            raise portforward_exception
+        
+        # Test localhost HTTP endpoint
+        print(f"Testing HTTP endpoint at localhost:{test_port}")
+        if self._test_http_endpoint(test_port):
+            print("✓ HTTP endpoint returned 200 status")
+        else:
+            pytest.fail(f"HTTP endpoint at localhost:{test_port} did not return 200 status within timeout")
 
     @pytest.mark.dependency(depends=["create"])
     def test_space_get_logs(self, runner, space_name):
@@ -137,15 +228,6 @@ class TestSpaceCLI:
         ])
         assert result.exit_code == 0, result.output
         assert f"Requested deletion for Space '{space_name}'" in result.output
-
-    def test_space_list_empty_namespace(self, runner):
-        """Test listing spaces in an empty namespace."""
-        result = runner.invoke(space_list, [
-            "--namespace", "nonexistent-namespace",
-            "--output", "table"
-        ])
-        assert result.exit_code == 0, result.output
-        assert "No spaces found" in result.output
 
     def test_space_describe_nonexistent(self, runner):
         """Test describing a nonexistent space."""

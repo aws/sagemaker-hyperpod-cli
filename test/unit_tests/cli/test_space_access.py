@@ -51,3 +51,4 @@ class TestSpaceAccessCommands:
         assert "https://default-url.com" in result.output
         mock_hp_space_class.get.assert_called_once_with(name='test-space', namespace='default')
         mock_space_instance.create_space_access.assert_called_once_with(connection_type='vscode-remote')
+

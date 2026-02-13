@@ -102,17 +102,19 @@ class TestSpaceTemplateCommands(unittest.TestCase):
         self.assertIn("No space templates found", result.output)
         mock_hp_space_template.list.assert_called_once_with(None)
 
+    @patch("sagemaker.hyperpod.common.cli_decorators._namespace_exists")
     @patch("sagemaker.hyperpod.cli.commands.space_template.HPSpaceTemplate")
-    def test_space_template_list_with_namespace(self, mock_hp_space_template):
+    def test_space_template_list_with_namespace(self, mock_hp_space_template, mock_namespace_exists):
         """Test space template list with namespace parameter"""
+        mock_namespace_exists.return_value = True
         mock_template1 = Mock()
         mock_template1.name = "template1"
         mock_template1.namespace = "test-namespace"
         mock_template1.config_data = {"spec": {"displayName": "Template 1", "defaultImage": "image1"}}
         mock_hp_space_template.list.return_value = [mock_template1]
-        
+
         result = self.runner.invoke(space_template_list, ["--namespace", "test-namespace", "--output", "table"])
-        
+
         self.assertEqual(result.exit_code, 0)
         self.assertIn("template1", result.output)
         self.assertIn("test-namespace", result.output)
