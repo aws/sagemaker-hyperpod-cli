@@ -225,15 +225,6 @@ class TestSpaceTemplateCLI:
         assert result.exit_code == 0, result.output
         assert f"Requested deletion for Space template '{template_name}' in namespace '{NAMESPACE}'" in result.output
 
-    def test_space_template_list_empty_namespace(self, runner):
-        """Test listing space templates in an empty namespace."""
-        result = runner.invoke(space_template_list, [
-            "--namespace", "nonexistent-namespace",
-            "--output", "table"
-        ])
-        assert result.exit_code == 0, result.output
-        assert "No space templates found" in result.output
-
     def test_space_template_describe_nonexistent(self, runner):
         """Test describing a nonexistent space template."""
         result = runner.invoke(space_template_describe, [

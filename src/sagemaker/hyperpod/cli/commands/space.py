@@ -10,6 +10,8 @@ from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
     _hyperpod_telemetry_emitter,
 )
 from sagemaker.hyperpod.common.telemetry.constants import Feature
+from sagemaker.hyperpod.cli.constants.space_constants import DEFAULT_SPACE_PORT
+from sagemaker.hyperpod.common.cli_decorators import handle_cli_exceptions
 
 
 @click.command("hyp-space")
@@ -18,6 +20,7 @@ from sagemaker.hyperpod.common.telemetry.constants import Feature
     schema_pkg="hyperpod_space_template",
     registry=SCHEMA_REGISTRY,
 )
+@handle_cli_exceptions()
 def space_create(version, debug, config):
     """Create a space resource."""
     space_config = SpaceConfig(**config)
@@ -29,6 +32,7 @@ def space_create(version, debug, config):
 @click.command("hyp-space")
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
 @click.option("--output", "-o", type=click.Choice(["table", "json"]), default="table")
+@handle_cli_exceptions()
 def space_list(namespace, output):
     """List space resources."""
     spaces = HPSpace.list(namespace=namespace)
@@ -70,6 +74,7 @@ def space_list(namespace, output):
 @click.option("--name", required=True, help="Name of the space")
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
 @click.option("--output", "-o", type=click.Choice(["yaml", "json"]), default="yaml")
+@handle_cli_exceptions()
 def space_describe(name, namespace, output):
     """Describe a space resource."""
     current_space = HPSpace.get(name=name, namespace=namespace)
@@ -86,6 +91,7 @@ def space_describe(name, namespace, output):
 @click.command("hyp-space")
 @click.option("--name", required=True, help="Name of the space")
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
+@handle_cli_exceptions()
 def space_delete(name, namespace):
     """Delete a space resource."""
     current_space = HPSpace.get(name=name, namespace=namespace)
@@ -99,6 +105,7 @@ def space_delete(name, namespace):
     registry=SCHEMA_REGISTRY,
     is_update=True,
 )
+@handle_cli_exceptions()
 def space_update(version, config):
     """Update a space resource."""
     current_space = HPSpace.get(name=config['name'], namespace=config['namespace'])
@@ -112,6 +119,7 @@ def space_update(version, config):
 @click.command("hyp-space")
 @click.option("--name", required=True, help="Name of the space")
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
+@handle_cli_exceptions()
 def space_start(name, namespace):
     """Start a space resource."""
     current_space = HPSpace.get(name=name, namespace=namespace)
@@ -122,6 +130,7 @@ def space_start(name, namespace):
 @click.command("hyp-space")
 @click.option("--name", required=True, help="Name of the space")
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
+@handle_cli_exceptions()
 def space_stop(name, namespace):
     """Stop a space resource."""
     current_space = HPSpace.get(name=name, namespace=namespace)
@@ -134,8 +143,30 @@ def space_stop(name, namespace):
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
 @click.option("--pod-name", required=False, help="Name of the pod to get logs from")
 @click.option("--container", required=False, help="Name of the container to get logs from")
+@handle_cli_exceptions()
 def space_get_logs(name, namespace, pod_name, container):
     """Get logs for a space resource."""
     current_space = HPSpace.get(name=name, namespace=namespace)
     logs = current_space.get_logs(pod_name=pod_name, container=container)
     click.echo(logs)
+
+
+@click.command("hyp-space")
+@click.option("--name", required=True, help="Name of the space")
+@click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
+@click.option("--local-port", required=False, default=DEFAULT_SPACE_PORT, help="Localhost port that is mapped to the space")
+def space_portforward(name, namespace, local_port):
+    """Port forward to localhost for a space resource."""
+    # Validate input port
+    try:
+        local_port = int(local_port)
+    except ValueError:
+        raise ValueError("Port values must be valid integers")
+
+    if not (1 <= local_port <= 65535):
+        raise ValueError(f"Port must be between 1 and 65535, got {local_port}")
+
+    current_space = HPSpace.get(name=name, namespace=namespace)
+    click.echo(f"Forwarding from local port {local_port} to space `{name}` in namespace `{namespace}`.")
+    click.echo(f"Please access the service via `http://localhost:{local_port}`. Press Ctrl+C to stop.")
+    current_space.portforward_space(local_port)
