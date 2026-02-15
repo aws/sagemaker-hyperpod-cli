@@ -8,6 +8,16 @@
 {{- fail "executionRoleArn must be set via the --set executionRoleArn=<arn> flag" -}}
 {{- end}}
 
+{{/* Validate that the execution role name has the required prefix for the managed policy restrictions */}}
+{{/* This validation only applies when isAddOn is true */}}
+{{- if $.Values.isAddOn -}}
+{{- $roleNameParts := splitList "/" $.Values.executionRoleArn -}}
+{{- $roleName := last $roleNameParts -}}
+{{- if not (hasPrefix "SageMakerHyperPodInference" $roleName) -}}
+{{- fail "executionRoleArn must have a role name with prefix 'SageMakerHyperPodInference'" -}}
+{{- end}}
+{{- end}}
+
 {{- if not $.Values.tlsCertificateS3Bucket}}
 {{- fail "tlsCertificateS3Bucket must be set via the --set tlsCertificateS3Bucket=<s3 Bucket> flag" -}}
 {{- else -}}
