@@ -15,11 +15,11 @@ type: application
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 1.3.0
+version: 2.0.0
 
 # This is the version number of the application being deployed. Keep this aligned 
 # with operator image MAJOR.MINOR version.
-appVersion: "2.3"
+appVersion: "3.0"
 
 dependencies:
 - name: aws-mountpoint-s3-csi-driver
