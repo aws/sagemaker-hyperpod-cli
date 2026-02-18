@@ -35,6 +35,7 @@ class InferenceConfig(BaseModel):
     max_model_len: Optional[int|str] = None
     top_logprobs: Optional[int] = None
     reasoning_effort: Optional[str] = None
+    checkpoint_is_instruct_tuned: Optional[str] = None
 
 
 class RlEnvConfig(BaseModel):
