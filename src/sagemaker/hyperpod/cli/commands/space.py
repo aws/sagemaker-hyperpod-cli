@@ -4,6 +4,7 @@ import yaml
 from tabulate import tabulate
 from sagemaker.hyperpod.space.hyperpod_space import HPSpace
 from sagemaker.hyperpod.cli.space_utils import generate_click_command
+from sagemaker.hyperpod.cli.clients.kubernetes_client import KubernetesClient
 from hyperpod_space_template.registry import SCHEMA_REGISTRY
 from hyperpod_space_template.v1_0.model import SpaceConfig
 from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
@@ -31,12 +32,27 @@ def space_create(version, debug, config):
 
 @click.command("hyp-space")
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
+@click.option("--all-namespaces", "-A", is_flag=True, help="List spaces across all namespaces")
 @click.option("--output", "-o", type=click.Choice(["table", "json"]), default="table")
 @handle_cli_exceptions()
-def space_list(namespace, output):
+def space_list(namespace, all_namespaces, output):
     """List space resources."""
-    spaces = HPSpace.list(namespace=namespace)
-    
+    spaces = []
+
+    if all_namespaces:
+        k8s_client = KubernetesClient()
+        namespaces = k8s_client.list_namespaces()
+
+        for ns in namespaces:
+            try:
+                ns_spaces = HPSpace.list(namespace=ns)
+                spaces.extend(ns_spaces)
+            except Exception as e:
+                click.echo(f"Warning: Failed to list spaces in namespace '{ns}': {e}", err=True)
+                continue
+    else:
+        spaces = HPSpace.list(namespace=namespace)
+
     if output == "json":
         spaces_data = []
         for space in spaces:
@@ -47,20 +63,21 @@ def space_list(namespace, output):
         if spaces:
             table_data = []
             for space in spaces:
-                # Extract status conditions from raw resource
                 available = ""
                 progressing = ""
                 degraded = ""
-                
+
                 if space.status and 'conditions' in space.status:
                     conditions = {c['type']: c['status'] for c in space.status['conditions']}
                     available = conditions.get('Available', '')
                     progressing = conditions.get('Progressing', '')
                     degraded = conditions.get('Degraded', '')
-                
+
+                space_namespace = space.config.namespace
+
                 table_data.append([
                     space.config.name,
-                    namespace,
+                    space_namespace,
                     available,
                     progressing,
                     degraded
@@ -155,6 +172,7 @@ def space_get_logs(name, namespace, pod_name, container):
 @click.option("--name", required=True, help="Name of the space")
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
 @click.option("--local-port", required=False, default=DEFAULT_SPACE_PORT, help="Localhost port that is mapped to the space")
+@handle_cli_exceptions()
 def space_portforward(name, namespace, local_port):
     """Port forward to localhost for a space resource."""
     # Validate input port
