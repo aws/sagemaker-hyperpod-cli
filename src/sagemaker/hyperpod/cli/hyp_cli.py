@@ -48,6 +48,7 @@ from sagemaker.hyperpod.cli.commands.space import (
     space_start,
     space_stop,
     space_get_logs,
+    space_portforward,
 )
 from sagemaker.hyperpod.cli.commands.space_template import (
     space_template_create,
@@ -164,7 +165,10 @@ def stop():
     pass
 
 
-
+@cli.group(cls=CLICommand)
+def portforward():
+    """Port forward for space resources."""
+    pass
 
 
 @cli.group(cls=CLICommand)
@@ -252,7 +256,7 @@ get_logs.add_command(js_get_logs)
 get_logs.add_command(custom_get_logs)
 get_logs.add_command(space_get_logs)
 
-
+portforward.add_command(space_portforward)
 
 get_operator_logs.add_command(pytorch_get_operator_logs)
 get_operator_logs.add_command(js_get_operator_logs)
