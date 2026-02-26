@@ -20,6 +20,7 @@ from sagemaker.hyperpod.common.cli_decorators import handle_cli_exceptions
     schema_pkg="hyperpod_space_template",
     registry=SCHEMA_REGISTRY,
 )
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "create_space")
 @handle_cli_exceptions()
 def space_create(version, debug, config):
     """Create a space resource."""
@@ -32,6 +33,7 @@ def space_create(version, debug, config):
 @click.command("hyp-space")
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
 @click.option("--output", "-o", type=click.Choice(["table", "json"]), default="table")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_spaces")
 @handle_cli_exceptions()
 def space_list(namespace, output):
     """List space resources."""
@@ -74,6 +76,7 @@ def space_list(namespace, output):
 @click.option("--name", required=True, help="Name of the space")
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
 @click.option("--output", "-o", type=click.Choice(["yaml", "json"]), default="yaml")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "describe_space")
 @handle_cli_exceptions()
 def space_describe(name, namespace, output):
     """Describe a space resource."""
@@ -91,6 +94,7 @@ def space_describe(name, namespace, output):
 @click.command("hyp-space")
 @click.option("--name", required=True, help="Name of the space")
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "delete_space")
 @handle_cli_exceptions()
 def space_delete(name, namespace):
     """Delete a space resource."""
@@ -105,6 +109,7 @@ def space_delete(name, namespace):
     registry=SCHEMA_REGISTRY,
     is_update=True,
 )
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "update_space")
 @handle_cli_exceptions()
 def space_update(version, config):
     """Update a space resource."""
@@ -119,6 +124,7 @@ def space_update(version, config):
 @click.command("hyp-space")
 @click.option("--name", required=True, help="Name of the space")
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "start_space")
 @handle_cli_exceptions()
 def space_start(name, namespace):
     """Start a space resource."""
@@ -130,6 +136,7 @@ def space_start(name, namespace):
 @click.command("hyp-space")
 @click.option("--name", required=True, help="Name of the space")
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "stop_space")
 @handle_cli_exceptions()
 def space_stop(name, namespace):
     """Stop a space resource."""
@@ -143,6 +150,7 @@ def space_stop(name, namespace):
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
 @click.option("--pod-name", required=False, help="Name of the pod to get logs from")
 @click.option("--container", required=False, help="Name of the container to get logs from")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "get_logs_for_space")
 @handle_cli_exceptions()
 def space_get_logs(name, namespace, pod_name, container):
     """Get logs for a space resource."""
@@ -155,6 +163,8 @@ def space_get_logs(name, namespace, pod_name, container):
 @click.option("--name", required=True, help="Name of the space")
 @click.option("--namespace", "-n", required=False, default="default", help="Kubernetes namespace")
 @click.option("--local-port", required=False, default=DEFAULT_SPACE_PORT, help="Localhost port that is mapped to the space")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "portforward_for_space")
+@handle_cli_exceptions()
 def space_portforward(name, namespace, local_port):
     """Port forward to localhost for a space resource."""
     # Validate input port
