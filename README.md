@@ -706,7 +706,17 @@ hyp create hyp-space \
 #### List Spaces
 
 ```bash
+# List spaces in default namespace
 hyp list hyp-space
+
+# List spaces in specific namespace
+hyp list hyp-space --namespace my-namespace
+
+# List spaces across all namespaces
+hyp list hyp-space --all-namespaces
+
+# List spaces with JSON output
+hyp list hyp-space --output json
 ```
 
 #### Describe a Space
@@ -742,13 +752,27 @@ hyp get-logs hyp-space --name myspace
 hyp delete hyp-space --name myspace
 ```
 
+#### Port Forward to a Space
+
+Port forward to access a space from your local machine:
+
+```bash
+# Port forward with default port (8888)
+hyp portforward hyp-space --name myspace
+
+# Port forward with custom local port
+hyp portforward hyp-space --name myspace --local-port 8080
+```
+
+Access the space via `http://localhost:<local-port>` after port forwarding is established. Press Ctrl+C to stop port forwarding.
+
 #### Space Template Management
 
 Create reusable space templates:
 
 ```bash
 hyp create hyp-space-template --file template.yaml
-hyp list hyp-space-template
+hyp list hyp-space-template --all-namespaces
 hyp describe hyp-space-template --name <template-name>
 hyp update hyp-space-template --name <template-name> --file updated-template.yaml
 hyp delete hyp-space-template --name <template-name>
@@ -1282,6 +1306,23 @@ space = HPSpace.get(name="myspace")
 # Delete the space
 space.delete()
 ```
+
+#### Port Forward to a Space
+
+```python
+from sagemaker.hyperpod.space.hyperpod_space import HPSpace
+
+# Get existing space
+space = HPSpace.get(name="myspace")
+
+# Port forward with default remote port (8888)
+space.portforward_space(local_port="8080")
+
+# Port forward with custom remote port
+space.portforward_space(local_port="8080", remote_port="8888")
+```
+
+Access the space via `http://localhost:<local-port>` after port forwarding is established. Press Ctrl+C to stop port forwarding.
 
 #### Space Template Management
 

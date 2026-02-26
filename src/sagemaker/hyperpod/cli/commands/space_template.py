@@ -3,6 +3,7 @@ import json
 import yaml
 from tabulate import tabulate
 from sagemaker.hyperpod.space.hyperpod_space_template import HPSpaceTemplate
+from sagemaker.hyperpod.cli.clients.kubernetes_client import KubernetesClient
 from sagemaker.hyperpod.common.cli_decorators import handle_cli_exceptions
 from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
     _hyperpod_telemetry_emitter,
@@ -23,12 +24,27 @@ def space_template_create(file):
 
 @click.command("hyp-space-template")
 @click.option("--namespace", "-n", required=False, default=None, help="Kubernetes namespace")
+@click.option("--all-namespaces", "-A", is_flag=True, help="List space templates across all namespaces")
 @click.option("--output", "-o", type=click.Choice(["table", "json"]), default="table")
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_space_templates")
 @handle_cli_exceptions()
-def space_template_list(namespace, output):
+def space_template_list(namespace, all_namespaces, output):
     """List space-template resources."""
-    templates = HPSpaceTemplate.list(namespace)
+    templates = []
+
+    if all_namespaces:
+        k8s_client = KubernetesClient()
+        namespaces = k8s_client.list_namespaces()
+
+        for ns in namespaces:
+            try:
+                ns_templates = HPSpaceTemplate.list(ns)
+                templates.extend(ns_templates)
+            except Exception as e:
+                click.echo(f"Warning: Failed to list space templates in namespace '{ns}': {e}", err=True)
+                continue
+    else:
+        templates = HPSpaceTemplate.list(namespace)
     
     if output == "json":
         templates_data = [template.to_dict() for template in templates]

@@ -177,3 +177,43 @@ class TestSpaceTemplateCommands(unittest.TestCase):
         self.assertIn("Space template 'test-template' in namespace 'None' updated successfully", result.output)
         mock_hp_space_template.get.assert_called_once_with("test-template", None)
         mock_template_instance.update.assert_called_once_with("test.yaml")
+
+    @patch("sagemaker.hyperpod.cli.commands.space_template.KubernetesClient")
+    @patch("sagemaker.hyperpod.cli.commands.space_template.HPSpaceTemplate")
+    def test_space_template_list_all_namespaces_table_output(self, mock_hp_space_template, mock_k8s_client):
+        """Test space template list with --all-namespaces flag and table output"""
+        mock_k8s_instance = Mock()
+        mock_k8s_instance.list_namespaces.return_value = ["default", "test-ns", "prod-ns"]
+        mock_k8s_client.return_value = mock_k8s_instance
+
+        mock_template1 = Mock()
+        mock_template1.name = "template1"
+        mock_template1.namespace = "default"
+        mock_template1.config_data = {"spec": {"displayName": "Template 1", "defaultImage": "image1"}}
+        
+        mock_template2 = Mock()
+        mock_template2.name = "template2"
+        mock_template2.namespace = "test-ns"
+        mock_template2.config_data = {"spec": {"displayName": "Template 2", "defaultImage": "image2"}}
+        
+        mock_template3 = Mock()
+        mock_template3.name = "template3"
+        mock_template3.namespace = "prod-ns"
+        mock_template3.config_data = {"spec": {"displayName": "Template 3", "defaultImage": "image3"}}
+        
+        mock_hp_space_template.list.side_effect = [
+            [mock_template1],
+            [mock_template2],
+            [mock_template3]
+        ]
+        
+        result = self.runner.invoke(space_template_list, ["--all-namespaces", "--output", "table"])
+        
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("template1", result.output)
+        self.assertIn("template2", result.output)
+        self.assertIn("template3", result.output)
+        self.assertIn("default", result.output)
+        self.assertIn("test-ns", result.output)
+        self.assertIn("prod-ns", result.output)
+        self.assertEqual(mock_hp_space_template.list.call_count, 3)

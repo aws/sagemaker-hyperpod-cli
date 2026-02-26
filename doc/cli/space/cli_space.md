@@ -16,6 +16,7 @@ Complete reference for Amazon SageMaker Space management commands and configurat
 * [Start Space](#hyp-start-hyp-space)
 * [Stop Space](#hyp-stop-hyp-space)
 * [Get Logs](#hyp-get-logs-hyp-space)
+* [Port Forward](#hyp-portforward-hyp-space)
 * [Create Space Access](#hyp-create-hyp-space-access)
 * [Create Space Template](#hyp-create-hyp-space-template)
 * [List Space Templates](#hyp-list-hyp-space-template)
@@ -76,7 +77,7 @@ Commands for managing Amazon SageMaker Spaces.
 
 ### hyp list hyp-space
 
-List all spaces in a namespace.
+List all spaces in a namespace or across all namespaces.
 
 #### Syntax
 
@@ -89,12 +90,23 @@ hyp list hyp-space [OPTIONS]
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `--namespace, -n` | TEXT | No | Kubernetes namespace (default: "default") |
+| `--all-namespaces, -A` | FLAG | No | List spaces across all namespaces |
 | `--output, -o` | TEXT | No | Output format: table or json (default: "table") |
 
-#### Example
+#### Examples
 
 ```bash
-hyp list hyp-space --namespace default --output table
+# List spaces in default namespace
+hyp list hyp-space
+
+# List spaces in specific namespace
+hyp list hyp-space --namespace my-namespace
+
+# List spaces across all namespaces
+hyp list hyp-space --all-namespaces
+
+# List spaces with JSON output
+hyp list hyp-space --output json
 ```
 
 ### hyp describe hyp-space
@@ -261,6 +273,39 @@ hyp get-logs hyp-space [OPTIONS]
 hyp get-logs hyp-space --name my-space --namespace default --pod-name my-pod
 ```
 
+### hyp portforward hyp-space
+
+Port forward to a space resource for local development access.
+
+#### Syntax
+
+```bash
+hyp portforward hyp-space [OPTIONS]
+```
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `--name` | TEXT | Yes | Name of the space to port forward to |
+| `--namespace, -n` | TEXT | No | Kubernetes namespace (default: "default") |
+| `--local-port` | TEXT | No | Local port to forward from (default: "8888") |
+
+#### Examples
+
+```bash
+# Port forward with default port (8888)
+hyp portforward hyp-space --name my-space
+
+# Port forward with custom local port
+hyp portforward hyp-space --name my-space --local-port 8080
+
+# Port forward to space in specific namespace
+hyp portforward hyp-space --name my-space --namespace my-namespace --local-port 8080
+```
+
+Access the space via `http://localhost:<local-port>` after port forwarding is established. Press Ctrl+C to stop port forwarding.
+
 ## Space Access Commands
 
 Commands for managing space access resources.
@@ -330,6 +375,7 @@ hyp list hyp-space-template [OPTIONS]
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `--namespace, -n` | TEXT | No | Kubernetes namespace |
+| `--all-namespaces, -A` | FLAG | No | List spaces across all namespaces |
 | `--output, -o` | TEXT | No | Output format: table or json (default: "table") |
 
 #### Example

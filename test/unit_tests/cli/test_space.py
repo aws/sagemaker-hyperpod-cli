@@ -143,6 +143,58 @@ class TestSpaceCommands:
         assert "No spaces found" in result.output
 
     @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
+    @patch('sagemaker.hyperpod.cli.commands.space.KubernetesClient')
+    def test_space_list_all_namespaces(self, mock_k8s_client_class, mock_hp_space_class, mock_namespace_exists):
+        """Test space list with --all-namespaces flag and table output"""
+        # Mock KubernetesClient
+        mock_k8s_client = Mock()
+        mock_k8s_client.list_namespaces.return_value = ['ns1', 'ns2', 'ns3']
+        mock_k8s_client_class.return_value = mock_k8s_client
+
+        # Mock spaces from different namespaces
+        mock_space1 = Mock()
+        mock_space1.config.name = "space1"
+        mock_space1.config.namespace = "ns1"
+        mock_space1.status = {"conditions": [
+            {"type": "Available", "status": "True"},
+            {"type": "Progressing", "status": "False"},
+            {"type": "Degraded", "status": "False"}
+        ]}
+        
+        mock_space2 = Mock()
+        mock_space2.config.name = "space2"
+        mock_space2.config.namespace = "ns2"
+        mock_space2.status = {"conditions": [
+            {"type": "Available", "status": "True"},
+            {"type": "Progressing", "status": "False"},
+            {"type": "Degraded", "status": "False"}
+        ]}
+
+        # Mock HPSpace.list to return different spaces for different namespaces
+        def list_side_effect(namespace):
+            if namespace == 'ns1':
+                return [mock_space1]
+            elif namespace == 'ns2':
+                return [mock_space2]
+            else:
+                return []
+        
+        mock_hp_space_class.list.side_effect = list_side_effect
+
+        result = self.runner.invoke(space_list, [
+            '--all-namespaces',
+            '--output', 'table'
+        ])
+
+        assert result.exit_code == 0
+        assert "space1" in result.output
+        assert "space2" in result.output
+        assert "ns1" in result.output
+        assert "ns2" in result.output
+        mock_k8s_client.list_namespaces.assert_called_once()
+        assert mock_hp_space_class.list.call_count == 3
+
+    @patch('sagemaker.hyperpod.cli.commands.space.HPSpace')
     def test_space_describe_yaml_output(self, mock_hp_space_class, mock_namespace_exists):
         """Test space describe with YAML output"""
         mock_resource = {"metadata": {"name": "test-space"}}
