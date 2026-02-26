@@ -3,12 +3,17 @@ import json
 import yaml
 from tabulate import tabulate
 from sagemaker.hyperpod.space.hyperpod_space_template import HPSpaceTemplate
-from sagemaker.hyperpod.common.cli_decorators import handle_cli_exceptions
 from sagemaker.hyperpod.cli.clients.kubernetes_client import KubernetesClient
+from sagemaker.hyperpod.common.cli_decorators import handle_cli_exceptions
+from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
+    _hyperpod_telemetry_emitter,
+)
+from sagemaker.hyperpod.common.telemetry.constants import Feature
 
 
 @click.command("hyp-space-template")
 @click.option("--file", "-f", required=True, help="YAML file containing the configuration")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "create_space_template")
 @handle_cli_exceptions()
 def space_template_create(file):
     """Create a space-template resource."""
@@ -21,6 +26,7 @@ def space_template_create(file):
 @click.option("--namespace", "-n", required=False, default=None, help="Kubernetes namespace")
 @click.option("--all-namespaces", "-A", is_flag=True, help="List space templates across all namespaces")
 @click.option("--output", "-o", type=click.Choice(["table", "json"]), default="table")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_space_templates")
 @handle_cli_exceptions()
 def space_template_list(namespace, all_namespaces, output):
     """List space-template resources."""
@@ -62,6 +68,7 @@ def space_template_list(namespace, all_namespaces, output):
 @click.option("--name", required=True, help="Name of the space template")
 @click.option("--namespace", "-n", required=False, default=None, help="Kubernetes namespace")
 @click.option("--output", "-o", type=click.Choice(["yaml", "json"]), default="yaml")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "describe_space_template")
 @handle_cli_exceptions()
 def space_template_describe(name, namespace, output):
     """Describe a space-template resource."""
@@ -76,6 +83,7 @@ def space_template_describe(name, namespace, output):
 @click.command("hyp-space-template")
 @click.option("--name", required=True, help="Name of the space template")
 @click.option("--namespace", "-n", required=False, default=None, help="Kubernetes namespace")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "delete_space_template")
 @handle_cli_exceptions()
 def space_template_delete(name, namespace):
     """Delete a space-template resource."""
@@ -88,6 +96,7 @@ def space_template_delete(name, namespace):
 @click.option("--name", required=True, help="Name of the space template")
 @click.option("--namespace", "-n", required=False, default=None, help="Kubernetes namespace")
 @click.option("--file", "-f", required=True, help="YAML file containing the updated template")
+@_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "update_space_template")
 @handle_cli_exceptions()
 def space_template_update(name, namespace, file):
     """Update a space-template resource."""
