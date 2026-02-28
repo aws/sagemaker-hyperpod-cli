@@ -1,5 +1,36 @@
 # Changelog
 
+## v3.7.0 (2026-03-02)
+
+Space CLI
+- Added list all functionality and documentation updates
+- Disabled traceback for cleaner error output
+
+Inference Operator
+- Inference Operator AddOn with NodeAffinity support and version 3.0 update
+- Updated hyperpod-inference-operator to version 2.0.0 in HyperPodHelmChart
+- Added AddOn migration script and README
+
+#### Enhancements
+
+Monitoring & Observability
+- Emit metrics for CLI commands
+
+Testing & Validation
+- Added unit tests for inference CRDs
+- Added CRD format check for inference
+
+Dependencies & Versions
+- Updated GPU operator container toolkit version
+- Updated aws-efa-k8s-device-plugin version to 0.5.20
+
+Configuration
+- Instance types CRD changes
+
+#### Bug Fixes
+
+- Fixed syntax error in inferenceendpointconfigs by removing tab
+
 ## v3.6.0 (2026-01-27)
 
 ### Features
@@ -124,6 +155,7 @@
 ### Features
 
 - feature: Add support for SageMaker HyperPod CLI
+
 
 
 
