@@ -1,5 +1,6 @@
 import unittest
 from hyperpod_pytorch_job_template.v1_1.model import PyTorchJobConfig
+from hyperpod_pytorch_job_template.v1_0.model import PyTorchJobConfig as PyTorchJobConfigV1_0
 
 
 class TestPyTorchJobConfigEFA(unittest.TestCase):
@@ -147,6 +148,53 @@ class TestPyTorchJobConfigEFA(unittest.TestCase):
     #     self.assertEqual(container.resources.requests["nvidia.com/gpu"], "4")
     #     # Limits should default to "0" since accelerators_limit not specified
     #     self.assertEqual(container.resources.limits["nvidia.com/gpu"], "0")
+
+
+class TestDeepHealthCheckNodeSelector(unittest.TestCase):
+    """Test that deep_health_check_passed_nodes_only generates the correct nodeSelector label."""
+
+    EXPECTED_LABEL_KEY = "sagemaker.amazonaws.com/deep-health-check-status"
+    EXPECTED_LABEL_VALUE = "Passed"
+
+    def test_v1_1_model_to_domain_deep_health_check_label(self):
+        """Test v1.1 model to_domain() produces the correct node selector label."""
+        config = PyTorchJobConfig(
+            job_name="test-dhc",
+            image="pytorch:latest",
+            deep_health_check_passed_nodes_only=True,
+            instance_type="ml.g5.xlarge",
+            accelerators=1,
+        )
+        job = config.to_domain()
+        node_selector = job.replicaSpecs[0].template.spec.nodeSelector
+        self.assertIn(self.EXPECTED_LABEL_KEY, node_selector)
+        self.assertEqual(node_selector[self.EXPECTED_LABEL_KEY], self.EXPECTED_LABEL_VALUE)
+
+    def test_v1_1_model_to_domain_no_deep_health_check(self):
+        """Test v1.1 model to_domain() omits the label when flag is False."""
+        config = PyTorchJobConfig(
+            job_name="test-no-dhc",
+            image="pytorch:latest",
+            deep_health_check_passed_nodes_only=False,
+            instance_type="ml.g5.xlarge",
+            accelerators=1,
+        )
+        job = config.to_domain()
+        node_selector = job.replicaSpecs[0].template.spec.nodeSelector or {}
+        self.assertNotIn(self.EXPECTED_LABEL_KEY, node_selector)
+
+    def test_v1_0_model_to_domain_deep_health_check_label(self):
+        """Test v1.0 model to_domain() produces the correct node selector label."""
+        config = PyTorchJobConfigV1_0(
+            job_name="test-dhc-v0",
+            image="pytorch:latest",
+            deep_health_check_passed_nodes_only=True,
+            instance_type="ml.g5.xlarge",
+        )
+        job = config.to_domain()
+        node_selector = job.replicaSpecs[0].template.spec.nodeSelector
+        self.assertIn(self.EXPECTED_LABEL_KEY, node_selector)
+        self.assertEqual(node_selector[self.EXPECTED_LABEL_KEY], self.EXPECTED_LABEL_VALUE)
 
 
 if __name__ == '__main__':

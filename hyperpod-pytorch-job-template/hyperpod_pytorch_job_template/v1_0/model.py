@@ -268,7 +268,7 @@ class PyTorchJobConfig(BaseModel):
         node_selector = build_dict(
             **{"node.kubernetes.io/instance-type": self.instance_type} if self.instance_type else {},
             **self.label_selector if self.label_selector else {},
-            **{"deep-health-check-passed": "true"} if self.deep_health_check_passed_nodes_only else {}
+            **{"sagemaker.amazonaws.com/deep-health-check-status": "Passed"} if self.deep_health_check_passed_nodes_only else {}
         )
 
         # Build spec
