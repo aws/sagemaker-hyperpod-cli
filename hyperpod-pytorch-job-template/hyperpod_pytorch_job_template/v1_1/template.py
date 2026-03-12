@@ -135,7 +135,7 @@ spec:
 {%-             endfor %}
 {%-           endif %}
 {%-           if deep_health_check_passed_nodes_only %}
-            deep-health-check-passed: "true"
+            sagemaker.amazonaws.com/deep-health-check-status: "Passed"
 {%-           endif %}
 {%-           if accelerator_partition_type %}
             nvidia.com/mig.config.state: "success"
