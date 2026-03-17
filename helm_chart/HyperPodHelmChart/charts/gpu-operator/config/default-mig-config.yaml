@@ -312,3 +312,31 @@ mig-configs:
       mig-devices:
         "1g.18gb": 5
         "2g.35gb": 1
+
+  # RTX PRO 6000 Blackwell (g7e) profiles - max 4 instances per GPU
+  # Profiles: 1g.24gb (x4), 2g.48gb (x2), 4g.96gb (x1)
+
+  all-1g.24gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.24gb": 4
+
+  all-2g.48gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "2g.48gb": 2
+
+  all-4g.96gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "4g.96gb": 1
+
+  mixed-2-1g.24gb-1-2g.48gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.24gb": 2
+        "2g.48gb": 1
