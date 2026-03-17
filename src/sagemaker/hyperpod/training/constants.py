@@ -32,6 +32,12 @@ INSTANCE_RESOURCES = {
     "ml.g6e.12xlarge": {"cpu": 48, "gpu": 4, "trainium": 0, "memory": 384, "efa": 1},
     "ml.g6e.24xlarge": {"cpu": 96, "gpu": 4, "trainium": 0, "memory": 768, "efa": 2},
     "ml.g6e.48xlarge": {"cpu": 192, "gpu": 8, "trainium": 0, "memory": 1536, "efa": 4},
+    "ml.g7e.2xlarge": {"cpu": 8, "gpu": 1, "trainium": 0, "memory": 64, "efa": 0},
+    "ml.g7e.4xlarge": {"cpu": 16, "gpu": 1, "trainium": 0, "memory": 128, "efa": 0},
+    "ml.g7e.8xlarge": {"cpu": 32, "gpu": 1, "trainium": 0, "memory": 256, "efa": 1},
+    "ml.g7e.12xlarge": {"cpu": 48, "gpu": 2, "trainium": 0, "memory": 512, "efa": 1},
+    "ml.g7e.24xlarge": {"cpu": 96, "gpu": 4, "trainium": 0, "memory": 1024, "efa": 2},
+    "ml.g7e.48xlarge": {"cpu": 192, "gpu": 8, "trainium": 0, "memory": 2048, "efa": 4},
     "ml.p5e.48xlarge": {"cpu": 192, "gpu": 8, "trainium": 0, "memory": 2048, "efa": 32},
     "ml.p5en.48xlarge": {"cpu": 192, "gpu": 8, "trainium": 0, "memory": 2048, "efa": 16},
     "ml.trn2.3xlarge": {"cpu": 12, "gpu": 0, "trainium": 1, "memory": 128, "efa": 1},
@@ -126,7 +132,13 @@ INSTANCE_TYPE_MIG_PROFILES = {
     'ml.p5e.48xlarge': ['mig-1g.18gb', 'mig-1g.35gb', 'mig-2g.35gb', 'mig-3g.71gb', 'mig-4g.71gb', 'mig-7g.141gb'],
     'ml.p5en.48xlarge': ['mig-1g.18gb', 'mig-1g.35gb', 'mig-2g.35gb', 'mig-3g.71gb', 'mig-4g.71gb', 'mig-7g.141gb'],
     'p6-b200.48xlarge': ['mig-1g.23gb', 'mig-1g.45gb', 'mig-2g.45gb', 'mig-3g.90gb', 'mig-4g.90gb', 'mig-7g.180gb'],
-    'ml.p6e-gb200.36xlarge': ['mig-1g.23gb', 'mig-1g.47gb', 'mig-2g.47gb', 'mig-3g.93gb', 'mig-4g.93gb', 'mig-7g.186gb']
+    'ml.p6e-gb200.36xlarge': ['mig-1g.23gb', 'mig-1g.47gb', 'mig-2g.47gb', 'mig-3g.93gb', 'mig-4g.93gb', 'mig-7g.186gb'],
+    'ml.g7e.2xlarge': ['mig-1g.24gb', 'mig-2g.48gb', 'mig-4g.96gb'],
+    'ml.g7e.4xlarge': ['mig-1g.24gb', 'mig-2g.48gb', 'mig-4g.96gb'],
+    'ml.g7e.8xlarge': ['mig-1g.24gb', 'mig-2g.48gb', 'mig-4g.96gb'],
+    'ml.g7e.12xlarge': ['mig-1g.24gb', 'mig-2g.48gb', 'mig-4g.96gb'],
+    'ml.g7e.24xlarge': ['mig-1g.24gb', 'mig-2g.48gb', 'mig-4g.96gb'],
+    'ml.g7e.48xlarge': ['mig-1g.24gb', 'mig-2g.48gb', 'mig-4g.96gb'],
 }
 
 ALLOWED_ACCELERATOR_PARTITION_TYPES = set().union(*INSTANCE_TYPE_MIG_PROFILES.values())
