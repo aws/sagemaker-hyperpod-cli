@@ -399,14 +399,21 @@ class HpClusterStack(ClusterStackBase):
 
             response = cf.list_stacks(**list_params)
 
+            # Paginate through all results
+            all_summaries = response.get('StackSummaries', [])
+            while 'NextToken' in response:
+                list_params['NextToken'] = response['NextToken']
+                response = cf.list_stacks(**list_params)
+                all_summaries.extend(response.get('StackSummaries', []))
+
             # Only filter DELETE_COMPLETE when no explicit filter is provided
-            if stack_status_filter is None and 'StackSummaries' in response:
-                response['StackSummaries'] = [
-                    stack for stack in response['StackSummaries']
+            if stack_status_filter is None:
+                all_summaries = [
+                    stack for stack in all_summaries
                     if stack.get('StackStatus') != 'DELETE_COMPLETE'
                 ]
 
-            return response
+            return {'StackSummaries': all_summaries}
         except cf.exceptions.ClientError as e:
             error_code = e.response['Error']['Code']
 

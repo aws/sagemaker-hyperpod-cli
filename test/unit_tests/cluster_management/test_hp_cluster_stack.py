@@ -512,6 +512,28 @@ class TestHpClusterStackList(unittest.TestCase):
         assert 'deleted-stack' not in stack_names
 
     @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.create_boto3_client')
+    def test_list_paginates_through_all_pages(self, mock_create_client):
+        """Test that list() follows NextToken to collect all pages."""
+        mock_cf_client = MagicMock()
+        mock_create_client.return_value = mock_cf_client
+
+        page1 = {
+            'StackSummaries': [{'StackName': 'stack-1', 'StackStatus': 'CREATE_COMPLETE'}],
+            'NextToken': 'token-1',
+        }
+        page2 = {
+            'StackSummaries': [{'StackName': 'stack-2', 'StackStatus': 'CREATE_COMPLETE'}],
+        }
+        mock_cf_client.list_stacks.side_effect = [page1, page2]
+
+        result = HpClusterStack.list()
+
+        assert mock_cf_client.list_stacks.call_count == 2
+        assert len(result['StackSummaries']) == 2
+        stack_names = [s['StackName'] for s in result['StackSummaries']]
+        assert stack_names == ['stack-1', 'stack-2']
+
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.create_boto3_client')
     def test_list_with_status_filter(self, mock_create_client):
         """Test that list() uses API filter and returns only matching stacks."""
         # Arrange
@@ -553,7 +575,7 @@ class TestHpClusterStackList(unittest.TestCase):
         result = HpClusterStack.list()
         
         # Assert
-        assert result == {}
+        assert result == {'StackSummaries': []}
 
     @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.create_boto3_client')
     def test_list_with_region(self, mock_create_client):
