@@ -11,7 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from typing import Optional
-import boto3
+from sagemaker.hyperpod.common.utils import create_boto3_client
 
 from sagemaker.hyperpod.cli.clients.kubernetes_client import (
     KubernetesClient,
@@ -129,7 +129,7 @@ class GetLogs:
         return console_prefix + log_group_prefix + log_stream
 
     def is_container_insights_addon_enabled(self, eks_cluster_name):
-        response = boto3.client("eks").list_addons(clusterName=eks_cluster_name, maxResults=50)
+        response = create_boto3_client("eks").list_addons(clusterName=eks_cluster_name, maxResults=50)
         if AMAZON_ClOUDWATCH_OBSERVABILITY in response.get('addons', []):
             return True
         else:

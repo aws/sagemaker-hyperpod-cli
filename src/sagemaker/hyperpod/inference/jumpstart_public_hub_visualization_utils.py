@@ -15,7 +15,7 @@
 from __future__ import absolute_import
 
 import time
-import boto3
+from sagemaker.hyperpod.common.utils import create_boto3_client
 import itables
 import pandas
 import logging
@@ -32,8 +32,8 @@ class ModelDataLoader:
     MAX_RESULTS_PER_CALL = 100
     
     def __init__(self, region: str, hub_name: str = "SageMakerPublicHub"):
-        config = Config(region_name=region, retries={"max_attempts": 10, "mode": "adaptive"})
-        self.client = boto3.client("sagemaker", config=config)
+        config = Config(retries={"max_attempts": 10, "mode": "adaptive"})
+        self.client = create_boto3_client("sagemaker", region_name=region, config=config)
         self.hub_name = hub_name
         self.all_data = []
         self.next_token = None

@@ -387,15 +387,15 @@ def test_custom_create_missing_required_args():
 
 
 @patch("sagemaker.hyperpod.cli.commands.inference.Endpoint.get")
-@patch("sagemaker.hyperpod.cli.commands.inference.boto3")
-def test_custom_invoke_success(mock_boto3, mock_endpoint_get):
+@patch("sagemaker.hyperpod.cli.commands.inference.create_boto3_client")
+def test_custom_invoke_success(mock_create_client, mock_endpoint_get):
     mock_endpoint = Mock()
     mock_endpoint.endpoint_status = "InService"
     mock_endpoint_get.return_value = mock_endpoint
 
     mock_body = Mock()
     mock_body.read.return_value.decode.return_value = '{"ok": true}'
-    mock_boto3.client.return_value.invoke_endpoint.return_value = {"Body": mock_body}
+    mock_create_client.return_value.invoke_endpoint.return_value = {"Body": mock_body}
 
     runner = CliRunner()
     result = runner.invoke(
@@ -406,8 +406,8 @@ def test_custom_invoke_success(mock_boto3, mock_endpoint_get):
     assert '"ok": true' in result.output
 
 
-@patch("sagemaker.hyperpod.cli.commands.inference.boto3")
-def test_custom_invoke_invalid_json(mock_boto3):
+@patch("sagemaker.hyperpod.cli.commands.inference.create_boto3_client")
+def test_custom_invoke_invalid_json(mock_create_client):
     runner = CliRunner()
     result = runner.invoke(custom_invoke, ["--endpoint-name", "ep", "--body", "bad"])
     assert result.exit_code != 0

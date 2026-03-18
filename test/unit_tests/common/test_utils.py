@@ -14,6 +14,7 @@ from sagemaker.hyperpod.common.utils import (
     get_cluster_context,
     parse_client_kubernetes_version,
     is_kubernetes_version_compatible,
+    _resolve_region,
 )
 from kubernetes.client.exceptions import ApiException
 from pydantic import ValidationError
@@ -443,3 +444,39 @@ class TestUtilityFunctions(unittest.TestCase):
         
         self.assertEqual(result, "arn:aws:eks:us-west-2:123456789012:cluster/my-cluster")
         mock_list_contexts.assert_called_once()
+
+
+class TestResolveRegion(unittest.TestCase):
+    """Test the _resolve_region function"""
+
+    def test_explicit_region_takes_precedence(self):
+        with patch.dict('os.environ', {'AWS_REGION': 'us-east-1'}):
+            assert _resolve_region('eu-west-1') == 'eu-west-1'
+
+    @patch.dict('os.environ', {'AWS_REGION': 'us-west-2'}, clear=False)
+    @patch('sagemaker.hyperpod.common.utils.boto3.session.Session')
+    def test_aws_region_env_var(self, mock_session):
+        assert _resolve_region() == 'us-west-2'
+        mock_session.assert_not_called()
+
+    @patch.dict('os.environ', {}, clear=True)
+    @patch('sagemaker.hyperpod.common.utils.boto3.session.Session')
+    def test_boto3_default_region_fallback(self, mock_session):
+        mock_session.return_value.region_name = 'ap-southeast-1'
+        assert _resolve_region() == 'ap-southeast-1'
+
+    @patch('sagemaker.hyperpod.common.utils.get_cluster_context')
+    @patch.dict('os.environ', {}, clear=True)
+    @patch('sagemaker.hyperpod.common.utils.boto3.session.Session')
+    def test_cluster_context_fallback(self, mock_session, mock_context):
+        mock_session.return_value.region_name = None
+        mock_context.return_value = 'arn:aws:eks:us-west-2:123456789012:cluster/my-cluster'
+        assert _resolve_region() == 'us-west-2'
+
+    @patch('sagemaker.hyperpod.common.utils.get_cluster_context')
+    @patch.dict('os.environ', {}, clear=True)
+    @patch('sagemaker.hyperpod.common.utils.boto3.session.Session')
+    def test_returns_none_when_nothing_configured(self, mock_session, mock_context):
+        mock_session.return_value.region_name = None
+        mock_context.side_effect = Exception("no context")
+        assert _resolve_region() is None

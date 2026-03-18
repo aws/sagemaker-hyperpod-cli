@@ -11,7 +11,7 @@ Public Interface:
 All other functions are private implementation details and should not be used directly.
 """
 
-import boto3
+from sagemaker.hyperpod.common.utils import create_boto3_client
 import click
 import logging
 from typing import List, Dict, Any, Optional, Tuple, Callable
@@ -53,7 +53,7 @@ def _get_stack_resources(stack_name: str, region: str, logger: Optional[logging.
     if logger:
         logger.debug(f"Fetching resources for stack '{stack_name}' in region '{region}'")
     
-    cf_client = boto3.client('cloudformation', region_name=region)
+    cf_client = create_boto3_client('cloudformation', region_name=region)
     try:
         resources_response = cf_client.list_stack_resources(StackName=stack_name)
         resources = resources_response.get('StackResourceSummaries', [])
@@ -208,7 +208,7 @@ def _handle_partial_deletion_failure(stack_name: str, region: str, original_reso
     message_callback("✗ Stack deletion failed")
     
     try:
-        cf_client = boto3.client('cloudformation', region_name=region)
+        cf_client = create_boto3_client('cloudformation', region_name=region)
         current_resources_response = cf_client.list_stack_resources(StackName=stack_name)
         current_resources = current_resources_response.get('StackResourceSummaries', [])
         
@@ -273,7 +273,7 @@ def _perform_stack_deletion(stack_name: str, region: str, retain_list: List[str]
         if retain_list:
             logger.debug(f"Retaining resources: {retain_list}")
     
-    cf_client = boto3.client('cloudformation', region_name=region)
+    cf_client = create_boto3_client('cloudformation', region_name=region)
     
     delete_params = {'StackName': stack_name}
     if retain_list:

@@ -417,10 +417,10 @@ def _is_valid_jumpstart_model_id(model_id: str) -> bool:
     Uses same SageMaker API that's already being called during creation.
     """
     try:
-        import boto3
         from botocore.exceptions import ClientError
+        from sagemaker.hyperpod.common.utils import create_boto3_client
         
-        sagemaker_client = boto3.client('sagemaker')
+        sagemaker_client = create_boto3_client('sagemaker')
         
         # Use same API call that's failing in the current code
         sagemaker_client.describe_hub_content(

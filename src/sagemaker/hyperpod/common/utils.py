@@ -130,7 +130,7 @@ def get_region_from_eks_arn(arn: str) -> str:
 
 
 def get_jumpstart_model_instance_types(model_id, region) -> List[str]:
-    client = boto3.client("sagemaker", region_name=region)
+    client = create_boto3_client("sagemaker", region_name=region)
 
     response = client.describe_hub_content(
         HubName="SageMakerPublicHub", HubContentType="Model", HubContentName=model_id
@@ -145,7 +145,7 @@ def get_jumpstart_model_instance_types(model_id, region) -> List[str]:
 def get_cluster_instance_types(cluster, region) -> set:
     instance_types = set({})
 
-    sagemaker_client = boto3.client("sagemaker", region_name=region)
+    sagemaker_client = create_boto3_client("sagemaker", region_name=region)
     response = sagemaker_client.describe_cluster(ClusterName=cluster)
 
     for instance_group in response["InstanceGroups"]:
@@ -278,7 +278,7 @@ def set_cluster_context(
     logger = logging.getLogger(__name__)
     logger = setup_logging(logger)
 
-    client = boto3.client("sagemaker", region_name=region)
+    client = create_boto3_client("sagemaker", region_name=region)
 
     if not is_eks_orchestrator(client, cluster_name):
         raise ValueError(f"Cluster '{cluster_name}' is not EKS-orchestrated. HyperPod CLI only supports EKS-orchestrated clusters.")
@@ -309,7 +309,7 @@ def get_cluster_context():
 def list_clusters(
     region: Optional[str] = None,
 ):
-    client = boto3.client("sagemaker", region_name=region)
+    client = create_boto3_client("sagemaker", region_name=region)
     clusters = client.list_clusters()
 
     eks_clusters = []
@@ -330,7 +330,7 @@ def get_current_cluster():
     region = get_region_from_eks_arn(current_context)
 
     hyperpod_clusters = list_clusters(region)["Eks"]
-    client = boto3.client("sagemaker", region_name=region)
+    client = create_boto3_client("sagemaker", region_name=region)
 
     for cluster_name in hyperpod_clusters:
         if not is_eks_orchestrator(client, cluster_name):
@@ -356,18 +356,42 @@ def get_current_region():
     except:
         return get_aws_default_region()
       
+def _resolve_region(region_name: Optional[str] = None) -> Optional[str]:
+    """Resolve AWS region using the following fallback order:
+    1. Explicit region_name parameter (from --region flag)
+    2. AWS_REGION env var
+    3. AWS_DEFAULT_REGION / ~/.aws/config (standard boto3 chain)
+    4. Region from current cluster context (last resort)
+    """
+    if region_name:
+        return region_name
+
+    aws_region_env = os.environ.get('AWS_REGION')
+    if aws_region_env:
+        return aws_region_env
+
+    boto3_region = boto3.session.Session().region_name
+    if boto3_region:
+        return boto3_region
+
+    try:
+        return get_region_from_eks_arn(get_cluster_context())
+    except Exception:
+        return None
+
 def create_boto3_client(service_name: str, region_name: Optional[str] = None, **kwargs):
     """Create a boto3 client with smart region handling.
 
     Args:
         service_name (str): AWS service name (e.g., 'sagemaker', 'eks')
-        region_name (Optional[str]): AWS region. If None, uses AWS default
+        region_name (Optional[str]): AWS region. If None, resolved via
+            AWS_REGION env var, boto3 defaults, or cluster context.
         **kwargs: Additional boto3 client parameters
 
     Returns:
         boto3 client instance
     """
-    return boto3.client(service_name, region_name=region_name or boto3.session.Session().region_name, **kwargs)
+    return boto3.client(service_name, region_name=_resolve_region(region_name), **kwargs)
 
 def region_to_az_ids(region_code: str):
     """

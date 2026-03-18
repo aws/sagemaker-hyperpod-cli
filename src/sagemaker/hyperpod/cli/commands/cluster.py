@@ -68,6 +68,7 @@ from sagemaker.hyperpod.cli.utils import (
 )
 from sagemaker.hyperpod.common.utils import (
     get_cluster_context as get_cluster_context_util,
+    _resolve_region,
 )
 from sagemaker.hyperpod.observability.utils import (
     get_monitoring_config,
@@ -171,7 +172,8 @@ def list_cluster(
         user_agent_extra=get_user_agent_extra_suffix()
     )
 
-    session = boto3.Session(region_name=region) if region else boto3.Session()
+    region = _resolve_region(region)
+    session = boto3.Session(region_name=region)
     if not validator.validate_aws_credential(session):
         logger.error("Failed to list clusters capacity due to invalid AWS credentials.")
         sys.exit(1)
@@ -581,7 +583,8 @@ def set_cluster_context(
         botocore_config = botocore.config.Config(
             user_agent_extra=get_user_agent_extra_suffix()
         )
-        session = boto3.Session(region_name=region) if region else boto3.Session()
+        region = _resolve_region(region)
+        session = boto3.Session(region_name=region)
         if not validator.validate_aws_credential(session):
             logger.error("Cannot connect to HyperPod cluster due to aws credentials error")
             sys.exit(1)
@@ -708,7 +711,8 @@ def describe_cluster(cluster_name: str, debug: bool, region: str) -> None:
         botocore_config = botocore.config.Config(
             user_agent_extra=get_user_agent_extra_suffix()
         )
-        session = boto3.Session(region_name=region) if region else boto3.Session()
+        region = _resolve_region(region)
+        session = boto3.Session(region_name=region)
         sm_client = get_sagemaker_client(session, botocore_config)
 
         # Get cluster details using SageMaker client

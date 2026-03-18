@@ -1,6 +1,7 @@
 import logging
 import yaml
 import boto3
+from sagemaker.hyperpod.common.utils import create_boto3_client
 from typing import List, Optional, ClassVar, Dict, Set, Any
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 from kubernetes import client, config
@@ -429,7 +430,7 @@ class HPSpace(BaseModel):
             namespace = get_default_namespace()
 
         # Get caller identity
-        sts_client = boto3.client('sts')
+        sts_client = create_boto3_client('sts')
         caller_identity = sts_client.get_caller_identity()
         caller_arn = caller_identity['Arn']
 

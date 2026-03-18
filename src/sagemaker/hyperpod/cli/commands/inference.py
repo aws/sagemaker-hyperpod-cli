@@ -1,6 +1,6 @@
 import click
 import json
-import boto3
+from sagemaker.hyperpod.common.utils import create_boto3_client
 from typing import Optional
 from tabulate import tabulate
 
@@ -89,7 +89,7 @@ def custom_invoke(
     except json.JSONDecodeError:
         raise click.ClickException("--body must be valid JSON")
 
-    rt = boto3.client("sagemaker-runtime")
+    rt = create_boto3_client("sagemaker-runtime")
 
     try:
         endpoint = Endpoint.get(endpoint_name)

@@ -1,16 +1,16 @@
 import re
 from typing import Optional
 
-import boto3
 import yaml
 
+from sagemaker.hyperpod.common.utils import create_boto3_client
 from sagemaker.hyperpod.observability.constants import AMAZON_HYPERPOD_OBSERVABILITY, GRAFANA_DASHBOARD_UID
 from sagemaker.hyperpod.observability.MonitoringConfig import MonitoringConfig
 # ToDO : move below functions to SDK util method instead of importing from CLI
 from sagemaker.hyperpod.cli.utils import get_eks_cluster_name, get_hyperpod_cluster_region
 
 def is_observability_addon_enabled(eks_cluster_name):
-    response = boto3.client("eks").list_addons(clusterName=eks_cluster_name, maxResults=50)
+    response = create_boto3_client("eks").list_addons(clusterName=eks_cluster_name, maxResults=50)
     if AMAZON_HYPERPOD_OBSERVABILITY in response.get('addons', []):
         return True
     else:
@@ -41,7 +41,7 @@ def get_monitoring_config() -> Optional[MonitoringConfig]:
     eks_cluster_name = get_eks_cluster_name()
     if not is_observability_addon_enabled(eks_cluster_name):
         return None
-    response = boto3.client("eks").describe_addon(clusterName=eks_cluster_name, addonName=AMAZON_HYPERPOD_OBSERVABILITY)
+    response = create_boto3_client("eks").describe_addon(clusterName=eks_cluster_name, addonName=AMAZON_HYPERPOD_OBSERVABILITY)
     config_values = yaml.safe_load(response['addon']['configurationValues'])
 
     try:
