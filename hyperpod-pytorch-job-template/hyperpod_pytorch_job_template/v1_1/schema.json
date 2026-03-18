@@ -305,12 +305,12 @@
       "minimum": 0,
       "description": "Limit for the amount of memory in GiB"
     },
-    "efa_interfaces": {
+    "efa": {
       "type": "integer",
       "minimum": 0,
-      "description": "Number of EFA interfaces for the instance"
+      "description": "Number of EFA interfaces"
     },
-    "efa_interfaces_limit": {
+    "efa_limit": {
       "type": "integer",
       "minimum": 0,
       "description": "Limit for the number of EFA interfaces"
