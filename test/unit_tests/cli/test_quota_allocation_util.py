@@ -193,18 +193,18 @@ class TestQuotaAllocationUtil:
 
     def test_get_limits_cpu_only_instance(self):
         result = _get_limits("ml.c5.large", 2.0, 8.0, 1, None, None)
-        # CPU-only instance should set accelerator limit to 0 as precaution
-        assert result == {"cpu": "2.0", "memory": "8.0Gi", "nvidia.com/gpu": 0}
+        # CPU-only instance has no accelerator type, so accelerator limit is dropped
+        assert result == {"cpu": "2.0", "memory": "8.0Gi"}
 
     def test_get_limits_invalid_instance_type(self):
         result = _get_limits("invalid-instance", 4.0, 16.0, 2, None, None)
-        # Invalid instance type should set accelerator limit to 0 as precaution
-        assert result == {"cpu": "4.0", "memory": "16.0Gi", "nvidia.com/gpu": 0}
+        # Invalid instance type has no accelerator type, so accelerator limit is dropped
+        assert result == {"cpu": "4.0", "memory": "16.0Gi"}
 
     def test_get_limits_cpu_instance_r7i(self):
         result = _get_limits("ml.r7i.48xlarge", 16.0, 64.0, 2, None, None)
-        # CPU-only instance (ml.r7i.48xlarge) should set accelerator limit to 0 as precaution
-        assert result == {"cpu": "16.0", "memory": "64.0Gi", "nvidia.com/gpu": 0}
+        # CPU-only instance has no accelerator type, so accelerator limit is dropped
+        assert result == {"cpu": "16.0", "memory": "64.0Gi"}
 
     def test_is_valid_no_instance_type_with_resources(self):
         valid, message = _is_valid(4.0, 16.0, None, None, None, None)

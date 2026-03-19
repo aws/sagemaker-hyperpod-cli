@@ -149,6 +149,9 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             elif limits.get(NEURON_RESOURCE_KEY):
                 accelerators_limit = int(limits.get(NEURON_RESOURCE_KEY))
 
+            if instance_type is None and (accelerators is not None or accelerators_limit is not None):
+                raise ValueError("--instance-type is required when specifying accelerator resources")
+
             acc_req, acc_lim = _set_default_accelerators_val(instance_type, accelerators, accelerators_limit)
             _validate_accelerators_inputs(instance_type, acc_req, acc_lim)
 

@@ -146,9 +146,6 @@ def _get_limits(instance_type: str, vcpu_limit: Optional[float], memory_in_gib_l
     if accelerators_limit is not None:
         if type_of_accelerator is not None:
             result[type_of_accelerator] = accelerators_limit
-        else: 
-            # user specified accelerator limit but the instance type wasn't found, set limit to 0 as a precaution 
-            result["nvidia.com/gpu"] = 0
     if accelerator_partition_limit is not None:
         result[f"nvidia.com/{accelerator_partition_type}"] = accelerator_partition_limit
     if memory_in_gib_limit is not None:
