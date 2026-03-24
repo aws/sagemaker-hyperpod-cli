@@ -60,21 +60,17 @@ class TestHpClusterStack(unittest.TestCase):
         # Verify create_stack was called
         self.assertTrue(mock_cf_client.create_stack.called)
 
-    @patch('boto3.session.Session')
-    @patch('boto3.client')
-    def test_describe_success(self, mock_boto3_client, mock_boto3_session):
-        mock_region = "us-west-2"
-        mock_boto3_session.return_value.region_name = mock_region
-        
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.create_boto3_client')
+    def test_describe_success(self, mock_create_client):
         mock_cf_client = MagicMock()
-        mock_boto3_client.return_value = mock_cf_client
+        mock_create_client.return_value = mock_cf_client
         
         mock_response = {'Stacks': [{'StackName': 'test-stack', 'StackStatus': 'CREATE_COMPLETE'}]}
         mock_cf_client.describe_stacks.return_value = mock_response
         
         result = HpClusterStack.describe('test-stack')
         
-        mock_boto3_client.assert_called_once_with('cloudformation', region_name=mock_region)
+        mock_create_client.assert_called_once_with('cloudformation', region_name=None)
         mock_cf_client.describe_stacks.assert_called_once_with(StackName='test-stack')
         self.assertEqual(result, mock_response)
 
@@ -94,21 +90,17 @@ class TestHpClusterStack(unittest.TestCase):
         with self.assertRaises(ValueError):
             HpClusterStack.describe('test-stack')
 
-    @patch('boto3.session.Session')
-    @patch('boto3.client')
-    def test_list_success(self, mock_boto3_client, mock_boto3_session):
-        mock_region = "us-west-2"
-        mock_boto3_session.return_value.region_name = mock_region
-        
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.create_boto3_client')
+    def test_list_success(self, mock_create_client):
         mock_cf_client = MagicMock()
-        mock_boto3_client.return_value = mock_cf_client
+        mock_create_client.return_value = mock_cf_client
         
         mock_response = {'StackSummaries': [{'StackName': 'stack1'}, {'StackName': 'stack2'}]}
         mock_cf_client.list_stacks.return_value = mock_response
         
         result = HpClusterStack.list()
         
-        mock_boto3_client.assert_called_once_with('cloudformation', region_name=mock_region)
+        mock_create_client.assert_called_once_with('cloudformation', region_name=None)
         mock_cf_client.list_stacks.assert_called_once()
         self.assertEqual(result, mock_response)
 
