@@ -1,153 +1,98 @@
 import unittest
 from hyperpod_pytorch_job_template.v1_1.model import PyTorchJobConfig
 from hyperpod_pytorch_job_template.v1_0.model import PyTorchJobConfig as PyTorchJobConfigV1_0
+from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob
 
 
-class TestPyTorchJobConfigEFA(unittest.TestCase):
-    """Test EFA resource allocation in PyTorchJobConfig"""
+class TestResourceAllocation(unittest.TestCase):
+    """Test resource allocation through the full pipeline (to_domain + allocate_quotas_if_applicable).
 
-    # def test_single_node_no_efa(self):
-    #     """Test that single-node jobs don't get EFA resources"""
-    #     config = PyTorchJobConfig(
-    #         job_name="test-single-node",
-    #         image="pytorch:latest",
-    #         node_count=1,
-    #         accelerators=2,
-    #         instance_type="ml.p4d.24xlarge"
-    #     )
-        
-    #     job = config.to_domain()
-    #     container = job.replicaSpecs[0].template.spec.containers[0]
-        
-    #     # Should not have EFA resources
-    #     self.assertNotIn("vpc.amazonaws.com/efa", container.resources.requests)
-    #     self.assertNotIn("vpc.amazonaws.com/efa", container.resources.limits)
-        
-    #     # Should have GPU resources
-    #     self.assertEqual(container.resources.requests["nvidia.com/gpu"], "2")
+    These tests verify that config fields are correctly resolved into k8s resource keys
+    (e.g. 'accelerators' -> 'nvidia.com/gpu') and that EFA is auto-populated from instance constants.
+    """
 
-    # def test_multi_node_with_efa(self):
-    #     """Test that multi-node jobs automatically get EFA resources"""
-    #     config = PyTorchJobConfig(
-    #         job_name="test-multi-node",
-    #         image="pytorch:latest",
-    #         node_count=4,
-    #         accelerators=8,
-    #         instance_type="ml.p4d.24xlarge"
-    #     )
-        
-    #     job = config.to_domain()
-    #     container = job.replicaSpecs[0].template.spec.containers[0]
-        
-    #     # Should have EFA resources
-    #     self.assertEqual(container.resources.requests["vpc.amazonaws.com/efa"], "1")
-    #     self.assertEqual(container.resources.limits["vpc.amazonaws.com/efa"], "1")
-        
-    #     # Should also have GPU resources
-    #     self.assertEqual(container.resources.requests["nvidia.com/gpu"], "8")
-
-    def test_instance_without_efa_support_no_efa(self):
-        """Test that instances without EFA support don't get EFA (ml.g5.xlarge doesn't support EFA)"""
-        from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob
-
-        config = PyTorchJobConfig(
-            job_name="test-no-efa-support",
-            image="pytorch:latest",
-            accelerators=1,
-            instance_type="ml.g5.xlarge"
-        )
-
+    def _resolve(self, **kwargs):
+        """Helper: create config, convert to domain, and run quota allocation."""
+        config = PyTorchJobConfig(image="pytorch:latest", **kwargs)
         job = config.to_domain()
-        # Call allocate_quotas_if_applicable to convert generic keys to actual resource keys
-        job_with_resources = HyperPodPytorchJob.allocate_quotas_if_applicable(job)
-        container = job_with_resources.replicaSpecs[0].template.spec.containers[0]
+        return HyperPodPytorchJob.allocate_quotas_if_applicable(job)
 
-        # Should not have EFA resources (instance doesn't support it)
-        self.assertNotIn("vpc.amazonaws.com/efa", container.resources.requests)
-        self.assertNotIn("vpc.amazonaws.com/efa", container.resources.limits)
+    def _get_resources(self, job):
+        container = job.replicaSpecs[0].template.spec.containers[0]
+        return container.resources.requests, container.resources.limits
 
-        # Should have GPU resources
-        self.assertIn("nvidia.com/gpu", container.resources.requests)
+    def test_single_node_gpu_job(self):
+        """Single-node GPU job gets resolved accelerator key and no EFA (g5.xlarge has 0 EFA)."""
+        job = self._resolve(job_name="test-single", accelerators=1, instance_type="ml.g5.xlarge")
+        requests, limits = self._get_resources(job)
 
-    def test_accelerators_with_efa_support_gets_default_efa(self):
-        """Test that specifying accelerators on EFA-capable instance gets EFA from constants"""
-        from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob
+        self.assertIn("nvidia.com/gpu", requests)
+        self.assertNotIn("vpc.amazonaws.com/efa", requests)
 
-        config = PyTorchJobConfig(
-            job_name="test-accelerators-default-efa",
-            image="pytorch:latest",
-            accelerators=4,
-            instance_type="ml.p4d.24xlarge"
-        )
+    def test_multi_node_gpu_job_with_efa(self):
+        """Multi-node GPU job on EFA-capable instance gets auto-populated EFA from constants."""
+        job = self._resolve(job_name="test-multi", accelerators=8, instance_type="ml.p4d.24xlarge")
+        requests, limits = self._get_resources(job)
 
-        job = config.to_domain()
-        # Call allocate_quotas_if_applicable to convert generic keys to actual resource keys
-        job_with_resources = HyperPodPytorchJob.allocate_quotas_if_applicable(job)
-        container = job_with_resources.replicaSpecs[0].template.spec.containers[0]
-
-        # Should have EFA from constants
-        self.assertIn("vpc.amazonaws.com/efa", container.resources.requests)
-        self.assertIn("vpc.amazonaws.com/efa", container.resources.limits)
-        self.assertEqual(int(container.resources.requests["vpc.amazonaws.com/efa"]), 4)
+        self.assertEqual(int(requests["nvidia.com/gpu"]), 8)
+        self.assertIn("vpc.amazonaws.com/efa", requests)
+        self.assertEqual(int(requests["vpc.amazonaws.com/efa"]), 4)  # p4d has 4 EFA interfaces
 
     def test_user_specified_efa_overrides_default(self):
-        """Test that user-specified EFA value overrides the default from constants"""
-        from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob
+        """User-specified EFA value takes precedence over the instance default."""
+        job = self._resolve(job_name="test-efa", accelerators=4, efa_interfaces=2, instance_type="ml.p4d.24xlarge")
+        requests, limits = self._get_resources(job)
 
-        config = PyTorchJobConfig(
-            job_name="test-custom-efa",
-            image="pytorch:latest",
-            accelerators=4,
-            efa_interfaces=2,
-            instance_type="ml.p4d.24xlarge"
+        self.assertEqual(int(requests["vpc.amazonaws.com/efa"]), 2)
+        self.assertEqual(int(limits["vpc.amazonaws.com/efa"]), 2)
+
+    def test_instance_without_efa_gets_no_efa(self):
+        """Instance that doesn't support EFA (g5.xlarge) gets no EFA resources."""
+        job = self._resolve(job_name="test-no-efa", accelerators=1, instance_type="ml.g5.xlarge")
+        requests, limits = self._get_resources(job)
+
+        self.assertNotIn("vpc.amazonaws.com/efa", requests)
+        self.assertNotIn("vpc.amazonaws.com/efa", limits)
+        self.assertIn("nvidia.com/gpu", requests)
+
+    def test_all_resource_types_together(self):
+        """Accelerators, CPU, memory, and EFA all resolve correctly in a single job."""
+        job = self._resolve(
+            job_name="test-all", accelerators=4, vcpu=16.0, memory=64.0,
+            instance_type="ml.p4d.24xlarge",
+        )
+        requests, limits = self._get_resources(job)
+
+        self.assertIn("nvidia.com/gpu", requests)
+        self.assertIn("cpu", requests)
+        self.assertIn("memory", requests)
+        self.assertIn("vpc.amazonaws.com/efa", requests)
+
+    def test_accelerators_without_instance_type_rejected(self):
+        """Specifying accelerators without instance_type raises a clear error."""
+        from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config import (
+            Containers, ReplicaSpec, Resources, Spec, Template,
         )
 
-        job = config.to_domain()
-        # Call allocate_quotas_if_applicable to convert generic keys to actual resource keys
-        job_with_resources = HyperPodPytorchJob.allocate_quotas_if_applicable(job)
-        container = job_with_resources.replicaSpecs[0].template.spec.containers[0]
+        job = HyperPodPytorchJob(
+            metadata={"name": "test-no-instance-type", "namespace": "default"},
+            replica_specs=[ReplicaSpec(
+                name="pod",
+                template=Template(
+                    spec=Spec(containers=[Containers(
+                        name="test",
+                        image="pytorch:latest",
+                        resources=Resources(
+                            requests={"nvidia.com/gpu": "4"},
+                            limits={"nvidia.com/gpu": "4"},
+                        ),
+                    )])
+                ),
+            )],
+        )
 
-        # Should use user-specified EFA value
-        self.assertEqual(int(container.resources.requests["vpc.amazonaws.com/efa"]), 2)
-        self.assertEqual(int(container.resources.limits["vpc.amazonaws.com/efa"]), 2)
-
-    # def test_multi_node_with_memory_and_cpu(self):
-    #     """Test EFA with other resource types"""
-    #     config = PyTorchJobConfig(
-    #         job_name="test-multi-resources",
-    #         image="pytorch:latest",
-    #         node_count=2,
-    #         accelerators=4,
-    #         vcpu=16.0,
-    #         memory=64.0,
-    #         instance_type="ml.p4d.24xlarge"
-    #     )
-        
-    #     job = config.to_domain()
-    #     container = job.replicaSpecs[0].template.spec.containers[0]
-        
-    #     # Should have all resources including EFA
-    #     self.assertEqual(container.resources.requests["vpc.amazonaws.com/efa"], "1")
-    #     self.assertEqual(container.resources.requests["nvidia.com/gpu"], "4")
-    #     self.assertEqual(container.resources.requests["cpu"], "16.0")
-    #     self.assertEqual(container.resources.requests["memory"], "64.0Gi")
-
-    # def test_accelerators_without_instance_type(self):
-    #     """Test that accelerators work without instance_type (fixes the main issue)"""
-    #     config = PyTorchJobConfig(
-    #         job_name="test-no-instance-type",
-    #         image="pytorch:latest",
-    #         accelerators=4
-    #         # No instance_type specified
-    #     )
-        
-    #     job = config.to_domain()
-    #     container = job.replicaSpecs[0].template.spec.containers[0]
-        
-    #     # Should respect accelerators value even without instance_type
-    #     self.assertEqual(container.resources.requests["nvidia.com/gpu"], "4")
-    #     # Limits should default to "0" since accelerators_limit not specified
-    #     self.assertEqual(container.resources.limits["nvidia.com/gpu"], "0")
+        with self.assertRaises(ValueError, msg="--instance-type is required when specifying accelerator resources"):
+            HyperPodPytorchJob.allocate_quotas_if_applicable(job)
 
 
 class TestDeepHealthCheckNodeSelector(unittest.TestCase):
