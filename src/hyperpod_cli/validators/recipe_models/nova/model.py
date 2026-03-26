@@ -12,6 +12,7 @@ class RunConfig(BaseModel):
     data_s3_path: Optional[str] = None
     output_s3_path: Optional[str] = None
     validation_data_s3_path: Optional[str] = None
+    source : Optional[str] = None
 
     # PPO-specific replica configurations
     actor_train_replicas: Optional[int|str] = None
