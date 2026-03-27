@@ -341,11 +341,89 @@ mig-configs:
         "1g.24gb": 2
         "2g.48gb": 1
 
+  # P6-B300 (Blackwell Ultra, 288GB HBM3e, ~269GB usable) profiles
+  # Profiles: 1g.34gb (x7), 1g.67gb (x4), 2g.67gb (x3), 3g.135gb (x2), 4g.135gb (x1), 7g.269gb (x1)
+  # Upstream ref: NVIDIA GPU Operator v25.3.0, device-filter 0x318210DE
+
+  all-1g.34gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.34gb": 7
+
   all-1g.67gb:
     - devices: all
       mig-enabled: true
       mig-devices:
         "1g.67gb": 4
+
+  all-2g.67gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "2g.67gb": 3
+
+  all-3g.135gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "3g.135gb": 2
+
+  all-4g.135gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "4g.135gb": 1
+
+  all-7g.269gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "7g.269gb": 1
+
+  mixed-1-3g.135gb-1-4g.135gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "3g.135gb": 1
+        "4g.135gb": 1
+
+  mixed-1-1g.34gb-1-2g.67gb-1-4g.135gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.34gb": 1
+        "2g.67gb": 1
+        "4g.135gb": 1
+
+  mixed-3-1g.34gb-1-4g.135gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.34gb": 3
+        "4g.135gb": 1
+
+  mixed-1-1g.34gb-1-2g.67gb-1-3g.135gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.34gb": 1
+        "2g.67gb": 1
+        "3g.135gb": 1
+
+  mixed-3-1g.34gb-1-3g.135gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.34gb": 3
+        "3g.135gb": 1
+
+  mixed-2-2g.67gb-1-3g.135gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "2g.67gb": 2
+        "3g.135gb": 1
 
   mixed-2-1g.34gb-1-2g.67gb-1-3g.135gb:
     - devices: all
@@ -354,3 +432,31 @@ mig-configs:
         "1g.34gb": 2
         "2g.67gb": 1
         "3g.135gb": 1
+
+  mixed-4-1g.34gb-1-3g.135gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.34gb": 4
+        "3g.135gb": 1
+
+  mixed-1-1g.34gb-3-2g.67gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.34gb": 1
+        "2g.67gb": 3
+
+  mixed-3-1g.34gb-2-2g.67gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.34gb": 3
+        "2g.67gb": 2
+
+  mixed-5-1g.34gb-1-2g.67gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.34gb": 5
+        "2g.67gb": 1
