@@ -397,7 +397,7 @@ class TestHPJumpStartEndpoint(unittest.TestCase):
             ("ml.p5.48xlarge", "mig-3g.40gb"),
             ("ml.p5e.48xlarge", "mig-1g.18gb"),
             ("ml.p5en.48xlarge", "mig-7g.141gb"),
-            ("p6-b200.48xlarge", "mig-1g.23gb"),
+            ("ml.p6-b200.48xlarge", "mig-1g.23gb"),
             ("ml.p6e-gb200.36xlarge", "mig-7g.186gb"),
         ]
 
