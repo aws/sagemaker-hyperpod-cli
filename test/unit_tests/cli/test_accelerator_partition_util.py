@@ -75,6 +75,10 @@ class TestAcceleratorPartitionUtil:
             ("mig-1g.5gb", None, None, 2, "ml.p4d.24xlarge", False, lambda e: "accelerator_partition_type cannot be used together with node_count." == e),
             # Invalid instance type combination
             ("mig-1g.5gb", None, None, None, "ml.c5.large", False, lambda e: "does not support accelerator partitions" in e),
+            # B200: valid profile accepted (requires #399 for ml. prefix fix)
+            ("mig-1g.23gb", None, None, None, "ml.p6-b200.48xlarge", True, lambda e: e == ""),
+            # B200: cross-architecture profile rejected
+            ("mig-1g.5gb", None, None, None, "ml.p6-b200.48xlarge", False, lambda e: "not supported on instance type" in e),
             # B300: valid profile accepted
             ("mig-1g.34gb", None, None, None, "ml.p6-b300.48xlarge", True, lambda e: e == ""),
             # B300: cross-architecture profile rejected
@@ -103,6 +107,13 @@ class TestAcceleratorPartitionUtil:
     @pytest.mark.parametrize(
         "instance_type,partition_type,partition_count,expected_cpu,expected_memory",
         [
+            # B200 (Blackwell) — all profiles at max instance count (requires #399 for ml. prefix fix)
+            ("ml.p6-b200.48xlarge", "mig-1g.23gb", 7, "24.0", "256.0Gi"),
+            ("ml.p6-b200.48xlarge", "mig-1g.45gb", 4, "13.0", "146.0Gi"),
+            ("ml.p6-b200.48xlarge", "mig-2g.45gb", 3, "20.0", "219.0Gi"),
+            ("ml.p6-b200.48xlarge", "mig-3g.90gb", 2, "20.0", "219.0Gi"),
+            ("ml.p6-b200.48xlarge", "mig-4g.90gb", 1, "13.0", "146.0Gi"),
+            ("ml.p6-b200.48xlarge", "mig-7g.180gb", 1, "24.0", "256.0Gi"),
             # B300 (Blackwell Ultra) — all profiles at max instance count
             ("ml.p6-b300.48xlarge", "mig-1g.34gb", 7, "24.0", "512.0Gi"),
             ("ml.p6-b300.48xlarge", "mig-1g.67gb", 4, "13.0", "292.0Gi"),
