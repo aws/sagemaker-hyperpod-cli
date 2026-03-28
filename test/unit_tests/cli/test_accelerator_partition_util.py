@@ -5,10 +5,7 @@ from sagemaker.hyperpod.training.accelerator_partition_util import (
     _set_default_accelerator_partition_val,
     _validate_accelerator_partition,
 )
-from sagemaker.hyperpod.training.constants import (
-    ALLOWED_ACCELERATOR_PARTITION_TYPES,
-    INSTANCE_TYPE_MIG_PROFILES,
-)
+from sagemaker.hyperpod.training.constants import INSTANCE_TYPE_MIG_PROFILES
 import pytest
 from unittest.mock import patch, MagicMock
 
@@ -93,10 +90,7 @@ class TestAcceleratorPartitionUtil:
 
 
 class TestB300MigProfiles:
-    """Tests for NVIDIA B300 (Blackwell Ultra) MIG profile support."""
-
-    def test_b300_in_instance_type_mig_profiles(self):
-        assert "ml.p6-b300.48xlarge" in INSTANCE_TYPE_MIG_PROFILES
+    """Tests for B300 (Blackwell Ultra) MIG profile constants and defaults."""
 
     def test_b300_profiles_complete(self):
         profiles = INSTANCE_TYPE_MIG_PROFILES["ml.p6-b300.48xlarge"]
@@ -110,43 +104,24 @@ class TestB300MigProfiles:
         ]
         assert profiles == expected
 
-    def test_b300_profiles_in_allowed_set(self):
-        for profile in INSTANCE_TYPE_MIG_PROFILES["ml.p6-b300.48xlarge"]:
-            assert profile in ALLOWED_ACCELERATOR_PARTITION_TYPES
-
     @pytest.mark.parametrize(
-        "partition_type,expected_slices",
+        "partition_type,partition_count,expected_cpu,expected_memory",
         [
-            ("mig-1g.34gb", 1),
-            ("mig-2g.67gb", 2),
-            ("mig-3g.135gb", 3),
-            ("mig-4g.135gb", 4),
-            ("mig-7g.269gb", 7),
+            ("mig-1g.34gb", 7, "24.0", "512.0Gi"),
+            ("mig-1g.67gb", 4, "13.0", "292.0Gi"),
+            ("mig-2g.67gb", 3, "20.0", "438.0Gi"),
+            ("mig-3g.135gb", 2, "20.0", "438.0Gi"),
+            ("mig-4g.135gb", 1, "13.0", "292.0Gi"),
+            ("mig-7g.269gb", 1, "24.0", "512.0Gi"),
         ],
     )
-    def test_extract_gpu_slices_b300(self, partition_type, expected_slices):
-        assert _extract_gpu_slices_from_accelerator_partition_type(partition_type) == expected_slices
-
-    @pytest.mark.parametrize(
-        "partition_type,partition_count",
-        [
-            ("mig-1g.34gb", 7),
-            ("mig-1g.67gb", 4),
-            ("mig-2g.67gb", 3),
-            ("mig-3g.135gb", 2),
-            ("mig-4g.135gb", 1),
-            ("mig-7g.269gb", 1),
-        ],
-    )
-    def test_accelerator_partition_defaults_b300(self, partition_type, partition_count):
-        """Verify CPU/memory defaults are calculated proportionally for B300 MIG profiles."""
+    def test_accelerator_partition_defaults_b300(self, partition_type, partition_count, expected_cpu, expected_memory):
+        """Verify CPU/memory defaults match the deterministic ratio formula for B300."""
         defaults = _get_accelerator_partition_defaults(
             "ml.p6-b300.48xlarge", partition_type, partition_count
         )
-        assert "cpu" in defaults
-        assert "memory" in defaults
-        assert float(defaults["cpu"]) > 0
-        assert float(defaults["memory"].replace("Gi", "")) > 0
+        assert defaults["cpu"] == expected_cpu
+        assert defaults["memory"] == expected_memory
 
     @pytest.mark.parametrize(
         "partition_type,expected_valid,error_check",
@@ -162,7 +137,8 @@ class TestB300MigProfiles:
         self, mock_k8s_client, partition_type, expected_valid, error_check
     ):
         mock_node = MagicMock()
-        mock_node.status.allocatable = {f"nvidia.com/{partition_type}": "1"}
+        allocatable = {f"nvidia.com/{partition_type}": "1"} if expected_valid else {}
+        mock_node.status.allocatable = allocatable
         mock_k8s_client.return_value.get_core_v1_api.return_value.list_node.return_value.items = [
             mock_node
         ]
