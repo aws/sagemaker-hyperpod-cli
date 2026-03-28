@@ -107,24 +107,21 @@ class TestAcceleratorPartitionUtil:
     @pytest.mark.parametrize(
         "instance_type,partition_type,partition_count,expected_cpu,expected_memory",
         [
-            # B200 (Blackwell) — all profiles at max instance count (requires #399 for ml. prefix fix)
-            ("ml.p6-b200.48xlarge", "mig-1g.23gb", 7, "24.0", "256.0Gi"),
-            ("ml.p6-b200.48xlarge", "mig-1g.45gb", 4, "13.0", "146.0Gi"),
-            ("ml.p6-b200.48xlarge", "mig-2g.45gb", 3, "20.0", "219.0Gi"),
-            ("ml.p6-b200.48xlarge", "mig-3g.90gb", 2, "20.0", "219.0Gi"),
-            ("ml.p6-b200.48xlarge", "mig-4g.90gb", 1, "13.0", "146.0Gi"),
-            ("ml.p6-b200.48xlarge", "mig-7g.180gb", 1, "24.0", "256.0Gi"),
-            # B300 (Blackwell Ultra) — all profiles at max instance count
+            # One representative profile per MIG-capable instance type (smallest profile, max count).
+            # Guards that INSTANCE_RESOURCES has correct cpu/gpu/memory for each instance type.
+            ("ml.p4d.24xlarge", "mig-1g.5gb", 7, "12.0", "144.0Gi"),
+            ("ml.p4de.24xlarge", "mig-1g.10gb", 7, "12.0", "144.0Gi"),
+            ("ml.p5.48xlarge", "mig-1g.10gb", 7, "24.0", "256.0Gi"),
+            ("ml.p5e.48xlarge", "mig-1g.18gb", 7, "24.0", "256.0Gi"),
+            ("ml.p5en.48xlarge", "mig-1g.18gb", 7, "24.0", "256.0Gi"),
+            ("ml.p6-b200.48xlarge", "mig-1g.23gb", 7, "24.0", "256.0Gi"),  # requires #399
             ("ml.p6-b300.48xlarge", "mig-1g.34gb", 7, "24.0", "512.0Gi"),
-            ("ml.p6-b300.48xlarge", "mig-1g.67gb", 4, "13.0", "292.0Gi"),
-            ("ml.p6-b300.48xlarge", "mig-2g.67gb", 3, "20.0", "438.0Gi"),
-            ("ml.p6-b300.48xlarge", "mig-3g.135gb", 2, "20.0", "438.0Gi"),
-            ("ml.p6-b300.48xlarge", "mig-4g.135gb", 1, "13.0", "292.0Gi"),
-            ("ml.p6-b300.48xlarge", "mig-7g.269gb", 1, "24.0", "512.0Gi"),
+            ("ml.p6e-gb200.36xlarge", "mig-1g.23gb", 7, "36.0", "240.0Gi"),
+            ("ml.g7e.48xlarge", "mig-1g.24gb", 4, "13.0", "146.0Gi"),
         ],
     )
     def test_accelerator_partition_defaults(self, instance_type, partition_type, partition_count, expected_cpu, expected_memory):
-        """Verify CPU/memory defaults match the deterministic ratio formula."""
+        """Verify CPU/memory defaults for one profile per MIG-capable instance type."""
         defaults = _get_accelerator_partition_defaults(
             instance_type, partition_type, partition_count
         )
