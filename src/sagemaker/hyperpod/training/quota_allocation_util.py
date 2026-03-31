@@ -166,7 +166,7 @@ def _resolve_default_cpu_values(instance_type: str, requests_values: dict) -> No
     if cpu_request is not None and cpu_request > total_available_cpu:
         raise ValueError(
             f"Specified CPU request ({cpu_request}) exceeds instance capacity. "
-            f"Maximum available CPU for {instance_type} is {total_available_cpu}."
+            f"Maximum available CPU for '{instance_type}' is {total_available_cpu}."
         )
 
     max_allocatable_cpu = int(total_available_cpu - _calculate_cpu_reservation(total_available_cpu))
@@ -194,7 +194,7 @@ def _resolve_default_memory_values(instance_type: str, requests_values: dict, li
     if memory_request > total_available_memory:
         raise ValueError(
             f"Specified memory request ({memory_request}Gi) exceeds instance capacity. "
-            f"Maximum available memory for {instance_type} is {total_available_memory}Gi."
+            f"Maximum available memory for '{instance_type}' is {total_available_memory}Gi."
         )
 
     max_allocatable_memory = int(total_available_memory - _calculate_memory_reservation(total_available_memory))
@@ -211,16 +211,16 @@ def _validate_accelerators_inputs(instance_type: str, accelerators_request: int,
     type_of_accelerator, _max_accelerator_per_instance = _get_accelerator_type_and_count(instance_type)
     if type_of_accelerator is None and (accelerators_request is not None or accelerators_limit is not None):
         raise ValueError(
-            f"Instance type {instance_type} does not support accelerators, but accelerator values were provided.")
+            f"Instance type '{instance_type}' does not support accelerators, but accelerator values were provided.")
 
     if type_of_accelerator is not None:
         if accelerators_request is not None and accelerators_limit is not None:
             if accelerators_request !=  accelerators_limit:
                 raise ValueError('Accelerator request must equal accelerator limit')
             if accelerators_limit > _max_accelerator_per_instance:
-                raise ValueError('Requested accelerators exceeds capacity')
+                raise ValueError(f'Requested accelerator limit ({accelerators_limit}) exceeds instance capacity ({_max_accelerator_per_instance})')
             if accelerators_request > _max_accelerator_per_instance:
-                raise ValueError('Requested accelerators exceeds capacity')
+                raise ValueError(f'Requested accelerators ({accelerators_request}) exceeds instance capacity ({_max_accelerator_per_instance})')
 
 
 def _validate_efa_inputs(instance_type: str, efa_interfaces: Optional[int], efa_interfaces_limit: Optional[int]) -> None:
@@ -231,7 +231,7 @@ def _validate_efa_inputs(instance_type: str, efa_interfaces: Optional[int], efa_
     # Check if user provided EFA values but instance doesn't support EFA
     if max_efa_per_instance == 0 and (efa_interfaces is not None or efa_interfaces_limit is not None):
         raise ValueError(
-            f"Instance type {instance_type} does not support EFA, but EFA values were provided.")
+            f"Instance type '{instance_type}' does not support EFA, but EFA values were provided.")
 
     # Validate EFA values if instance supports EFA
     if max_efa_per_instance > 0:
@@ -277,17 +277,11 @@ def _is_valid(vcpu: Optional[float], memory_in_gib: Optional[float], accelerator
     has_gpu_quota_allocation = _has_compute_resource_quota_allocation_resources(memory_in_gib, vcpu, accelerators)
 
     if (instance_type is None and has_gpu_quota_allocation) or (instance_type is None and accelerator_partition_type):
-        return False, "Instance-type must be specified when accelerators, accelerator_partition_type, vcpu, or memory-in-gib specified"
-
-    node_specified = node_count is not None and node_count > 0
+        return False, "instance_type is required when specifying accelerators, accelerator_partition_type, vcpu, or memory"
 
     # Check if instance_type is valid only when it's provided
     if instance_type is not None and (INSTANCE_RESOURCES.get(instance_type) is None):
-        return False, f"Invalid instance-type {instance_type}. Please re-check the instance type and contact AWS for support."
-    if instance_type is not None:
-        #both resources and node count specified
-        if (has_gpu_quota_allocation and node_specified):
-            return False, f"Either node-count OR a combination of accelerators, vcpu, memory-in-gib must be specified for instance-type {instance_type}"
+        return False, f"Invalid instance_type '{instance_type}'. Please re-check the instance type and contact AWS for support."
     return True, ""
 
 

@@ -28,8 +28,8 @@ spec:
 {%- endif %}
   replicaSpecs:
     - name: pod
-    {%- if node_count %}
-      replicas: {{ node_count }}
+    {%- if replica_count or node_count %}
+      replicas: {{ replica_count or node_count }}
     {%- endif %}
       template:
         metadata:

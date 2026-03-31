@@ -120,7 +120,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             has_accelerators = any(requests.get(k) and str(requests.get(k)) != "0" for k in accel_keys)
             has_accelerators_limit = any(limits.get(k) and str(limits.get(k)) != "0" for k in accel_keys)
             if not instance_type and (has_accelerators or has_accelerators_limit):
-                raise ValueError("--instance-type is required when specifying accelerator resources")
+                raise ValueError("instance_type is required when specifying accelerator resources")
 
             if not instance_type:
                 return None
@@ -441,7 +441,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             else:
                 if pod not in pods:
                     logger.error(f"Pod {pod} not found in job {job_name}")
-                    raise ValueError(f"Pod {pod} not found in job {job_name}")
+                    raise ValueError(f"Pod '{pod}' not found in job '{job_name}'")
 
                 result = self._exec_command_on_pod(pod, command, container)
                 logger.info(f"Successfully executed command on pod {pod}")

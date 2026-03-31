@@ -519,6 +519,8 @@ def build_config_from_schema(template: str, version: str, model_config=None, exi
     
     for key in props:
         if key not in reqs and key not in excluded_fields:
+            if props[key].get("deprecated"):
+                continue
             full_cfg[key] = values.get(key, None)
     
     # Build comment map with [Required] prefix for required fields
@@ -528,6 +530,8 @@ def build_config_from_schema(template: str, version: str, model_config=None, exi
     }
     for key, spec in props.items():
         if key not in excluded_fields:
+            if spec.get("deprecated"):
+                continue
             desc = spec.get("description", "")
             if key in reqs:
                 desc = f"[Required] {desc}"

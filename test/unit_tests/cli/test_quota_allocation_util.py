@@ -209,17 +209,17 @@ class TestQuotaAllocationUtil:
     def test_is_valid_no_instance_type_with_resources(self):
         valid, message = _is_valid(4.0, 16.0, None, None, None, None)
         assert not valid
-        assert message == "Instance-type must be specified when accelerators, accelerator_partition_type, vcpu, or memory-in-gib specified"
+        assert message == "instance_type is required when specifying accelerators, accelerator_partition_type, vcpu, or memory"
 
     def test_is_valid_invalid_instance_type(self):
         valid, message = _is_valid(None, None, None, None, 1, "ml-123")
         assert not valid
-        assert message == "Invalid instance-type ml-123. Please re-check the instance type and contact AWS for support."
+        assert message == "Invalid instance_type 'ml-123'. Please re-check the instance type and contact AWS for support."
 
     def test_is_valid_both_node_count_and_resources(self):
         valid, message = _is_valid(4.0, None, None, None, 2, "ml.g5.xlarge")
-        assert not valid
-        assert message == "Either node-count OR a combination of accelerators, vcpu, memory-in-gib must be specified for instance-type ml.g5.xlarge"
+        assert valid
+        assert message == ""
 
     def test_is_valid_both_node_count_and_limits(self):
         valid, message = _is_valid(None, None, None, None, 2, "ml.g5.xlarge")
@@ -325,7 +325,7 @@ class TestQuotaAllocationUtil:
             _validate_accelerators_inputs("ml.g5.xlarge", 1, 2)
 
     def test_validate_accelerators_inputs_exceeds_capacity_request(self):
-        with pytest.raises(ValueError, match="Requested accelerators exceeds capacity"):
+        with pytest.raises(ValueError, match="Requested accelerator limit .* exceeds instance capacity"):
             _validate_accelerators_inputs("ml.g5.xlarge", 2, 2)
 
     def test_validate_accelerators_inputs_exceeds_capacity_limit(self):
@@ -333,7 +333,7 @@ class TestQuotaAllocationUtil:
             _validate_accelerators_inputs("ml.g5.xlarge", 1, 2)
 
     def test_validate_accelerators_inputs_cpu_only_instance(self):
-        with pytest.raises(ValueError, match="Instance type ml.c5.large does not support accelerators, but accelerator values were provided."):
+        with pytest.raises(ValueError, match="Instance type 'ml.c5.large' does not support accelerators, but accelerator values were provided."):
             _validate_accelerators_inputs("ml.c5.large", 1, 1)
 
     # Tests for _set_default_accelerators_val
@@ -365,7 +365,7 @@ class TestQuotaAllocationUtil:
     def test_resolve_default_cpu_request_exceeds_capacity(self):
         requests_values = {"cpu": "10.0"}
         limits_values = {}
-        with pytest.raises(ValueError, match=re.escape("Specified CPU request (10.0) exceeds instance capacity. Maximum available CPU for ml.g5.2xlarge is 8.")):
+        with pytest.raises(ValueError, match=re.escape("Specified CPU request (10.0) exceeds instance capacity. Maximum available CPU for 'ml.g5.2xlarge' is 8.")):
             _resolve_default_cpu_values("ml.g5.2xlarge", requests_values)
 
     # Tests for _resolve_default_cpu_values
@@ -386,7 +386,7 @@ class TestQuotaAllocationUtil:
     def test_resolve_default_cpu_values_exceeds_instance_capacity(self):
         requests_values = {"cpu": "10.0"}
         limits_values = {}
-        with pytest.raises(ValueError, match=re.escape("Specified CPU request (10.0) exceeds instance capacity. Maximum available CPU for ml.c5.large is 2.")):
+        with pytest.raises(ValueError, match=re.escape("Specified CPU request (10.0) exceeds instance capacity. Maximum available CPU for 'ml.c5.large' is 2.")):
             _resolve_default_cpu_values("ml.c5.large", requests_values)
 
     # Tests for trimming request values
