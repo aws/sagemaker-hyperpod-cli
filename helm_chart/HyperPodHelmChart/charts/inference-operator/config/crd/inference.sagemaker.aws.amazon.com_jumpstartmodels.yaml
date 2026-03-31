@@ -850,7 +850,26 @@ spec:
                 type: object
               tlsConfig:
                 properties:
+                  customCertificateConfig:
+                    description: Customer-provided ACM certificate configuration (if
+                      not provided, operator auto-generates self-signed certificate)
+                    properties:
+                      acmArn:
+                        description: ACM certificate ARN
+                        pattern: ^arn:aws:acm:[a-z0-9-]+:[0-9]{12}:certificate/[a-fA-F0-9-]+$
+                        type: string
+                      domainName:
+                        description: Domain name to use from the certificate (must
+                          be a specific domain, not a wildcard). Must be lowercase.
+                        maxLength: 253
+                        pattern: ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$
+                        type: string
+                    required:
+                    - acmArn
+                    - domainName
+                    type: object
                   tlsCertificateOutputS3Uri:
+                    description: S3 URI for auto-generated certificate storage
                     pattern: ^s3://([^/]+)/?(.*)$
                     type: string
                 type: object
@@ -1126,11 +1145,18 @@ spec:
                     items:
                       type: string
                     type: array
+                  certificateHealth:
+                    description: Certificate health status (Valid, Expiring, or Expired)
+                    enum:
+                    - Valid
+                    - Expiring
+                    - Expired
+                    type: string
                   certificateName:
                     description: The certificate name of cert manager
                     type: string
                   importedCertificates:
-                    description: Used for tracking the imported certificates to ACM
+                    description: Tracks imported certificates to ACM
                     items:
                       type: string
                     type: array
@@ -1513,6 +1539,7 @@ spec:
               tlsConfig:
                 properties:
                   tlsCertificateOutputS3Uri:
+                    description: S3 URI for auto-generated certificate storage
                     pattern: ^s3://([^/]+)/?(.*)$
                     type: string
                 type: object
@@ -1788,11 +1815,18 @@ spec:
                     items:
                       type: string
                     type: array
+                  certificateHealth:
+                    description: Certificate health status (Valid, Expiring, or Expired)
+                    enum:
+                    - Valid
+                    - Expiring
+                    - Expired
+                    type: string
                   certificateName:
                     description: The certificate name of cert manager
                     type: string
                   importedCertificates:
-                    description: Used for tracking the imported certificates to ACM
+                    description: Tracks imported certificates to ACM
                     items:
                       type: string
                     type: array
