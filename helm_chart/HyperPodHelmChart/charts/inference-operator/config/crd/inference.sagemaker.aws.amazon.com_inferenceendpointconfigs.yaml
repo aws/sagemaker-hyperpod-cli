@@ -5211,6 +5211,39 @@ spec:
                             type: integer
                         type: object
                     type: object
+                  requestLimits:
+                    description: Configuration for request limiting on the nginx sidecar
+                      proxy
+                    properties:
+                      maxConcurrentRequests:
+                        description: |-
+                          Maximum number of concurrent requests the nginx sidecar proxy will accept per pod.
+                          When the limit is reached, new requests receive a 429 (Too Many Requests) response,
+                          enabling fail-fast behavior and allowing the load balancer to redirect traffic.
+                          If not set or set to 0, no concurrency limit is enforced.
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      maxQueueSize:
+                        description: |-
+                          Maximum number of requests to queue when the concurrent request limit is reached.
+                          Queued requests wait until an in-flight request completes. When the queue is full,
+                          new requests receive the overflow status code response.
+                          If not set or set to 0, no queuing is applied — requests are rejected immediately
+                          when the concurrent request limit is reached.
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      overflowStatusCode:
+                        default: 429
+                        description: |-
+                          HTTP status code returned when request limits are exceeded.
+                          Defaults to 429 (Too Many Requests).
+                        format: int32
+                        maximum: 599
+                        minimum: 400
+                        type: integer
+                    type: object
                   resources:
                     description: Defines the Resources in terms of CPU, GPU, Memory
                       needed for the model to be deployed
