@@ -313,34 +313,6 @@ mig-configs:
         "1g.18gb": 5
         "2g.35gb": 1
 
-  # RTX PRO 6000 Blackwell (g7e) profiles - max 4 instances per GPU
-  # Profiles: 1g.24gb (x4), 2g.48gb (x2), 4g.96gb (x1)
-
-  all-1g.24gb:
-    - devices: all
-      mig-enabled: true
-      mig-devices:
-        "1g.24gb": 4
-
-  all-2g.48gb:
-    - devices: all
-      mig-enabled: true
-      mig-devices:
-        "2g.48gb": 2
-
-  all-4g.96gb:
-    - devices: all
-      mig-enabled: true
-      mig-devices:
-        "4g.96gb": 1
-
-  mixed-2-1g.24gb-1-2g.48gb:
-    - devices: all
-      mig-enabled: true
-      mig-devices:
-        "1g.24gb": 2
-        "2g.48gb": 1
-
   # P6-B300 (Blackwell Ultra, 288GB HBM3e, ~269GB usable) profiles
   # Profiles: 1g.34gb (x7), 1g.67gb (x4), 2g.67gb (x3), 3g.135gb (x2), 4g.135gb (x1), 7g.269gb (x1)
   # Upstream ref: NVIDIA GPU Operator v25.3.0, device-filter 0x318210DE
