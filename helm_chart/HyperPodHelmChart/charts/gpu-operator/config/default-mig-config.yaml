@@ -323,6 +323,16 @@ mig-configs:
       mig-devices:
         "1g.34gb": 7
 
+  # P6-B300 (Blackwell Ultra, 288GB HBM3e, ~269GB usable) profiles
+  # Profiles: 1g.34gb (x7), 1g.67gb (x4), 2g.67gb (x3), 3g.135gb (x2), 4g.135gb (x1), 7g.269gb (x1)
+  # Upstream ref: NVIDIA GPU Operator v25.3.0, device-filter 0x318210DE
+
+  all-1g.34gb:
+    - devices: all
+      mig-enabled: true
+      mig-devices:
+        "1g.34gb": 7
+
   all-1g.67gb:
     - devices: all
       mig-enabled: true
