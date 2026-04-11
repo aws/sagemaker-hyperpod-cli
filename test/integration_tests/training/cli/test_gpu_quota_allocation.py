@@ -236,7 +236,7 @@ class TestGpuQuotaAllocationIntegration:
                     text=True
                 )
         assert result.returncode != 0
-        assert "node_count cannot be combined with resource fields" in result.stdout
+        assert "node_count cannot be combined with resource fields" in result.stderr
 
     def test_invalid_no_node_count_or_quota_parameter(self, test_job_name):
         """Test that case where both node-count and any of the quota parameters are provided"""
@@ -286,7 +286,7 @@ class TestGpuQuotaAllocationIntegration:
             "--accelerators-limit", "1",
             "--vcpu-limit", "4",
             "--memory-limit", "2",
-            "--node-count", "1",
+            "--replica-count", "1",
             "--queue-name", QUEUE,
             "--namespace", NAMESPACE
         ]
