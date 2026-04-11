@@ -34,7 +34,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  namespace: kubeflow
+  namespace: {{ .Values.namespace }}
   name: {{ .Values.roleName }}-binding
 subjects:
 - kind: Group
