@@ -310,6 +310,9 @@ def _send_telemetry_request(
         logger.warning("SageMaker Python SDK telemetry not emitted!")
 
 
+V2_HPCLI_JOB_SOURCE = "v2HPCLI"
+
+
 def _hyperpod_telemetry_emitter(feature: str, func_name: str):
     def decorator(func):
         @functools.wraps(func)
@@ -319,6 +322,7 @@ def _hyperpod_telemetry_emitter(feature: str, func_name: str):
                 f"&x-sdkVersion={SDK_VERSION}"
                 f"&x-env={PYTHON_VERSION}"
                 f"&x-sys={OS_NAME_VERSION}"
+                f"&x-jobsource={V2_HPCLI_JOB_SOURCE}"
             )
             
             # Add comprehensive telemetry data for all functions
