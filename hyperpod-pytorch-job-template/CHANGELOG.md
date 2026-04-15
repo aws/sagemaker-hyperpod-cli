@@ -1,3 +1,9 @@
+## v1.4.1 (2026-04-08)
+
+### Bug Fixes
+* Fix EFA field naming: `efa_interfaces` -> `efa`, `efa_interfaces_limit` -> `efa_limit` (#392)
+* Fix deep health check nodeSelector label to `sagemaker.amazonaws.com/deep-health-check-status: Passed` for v1.0 and v1.1 (#386)
+
 ## v1.4.0 (2026-01-27)
 
 ### Features

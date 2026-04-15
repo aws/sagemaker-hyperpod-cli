@@ -1,5 +1,32 @@
 # Changelog
 
+## v3.7.1 (2026-04-08)
+
+### New Instance Type Support
+- Add g7e instance types to HyperPod helm chart values (nvidia/EFA device plugins) (#380)
+- Add g7e instance types to Python constants and CLI (#385, #390)
+- Add g7e instance types to health-monitoring-agent node affinity (#381)
+- Add B300 MIG profiles to GPU operator ConfigMap (#396)
+- Add MIG profile support for ml.p6-b300.48xlarge (Blackwell Ultra) (#398)
+
+### Inference Operator
+- CRD updates: BYO certificate, RequestLimitsConfig, Custom Kubernetes support (#402)
+- Bump hyperpod-inference-operator subchart to v2.1.0 with image tag v3.1 (#402)
+
+### Enhancements
+- Support AWS_REGION env var, cluster context fallback, centralize boto3 client creation (#395)
+- Handle pagination in cluster stack listing (#394)
+- Require --instance-type when specifying accelerator resources (#393)
+
+### Bug Fixes
+- Fix EFA field naming in PyTorch job template v1.1: `efa_interfaces` -> `efa`, `efa_interfaces_limit` -> `efa_limit` (#392)
+- Fix deep health check nodeSelector label to `sagemaker.amazonaws.com/deep-health-check-status: Passed` (#386)
+- Remove non-EFA instance types from EFA device plugin nodeAffinity to prevent CrashLoopBackOff (#389)
+- Add missing instance types and fix EFA/memory resource specs (#385)
+
+### Health Monitoring Agent
+- Release Health Monitoring Agent 1.0.1434.0_1.0.388.0 (#388)
+
 ## v3.7.0 (2026-03-02)
 
 Space CLI
