@@ -1,3 +1,8 @@
+## v1.5.0 (2026-04-16)
+
+### Features
+- Introduce `replica_count` field for training jobs; deprecate `node_count` and `max_node_count` in favor of `replica_count` and `max_replica_count` (#401)
+
 ## v1.4.1 (2026-04-08)
 
 ### Bug Fixes

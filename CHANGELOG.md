@@ -1,5 +1,19 @@
 # Changelog
 
+## v3.8.0 (2026-04-16)
+
+### Features
+- Add Recipe Job Init Experience: `hyp init hyp-recipe-job` command for launching HyperPod recipe jobs (#409)
+- Introduce `replica_count` parameter for training jobs; deprecate `node_count` in favor of `replica_count` (#401)
+
+### Bug Fixes
+- Exclude `DELETE_COMPLETE` stacks at API level to prevent `ListStacks` throttling (#410)
+- Fix `ml.` prefix and wrong MIG profiles for `p6-b200.48xlarge` (#399)
+- Fix namespaced-role-and-bindings helm chart bugs (#406)
+
+### Health Monitoring Agent
+- Release Health Monitoring Agent 1.0.1481.0_1.0.392.0 with bug fixes (#405)
+
 ## v3.7.1 (2026-04-08)
 
 ### New Instance Type Support
