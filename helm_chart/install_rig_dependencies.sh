@@ -521,51 +521,59 @@ confirm_installation_with_user() {
       fi
   
       # aws-node needs specific instllation for *.nonrig.yaml
-      local patched=$(kubectl get daemonset aws-node -n kube-system -o yaml | yq e '.metadata.annotations | has("rig.hyperpod.patch/aws-node")' -)
-      if [ "$patched" = "false" ]; then
+      # Check for the actual nodeAffinity NotIn rule, not just the annotation, because CNI upgrades can reset the daemonset
+      local has_notin_rule=$(kubectl get daemonset aws-node -n kube-system -o yaml | \
+          yq e '.spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[].matchExpressions[] | select(.key == "sagemaker.amazonaws.com/instance-group-type" and .operator == "NotIn")' -)
+      if [ -z "$has_notin_rule" ]; then
           kubectl apply -f HyperPodHelmChartForRIG/charts/aws-node/templates/daemonset.nonrig.yaml -n kube-system
           if [ $? -ne 0 ]; then
             echo "RIG Helm Installation Failed (aws-node). Exiting (only 1/5 steps completed)..."
             return 1
           fi
       else
-          echo "Found annotation 'rig.hyperpod.patch/aws-node'. Skipping patching for RIG..."
+          echo "Found nodeAffinity NotIn rule for 'sagemaker.amazonaws.com/instance-group-type' on aws-node. Skipping patching for RIG..."
       fi
 
       # training-operator needs specific patch
-      patched=$(kubectl get deployments $TRAINING_OPERATORS -n kubeflow -o yaml | yq e '.metadata.annotations | has("rig.hyperpod.patch/training-operators")' -)
-      if [ "$patched" = "false" ]; then
+      # Check for the actual toleration, not just the annotation, because upgrades can reset the deployment
+      local has_training_toleration=$(kubectl get deployments $TRAINING_OPERATORS -n kubeflow -o yaml | \
+          yq e '.spec.template.spec.tolerations[] | select(.key == "sagemaker.amazonaws.com/RestrictedNode")' -)
+      if [ -z "$has_training_toleration" ]; then
           override_training_operators
           if [ $? -ne 0 ]; then
             echo "RIG Helm Installation Failed (training-operator). Exiting (only 2/5 steps completed)..."
             return 1
           fi
       else
-          echo "Found annotation 'rig.hyperpod.patch/training-operators'. Skipping patching for RIG..."
+          echo "Found RIG toleration on $TRAINING_OPERATORS. Skipping patching for RIG..."
       fi
 
       # mpi-operator needs specific patch
-      patched=$(kubectl get deployments $MPI_OPERATOR -n kube-system -o yaml | yq e '.metadata.annotations | has("rig.hyperpod.patch/mpi-operator")' -)
-      if [ "$patched" = "false" ]; then
+      # Check for the actual toleration, not just the annotation, because upgrades can reset the deployment
+      local has_mpi_toleration=$(kubectl get deployments $MPI_OPERATOR -n kube-system -o yaml | \
+          yq e '.spec.template.spec.tolerations[] | select(.key == "sagemaker.amazonaws.com/RestrictedNode")' -)
+      if [ -z "$has_mpi_toleration" ]; then
           override_mpi_operator
           if [ $? -ne 0 ]; then
             echo "RIG Helm Installation Failed (mpi-operator). Exiting (only 3/5 steps completed)..."
             return 1
           fi
       else
-          echo "Found annotation 'rig.hyperpod.patch/mpi-operator'. Skipping patching for RIG..."
+          echo "Found RIG toleration on $MPI_OPERATOR. Skipping patching for RIG..."
       fi
 
       # efa needs specific patch
-      patched=$(kubectl get daemonset $EFA -n kube-system -o yaml | yq e '.metadata.annotations | has("rig.hyperpod.patch/aws-efa-k8s-device-plugin")' -)
-      if [ "$patched" = "false" ]; then
+      # Check for the actual toleration, not just the annotation, because upgrades can reset the daemonset
+      local has_efa_toleration=$(kubectl get daemonset $EFA -n kube-system -o yaml | \
+          yq e '.spec.template.spec.tolerations[] | select(.key == "sagemaker.amazonaws.com/RestrictedNode")' -)
+      if [ -z "$has_efa_toleration" ]; then
           override_efa
           if [ $? -ne 0 ]; then
             echo "RIG Helm Installation Failed (aws-efa-k8s-device-plugin). Exiting (only 4/5 steps completed)..."
             return 1
           fi
       else
-          echo "Found annotation 'rig.hyperpod.patch/aws-efa-k8s-device-plugin'. Skipping patching for RIG..."
+          echo "Found RIG toleration on $EFA. Skipping patching for RIG..."
       fi
 
       echo ""
