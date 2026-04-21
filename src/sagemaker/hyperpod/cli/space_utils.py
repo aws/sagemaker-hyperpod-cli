@@ -38,7 +38,7 @@ def generate_click_command(
         raise ValueError("You must pass a registry mapping version→Model")
 
     # get schema defaults for manually handled options
-    schema = load_schema_for_version(version_key or "1.0", schema_pkg)
+    schema = load_schema_for_version(version_key or "1.1", schema_pkg)
     props = schema.get("properties", {})
 
     def decorator(func: Callable) -> Callable:
@@ -199,7 +199,7 @@ def generate_click_command(
 
         # 1) the wrapper click will call
         def wrapped_func(*args, **kwargs):
-            version = version_key or kwargs.pop("version", "1.0")
+            version = version_key or kwargs.pop("version", "1.1")
             debug = kwargs.pop("debug", False)
 
             Model = registry.get(version)
@@ -442,7 +442,7 @@ def generate_click_command(
         if version_key is None:
             wrapped_func = click.option(
                 "--version",
-                default="1.0",
+                default="1.1",
                 help="Schema version to use",
             )(wrapped_func)
 

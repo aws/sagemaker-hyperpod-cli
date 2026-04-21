@@ -62,7 +62,7 @@ class TestGenerateClickCommand:
 
         result = self.runner.invoke(cmd, [])
         assert result.exit_code != 0
-        assert 'Unsupported schema version: 1.0' in result.output
+        assert 'Unsupported schema version: 1.1' in result.output
 
     @patch('sagemaker.hyperpod.cli.space_utils.load_schema_for_version')
     def test_version_handling(self, mock_load_schema):
@@ -110,7 +110,7 @@ class TestGenerateClickCommand:
             class Config:
                 extra = 'allow'
 
-        registry = {'1.0': DummyModel}
+        registry = {'1.0': DummyModel, '1.1': DummyModel}
 
         @click.command()
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
@@ -172,7 +172,7 @@ class TestGenerateClickCommand:
             class Config:
                 extra = 'allow'
 
-        registry = {'1.0': DummyModel}
+        registry = {'1.0': DummyModel, '1.1': DummyModel}
 
         @click.command()
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
@@ -220,7 +220,7 @@ class TestGenerateClickCommand:
             class Config:
                 extra = 'allow'
 
-        registry = {'1.0': DummyModel}
+        registry = {'1.0': DummyModel, '1.1': DummyModel}
 
         @click.command()
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
@@ -249,7 +249,7 @@ class TestGenerateClickCommand:
             class Config:
                 extra = 'allow'
 
-        registry = {'1.0': DummyModel}
+        registry = {'1.0': DummyModel, '1.1': DummyModel}
 
         @click.command()
         @generate_click_command(
@@ -286,7 +286,7 @@ class TestGenerateClickCommand:
             class Config:
                 extra = 'allow'
 
-        registry = {'1.0': DummyModel}
+        registry = {'1.0': DummyModel, '1.1': DummyModel}
 
         @click.command()
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
@@ -311,7 +311,7 @@ class TestGenerateClickCommand:
             class Config:
                 extra = 'allow'
 
-        registry = {'1.0': DummyModel, '2.0': DummyModel}
+        registry = {'1.0': DummyModel, '1.1': DummyModel, '2.0': DummyModel}
 
         @click.command()
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
@@ -321,7 +321,7 @@ class TestGenerateClickCommand:
         # Test default version
         result = self.runner.invoke(cmd, [])
         assert result.exit_code == 0
-        assert result.output.strip() == '1.0'
+        assert result.output.strip() == '1.1'
 
         # Test custom version
         result = self.runner.invoke(cmd, ['--version', '2.0'])
@@ -345,7 +345,7 @@ class TestGenerateClickCommand:
             class Config:
                 extra = 'allow'
 
-        registry = {'1.0': DummyModel}
+        registry = {'1.0': DummyModel, '1.1': DummyModel}
 
         @click.command()
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
@@ -378,7 +378,7 @@ class TestGenerateClickCommand:
             class Config:
                 extra = 'allow'
 
-        registry = {'1.0': DummyModel}
+        registry = {'1.0': DummyModel, '1.1': DummyModel}
 
         @click.command()
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
@@ -431,7 +431,7 @@ class TestGenerateClickCommand:
             class Config:
                 extra = 'allow'
 
-        registry = {'1.0': DummyModel}
+        registry = {'1.0': DummyModel, '1.1': DummyModel}
 
         @click.command()
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
@@ -473,7 +473,7 @@ class TestGenerateClickCommand:
             class Config:
                 extra = 'allow'
 
-        registry = {'1.0': DummyModel}
+        registry = {'1.0': DummyModel, '1.1': DummyModel}
 
         @click.command()
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
@@ -515,7 +515,7 @@ class TestGenerateClickCommand:
             class Config:
                 extra = 'allow'
 
-        registry = {'1.0': DummyModel}
+        registry = {'1.0': DummyModel, '1.1': DummyModel}
 
         @click.command()
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
@@ -567,7 +567,7 @@ class TestGenerateClickCommand:
             class Config:
                 extra = 'allow'
 
-        registry = {'1.0': DummyModel}
+        registry = {'1.0': DummyModel, '1.1': DummyModel}
 
         @click.command()
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
@@ -600,7 +600,7 @@ class TestGenerateClickCommand:
             class Config:
                 extra = 'allow'
 
-        registry = {'1.0': DummyModel}
+        registry = {'1.0': DummyModel, '1.1': DummyModel}
 
         @click.command()
         @generate_click_command(
@@ -632,7 +632,7 @@ class TestGenerateClickCommand:
             class Config:
                 extra = 'allow'
 
-        registry = {'1.0': DummyModel}
+        registry = {'1.0': DummyModel, '1.1': DummyModel}
 
         @click.command()
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")
@@ -692,7 +692,7 @@ class TestGenerateClickCommand:
             class Config:
                 extra = 'allow'
 
-        registry = {'1.0': DummyModel}
+        registry = {'1.0': DummyModel, '1.1': DummyModel}
 
         @click.command()
         @generate_click_command(registry=registry, schema_pkg="hyperpod_space_template")

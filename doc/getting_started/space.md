@@ -41,7 +41,7 @@ hyp create hyp-space \
 ````{tab-item} SDK
 ```python
 from sagemaker.hyperpod.space.hyperpod_space import HPSpace
-from hyperpod_space_template.v1_0.model import SpaceConfig
+from hyperpod_space_template.v1_1.model import SpaceConfig
 
 # Create space configuration
 space_config = SpaceConfig(
@@ -74,6 +74,8 @@ When creating a space, you'll need to specify:
 | **gpu-limit** | TEXT | No | GPU resource limit |
 | **accelerator-partition-type** | TEXT | No | Fractional GPU partition type (e.g., 'mig-3g.20gb') |
 | **accelerator-partition-count** | TEXT | No | Fractional GPU partition count |
+| **queue-name** | TEXT | No | Queue name for space scheduling. Required when task governance is enabled. Sets the `kueue.x-k8s.io/queue-name` label. |
+| **priority** | TEXT | No | Priority class for space scheduling. Sets the `kueue.x-k8s.io/priority-class` label. |
 | **volume** | TEXT | No | Volume configuration (can be specified multiple times) |
 | **debug** | FLAG | No | Enable debug mode |
 

@@ -6,7 +6,7 @@ from sagemaker.hyperpod.space.hyperpod_space import HPSpace
 from sagemaker.hyperpod.cli.space_utils import generate_click_command
 from sagemaker.hyperpod.cli.clients.kubernetes_client import KubernetesClient
 from hyperpod_space_template.registry import SCHEMA_REGISTRY
-from hyperpod_space_template.v1_0.model import SpaceConfig
+from hyperpod_space_template.v1_1.model import SpaceConfig
 from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
     _hyperpod_telemetry_emitter,
 )

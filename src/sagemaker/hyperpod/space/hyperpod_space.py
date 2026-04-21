@@ -10,7 +10,7 @@ from kubernetes.client.rest import ApiException
 from kr8s.objects import Pod
 
 from sagemaker.hyperpod.common.config.metadata import Metadata
-from hyperpod_space_template.v1_0.model import ResourceRequirements
+from hyperpod_space_template.v1_1.model import ResourceRequirements
 from sagemaker.hyperpod.common.utils import (
     handle_exception,
     get_default_namespace,
@@ -37,7 +37,7 @@ from sagemaker.hyperpod.cli.constants.space_access_constants import (
     SPACE_ACCESS_VERSION,
     SPACE_ACCESS_PLURAL,
 )
-from hyperpod_space_template.v1_0.model import SpaceConfig, ResourceRequirements
+from hyperpod_space_template.v1_1.model import SpaceConfig, ResourceRequirements
 
 
 class HPSpace(BaseModel):

@@ -51,6 +51,8 @@ hyp create hyp-space [OPTIONS]
 | `--lifecycle` | TEXT | No | Lifecycle specifies actions that the management system should take in response to container lifecycle events (JSON string) |
 | `--app-type` | TEXT | No | AppType specifies the application type for this workspace |
 | `--service-account-name` | TEXT | No | ServiceAccountName specifies the name of the ServiceAccount to use for the workspace pod |
+| `--queue-name` | TEXT | No | Queue name for space scheduling (1-63 characters, alphanumeric with hyphens). Required when task governance is enabled on HyperPod EKS clusters. Sets the `kueue.x-k8s.io/queue-name` label. |
+| `--priority` | TEXT | No | Priority class for space scheduling. Sets the `kueue.x-k8s.io/priority-class` label. |
 | `--idle-shutdown` | TEXT | No | Idle shutdown configuration. Format: enabled=<bool>,idleTimeoutInMinutes=<int>,detection=<JSON string> |
 | `--template-ref` | TEXT | No | TemplateRef references a WorkspaceTemplate to use as base configuration. Format: name=<name>,namespace=<namespace> |
 | `--container-config` | TEXT | No | Container configuration. Format: command=<cmd>,args=<arg1;arg2> |
@@ -160,6 +162,8 @@ hyp update hyp-space [OPTIONS]
 | `--lifecycle` | TEXT | No | Lifecycle specifies actions that the management system should take in response to container lifecycle events (JSON string) |
 | `--app-type` | TEXT | No | AppType specifies the application type for this workspace |
 | `--service-account-name` | TEXT | No | ServiceAccountName specifies the name of the ServiceAccount to use for the workspace pod |
+| `--queue-name` | TEXT | No | Queue name for space scheduling (1-63 characters, alphanumeric with hyphens). Required when task governance is enabled on HyperPod EKS clusters. Sets the `kueue.x-k8s.io/queue-name` label. |
+| `--priority` | TEXT | No | Priority class for space scheduling. Sets the `kueue.x-k8s.io/priority-class` label. |
 | `--idle-shutdown` | TEXT | No | Idle shutdown configuration. Format: enabled=<bool>,idleTimeoutInMinutes=<int>,detection=<JSON string> |
 | `--template-ref` | TEXT | No | TemplateRef references a WorkspaceTemplate to use as base configuration. Format: name=<name>,namespace=<namespace> |
 | `--container-config` | TEXT | No | Container configuration. Format: command=<cmd>,args=<arg1;arg2> |
