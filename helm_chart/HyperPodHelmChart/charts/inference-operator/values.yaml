@@ -27,6 +27,9 @@ image:
   tag: v3.1
   pullPolicy: Always
   repository:
+  initContainer:
+    repository: hyperpod-inference-operator-init-container
+    tag: v1.0.1
 hyperpodClusterArn:
 executionRoleArn:
 jumpstartGatedModelDownloadRoleArn: ""

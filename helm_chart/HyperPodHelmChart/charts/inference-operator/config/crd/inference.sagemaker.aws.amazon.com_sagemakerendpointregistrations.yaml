@@ -114,6 +114,95 @@ spec:
                 description: REST API Gateway identifier that proxies requests to
                   the HyperPod endpoint (via NLB/ALB)
                 type: string
+              sageMakerEndpointDataCaptureConfig:
+                description: Configuration for SageMaker endpoint data capture
+                properties:
+                  captureContentTypeHeader:
+                    description: Configuration for how to treat different content
+                      type headers during capture
+                    properties:
+                      csvContentTypes:
+                        description: |-
+                          List of content type headers to treat as CSV
+                          Each item must be 1-256 characters and match pattern: [a-zA-Z0-9](-*[a-zA-Z0-9])*/[a-zA-Z0-9](-*[a-zA-Z0-9.])*
+                          Example: text/csv, application/csv
+                        items:
+                          type: string
+                        maxItems: 10
+                        minItems: 1
+                        type: array
+                        x-kubernetes-list-type: set
+                      jsonContentTypes:
+                        description: |-
+                          List of content type headers to treat as JSON
+                          Each item must be 1-256 characters and match pattern: [a-zA-Z0-9](-*[a-zA-Z0-9])*/[a-zA-Z0-9](-*[a-zA-Z0-9.])*
+                          Example: application/json, application/jsonlines
+                        items:
+                          type: string
+                        maxItems: 10
+                        minItems: 1
+                        type: array
+                        x-kubernetes-list-type: set
+                    type: object
+                  captureOptions:
+                    description: Capture options specifying what to capture (Input,
+                      Output, or both)
+                    items:
+                      description: CaptureOption defines what data to capture (input,
+                        output, or both).
+                      properties:
+                        captureMode:
+                          description: 'Capture mode: Input or Output'
+                          enum:
+                          - Input
+                          - Output
+                          type: string
+                      required:
+                      - captureMode
+                      type: object
+                    maxItems: 32
+                    minItems: 1
+                    type: array
+                  destinationS3Uri:
+                    description: S3 URI where captured data will be stored
+                    maxLength: 512
+                    pattern: ^s3://([^/]+)(/.*)?$
+                    type: string
+                  enabled:
+                    description: Enable or disable SageMaker endpoint data capture
+                    type: boolean
+                  initialSamplingPercentage:
+                    description: Percentage of requests to capture (0-100)
+                    format: int32
+                    maximum: 100
+                    minimum: 0
+                    type: integer
+                  kmsKeyId:
+                    description: Optional KMS key ID, ARN, alias name, or alias ARN
+                      for encrypting captured data
+                    maxLength: 2048
+                    pattern: ^[a-zA-Z0-9:/_-]*$
+                    type: string
+                required:
+                - captureOptions
+                - destinationS3Uri
+                - enabled
+                - initialSamplingPercentage
+                type: object
+              tags:
+                description: User-defined tags to propagate to SageMaker resources
+                  (Model, EndpointConfig, Endpoint)
+                items:
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+                  required:
+                  - name
+                  - value
+                  type: object
+                type: array
               tlsConfig:
                 properties:
                   tlsCertificateOutputS3Bucket:
@@ -352,6 +441,20 @@ spec:
                 description: REST API Gateway identifier that proxies requests to
                   the HyperPod endpoint (via NLB/ALB)
                 type: string
+              tags:
+                description: User-defined tags to propagate to SageMaker resources
+                  (Model, EndpointConfig, Endpoint)
+                items:
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+                  required:
+                  - name
+                  - value
+                  type: object
+                type: array
               tlsConfig:
                 properties:
                   tlsCertificateOutputS3Bucket:
