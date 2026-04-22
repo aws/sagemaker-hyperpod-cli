@@ -1,0 +1,52 @@
+# HuggingFace Model Source — Mistral 7B with SGLang Runtime (prefetch enabled)
+# Init container downloads model via huggingface-cli, SGLang serves from local path.
+# NOTE: SGLang needs --model-path pointing to the local model path (/opt/ml/model).
+apiVersion: inference.sagemaker.aws.amazon.com/v1
+kind: InferenceEndpointConfig
+metadata:
+  name: mistral-7b-sglang-prefetch
+  namespace: test-hf
+spec:
+  modelName: mistral-7b
+  modelSourceConfig:
+    modelSourceType: huggingface
+    prefetchEnabled: true
+    huggingFaceModel:
+      modelId: "mistralai/Mistral-7B-Instruct-v0.3"
+      tokenSecretRef:
+        name: token-test
+        key: token
+  instanceType: "ml.g5.24xlarge"
+  invocationEndpoint: v1/chat/completions
+  worker:
+    image: "lmsysorg/sglang:latest"
+    modelInvocationPort:
+      containerPort: 30000
+      name: http
+    modelVolumeMount:
+      name: model-weights
+      mountPath: /opt/ml/model
+    resources:
+      requests:
+        nvidia.com/gpu: "4"
+        memory: "96Gi"
+        cpu: "16"
+      limits:
+        nvidia.com/gpu: "4"
+        memory: "96Gi"
+        cpu: "16"
+    args:
+      - "python3"
+      - "-m"
+      - "sglang.launch_server"
+      - "--model-path"
+      - "/opt/ml/model"
+      - "--port"
+      - "30000"
+      - "--host"
+      - "0.0.0.0"
+      - "--tp"
+      - "4"
+      - "--served-model-name"
+      - "mistralai/Mistral-7B-Instruct-v0.3"
+    environmentVariables: []
