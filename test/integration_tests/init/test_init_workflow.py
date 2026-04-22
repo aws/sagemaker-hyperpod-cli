@@ -372,13 +372,15 @@ class TestResetFunctionality:
         
         # Verify config was reset (template should remain)
         config_path = Path(temp_dir) / "config.yaml"
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
         
-        assert config.get('template') == "hyp-jumpstart-endpoint", "Template should be preserved"
+        # Use load_config to properly read template from comments
+        from sagemaker.hyperpod.cli.init_utils import load_config
+        config_data, template, version = load_config(Path(temp_dir))
+        
+        assert template == "hyp-jumpstart-endpoint", "Template should be preserved"
         # Other fields should be reset to defaults (None or empty)
-        assert config.get('model_id') is None or config.get('model_id') == ""
-        assert config.get('endpoint_name') is None or config.get('endpoint_name') == ""
+        assert config_data.get('model_id') is None or config_data.get('model_id') == ""
+        assert config_data.get('endpoint_name') is None or config_data.get('endpoint_name') == ""
     
     def test_reset_and_reconfigure_workflow(self, temp_dir, runner):
         """Test reset -> reconfigure workflow."""

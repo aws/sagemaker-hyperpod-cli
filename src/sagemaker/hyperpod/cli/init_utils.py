@@ -8,7 +8,7 @@ import os
 import yaml
 import sys
 from pathlib import Path
-from sagemaker.hyperpod.cli.type_handler_utils import convert_cli_value, to_click_type, is_complex_type, DEFAULT_TYPE_HANDLER
+from sagemaker.hyperpod.cli.type_handler_utils import convert_cli_value, to_click_type, is_complex_type, DEFAULT_TYPE_HANDLER, is_undefined_value
 from pydantic import ValidationError
 from typing import List, Any
 from sagemaker.hyperpod.cli.constants.init_constants import (
@@ -144,9 +144,15 @@ def _load_schema_for_version(version: str, schema_pkg: str) -> dict:
     return json.loads(raw)
 
 
-def _get_handler_for_field(template_name, field_name):
+def _get_handler_for_field(template_name, field_name, version=None):
     """Get appropriate handler for a field using template.field mapping."""
     if template_name and field_name:
+        # Try version-scoped key first, then fall back to unversioned
+        if version:
+            scoped_key = f"{template_name}.{version}.{field_name}"
+            handler = SPECIAL_FIELD_HANDLERS.get(scoped_key)
+            if handler:
+                return handler
         scoped_key = f"{template_name}.{field_name}"
         handler = SPECIAL_FIELD_HANDLERS.get(scoped_key, DEFAULT_TYPE_HANDLER)
         return handler
@@ -187,6 +193,7 @@ def generate_click_command() -> Callable:
     """
     Decorator that:
       - injects --<prop> for every property in the current template's schema (detected from config.yaml)
+      - supports both standard templates (Pydantic) and dynamic templates (.override_spec.json)
       - only works for configure command, returns minimal decorator for others
     """
 
@@ -204,7 +211,101 @@ def generate_click_command() -> Callable:
         click.secho("❌  No config.yaml found. Run 'hyp init <template>' first.", fg="red")
         sys.exit(1)
     
-    _, current_template, current_version = load_config()
+    # Load template info from config
+    try:
+        data, current_template, current_version = load_config(Path(".").resolve())
+    except Exception:
+        # If any error, return minimal decorator
+        def decorator(func: Callable) -> Callable:
+            return func
+        return decorator
+    
+    # Check if this is a dynamic template
+    if is_dynamic_template(current_template, Path(".").resolve()):
+        return _generate_dynamic_click_command()
+    
+    # Handle standard templates (existing logic)
+    return _generate_standard_click_command(current_template, current_version)
+
+
+def _generate_dynamic_click_command() -> Callable:
+    """Generate Click command for dynamic templates using .override_spec.json"""
+    
+    # Load dynamic schema
+    override_spec = load_dynamic_schema(Path(".").resolve())
+    
+    def decorator(func: Callable) -> Callable:
+        # Add Click options for each field in override_spec
+        for key, spec in override_spec.items():
+            param_type = spec.get("type", "string")
+            help_text = spec.get("description", "")
+            default = spec.get("default")
+            required = spec.get("required", False)
+            
+            # Add constraints to help text
+            constraints = []
+            if "min" in spec:
+                constraints.append(f"min: {spec['min']}")
+            if "max" in spec:
+                constraints.append(f"max: {spec['max']}")
+            if "enum" in spec:
+                constraints.append(f"allowed: {spec['enum']}")
+            
+            if constraints:
+                help_text = f"{help_text} ({', '.join(constraints)})" if help_text else f"({', '.join(constraints)})"
+            
+            # Convert type
+            if param_type == "integer":
+                click_type = int
+            elif param_type in ["number", "float"]:
+                click_type = float
+            elif param_type == "boolean":
+                click_type = bool
+            else:
+                click_type = str
+            
+            # Convert default value - handle PydanticUndefinedType
+            if is_undefined_value(default):
+                default = None
+            
+            # Create Click option
+            opt_name = f"--{key.replace('_', '-')}"
+            option = click.Option(
+                [opt_name], 
+                type=click_type, 
+                default=default,
+                help=help_text,
+                required=required,
+                show_default=True
+            )
+            
+            # Add to function parameters
+            if not hasattr(func, '__click_params__'):
+                func.__click_params__ = []
+            func.__click_params__.append(option)
+        
+        # Create wrapper that handles dynamic template arguments
+        def wrapper(*args, **kwargs):
+            # For dynamic templates, filter out the dynamic options and pass them separately
+            # Keep only the expected function parameters
+            expected_params = {'option', 'value', 'model_config'}
+            filtered_kwargs = {k: v for k, v in kwargs.items() if k in expected_params}
+            
+            # Pass the dynamic options through ctx.params for the function to access
+            return func(*args, option=None, value=None, model_config=None, **filtered_kwargs)
+        
+        # Copy function metadata
+        wrapper.__name__ = func.__name__
+        wrapper.__doc__ = func.__doc__
+        wrapper.__click_params__ = getattr(func, '__click_params__', [])
+        
+        return wrapper
+    
+    return decorator
+
+
+def _generate_standard_click_command(current_template: str, current_version: str) -> Callable:
+    """Generate Click command for standard templates using Pydantic schemas"""
     
     # Build schema props for current template only
     union_props = {}
@@ -238,7 +339,7 @@ def generate_click_command() -> Callable:
                     filtered_kwargs[k] = convert_cli_value(v, field_type)
             
             model_config = model.model_construct(**filtered_kwargs)
-            return func(model_config=model_config, *args)
+            return func(*args, option=None, value=None, model_config=model_config)
 
         # Generate Click options directly from model fields
         for field_name, field in reversed(list(model.model_fields.items())):
@@ -247,18 +348,20 @@ def generate_click_command() -> Callable:
 
             flag_name = field_name.replace('_', '-')
             field_type = getattr(field, 'annotation', str)
-            required = field.is_required()
+            required = False  # For configure, all fields should be optional
             default = getattr(field, 'default', None)
-            help_text = getattr(getattr(field, 'field_info', None), 'description', field_name) or field_name
 
-            # Unified handler approach - use template.field lookup
-            handler = _get_handler_for_field(current_template, field_name)
-            option_kwargs = _get_click_option_config(handler, field_type, default, required, help_text)
+            # Get description from union_props
+            description = union_props.get(field_name, {}).get('description', '')
 
+            # Use handler-based option config to correctly handle special types
+            # (volumes, security groups, etc. need multiple=True and JSON callbacks)
+            handler = _get_handler_for_field(current_template, field_name, version=current_version)
+            option_kwargs = _get_click_option_config(handler, field_type, default, required, description)
             wrapper = click.option(f"--{flag_name}", **option_kwargs)(wrapper)
-
+        
         return wrapper
-
+    
     return decorator
 
 
@@ -271,14 +374,27 @@ def save_config_yaml(prefill: dict, comment_map: dict, directory: str):
     template = prefill.get('template')
 
     with open(path, 'w') as f:
+        # Write commented template and version at the top
+        f.write(f"# template: {prefill.get('template')}\n")
+        f.write(f"# version: {prefill.get('version')}\n\n")
+        
         for key in prefill:
+            # Skip template and version as they're already written
+            if key in ('template', 'version'):
+                continue
+                
             comment = comment_map.get(key)
             if comment:
                 f.write(f"# {comment}\n")
 
             val = prefill.get(key)
-            handler = _get_handler_for_field(template, key)
-            handler['write_to_yaml'](key, handler['from_dicts'](val) if val is not None else val, f)    
+            handler = _get_handler_for_field(template, key, version=prefill.get('version'))
+            handler['write_to_yaml'](key, handler['from_dicts'](val) if val is not None else val, f)
+
+    # Write lockfile so the template cannot be silently changed by editing config.yaml
+    lockfile = os.path.join(directory, ".hyp")
+    with open(lockfile, 'w') as f:
+        f.write(template)
 
 
 def load_config(dir_path: Path = None) -> Tuple[dict, str, str]:
@@ -304,15 +420,66 @@ def load_config(dir_path: Path = None) -> Tuple[dict, str, str]:
         sys.exit(1)
 
     # Load existing config
-    data = yaml.safe_load(config_file.read_text()) or {}
-    template = data.get("template")
-    version = data.get("version", "1.0")
+    config_text = config_file.read_text()
+    data = yaml.safe_load(config_text) or {}
+    
+    # Extract template and version from comments
+    template = None
+    version = None
+    
+    for line in config_text.split('\n'):
+        line = line.strip()
+        if line.startswith('# template:'):
+            template = line.split(':', 1)[1].strip()
+        elif line.startswith('# version:'):
+            version = line.split(':', 1)[1].strip()
+    
+    # Fallback to data if not found in comments (backward compatibility)
+    if not template:
+        template = data.get("template")
+    if not version:
+        version = data.get("version", "1.0")
 
-    if template not in TEMPLATES:
+    if not template or template not in TEMPLATES:
         click.secho(f"❌  Unknown template '{template}' in config.yaml", fg="red")
         sys.exit(1)
-        
+
+    # Check lockfile to detect if the template comment was manually changed
+    lockfile = dir_path / ".hyp"
+    if lockfile.is_file():
+        locked_template = lockfile.read_text().strip()
+        if locked_template != template:
+            click.secho(
+                f"❌  Template mismatch: config.yaml says '{template}' but this directory was initialized with '{locked_template}'. "
+                f"Do not edit the '# template:' line in config.yaml.",
+                fg="red",
+            )
+            sys.exit(1)
+
     return data, template, version
+
+
+def is_dynamic_template(template: str, dir_path: Path = None) -> bool:
+    """Check if template uses dynamic schema (.override_spec.json)"""
+    if dir_path is None:
+        dir_path = Path(".").resolve()
+    
+    # Check if .override_spec.json exists
+    override_spec_file = dir_path / ".override_spec.json"
+    return override_spec_file.exists() and template in ["hyp-recipe-job"]
+
+
+def load_dynamic_schema(dir_path: Path = None) -> dict:
+    """Load schema from .override_spec.json for dynamic templates"""
+    if dir_path is None:
+        dir_path = Path(".").resolve()
+    
+    override_spec_file = dir_path / ".override_spec.json"
+    if not override_spec_file.exists():
+        return {}
+    
+    with open(override_spec_file, 'r') as f:
+        return json.load(f)
 
 
 def load_config_and_validate(dir_path: Path = None) -> Tuple[dict, str, str]:
@@ -322,6 +489,14 @@ def load_config_and_validate(dir_path: Path = None) -> Tuple[dict, str, str]:
     Exits on validation errors - use for commands that require valid config.
     """
     data, template, version = load_config(dir_path)
+    
+    # Check if this is a dynamic template
+    if is_dynamic_template(template, dir_path):
+        # For dynamic templates, we don't use Pydantic validation
+        # The validation is handled separately if needed
+        return data, template, version
+    
+    # Standard template validation
     validation_errors = validate_config_against_model(data, template, version)
     
     is_valid = display_validation_results(
@@ -361,7 +536,7 @@ def validate_config_against_model(config_data: dict, template: str, version: str
         if model:
             # Unified handler approach
             for key in filtered_config:
-                handler = _get_handler_for_field(template, key)
+                handler = _get_handler_for_field(template, key, version=version)
                 filtered_config[key] = handler['from_dicts'](filtered_config[key])
 
             model(**filtered_config)
@@ -446,7 +621,7 @@ def build_config_from_schema(template: str, version: str, model_config=None, exi
     reqs = schema.get("required", [])
 
     
-    # Build config dict with defaults from schema
+    # Build config dict with template and version for comment generation
     full_cfg = {
         "template": template,
         "version": version,  
@@ -484,7 +659,7 @@ def build_config_from_schema(template: str, version: str, model_config=None, exi
                 continue            
 
             # Unified handler approach
-            handler = _get_handler_for_field(template, key)
+            handler = _get_handler_for_field(template, key, version=version)
 
             # Parse strings using appropriate handler
             if user_provided_fields and isinstance(val, str):
@@ -519,6 +694,8 @@ def build_config_from_schema(template: str, version: str, model_config=None, exi
     
     for key in props:
         if key not in reqs and key not in excluded_fields:
+            if props[key].get("deprecated"):
+                continue
             full_cfg[key] = values.get(key, None)
     
     # Build comment map with [Required] prefix for required fields
@@ -528,6 +705,8 @@ def build_config_from_schema(template: str, version: str, model_config=None, exi
     }
     for key, spec in props.items():
         if key not in excluded_fields:
+            if spec.get("deprecated"):
+                continue
             desc = spec.get("description", "")
             if key in reqs:
                 desc = f"[Required] {desc}"

@@ -36,12 +36,21 @@ def assert_config_values(directory, expected_values):
     config_path = Path(directory) / "config.yaml"
     assert config_path.exists(), f"config.yaml should exist in {directory}"
     
-    with open(config_path, 'r') as f:
-        config = yaml.safe_load(f)
+    # Handle template specially - read from comments
+    if "template" in expected_values:
+        from sagemaker.hyperpod.cli.init_utils import load_config
+        config_data, template, version = load_config(Path(directory))
+        expected_template = expected_values.pop("template")
+        assert template == expected_template, f"Expected template={expected_template}, got {template}"
     
-    for key, expected_value in expected_values.items():
-        actual_value = config.get(key)
-        assert actual_value == expected_value, f"Expected {key}={expected_value}, got {actual_value}"
+    # Handle other values from YAML data
+    if expected_values:
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+        
+        for key, expected_value in expected_values.items():
+            actual_value = config.get(key)
+            assert actual_value == expected_value, f"Expected {key}={expected_value}, got {actual_value}"
 
 
 def assert_warning_displayed(result, expected_keywords):

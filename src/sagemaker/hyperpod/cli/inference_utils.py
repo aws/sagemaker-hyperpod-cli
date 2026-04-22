@@ -96,6 +96,8 @@ def generate_click_command(
                 help=spec.get("description", ""),
             )(wrapped_func)
 
+        # Preserve the original function's docstring
+        wrapped_func.__doc__ = func.__doc__
         return wrapped_func
 
     return decorator

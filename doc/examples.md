@@ -66,6 +66,13 @@ For detailed examples of training with HyperPod, see:
 **Training Examples** Refer the Training SDK Example.
 :::
 
+:::{grid-item-card} Recipe Job CLI Example
+:link: https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/end_to_end_walkthrough/01-training-job-submission/02-recipe-job-cli.ipynb
+:class-card: sd-border-primary
+
+**Recipe Job Example** Submit a fine-tuning job using `hyp-recipe-job` — pre-built recipes from SageMaker JumpStart Hub, no YAML required.
+:::
+
 ::::
 
 

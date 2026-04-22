@@ -360,6 +360,12 @@ def rate_limited_operation(
                     )
             cluster_capacities.append(capacities)
         return cluster_capacities
+    except RuntimeError as e:
+        if "not found" in str(e):
+            logger.debug(f"Skipping cluster {cluster_name}: {e}")
+        else:
+            logger.error(f"Error processing cluster {cluster_name}: {e}, continue...")
+        return None
     except Exception as e:
         logger.error(f"Error processing cluster {cluster_name}: {e}, continue...")
         return None
@@ -835,8 +841,11 @@ def _update_kube_config(
 
     try:
         # Execute the command to update kubeconfig
-        subprocess.run(command, check=True)
+        subprocess.run(command, check=True, capture_output=True)
     except subprocess.CalledProcessError as e:
+        stderr = e.stderr.decode() if e.stderr else ""
+        if "ResourceNotFoundException" in stderr or "No cluster found" in stderr:
+            raise RuntimeError(f"EKS cluster '{eks_name}' not found (may have been deleted)")
         raise RuntimeError(f"Failed to update kubeconfig: {e}")
     except (OSError, ValueError) as e:
         raise RuntimeError(f"Invalid command execution: {e}")

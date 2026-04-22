@@ -32,15 +32,17 @@ class TestHpClusterStackIntegration():
     @pytest.mark.dependency(name="list_stacks")
     def test_list_stacks(self):
         """Test listing CloudFormation stacks using HpClusterStack.list."""
-        # Test listing stacks - should return a response with StackSummaries
         response = HpClusterStack.list()
-        
-        # Verify response structure
+
         assert isinstance(response, dict)
         assert 'StackSummaries' in response
         assert isinstance(response['StackSummaries'], list)
-        
-        # If there are stacks, verify they have expected fields
+
+        # Verify DELETE_COMPLETE stacks are excluded at the API level
+        for stack in response['StackSummaries']:
+            assert stack.get('StackStatus') != 'DELETE_COMPLETE', \
+                f"DELETE_COMPLETE stack found in results: {stack['StackName']}"
+
         if response['StackSummaries']:
             stack = response['StackSummaries'][0]
             assert 'StackName' in stack

@@ -110,6 +110,9 @@ def generate_click_command(
         # 2) inject click options from JSON Schema
         excluded_props = set(["version"])
         
+        # Preserve the original function's docstring
+        wrapped_func.__doc__ = func.__doc__
+        
         wrapped_func = click.option(
             "--environment",
             callback=_parse_json_flag,

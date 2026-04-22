@@ -47,7 +47,7 @@ for root, dirs, files in os.walk(
 setup(
     data_files=sagemaker_hyperpod_recipes,
     name="sagemaker-hyperpod",
-    version="3.7.0",
+    version="3.8.0",
     description="Amazon SageMaker HyperPod SDK and CLI",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
@@ -62,7 +62,7 @@ setup(
         "awscli-cwlogs>=1.4.6",
         "boto3>=1.35.3,<2.0",
         "botocore>=1.35.6 ",
-        "kubernetes==33.1.0",
+        "kubernetes>=33.1.0",
         "kr8s>=0.20.0",
         "pyyaml==6.0.2",
         "ratelimit==2.2.1",
@@ -76,6 +76,8 @@ setup(
         "omegaconf==2.3",
         "pynvml==11.4.1",
         "requests==2.32.4",
+        "urllib3>=1.21.1,<3",
+        "charset-normalizer>=2,<4",
         "tqdm==4.66.5",
         "zstandard==0.15.2",
         # Test dependencies

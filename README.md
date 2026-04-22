@@ -429,6 +429,105 @@ hyp get-operator-logs hyp-pytorch-job --since-hours 0.5
 hyp delete hyp-pytorch-job --job-name <job-name>
 ```
 
+### Recipe Job
+
+Use `hyp-recipe-job` to submit fine-tuning and evaluation jobs using pre-built recipes from SageMaker JumpStart Hub — no YAML authoring required.
+
+
+#### Initialize Recipe Job Configuration
+
+```bash
+mkdir my-recipe-job && cd my-recipe-job
+
+# Option A: HuggingFace model ID
+hyp init hyp-recipe-job . \
+    --huggingface-model-id Qwen/Qwen3-0.6B \
+    --technique SFT \
+    --instance-type ml.g5.48xlarge
+
+# Option B: JumpStart model ID
+hyp init hyp-recipe-job . \
+    --model-id huggingface-reasoning-qwen3-06b \
+    --technique SFT \
+    --instance-type ml.g5.48xlarge
+```
+
+Supported job types:
+- **Fine-tuning**: `SFT`, `DPO`, `CPT`, `PPO`, `RLAIF`, `RLVR`
+- **Evaluation**: `deterministic`, `LLMAJ`
+
+> **Note**: If you omit `--instance-type`, the CLI will automatically query your HyperPod clusters and find clusters with instance types supported by the selected recipe and technique. You will be presented with a list of compatible clusters to choose from.
+
+#### Configure Recipe Job Parameters
+
+```bash
+hyp configure \
+    --name my-recipe-job \
+    --namespace default \
+    --data-path /data/recipes-data/sft/train.jsonl \
+    --global-batch-size 8 \
+    --learning-rate 0.0001 \
+    --max-epochs 1 \
+    --output-path /data/output/my-model \
+    --instance-type ml.g5.48xlarge
+```
+
+#### Validate Configuration
+
+```bash
+hyp validate
+```
+
+#### Reset Configuration
+
+To reset `config.yaml` back to its default values:
+
+```bash
+hyp reset
+```
+
+#### Submit Recipe Job
+
+```bash
+hyp create
+```
+
+#### List Recipe Jobs
+
+```bash
+hyp list hyp-recipe-job --namespace default
+```
+
+#### Describe a Recipe Job
+
+```bash
+hyp describe hyp-recipe-job --job-name <job-name> --namespace default
+```
+
+#### List Pods for a Recipe Job
+
+```bash
+hyp list-pods hyp-recipe-job --job-name <job-name> --namespace default
+```
+
+#### Get Logs from a Recipe Job Pod
+
+```bash
+hyp get-logs hyp-recipe-job --job-name <job-name> --pod-name <pod-name> --namespace default
+```
+
+#### Get Operator Logs
+
+```bash
+hyp get-operator-logs hyp-recipe-job
+```
+
+#### Delete a Recipe Job
+
+```bash
+hyp delete hyp-recipe-job --job-name <job-name> --namespace default
+```
+
 ### Inference 
 
 ### Jumpstart Endpoint Creation

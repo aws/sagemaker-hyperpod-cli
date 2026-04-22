@@ -38,6 +38,13 @@ TEMPLATES = {
         "schema_pkg": "hyperpod_cluster_stack_template",
         "schema_type": CFN,
         'type': "jinja"
+    },
+    "hyp-recipe-job": {
+        "registry": {},
+        "template_registry": {},
+        "schema_pkg": None,
+        "schema_type": CRD,
+        'type': "dynamic"
     }
 }
 

@@ -2,7 +2,7 @@ import unittest
 from hyperpod_pytorch_job_template.v1_1.model import PyTorchJobConfig
 from hyperpod_pytorch_job_template.v1_0.model import PyTorchJobConfig as PyTorchJobConfigV1_0
 from hyperpod_pytorch_job_template.v1_1.template import TEMPLATE_CONTENT
-from jinja2 import Template
+from jinja2 import Template as JinjaTemplate
 from sagemaker.hyperpod.training.hyperpod_pytorch_job import HyperPodPytorchJob
 
 
@@ -93,7 +93,7 @@ class TestResourceAllocation(unittest.TestCase):
             )],
         )
 
-        with self.assertRaises(ValueError, msg="--instance-type is required when specifying accelerator resources"):
+        with self.assertRaises(ValueError, msg="instance_type is required when specifying accelerator resources"):
             HyperPodPytorchJob.allocate_quotas_if_applicable(job)
 
 
@@ -102,7 +102,7 @@ class TestJinjaTemplateRendering(unittest.TestCase):
 
     def test_all_resource_fields_render_in_template(self):
         """Verify all schema resource fields are correctly rendered by the jinja template."""
-        template = Template(TEMPLATE_CONTENT)
+        template = JinjaTemplate(TEMPLATE_CONTENT)
         rendered = template.render(
             job_name="test-resources",
             namespace="default",
@@ -159,7 +159,7 @@ class TestJinjaTemplateRendering(unittest.TestCase):
 
     def test_accelerator_partition_fields_render_in_template(self):
         """Verify accelerator partition fields render correctly (mutually exclusive with accelerators)."""
-        template = Template(TEMPLATE_CONTENT)
+        template = JinjaTemplate(TEMPLATE_CONTENT)
         rendered = template.render(
             job_name="test-mig",
             namespace="default",
@@ -172,6 +172,137 @@ class TestJinjaTemplateRendering(unittest.TestCase):
         self.assertIn("nvidia.com/mig-1g.5gb: 2", rendered)
         self.assertEqual(rendered.count("nvidia.com/mig-1g.5gb: 2"), 2)
         self.assertIn('nvidia.com/mig.config.state: "success"', rendered)
+
+
+class TestReplicaCount(unittest.TestCase):
+    """Test replica_count / node_count behavior."""
+
+    def test_replica_count_with_resources(self):
+        """replica_count can be combined with explicit resource fields through the full pipeline."""
+        config = PyTorchJobConfig(
+            job_name="test-replica-resources",
+            image="pytorch:latest",
+            replica_count=4,
+            accelerators=2,
+            instance_type="ml.p4d.24xlarge",
+        )
+        job = config.to_domain()
+        job_with_resources = HyperPodPytorchJob.allocate_quotas_if_applicable(job)
+        self.assertEqual(job_with_resources.replicaSpecs[0].replicas, 4)
+        container = job_with_resources.replicaSpecs[0].template.spec.containers[0]
+        self.assertEqual(int(container.resources.requests["nvidia.com/gpu"]), 2)
+
+    def test_replica_count_without_resources_auto_calculates(self):
+        """replica_count without resources auto-calculates from instance type."""
+        config = PyTorchJobConfig(
+            job_name="test-replica-auto",
+            image="pytorch:latest",
+            replica_count=4,
+            instance_type="ml.p4d.24xlarge",
+        )
+        job = config.to_domain()
+        job_with_resources = HyperPodPytorchJob.allocate_quotas_if_applicable(job)
+        container = job_with_resources.replicaSpecs[0].template.spec.containers[0]
+        self.assertIn("nvidia.com/gpu", container.resources.requests)
+
+    def test_node_count_with_resources_rejected(self):
+        """node_count cannot be combined with resource fields."""
+        with self.assertRaises(ValueError, msg="node_count cannot be combined with resource fields"):
+            PyTorchJobConfig(
+                job_name="test-node-resources",
+                image="pytorch:latest",
+                node_count=4,
+                accelerators=2,
+                instance_type="ml.p4d.24xlarge",
+            )
+
+    def test_node_count_with_limit_fields_rejected(self):
+        """node_count cannot be combined with limit-only resource fields either."""
+        with self.assertRaises(ValueError, msg="node_count cannot be combined with resource fields"):
+            PyTorchJobConfig(
+                job_name="test-node-limits",
+                image="pytorch:latest",
+                node_count=4,
+                accelerators_limit=2,
+                instance_type="ml.p4d.24xlarge",
+            )
+
+    def test_replica_count_and_node_count_mutually_exclusive(self):
+        """replica_count and node_count cannot be specified together."""
+        with self.assertRaises(ValueError, msg="Only one of 'replica_count' or 'node_count'"):
+            PyTorchJobConfig(
+                job_name="test-both",
+                image="pytorch:latest",
+                replica_count=4,
+                node_count=4,
+                instance_type="ml.p4d.24xlarge",
+            )
+
+    def test_max_replica_count_and_max_node_count_mutually_exclusive(self):
+        """max_replica_count and max_node_count cannot be specified together."""
+        with self.assertRaises(ValueError, msg="Only one of 'max_replica_count' or 'max_node_count'"):
+            PyTorchJobConfig(
+                job_name="test-both-max",
+                image="pytorch:latest",
+                replica_count=2,
+                max_replica_count=8,
+                max_node_count=8,
+                instance_type="ml.p4d.24xlarge",
+            )
+
+    def test_node_count_still_works(self):
+        """node_count without resources still works (backward compatible)."""
+        config = PyTorchJobConfig(
+            job_name="test-node-compat",
+            image="pytorch:latest",
+            node_count=4,
+            instance_type="ml.p4d.24xlarge",
+        )
+        job = config.to_domain()
+        self.assertEqual(job.replicaSpecs[0].replicas, 4)
+
+    def test_max_replica_count_in_elastic_policy(self):
+        """max_replica_count sets max_replicas in elastic policy."""
+        config = PyTorchJobConfig(
+            job_name="test-elastic",
+            image="pytorch:latest",
+            replica_count=2,
+            max_replica_count=8,
+            elastic_replica_increment_step=2,
+            instance_type="ml.p4d.24xlarge",
+        )
+        job = config.to_domain()
+        self.assertEqual(job.elasticPolicy.maxReplicas, 8)
+        self.assertEqual(job.elasticPolicy.minReplicas, 2)
+
+    def test_replica_count_with_max_node_count(self):
+        """replica_count can be mixed with max_node_count (old + new params)."""
+        config = PyTorchJobConfig(
+            job_name="test-mixed",
+            image="pytorch:latest",
+            replica_count=2,
+            max_node_count=8,
+            elastic_replica_increment_step=2,
+            instance_type="ml.p4d.24xlarge",
+        )
+        job = config.to_domain()
+        self.assertEqual(job.replicaSpecs[0].replicas, 2)
+        self.assertEqual(job.elasticPolicy.maxReplicas, 8)
+
+    def test_replica_count_renders_in_template(self):
+        """replica_count renders correctly in the Jinja template."""
+        template = JinjaTemplate(TEMPLATE_CONTENT)
+        rendered = template.render(
+            job_name="test-replica",
+            namespace="default",
+            image="pytorch:latest",
+            replica_count=4,
+            accelerators=2,
+            accelerators_limit=2,
+            instance_type="ml.p4d.24xlarge",
+        )
+        self.assertIn("replicas: 4", rendered)
+        self.assertIn("nvidia.com/gpu: 2", rendered)
 
 
 class TestDeepHealthCheckNodeSelector(unittest.TestCase):

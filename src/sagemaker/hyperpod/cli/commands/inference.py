@@ -29,9 +29,7 @@ from sagemaker.hyperpod.common.utils import display_formatted_logs
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "create_js_endpoint_cli")
 @handle_cli_exceptions()
 def js_create(version, debug, js_endpoint):
-    """
-    Create a jumpstart model endpoint.
-    """
+    """Create a jumpstart model endpoint"""
     click.echo(f"Using version: {version}")
     js_endpoint.create(debug=debug)
 
@@ -46,9 +44,7 @@ def js_create(version, debug, js_endpoint):
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "create_custom_endpoint_cli")
 @handle_cli_exceptions()
 def custom_create(version, debug, custom_endpoint):
-    """
-    Create a custom model endpoint.
-    """
+    """Create a custom model endpoint"""
     click.echo(f"Using version: {version}")
     custom_endpoint.create(debug=debug)
     
@@ -134,7 +130,7 @@ def js_list(
     namespace: Optional[str],
 ):
     """
-    List all Hyperpod Jumpstart model endpoints.
+    List all HyperPod Jumpstart model endpoints.
     """
     endpoints = HPJumpStartEndpoint.model_construct().list(namespace)
     data = [ep.model_dump() for ep in endpoints]
@@ -177,7 +173,7 @@ def custom_list(
     namespace: Optional[str],
 ):
     """
-    List all Hyperpod custom model endpoints.
+    List all HyperPod custom model endpoints.
     """
     endpoints = HPEndpoint.model_construct().list(namespace)
     data = [ep.model_dump() for ep in endpoints]
@@ -236,7 +232,7 @@ def js_describe(
     full: bool
 ):
     """
-    Describe a Hyperpod Jumpstart model endpoint.
+    Describe a HyperPod Jumpstart model endpoint.
     """
     my_endpoint = HPJumpStartEndpoint.model_construct().get(name, namespace)
     data = my_endpoint.model_dump()
@@ -385,7 +381,7 @@ def custom_describe(
     full: bool
 ):
     """
-    Describe a Hyperpod custom model endpoint.
+    Describe a HyperPod custom model endpoint.
     """
     my_endpoint = HPEndpoint.model_construct().get(name, namespace)
     data = my_endpoint.model_dump()

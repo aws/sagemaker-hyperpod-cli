@@ -1,11 +1,7 @@
 import click
-import yaml
-import json
-import os
-import subprocess
-from pydantic import BaseModel, ValidationError, Field
-from typing import Optional, Union
+from typing import Union
 from importlib.metadata import version, PackageNotFoundError
+import copy
 
 from sagemaker.hyperpod.cli.commands.cluster import list_cluster, set_cluster_context, get_cluster_context, \
     get_monitoring, describe_cluster
@@ -62,8 +58,8 @@ from sagemaker.hyperpod.cli.commands.space_access import space_access_create
 from sagemaker.hyperpod.cli.commands.init import (
     init,
     reset,
-    configure,
     validate,
+    configure,
     _default_create
 )
 
@@ -73,6 +69,7 @@ def get_package_version(package_name):
         return version(package_name)
     except PackageNotFoundError:
         return "Not installed"
+
 
 def print_version(ctx, param, value):
     if not value or ctx.resilient_parsing:
@@ -91,7 +88,8 @@ def print_version(ctx, param, value):
 
 
 @click.group(context_settings={'max_content_width': 200})
-@click.option('--version', is_flag=True, callback=print_version, expose_value=False, is_eager=True, help='Show version information')
+@click.option('--version', is_flag=True, callback=print_version, expose_value=False, is_eager=True,
+              help='Show version information')
 def cli():
     pass
 
@@ -142,10 +140,12 @@ def describe():
     """Describe endpoints, pytorch jobs or cluster stacks, spaces or space template."""
     pass
 
+
 @cli.group(cls=CLICommand)
 def update():
     """Update an existing HyperPod cluster configuration, space, or space template."""
     pass
+
 
 @cli.group(cls=CLICommand)
 def delete():
@@ -173,7 +173,7 @@ def portforward():
 
 @cli.group(cls=CLICommand)
 def list_pods():
-    """List pods for endpoints or pytorch jobs."""
+    """List pods for endpoints, pytorch jobs, or recipe jobs."""
     pass
 
 
@@ -197,7 +197,7 @@ def get_operator_logs():
 
 @cli.group(cls=CLICommand)
 def exec():
-    """Execute commands in pods for endpoints or pytorch jobs."""
+    """Execute commands in pods for endpoints, pytorch jobs, or recipe jobs."""
     pass
 
 
@@ -207,6 +207,7 @@ cli.add_command(configure)
 cli.add_command(validate)
 
 create.add_command(pytorch_create)
+# create.add_command(create_recipe_job_interactive)
 create.add_command(js_create)
 create.add_command(custom_create)
 
@@ -217,6 +218,9 @@ create.add_command(space_template_create)
 create.add_command(space_access_create)
 
 list.add_command(list_jobs)
+recipe_list_cmd = copy.copy(list_jobs)
+recipe_list_cmd.help = "List all HyperPod recipe jobs"
+list.add_command(recipe_list_cmd, name="hyp-recipe-job")
 list.add_command(js_list)
 list.add_command(custom_list)
 list.add_command(list_cluster_stacks)
@@ -224,6 +228,9 @@ list.add_command(space_list)
 list.add_command(space_template_list)
 
 describe.add_command(pytorch_describe)
+recipe_describe_cmd = copy.copy(pytorch_describe)
+recipe_describe_cmd.help = "Describe a HyperPod recipe job."
+describe.add_command(recipe_describe_cmd, name="hyp-recipe-job")
 describe.add_command(js_describe)
 describe.add_command(custom_describe)
 describe.add_command(describe_cluster_stack)
@@ -237,6 +244,9 @@ update.add_command(space_update)
 update.add_command(space_template_update)
 
 delete.add_command(pytorch_delete)
+recipe_delete_cmd = copy.copy(pytorch_delete)
+recipe_delete_cmd.help = "Delete a HyperPod recipe job."
+delete.add_command(recipe_delete_cmd, name="hyp-recipe-job")
 delete.add_command(js_delete)
 delete.add_command(custom_delete)
 delete.add_command(delete_cluster_stack)
@@ -248,10 +258,16 @@ start.add_command(space_start)
 stop.add_command(space_stop)
 
 list_pods.add_command(pytorch_list_pods)
+recipe_list_pods_cmd = copy.copy(pytorch_list_pods)
+recipe_list_pods_cmd.help = "List all HyperPod PyTorch pods related to the recipe job."
+list_pods.add_command(recipe_list_pods_cmd, name="hyp-recipe-job")
 list_pods.add_command(js_list_pods)
 list_pods.add_command(custom_list_pods)
 
 get_logs.add_command(pytorch_get_logs)
+recipe_get_logs_cmd = copy.copy(pytorch_get_logs)
+recipe_get_logs_cmd.help = "Get specific pod log for HyperPod recipe job."
+get_logs.add_command(recipe_get_logs_cmd, name="hyp-recipe-job")
 get_logs.add_command(js_get_logs)
 get_logs.add_command(custom_get_logs)
 get_logs.add_command(space_get_logs)
@@ -259,11 +275,16 @@ get_logs.add_command(space_get_logs)
 portforward.add_command(space_portforward)
 
 get_operator_logs.add_command(pytorch_get_operator_logs)
+recipe_get_operator_logs_cmd = copy.copy(pytorch_get_operator_logs)
+recipe_get_operator_logs_cmd.help = "Get operator logs for HyperPod recipe jobs."
+get_operator_logs.add_command(recipe_get_operator_logs_cmd, name="hyp-recipe-job")
 get_operator_logs.add_command(js_get_operator_logs)
 get_operator_logs.add_command(custom_get_operator_logs)
 
 invoke.add_command(custom_invoke)
-invoke.add_command(custom_invoke, name="hyp-jumpstart-endpoint")
+jumpstart_invoke_cmd = copy.copy(custom_invoke)
+jumpstart_invoke_cmd.help = "Invoke a jumpstart model endpoint."
+invoke.add_command(jumpstart_invoke_cmd, name="hyp-jumpstart-endpoint")
 
 cli.add_command(list_cluster)
 cli.add_command(set_cluster_context)
@@ -273,6 +294,9 @@ cli.add_command(get_monitoring)
 cli.add_command(list_accelerator_partition_type)
 
 exec.add_command(pytorch_exec)
+recipe_exec_cmd = copy.copy(pytorch_exec)
+recipe_exec_cmd.help = "Execute commands in pods associated with a HyperPod recipe job."
+exec.add_command(recipe_exec_cmd, name="hyp-recipe-job")
 
 if __name__ == "__main__":
     cli()

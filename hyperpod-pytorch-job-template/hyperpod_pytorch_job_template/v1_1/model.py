@@ -134,7 +134,13 @@ class PyTorchJobConfig(BaseModel):
     node_count: Optional[int] = Field(
         default=None,
         alias="node_count", 
-        description="Number of nodes",
+        description="[DEPRECATED] Number of nodes. Use replica_count instead.",
+        ge=1
+    )
+    replica_count: Optional[int] = Field(
+        default=None,
+        alias="replica_count",
+        description="Number of job replicas",
         ge=1
     )
     tasks_per_node: Optional[str] = Field(
@@ -259,7 +265,13 @@ class PyTorchJobConfig(BaseModel):
     max_node_count: Optional[int] = Field(
         default=None,
         alias="max_node_count",
-        description="Maximum number of nodes for elastic training",
+        description="[DEPRECATED] Maximum number of nodes for elastic training. Use max_replica_count instead.",
+        ge=1,
+    )
+    max_replica_count: Optional[int] = Field(
+        default=None,
+        alias="max_replica_count",
+        description="Maximum number of replicas for elastic training",
         ge=1,
     )
     elastic_graceful_shutdown_timeout_in_seconds: Optional[int] = Field(
@@ -402,11 +414,32 @@ class PyTorchJobConfig(BaseModel):
             return self
 
         valid, error = _validate_accelerator_partition_parameters(
-            self.accelerator_partition_type, self.accelerators, self.accelerators_limit, self.node_count, self.instance_type
+            self.accelerator_partition_type, self.accelerators, self.accelerators_limit,
+            self.replica_count or self.node_count, self.instance_type
         )
         if not valid:
             raise ValueError(error)
         
+        return self
+
+    @model_validator(mode='after')
+    def validate_replica_params(self):
+        """Validate replica_count / node_count and max_replica_count / max_node_count usage."""
+        if self.replica_count is not None and self.node_count is not None:
+            raise ValueError("Only one of 'replica_count' or 'node_count' can be specified, not both.")
+        if self.max_replica_count is not None and self.max_node_count is not None:
+            raise ValueError("Only one of 'max_replica_count' or 'max_node_count' can be specified, not both.")
+        # node_count implies full-node allocation, so it can't be combined with granular resources
+        if self.node_count is not None:
+            has_resources = any([
+                self.accelerators, self.vcpu, self.memory,
+                self.accelerators_limit, self.vcpu_limit, self.memory_limit,
+            ])
+            if has_resources:
+                raise ValueError(
+                    "node_count cannot be combined with resource fields (accelerators, vcpu, memory). "
+                    "Use replica_count instead to specify replicas with granular resources."
+                )
         return self
 
     @model_validator(mode='after')
@@ -435,14 +468,14 @@ class PyTorchJobConfig(BaseModel):
                     f"Got: {discrete_values}"
                 )
 
-            # Check against max_node_count if specified
-            if self.max_node_count is not None:
-                invalid_values = [val for val in discrete_values if val > self.max_node_count]
+            # Check against max replicas if specified
+            max_reps = self.max_replica_count or self.max_node_count
+            if max_reps is not None:
+                invalid_values = [val for val in discrete_values if val > max_reps]
                 if invalid_values:
                     raise ValueError(
-                        f"All values in 'elastic_replica_discrete_values' must be ≤ max_node_count ({self.max_node_count}). "
-                        f"Invalid values: {invalid_values}. "
-                        f"Please either increase max_node_count or remove values exceeding it."
+                        f"All values in 'elastic_replica_discrete_values' must be <= max replica count ({max_reps}). "
+                        f"Invalid values: {invalid_values}."
                     )
 
         return self
@@ -450,6 +483,10 @@ class PyTorchJobConfig(BaseModel):
     def to_domain(self) -> Dict:
         """Convert flat config to domain model (HyperPodPytorchJobSpec)"""
         
+        # Resolve deprecated aliases
+        replicas = self.replica_count or self.node_count
+        max_replicas = self.max_replica_count or self.max_node_count
+
         # Helper function to build dict with non-None values
         def build_dict(**kwargs):
             return {k: v for k, v in kwargs.items() if v is not None}
@@ -553,23 +590,23 @@ class PyTorchJobConfig(BaseModel):
         replica_kwargs = build_dict(
             name="pod",
             template=Template(metadata=Metadata(**metadata_kwargs), spec=Spec(**spec_kwargs)),
-            replicas=self.node_count,
-            max_replicas=self.max_node_count
+            replicas=replicas,
+            max_replicas=max_replicas
         )
 
         # Build elastic policy
         elastic_policy = None
         if any([
             self.elastic_replica_increment_step is not None,
-            self.max_node_count is not None,
+            max_replicas is not None,
             self.elastic_graceful_shutdown_timeout_in_seconds is not None,
             self.elastic_scaling_timeout_in_seconds is not None,
             self.elastic_replica_discrete_values is not None
         ]):
             # Build base elastic policy kwargs
             elastic_policy_kwargs = build_dict(
-                min_replicas=self.node_count,
-                max_replicas=self.max_node_count,
+                min_replicas=replicas,
+                max_replicas=max_replicas,
                 graceful_shutdown_timeout_in_seconds=self.elastic_graceful_shutdown_timeout_in_seconds,
                 scaling_timeout_in_seconds=self.elastic_scaling_timeout_in_seconds
             )

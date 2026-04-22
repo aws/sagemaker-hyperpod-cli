@@ -120,7 +120,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             has_accelerators = any(requests.get(k) and str(requests.get(k)) != "0" for k in accel_keys)
             has_accelerators_limit = any(limits.get(k) and str(limits.get(k)) != "0" for k in accel_keys)
             if not instance_type and (has_accelerators or has_accelerators_limit):
-                raise ValueError("--instance-type is required when specifying accelerator resources")
+                raise ValueError("instance_type is required when specifying accelerator resources")
 
             if not instance_type:
                 return None
@@ -408,6 +408,18 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             handle_exception(e, self.metadata.name, self.metadata.namespace,
                             operation_type='delete', resource_type='training_job')
 
+        # Clean up associated ConfigMap created during job submission
+        configmap_name = f"training-config-{self.metadata.name}"
+        try:
+            client.CoreV1Api().delete_namespaced_config_map(
+                name=configmap_name,
+                namespace=self.metadata.namespace,
+            )
+            logger.info(f"Deleted ConfigMap '{configmap_name}'")
+        except Exception:
+            # ConfigMap may not exist (e.g. non-recipe jobs) — ignore
+            pass
+
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "exec_pytorchjob")
     def exec_command(self, command: List[str], pod: Optional[str] = None,
                      all_pods: bool = False, container: Optional[str] = None):
@@ -441,7 +453,7 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             else:
                 if pod not in pods:
                     logger.error(f"Pod {pod} not found in job {job_name}")
-                    raise ValueError(f"Pod {pod} not found in job {job_name}")
+                    raise ValueError(f"Pod '{pod}' not found in job '{job_name}'")
 
                 result = self._exec_command_on_pod(pod, command, container)
                 logger.info(f"Successfully executed command on pod {pod}")
@@ -452,15 +464,24 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             handle_exception(e, job_name, namespace)
 
     def _exec_command_on_pod(self, pod: str, command: List[str], container: Optional[str] = None):
-        return stream.stream(
-            client.CoreV1Api().connect_get_namespaced_pod_exec,
-            stderr=True,
-            stdout=True,
-            name=pod,
-            namespace=self.metadata.namespace,
-            command=command,
-            container=container
-        )
+        from kubernetes.client.exceptions import ApiException
+        try:
+            return stream.stream(
+                client.CoreV1Api().connect_get_namespaced_pod_exec,
+                stderr=True,
+                stdout=True,
+                name=pod,
+                namespace=self.metadata.namespace,
+                command=command,
+                container=container
+            )
+        except ApiException as e:
+            if e.status == 400 and "does not have a host assigned" in str(e.body):
+                raise RuntimeError(
+                    f"Cannot exec into pod '{pod}': pod is not running (no host assigned). "
+                    f"The job may have already completed or the pod is still pending."
+                ) from e
+            raise
 
 
     @classmethod
@@ -520,8 +541,16 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
                 namespace=namespace,
                 plural=PLURAL,
                 name=name,
+                _request_timeout=10,
             )
             return _load_hp_job(response)
+        except AttributeError as e:
+            if "getheaders" in str(e):
+                raise Exception(
+                    f"Resource '{name}' not found in namespace '{namespace}'. "
+                    f"Please check the resource name and namespace."
+                ) from e
+            raise
         except Exception as e:
             handle_exception(e, name, namespace,
                             operation_type='get', resource_type='training_job')
@@ -598,12 +627,11 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             config.load_kube_config()
             v1 = client.CoreV1Api()
 
-            response = v1.list_namespaced_pod(self.metadata.namespace)
-            pods = []
-
-            for pod in response.items:
-                if pod.metadata.name.startswith(f"{self.metadata.name}-pod"):
-                    pods.append(pod.metadata.name)
+            response = v1.list_namespaced_pod(
+                self.metadata.namespace,
+                label_selector=f"HPJob={self.metadata.name}",
+            )
+            pods = [pod.metadata.name for pod in response.items]
             return pods
         except Exception as e:
             logger.error(f"Failed to list pod in namespace {self.metadata.namespace}!")
@@ -663,12 +691,14 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             config.load_kube_config()
             v1 = client.CoreV1Api()
 
-            logs = v1.read_namespaced_pod_log(
+            response = v1.read_namespaced_pod_log(
                 name=pod_name,
                 namespace=self.metadata.namespace,
                 timestamps=True,
                 container=container,
+                _preload_content=False,
             )
+            logs = response.data.decode("utf-8")
             return logs
         except Exception as e:
             logger.error(f"Failed to get logs from pod {pod_name}!")

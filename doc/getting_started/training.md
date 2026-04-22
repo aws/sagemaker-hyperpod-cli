@@ -104,6 +104,107 @@ This will:
 - Initialize the job creation process
 
 
+## Creating Training Jobs -- Recipe Job Init Experience
+
+The `hyp-recipe-job` experience lets you submit fine-tuning and evaluation jobs using pre-built recipes published to SageMaker JumpStart Hub. No YAML authoring required — the CLI fetches the Kubernetes job template and parameter spec automatically.
+
+### 1. Initialize a Recipe Job
+
+`````{tab-set}
+````{tab-item} CLI (HuggingFace model ID)
+```bash
+mkdir my-recipe-job
+cd my-recipe-job
+hyp init hyp-recipe-job . \
+    --huggingface-model-id Qwen/Qwen3-0.6B \
+    --technique SFT \
+    --instance-type ml.g5.48xlarge
+```
+````
+````{tab-item} CLI (JumpStart model ID)
+```bash
+mkdir my-recipe-job
+cd my-recipe-job
+hyp init hyp-recipe-job . \
+    --model-id huggingface-reasoning-qwen3-06b \
+    --technique SFT \
+    --instance-type ml.g5.48xlarge
+```
+````
+`````
+
+Supported job types:
+- **Fine-tuning**: `SFT`, `DPO`, `CPT`, `PPO`, `RLAIF`, `RLVR`
+- **Evaluation**: `deterministic`, `LLMAJ`
+
+```{note}
+If you omit `--instance-type`, the CLI will automatically query your HyperPod clusters and find clusters with instance types supported by the selected recipe and technique. You will be presented with a list of compatible clusters to choose from. Note that this interactive prompt requires a terminal and is not supported in Jupyter notebooks.
+```
+
+This creates three files in your job directory:
+- `config.yaml` — your editable training parameters
+- `.override_spec.json` — the parameter schema
+- `k8s.jinja` — the Kubernetes job template
+
+### 3. Configure Recipe Job Parameters
+
+```bash
+hyp configure \
+    --name my-recipe-job \
+    --namespace default \
+    --data-path /data/recipes-data/sft/train.jsonl \
+    --global-batch-size 8 \
+    --learning-rate 0.0001 \
+    --max-epochs 1 \
+    --output-path /data/output/my-model \
+    --instance-type ml.g5.48xlarge
+```
+
+### 4. Validate Configuration
+
+```bash
+hyp validate
+```
+
+### 4a. Reset Configuration (Optional)
+
+To reset `config.yaml` back to its default values:
+
+```bash
+hyp reset
+```
+
+### 5. Submit the Recipe Job
+
+```bash
+hyp create
+```
+
+### 6. Manage Recipe Jobs
+
+```bash
+# List jobs
+hyp list hyp-recipe-job --namespace default
+
+# Describe a job
+hyp describe hyp-recipe-job --job-name <job-name> --namespace default
+
+# List pods
+hyp list-pods hyp-recipe-job --job-name <job-name> --namespace default
+
+# Get logs
+hyp get-logs hyp-recipe-job --job-name <job-name> --pod-name <pod-name> --namespace default
+
+# Get operator logs
+hyp get-operator-logs hyp-recipe-job
+
+# Exec into pods
+hyp exec hyp-recipe-job --job-name <job-name> --namespace default --all-pods -- echo hello
+
+# Delete job
+hyp delete hyp-recipe-job --job-name <job-name> --namespace default
+```
+
 ## Creating Training Jobs -- CLI/SDK
 
 You can create training jobs using either the CLI or SDK approach:
@@ -295,5 +396,6 @@ For detailed examples of training with HyperPod, see:
 - <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/training/CLI/training-init-experience.ipynb" target="_blank">CLI Training Init Experience Example</a>
 - <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/training/CLI/training-e2e-cli.ipynb" target="_blank">CLI Training Example</a>
 - <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/training/SDK/training_sdk_example.ipynb" target="_blank">SDK Training Example</a>
+- <a href="https://github.com/aws/sagemaker-hyperpod-cli/blob/main/examples/end_to_end_walkthrough/01-training-job-submission/02-recipe-job-cli.ipynb" target="_blank">Recipe Job CLI Example</a>
 
 These examples demonstrate end-to-end workflows for creating and managing training jobs using both the CLI and SDK approaches.

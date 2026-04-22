@@ -209,7 +209,7 @@ class TestGpuQuotaAllocationIntegration:
         logger.info(f"Successfully deleted job: {test_job_name}")
 
     def test_invalid_node_count_accelerators_parameter(self, test_job_name):
-        """Test that invalid case where both node-count and accelerators are provided"""
+        """Test that node-count cannot be combined with resource fields"""
 
         # Test with both node-count and accelerators parameters
         create_cmd = [
@@ -236,8 +236,7 @@ class TestGpuQuotaAllocationIntegration:
                     text=True
                 )
         assert result.returncode != 0
-        assert "Either node-count OR a combination of accelerators, vcpu, " in result.stdout
-        assert "memory-in-gib must be specified for instance-type ml.g5.8xlarge" in result.stdout
+        assert "node_count cannot be combined with resource fields" in result.stderr
 
     def test_invalid_no_node_count_or_quota_parameter(self, test_job_name):
         """Test that case where both node-count and any of the quota parameters are provided"""
@@ -287,7 +286,7 @@ class TestGpuQuotaAllocationIntegration:
             "--accelerators-limit", "1",
             "--vcpu-limit", "4",
             "--memory-limit", "2",
-            "--node-count", "1",
+            "--replica-count", "1",
             "--queue-name", QUEUE,
             "--namespace", NAMESPACE
         ]
@@ -297,5 +296,5 @@ class TestGpuQuotaAllocationIntegration:
             text=True
         )
         assert result.returncode != 0
-        assert "Invalid instance-type ml.n5.8xlarge" in result.stdout
+        assert "Invalid instance_type" in result.stdout
         logger.info("Successfully verified invalid instance type error")

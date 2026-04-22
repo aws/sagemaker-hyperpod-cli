@@ -390,12 +390,30 @@ class HpClusterStack(ClusterStackBase):
         """
         cf = create_boto3_client('cloudformation', region_name=region)
 
+        # All valid stack statuses except DELETE_COMPLETE, used to avoid paginating
+        # through tens of thousands of deleted stacks which causes throttling.
+        _ACTIVE_STACK_STATUSES = [
+            'CREATE_IN_PROGRESS', 'CREATE_FAILED', 'CREATE_COMPLETE',
+            'ROLLBACK_IN_PROGRESS', 'ROLLBACK_FAILED', 'ROLLBACK_COMPLETE',
+            'DELETE_IN_PROGRESS', 'DELETE_FAILED',
+            'UPDATE_IN_PROGRESS', 'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS',
+            'UPDATE_COMPLETE', 'UPDATE_FAILED',
+            'UPDATE_ROLLBACK_IN_PROGRESS', 'UPDATE_ROLLBACK_FAILED',
+            'UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS', 'UPDATE_ROLLBACK_COMPLETE',
+            'REVIEW_IN_PROGRESS', 'IMPORT_IN_PROGRESS', 'IMPORT_COMPLETE',
+            'IMPORT_ROLLBACK_IN_PROGRESS', 'IMPORT_ROLLBACK_FAILED', 'IMPORT_ROLLBACK_COMPLETE',
+        ]
+
         try:
             # Prepare API call parameters
             list_params = {}
 
             if stack_status_filter is not None:
                 list_params['StackStatusFilter'] = stack_status_filter
+            else:
+                # Exclude DELETE_COMPLETE at the API level to avoid paginating through
+                # large numbers of deleted stacks, which causes throttling errors.
+                list_params['StackStatusFilter'] = _ACTIVE_STACK_STATUSES
 
             response = cf.list_stacks(**list_params)
 
@@ -405,13 +423,6 @@ class HpClusterStack(ClusterStackBase):
                 list_params['NextToken'] = response['NextToken']
                 response = cf.list_stacks(**list_params)
                 all_summaries.extend(response.get('StackSummaries', []))
-
-            # Only filter DELETE_COMPLETE when no explicit filter is provided
-            if stack_status_filter is None:
-                all_summaries = [
-                    stack for stack in all_summaries
-                    if stack.get('StackStatus') != 'DELETE_COMPLETE'
-                ]
 
             return {'StackSummaries': all_summaries}
         except cf.exceptions.ClientError as e:

@@ -199,8 +199,23 @@
         }
       ],
       "default": null,
-      "description": "Number of nodes",
+      "deprecated": true,
+      "description": "[DEPRECATED] Number of nodes. Use replica_count instead.",
       "title": "Node Count"
+    },
+    "replica_count": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Number of job replicas",
+      "title": "Replica Count"
     },
     "tasks_per_node": {
       "anyOf": [
@@ -431,8 +446,23 @@
         }
       ],
       "default": null,
-      "description": "Maximum number of nodes for elastic training",
+      "deprecated": true,
+      "description": "[DEPRECATED] Maximum number of nodes for elastic training. Use max_replica_count instead.",
       "title": "Max Node Count"
+    },
+    "max_replica_count": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Maximum number of replicas for elastic training",
+      "title": "Max Replica Count"
     },
     "elastic_graceful_shutdown_timeout_in_seconds": {
       "anyOf": [

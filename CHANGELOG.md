@@ -1,5 +1,46 @@
 # Changelog
 
+## v3.8.0 (2026-04-16)
+
+### Features
+- Add Recipe Job Init Experience: `hyp init hyp-recipe-job` command for launching HyperPod recipe jobs (#409)
+- Introduce `replica_count` parameter for training jobs; deprecate `node_count` in favor of `replica_count` (#401)
+
+### Bug Fixes
+- Exclude `DELETE_COMPLETE` stacks at API level to prevent `ListStacks` throttling (#410)
+- Fix `ml.` prefix and wrong MIG profiles for `p6-b200.48xlarge` (#399)
+- Fix namespaced-role-and-bindings helm chart bugs (#406)
+
+### Health Monitoring Agent
+- Release Health Monitoring Agent 1.0.1481.0_1.0.392.0 with bug fixes (#405)
+
+## v3.7.1 (2026-04-08)
+
+### New Instance Type Support
+- Add g7e instance types to HyperPod helm chart values (nvidia/EFA device plugins) (#380)
+- Add g7e instance types to Python constants and CLI (#385, #390)
+- Add g7e instance types to health-monitoring-agent node affinity (#381)
+- Add B300 MIG profiles to GPU operator ConfigMap (#396)
+- Add MIG profile support for ml.p6-b300.48xlarge (Blackwell Ultra) (#398)
+
+### Inference Operator
+- CRD updates: BYO certificate, RequestLimitsConfig, Custom Kubernetes support (#402)
+- Bump hyperpod-inference-operator subchart to v2.1.0 with image tag v3.1 (#402)
+
+### Enhancements
+- Support AWS_REGION env var, cluster context fallback, centralize boto3 client creation (#395)
+- Handle pagination in cluster stack listing (#394)
+- Require --instance-type when specifying accelerator resources (#393)
+
+### Bug Fixes
+- Fix EFA field naming in PyTorch job template v1.1: `efa_interfaces` -> `efa`, `efa_interfaces_limit` -> `efa_limit` (#392)
+- Fix deep health check nodeSelector label to `sagemaker.amazonaws.com/deep-health-check-status: Passed` (#386)
+- Remove non-EFA instance types from EFA device plugin nodeAffinity to prevent CrashLoopBackOff (#389)
+- Add missing instance types and fix EFA/memory resource specs (#385)
+
+### Health Monitoring Agent
+- Release Health Monitoring Agent 1.0.1434.0_1.0.388.0 (#388)
+
 ## v3.7.0 (2026-03-02)
 
 Space CLI

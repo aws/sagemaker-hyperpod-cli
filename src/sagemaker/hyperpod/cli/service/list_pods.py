@@ -52,7 +52,7 @@ class ListPods:
                 resource_attributes_template
             )
 
-        label_filter = f"training.kubeflow.org/job-name={job_name}"
+        label_filter = f"HPJob={job_name}"
 
         try:
             _pods: V1PodList = k8s_client.list_pods_with_labels(namespace, label_filter)

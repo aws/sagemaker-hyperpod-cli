@@ -140,7 +140,7 @@ cluster-role-and-bindings:
   enabled: false
 
 namespaced-role-and-bindings:
-  enable: false
+  enabled: false
 
 team-role-and-bindings:
   enabled: false

@@ -248,7 +248,7 @@ class TestHyperPodSDKQuotaAllocation:
         )
 
         # This should raise a ValueError for invalid instance type
-        with pytest.raises(ValueError, match="Invalid instance-type"):
+        with pytest.raises(ValueError, match="Invalid instance_type"):
             pytorch_job.create()
 
     def test_default_replicas_allocation(self, test_job_name, image_uri):
@@ -506,7 +506,7 @@ class TestHyperPodSDKQuotaAllocation:
             run_policy=RunPolicy(clean_pod_policy="None"),
         )
 
-        with pytest.raises(ValueError, match="Requested accelerators exceeds capacity"):
+        with pytest.raises(ValueError, match="Requested accelerator limit .* exceeds instance capacity"):
             pytorch_job.create()
 
     def test_set_default_accelerators_val_missing_request(self, test_job_name, image_uri):

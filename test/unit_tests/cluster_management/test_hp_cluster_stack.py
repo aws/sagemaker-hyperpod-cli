@@ -94,15 +94,30 @@ class TestHpClusterStack(unittest.TestCase):
     def test_list_success(self, mock_create_client):
         mock_cf_client = MagicMock()
         mock_create_client.return_value = mock_cf_client
-        
-        mock_response = {'StackSummaries': [{'StackName': 'stack1'}, {'StackName': 'stack2'}]}
+
+        mock_response = {'StackSummaries': [{'StackName': 'stack1', 'StackStatus': 'CREATE_COMPLETE'}]}
         mock_cf_client.list_stacks.return_value = mock_response
-        
+
         result = HpClusterStack.list()
-        
+
         mock_create_client.assert_called_once_with('cloudformation', region_name=None)
-        mock_cf_client.list_stacks.assert_called_once()
+        # Verify DELETE_COMPLETE is excluded at the API level
+        call_kwargs = mock_cf_client.list_stacks.call_args[1]
+        self.assertIn('StackStatusFilter', call_kwargs)
+        self.assertNotIn('DELETE_COMPLETE', call_kwargs['StackStatusFilter'])
         self.assertEqual(result, mock_response)
+
+    @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.create_boto3_client')
+    def test_list_with_explicit_status_filter(self, mock_create_client):
+        """Explicit StackStatusFilter is passed through as-is."""
+        mock_cf_client = MagicMock()
+        mock_create_client.return_value = mock_cf_client
+        mock_cf_client.list_stacks.return_value = {'StackSummaries': []}
+
+        HpClusterStack.list(stack_status_filter=['CREATE_COMPLETE'])
+
+        call_kwargs = mock_cf_client.list_stacks.call_args[1]
+        self.assertEqual(call_kwargs['StackStatusFilter'], ['CREATE_COMPLETE'])
 
     @patch('boto3.session.Session')
     @patch('boto3.client')
@@ -479,29 +494,16 @@ class TestHpClusterStackList(unittest.TestCase):
 
     @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.create_boto3_client')
     def test_list_default_filters_delete_complete(self, mock_create_client):
-        """Test that list() filters out DELETE_COMPLETE stacks by default."""
-        # Arrange
+        """Test that list() excludes DELETE_COMPLETE at the API level via StackStatusFilter."""
         mock_cf_client = MagicMock()
         mock_create_client.return_value = mock_cf_client
-        
-        mock_response = {
-            'StackSummaries': [
-                {'StackName': 'active-stack', 'StackStatus': 'CREATE_COMPLETE'},
-                {'StackName': 'deleted-stack', 'StackStatus': 'DELETE_COMPLETE'},
-                {'StackName': 'updating-stack', 'StackStatus': 'UPDATE_IN_PROGRESS'}
-            ]
-        }
-        mock_cf_client.list_stacks.return_value = mock_response
-        
-        # Act
-        result = HpClusterStack.list()
-        
-        # Assert
-        assert len(result['StackSummaries']) == 2
-        stack_names = [stack['StackName'] for stack in result['StackSummaries']]
-        assert 'active-stack' in stack_names
-        assert 'updating-stack' in stack_names
-        assert 'deleted-stack' not in stack_names
+        mock_cf_client.list_stacks.return_value = {'StackSummaries': []}
+
+        HpClusterStack.list()
+
+        call_kwargs = mock_cf_client.list_stacks.call_args[1]
+        self.assertIn('StackStatusFilter', call_kwargs)
+        self.assertNotIn('DELETE_COMPLETE', call_kwargs['StackStatusFilter'])
 
     @patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.create_boto3_client')
     def test_list_paginates_through_all_pages(self, mock_create_client):

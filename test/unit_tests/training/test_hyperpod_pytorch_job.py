@@ -191,6 +191,7 @@ class TestHyperPodPytorchJob(unittest.TestCase):
             namespace="test-namespace",
             plural="hyperpodpytorchjobs",
             name="test-job",
+            _request_timeout=10,
         )
         mock_load_job.assert_called_once_with(mock_response)
         self.assertEqual(result, expected_job)
@@ -225,22 +226,22 @@ class TestHyperPodPytorchJob(unittest.TestCase):
         mock_api_instance = MagicMock()
         mock_core_api.return_value = mock_api_instance
 
-        # Mock pod response
+        # Mock pod response — label selector handles filtering, so all returned items belong to this job
         mock_pod1 = MagicMock()
         mock_pod1.metadata.name = "test-job-pod-0"
         mock_pod2 = MagicMock()
-        mock_pod2.metadata.name = "other-job-pod-0"
-        mock_pod3 = MagicMock()
-        mock_pod3.metadata.name = "test-job-pod-1"
+        mock_pod2.metadata.name = "test-job-pod-1"
 
         mock_response = MagicMock()
-        mock_response.items = [mock_pod1, mock_pod2, mock_pod3]
+        mock_response.items = [mock_pod1, mock_pod2]
         mock_api_instance.list_namespaced_pod.return_value = mock_response
 
         result = self.job.list_pods()
 
         mock_load_config.assert_called_once()
-        mock_api_instance.list_namespaced_pod.assert_called_once_with("default")
+        mock_api_instance.list_namespaced_pod.assert_called_once_with(
+            "default", label_selector="HPJob=test-job"
+        )
         self.assertEqual(result, ["test-job-pod-0", "test-job-pod-1"])
 
     @patch.object(HyperPodPytorchJob, "verify_kube_config")
@@ -252,7 +253,9 @@ class TestHyperPodPytorchJob(unittest.TestCase):
         """Test successful log retrieval from pod"""
         mock_api_instance = MagicMock()
         mock_core_api.return_value = mock_api_instance
-        mock_api_instance.read_namespaced_pod_log.return_value = "test logs"
+        mock_response = MagicMock()
+        mock_response.data = b"test logs"
+        mock_api_instance.read_namespaced_pod_log.return_value = mock_response
 
         result = self.job.get_logs_from_pod("test-pod")
 
@@ -261,6 +264,7 @@ class TestHyperPodPytorchJob(unittest.TestCase):
             namespace="default",
             timestamps=True,
             container="test-container",
+            _preload_content=False,
         )
         self.assertEqual(result, "test logs")
         
@@ -273,7 +277,9 @@ class TestHyperPodPytorchJob(unittest.TestCase):
         """Test log retrieval with specific container name"""
         mock_api_instance = MagicMock()
         mock_core_api.return_value = mock_api_instance
-        mock_api_instance.read_namespaced_pod_log.return_value = "test logs"
+        mock_response = MagicMock()
+        mock_response.data = b"test logs"
+        mock_api_instance.read_namespaced_pod_log.return_value = mock_response
 
         result = self.job.get_logs_from_pod("test-pod", "specific-container")
 
@@ -282,6 +288,7 @@ class TestHyperPodPytorchJob(unittest.TestCase):
             namespace="default",
             timestamps=True,
             container="specific-container",
+            _preload_content=False,
         )
         self.assertEqual(result, "test logs")
 

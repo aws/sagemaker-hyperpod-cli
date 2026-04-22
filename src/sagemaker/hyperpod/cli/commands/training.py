@@ -21,7 +21,7 @@ from sagemaker.hyperpod.common.utils import display_formatted_logs
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "create_pytorchjob_cli")
 @handle_cli_exceptions()
 def pytorch_create(version, debug, job):
-    """Create a PyTorch job."""
+    """Create a PyTorch job"""
     click.echo(f"Using version: {version}")
     # Create job
     job.create(debug=debug)
