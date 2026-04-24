@@ -8,6 +8,14 @@ from sagemaker.hyperpod.inference.config.hp_jumpstart_endpoint_config import (
     SageMakerEndpoint,
     TlsConfig,
     Validations,
+    _HPJumpStartEndpoint,
+    DataCapture as JSDataCapture,
+    DataCaptureSagemakerEndpoint as JSDataCaptureSagemakerEndpoint,
+    DnsConfig as JSDnsConfig,
+    DnsStatus as JSDnsStatus,
+    DataCaptureStatus as JSDataCaptureStatus,
+    DataCaptureModelPodStatus as JSDataCaptureModelPodStatus,
+    JumpStartModelStatus,
 )
 from sagemaker.hyperpod.common.config import Metadata
 
@@ -493,3 +501,31 @@ class TestHPJumpStartEndpoint(unittest.TestCase):
             'Input "name" is required if endpoint name is not provided',
             str(context.exception),
         )
+
+
+class TestJumpStartDataCaptureDns(unittest.TestCase):
+    def test_jumpstart_with_data_capture(self):
+        ep = _HPJumpStartEndpoint(
+            model={"accept_eula": True, "model_id": "test"},
+            server={"instance_type": "ml.g5.8xlarge"},
+            data_capture=JSDataCapture(sagemaker_endpoint=JSDataCaptureSagemakerEndpoint(enabled=True)),
+        )
+        self.assertIsNotNone(ep.dataCapture)
+
+    def test_jumpstart_with_dns_config(self):
+        ep = _HPJumpStartEndpoint(
+            model={"accept_eula": True, "model_id": "test"},
+            server={"instance_type": "ml.g5.8xlarge"},
+            dns_config=JSDnsConfig(hosted_zone_id="Z999"),
+        )
+        self.assertEqual(ep.dnsConfig.hostedZoneId, "Z999")
+
+    def test_jumpstart_status_with_dns_and_data_capture(self):
+        status = JumpStartModelStatus(
+            dns_status=JSDnsStatus(managed_by_operator=True),
+            data_capture_status=JSDataCaptureStatus(
+                model_pod=JSDataCaptureModelPodStatus(status="Healthy"),
+            ),
+        )
+        self.assertTrue(status.dnsStatus.managedByOperator)
+        self.assertEqual(status.dataCaptureStatus.modelPod.status, "Healthy")

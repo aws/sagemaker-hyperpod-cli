@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional, List, Dict, Union, Literal
+from typing import Any, Optional, List, Dict, Union, Literal
 
 
 class Dimensions(BaseModel):
@@ -279,6 +279,122 @@ class AutoScalingSpec(BaseModel):
     )
 
 
+class Kubernetes(BaseModel):
+    """User-provided customizations for the inference pod."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    initContainers: Optional[List[Dict[str, Any]]] = Field(
+        default=None, alias="init_containers",
+        description="Init containers to run before the inference server starts.",
+    )
+    schedulerName: Optional[str] = Field(
+        default=None, alias="scheduler_name",
+        description="Name of the scheduler to use for pod scheduling.",
+    )
+    serviceAccountName: Optional[str] = Field(
+        default=None,
+        alias="service_account_name",
+        description="Name of the Kubernetes ServiceAccount to use for the inference pod. If not specified, the namespace's default service account will be used. This is useful for providing AWS credentials via IRSA to init containers or the worker.",
+    )
+    volumes: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        description="Additional volumes to add to the pod spec.",
+    )
+
+
+class NodeSelectorRequirement(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    key: str
+    operator: str
+    values: Optional[List[str]] = None
+
+
+class NodeSelectorTerm(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    matchExpressions: Optional[List[NodeSelectorRequirement]] = Field(
+        default=None, alias="match_expressions"
+    )
+    matchFields: Optional[List[NodeSelectorRequirement]] = Field(
+        default=None, alias="match_fields"
+    )
+
+
+class PreferredSchedulingTerm(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    preference: NodeSelectorTerm
+    weight: int
+
+
+class NodeSelector(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    nodeSelectorTerms: List[NodeSelectorTerm] = Field(alias="node_selector_terms")
+
+
+class NodeAffinity(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    preferredDuringSchedulingIgnoredDuringExecution: Optional[
+        List[PreferredSchedulingTerm]
+    ] = Field(default=None, alias="preferred_during_scheduling_ignored_during_execution")
+    requiredDuringSchedulingIgnoredDuringExecution: Optional[NodeSelector] = Field(
+        default=None, alias="required_during_scheduling_ignored_during_execution"
+    )
+
+
+class CustomCertificateConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    acmArn: str = Field(alias="acm_arn", description="ACM certificate ARN")
+    domainName: str = Field(
+        alias="domain_name",
+        description="Domain name to use from the certificate.",
+    )
+
+
+class Probe(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    exec: Optional[Dict[str, Any]] = None
+    failureThreshold: Optional[int] = Field(default=None, alias="failure_threshold")
+    grpc: Optional[Dict[str, Any]] = None
+    httpGet: Optional[Dict[str, Any]] = Field(default=None, alias="http_get")
+    initialDelaySeconds: Optional[int] = Field(
+        default=None, alias="initial_delay_seconds"
+    )
+    periodSeconds: Optional[int] = Field(default=None, alias="period_seconds")
+    successThreshold: Optional[int] = Field(default=None, alias="success_threshold")
+    tcpSocket: Optional[Dict[str, Any]] = Field(default=None, alias="tcp_socket")
+    terminationGracePeriodSeconds: Optional[int] = Field(
+        default=None, alias="termination_grace_period_seconds"
+    )
+    timeoutSeconds: Optional[int] = Field(default=None, alias="timeout_seconds")
+
+
+class Probes(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    livenessProbe: Optional[Probe] = Field(default=None, alias="liveness_probe")
+    readinessProbe: Optional[Probe] = Field(default=None, alias="readiness_probe")
+    startupProbe: Optional[Probe] = Field(default=None, alias="startup_probe")
+
+
+class RequestLimits(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    maxConcurrentRequests: Optional[int] = Field(
+        default=None, alias="max_concurrent_requests"
+    )
+    maxQueueSize: Optional[int] = Field(default=None, alias="max_queue_size")
+    overflowStatusCode: Optional[int] = Field(
+        default=429, alias="overflow_status_code"
+    )
+
+
 class IntelligentRoutingSpec(BaseModel):
     """Configuration for intelligent routing This feature is currently not supported for existing deployments. Adding this configuration to an existing deployment will be rejected."""
 
@@ -405,16 +521,62 @@ class S3Storage(BaseModel):
     region: str = Field(description="S3 bucket region")
 
 
+class TokenSecretRef(BaseModel):
+    """Reference to a Kubernetes Secret containing the HuggingFace API token."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    key: str = Field(
+        description="The key of the secret to select from. Must be a valid secret key."
+    )
+    name: Optional[str] = Field(
+        default="",
+        description="Name of the referent.",
+    )
+    optional: Optional[bool] = Field(
+        default=None,
+        description="Specify whether the Secret or its key must be defined",
+    )
+
+
+class HuggingFaceModel(BaseModel):
+    """HuggingFace model configuration. Required when modelSourceType is huggingface."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    commitSHA: Optional[str] = Field(
+        default=None,
+        alias="commit_sha",
+        description="Git commit SHA for the model revision. Must be a full 40-character lowercase hex SHA. If not provided, the operator defaults to main branch.",
+    )
+    modelId: str = Field(
+        alias="model_id",
+        description='HuggingFace Hub model identifier in org/model format (e.g. "meta-llama/Llama-3.1-8B-Instruct").',
+    )
+    tokenSecretRef: Optional[TokenSecretRef] = Field(
+        default=None,
+        alias="token_secret_ref",
+        description="Reference to a Kubernetes Secret containing the HuggingFace API token.",
+    )
+
+
 class ModelSourceConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     fsxStorage: Optional[FsxStorage] = Field(default=None, alias="fsx_storage")
+    huggingFaceModel: Optional[HuggingFaceModel] = Field(
+        default=None,
+        alias="hugging_face_model",
+        description='HuggingFace model configuration. Required when modelSourceType is "huggingface".',
+    )
     modelLocation: Optional[str] = Field(
         default=None,
         alias="model_location",
-        description="Sepcific location where the model data exists",
+        description="Specific location where the model data exists",
     )
-    modelSourceType: Literal["fsx", "s3"] = Field(alias="model_source_type")
+    modelSourceType: Literal["fsx", "s3", "huggingface", "kubernetesVolume"] = Field(
+        alias="model_source_type"
+    )
     prefetchEnabled: Optional[bool] = Field(
         default=False,
         alias="prefetch_enabled",
@@ -435,6 +597,10 @@ class TlsConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    customCertificateConfig: Optional[CustomCertificateConfig] = Field(
+        default=None, alias="custom_certificate_config",
+        description="Customer-provided ACM certificate configuration",
+    )
     tlsCertificateOutputS3Uri: Optional[str] = Field(
         default=None, alias="tls_certificate_output_s3_uri"
     )
@@ -640,6 +806,15 @@ class Worker(BaseModel):
         alias="model_volume_mount",
         description="Defines the volume where model will be loaded",
     )
+    probes: Optional[Probes] = Field(
+        default=None,
+        description="Configuration for container probes (liveness, readiness, startup)",
+    )
+    requestLimits: Optional[RequestLimits] = Field(
+        default=None,
+        alias="request_limits",
+        description="Configuration for request limiting on the nginx sidecar proxy",
+    )
     resources: Resources = Field(
         description="Defines the Resources in terms of CPU, GPU, Memory needed for the model to be deployed"
     )
@@ -647,6 +822,176 @@ class Worker(BaseModel):
         default=None,
         alias="working_dir",
         description="Defines the working directory of container.",
+    )
+
+
+class CaptureContentTypeHeader(BaseModel):
+    """Configuration for how to treat different content type headers during capture"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    csvContentTypes: Optional[List[str]] = Field(
+        default=None,
+        alias="csv_content_types",
+        description="List of content type headers to treat as CSV",
+    )
+    jsonContentTypes: Optional[List[str]] = Field(
+        default=None,
+        alias="json_content_types",
+        description="List of content type headers to treat as JSON",
+    )
+
+
+class CaptureOptions(BaseModel):
+    """CaptureOption defines what data to capture (input, output, or both)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    captureMode: Literal["Input", "Output"] = Field(
+        alias="capture_mode", description="Capture mode: Input or Output"
+    )
+
+
+class BufferConfig(BaseModel):
+    """Configuration for buffering and flushing captured data"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    batchSize: Optional[int] = Field(
+        default=10,
+        alias="batch_size",
+        description="Number of records to batch before writing to S3",
+    )
+    flushIntervalSeconds: Optional[int] = Field(
+        default=60,
+        alias="flush_interval_seconds",
+        description="Flush interval in seconds",
+    )
+
+
+class PayloadConfig(BaseModel):
+    """Configuration for payload size limits"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    maxPayloadSizeKB: Optional[int] = Field(
+        default=0,
+        alias="max_payload_size_kb",
+        description="Maximum payload size in KB to capture. 0 means no limit (capture full payload).",
+    )
+
+
+class DataCaptureModelPod(BaseModel):
+    """Configuration for Model Pod level data capture (Tier 3)"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    bufferConfig: Optional[BufferConfig] = Field(
+        default=None,
+        alias="buffer_config",
+        description="Configuration for buffering and flushing captured data",
+    )
+    captureContentTypeHeader: Optional[CaptureContentTypeHeader] = Field(
+        default=None,
+        alias="capture_content_type_header",
+        description="Configuration for how to treat different content type headers during capture",
+    )
+    captureOptions: Optional[List[CaptureOptions]] = Field(
+        default=None,
+        alias="capture_options",
+        description="Capture options (Input, Output, or both). Defaults to [Input, Output] when enabled.",
+    )
+    enabled: bool = Field(description="Enable or disable model pod data capture")
+    initialSamplingPercentage: Optional[int] = Field(
+        default=None,
+        alias="initial_sampling_percentage",
+        description="Percentage of requests to capture (0-100). Defaults to 100 when enabled.",
+    )
+    kmsKeyId: Optional[str] = Field(
+        default=None,
+        alias="kms_key_id",
+        description="Optional KMS key ID, ARN, alias name, or alias ARN for encrypting captured data",
+    )
+    payloadConfig: Optional[PayloadConfig] = Field(
+        default=None,
+        alias="payload_config",
+        description="Configuration for payload size limits",
+    )
+
+
+class DataCaptureSagemakerEndpoint(BaseModel):
+    """Configuration for SageMaker Endpoint level data capture (Tier 1)"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    captureContentTypeHeader: Optional[CaptureContentTypeHeader] = Field(
+        default=None,
+        alias="capture_content_type_header",
+        description="Configuration for how to treat different content type headers during capture",
+    )
+    captureOptions: Optional[List[CaptureOptions]] = Field(
+        default=None,
+        alias="capture_options",
+        description="Capture options (Input, Output, or both). Defaults to [Input, Output] when enabled.",
+    )
+    enabled: bool = Field(
+        description="Enable or disable SageMaker endpoint data capture"
+    )
+    initialSamplingPercentage: Optional[int] = Field(
+        default=None,
+        alias="initial_sampling_percentage",
+        description="Percentage of requests to capture (0-100). Defaults to 100 when enabled.",
+    )
+    kmsKeyId: Optional[str] = Field(
+        default=None,
+        alias="kms_key_id",
+        description="Optional KMS key ID, ARN, alias name, or alias ARN for encrypting captured data",
+    )
+
+
+class DataCaptureLoadBalancer(BaseModel):
+    """Configuration for LoadBalancer level data capture (Tier 2)"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = Field(description="Enable or disable load balancer access logs")
+
+
+class DataCapture(BaseModel):
+    """Configuration for data capture across multiple tiers (SageMaker, LoadBalancer, Model Pod)"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    loadBalancer: Optional[DataCaptureLoadBalancer] = Field(
+        default=None,
+        alias="load_balancer",
+        description="Configuration for LoadBalancer level data capture (Tier 2)",
+    )
+    modelPod: Optional[DataCaptureModelPod] = Field(
+        default=None,
+        alias="model_pod",
+        description="Configuration for Model Pod level data capture (Tier 3)",
+    )
+    s3Uri: Optional[str] = Field(
+        default=None,
+        alias="s3_uri",
+        description="Common S3 URI for all data capture tiers. Each tier will write to a specific prefix within this bucket.",
+    )
+    sagemakerEndpoint: Optional[DataCaptureSagemakerEndpoint] = Field(
+        default=None,
+        alias="sagemaker_endpoint",
+        description="Configuration for SageMaker Endpoint level data capture (Tier 1)",
+    )
+
+
+class DnsConfig(BaseModel):
+    """DNS automation configuration for Route53. Requires tlsConfig.customCertificateConfig to be set."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    hostedZoneId: str = Field(
+        alias="hosted_zone_id",
+        description="Route53 Hosted Zone ID where the DNS record will be created.",
     )
 
 
@@ -663,13 +1008,30 @@ class _HPEndpoint(BaseModel):
     autoScalingSpec: Optional[AutoScalingSpec] = Field(
         default=None, alias="auto_scaling_spec"
     )
+    dataCapture: Optional[DataCapture] = Field(
+        default=None,
+        alias="data_capture",
+        description="Configuration for data capture across multiple tiers (SageMaker, LoadBalancer, Model Pod)",
+    )
+    dnsConfig: Optional[DnsConfig] = Field(
+        default=None,
+        alias="dns_config",
+        description="DNS automation configuration for Route53. Requires tlsConfig.customCertificateConfig to be set.",
+    )
     endpointName: Optional[str] = Field(
         default=None,
         alias="endpoint_name",
         description="Name used for Sagemaker Endpoint Name of sagemaker endpoint. Defaults to empty string which represents that Sagemaker endpoint will not be created.",
     )
-    instanceType: str = Field(
-        alias="instance_type", description="Instance Type to deploy the model on"
+    instanceType: Optional[str] = Field(
+        default=None,
+        alias="instance_type",
+        description="Single instance type to deploy the model on. Mutually exclusive with instanceTypes.",
+    )
+    instanceTypes: Optional[List[str]] = Field(
+        default=None,
+        alias="instance_types",
+        description="List of instance types to deploy the model on, in order of preference.",
     )
     intelligentRoutingSpec: Optional[IntelligentRoutingSpec] = Field(
         default=None,
@@ -686,10 +1048,19 @@ class _HPEndpoint(BaseModel):
         alias="kv_cache_spec",
         description="Configuration for KV Cache specification By default L1CacheOffloading will be enabled",
     )
+    kubernetes: Optional[Kubernetes] = Field(
+        default=None,
+        description="User-provided customizations for the inference pod.",
+    )
     loadBalancer: Optional[LoadBalancer] = Field(
         default=None,
         alias="load_balancer",
         description="Configuration for Application Load Balancer",
+    )
+    maxDeployTimeInSeconds: Optional[int] = Field(
+        default=3600,
+        alias="max_deploy_time_in_seconds",
+        description="Maximum allowed time in seconds for the deployment to complete before timing out. Defaults to 1 hour (3600 seconds)",
     )
     metrics: Optional[Metrics] = Field(
         default=None, description="Configuration for metrics collection and exposure"
@@ -703,6 +1074,11 @@ class _HPEndpoint(BaseModel):
         default=None,
         alias="model_version",
         description="Version of the model used in creating sagemaker endpoint",
+    )
+    nodeAffinity: Optional[NodeAffinity] = Field(
+        default=None,
+        alias="node_affinity",
+        description="Custom node affinity configuration for advanced scheduling.",
     )
     replicas: Optional[int] = Field(
         default=1,
@@ -783,6 +1159,11 @@ class Status(BaseModel):
     replicas: Optional[int] = Field(
         default=None,
         description="Total number of non-terminated pods targeted by this deployment (their labels match the selector).",
+    )
+    terminatingReplicas: Optional[int] = Field(
+        default=None,
+        alias="terminating_replicas",
+        description="Total number of terminating pods targeted by this deployment.",
     )
     unavailableReplicas: Optional[int] = Field(
         default=None,
@@ -908,6 +1289,11 @@ class TlsCertificate(BaseModel):
         alias="certificate_domain_names",
         description="The certificate domain names that is attached to the certificate",
     )
+    certificateHealth: Optional[Literal["Valid", "Expiring", "Expired"]] = Field(
+        default=None,
+        alias="certificate_health",
+        description="Certificate health status",
+    )
     certificateName: Optional[str] = Field(
         default=None,
         alias="certificate_name",
@@ -938,6 +1324,48 @@ class TlsCertificate(BaseModel):
     )
 
 
+class DnsStatus(BaseModel):
+    """Status of the operator-managed Route53 DNS record"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    dnsHealth: Optional[Literal["Active", "Pending", "Error"]] = Field(
+        default=None,
+        alias="dns_health",
+        description="DNS resolution status: Active, Pending, or Error.",
+    )
+    hostedZoneId: Optional[str] = Field(
+        default=None,
+        alias="hosted_zone_id",
+        description="Route53 hosted zone ID.",
+    )
+    lastTransitionTime: Optional[str] = Field(
+        default=None,
+        alias="last_transition_time",
+        description="When the status last transitioned, used for propagation timeout.",
+    )
+    managedByOperator: bool = Field(
+        alias="managed_by_operator",
+        description="Whether the operator manages this DNS record.",
+    )
+    message: Optional[str] = Field(
+        default=None, description="Human-readable status or error message."
+    )
+    previousHostedZoneId: Optional[str] = Field(
+        default=None,
+        alias="previous_hosted_zone_id",
+        description="Previous hosted zone ID, retained during domain/zone changes until cleanup completes.",
+    )
+    previousRecordName: Optional[str] = Field(
+        default=None,
+        alias="previous_record_name",
+        description="Previous record name, retained during domain/zone changes until cleanup completes.",
+    )
+    recordName: Optional[str] = Field(
+        default=None, alias="record_name", description="Route53 record name."
+    )
+
+
 class InferenceEndpointConfigStatus(BaseModel):
     """ModelDeploymentStatus defines the observed state of ModelDeployment"""
 
@@ -951,6 +1379,11 @@ class InferenceEndpointConfigStatus(BaseModel):
         default=None,
         alias="deployment_status",
         description="Details of the native kubernetes deployment that hosts the model",
+    )
+    dnsStatus: Optional[DnsStatus] = Field(
+        default=None,
+        alias="dns_status",
+        description="Status of the operator-managed Route53 DNS record",
     )
     endpoints: Optional[Endpoints] = Field(
         default=None,

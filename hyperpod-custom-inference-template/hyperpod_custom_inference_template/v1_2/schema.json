@@ -1,0 +1,949 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "namespace": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Kubernetes namespace",
+      "title": "Namespace"
+    },
+    "metadata_name": {
+      "anyOf": [
+        {
+          "maxLength": 63,
+          "pattern": "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Name of the custom endpoint object",
+      "title": "Metadata Name"
+    },
+    "endpoint_name": {
+      "anyOf": [
+        {
+          "maxLength": 63,
+          "pattern": "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Name of SageMaker endpoint; empty string means no creation",
+      "title": "Endpoint Name"
+    },
+    "env": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Map of environment variable names to their values",
+      "title": "Env"
+    },
+    "instance_type": {
+      "anyOf": [
+        {
+          "pattern": "^ml\\..*",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "EC2 instance type for the inference server. Mutually exclusive with instance_types.",
+      "title": "Instance Type"
+    },
+    "instance_types": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Comma-separated list of instance types in order of preference",
+      "title": "Instance Types"
+    },
+    "metrics_enabled": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": false,
+      "description": "Enable metrics collection",
+      "title": "Metrics Enabled"
+    },
+    "model_name": {
+      "description": "Name of model to create on SageMaker",
+      "maxLength": 63,
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}$",
+      "title": "Model Name",
+      "type": "string"
+    },
+    "model_version": {
+      "anyOf": [
+        {
+          "maxLength": 14,
+          "minLength": 5,
+          "pattern": "^\\d{1,4}\\.\\d{1,4}\\.\\d{1,4}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Version of the model for the endpoint",
+      "title": "Model Version"
+    },
+    "model_source_type": {
+      "description": "Source type: fsx, s3, huggingface, or kubernetesVolume",
+      "enum": [
+        "fsx",
+        "s3",
+        "huggingface",
+        "kubernetesVolume"
+      ],
+      "title": "Model Source Type",
+      "type": "string"
+    },
+    "model_location": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Specific model data location",
+      "title": "Model Location"
+    },
+    "prefetch_enabled": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": false,
+      "description": "Whether to pre-fetch model data",
+      "title": "Prefetch Enabled"
+    },
+    "tls_certificate_output_s3_uri": {
+      "anyOf": [
+        {
+          "pattern": "^s3://([^/]+)/?(.*)$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "S3 URI for TLS certificate output",
+      "title": "Tls Certificate Output S3 Uri"
+    },
+    "image_uri": {
+      "description": "Inference server image name",
+      "title": "Image Uri",
+      "type": "string"
+    },
+    "container_port": {
+      "description": "Port on which the model server listens",
+      "maximum": 65535,
+      "minimum": 1,
+      "title": "Container Port",
+      "type": "integer"
+    },
+    "model_volume_mount_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "/opt/ml/model",
+      "description": "Path inside container for model volume",
+      "title": "Model Volume Mount Path"
+    },
+    "model_volume_mount_name": {
+      "description": "Name of the model volume mount",
+      "title": "Model Volume Mount Name",
+      "type": "string"
+    },
+    "fsx_dns_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "FSX File System DNS Name",
+      "title": "Fsx Dns Name"
+    },
+    "fsx_file_system_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "FSX File System ID",
+      "title": "Fsx File System Id"
+    },
+    "fsx_mount_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "FSX File System Mount Name",
+      "title": "Fsx Mount Name"
+    },
+    "s3_bucket_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "S3 bucket location",
+      "title": "S3 Bucket Name"
+    },
+    "s3_region": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "S3 bucket region",
+      "title": "S3 Region"
+    },
+    "resources_limits": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Resource limits for the worker",
+      "title": "Resources Limits"
+    },
+    "resources_requests": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Resource requests for the worker",
+      "title": "Resources Requests"
+    },
+    "dimensions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "CloudWatch Metric dimensions as key\u2013value pairs",
+      "title": "Dimensions"
+    },
+    "metric_collection_period": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": 300,
+      "description": "Defines the Period for CloudWatch query",
+      "title": "Metric Collection Period"
+    },
+    "metric_collection_start_time": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": 300,
+      "description": "Defines the StartTime for CloudWatch query",
+      "title": "Metric Collection Start Time"
+    },
+    "metric_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Metric name to query for CloudWatch trigger",
+      "title": "Metric Name"
+    },
+    "metric_stat": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "Average",
+      "description": "Statistics metric to be used by Trigger. Defines the Stat for the CloudWatch query. Default is Average.",
+      "title": "Metric Stat"
+    },
+    "metric_type": {
+      "anyOf": [
+        {
+          "enum": [
+            "Value",
+            "Average"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "Average",
+      "description": "The type of metric to be used by HPA. `Average` \u2013 Uses average value per pod; `Value` \u2013 Uses absolute metric value.",
+      "title": "Metric Type"
+    },
+    "min_value": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": 0,
+      "description": "Minimum metric value used in case of empty response from CloudWatch. Default is 0.",
+      "title": "Min Value"
+    },
+    "cloud_watch_trigger_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Name for the CloudWatch trigger",
+      "title": "Cloud Watch Trigger Name"
+    },
+    "cloud_watch_trigger_namespace": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "AWS CloudWatch namespace for the metric",
+      "title": "Cloud Watch Trigger Namespace"
+    },
+    "target_value": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Target value for the CloudWatch metric",
+      "title": "Target Value"
+    },
+    "use_cached_metrics": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": true,
+      "description": "Enable caching of metric values during polling interval. Default is true.",
+      "title": "Use Cached Metrics"
+    },
+    "invocation_endpoint": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "invocations",
+      "description": "The invocation endpoint of the model server. http://<host>:<port>/ would be pre-populated based on the other fields. Please fill in the path after http://<host>:<port>/ specific to your model server.",
+      "title": "Invocation Endpoint"
+    },
+    "intelligent_routing_enabled": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Enable intelligent routing",
+      "title": "Intelligent Routing Enabled"
+    },
+    "routing_strategy": {
+      "anyOf": [
+        {
+          "enum": [
+            "prefixaware",
+            "kvaware",
+            "session",
+            "roundrobin"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Routing strategy for intelligent routing",
+      "title": "Routing Strategy"
+    },
+    "enable_l1_cache": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Enable L1 cache (CPU offloading)",
+      "title": "Enable L1 Cache"
+    },
+    "enable_l2_cache": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Enable L2 cache",
+      "title": "Enable L2 Cache"
+    },
+    "l2_cache_backend": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "L2 cache backend type",
+      "title": "L2 Cache Backend"
+    },
+    "l2_cache_local_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "L2 cache URL to local storage",
+      "title": "L2 Cache Local Url"
+    },
+    "cache_config_file": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "KV cache configuration file path",
+      "title": "Cache Config File"
+    },
+    "max_deploy_time_in_seconds": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": 3600,
+      "description": "Maximum deployment time in seconds. Defaults to 3600.",
+      "title": "Max Deploy Time In Seconds"
+    },
+    "custom_certificate_acm_arn": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "ACM certificate ARN for custom TLS certificate",
+      "title": "Custom Certificate Acm Arn"
+    },
+    "custom_certificate_domain_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Domain name for the custom TLS certificate",
+      "title": "Custom Certificate Domain Name"
+    },
+    "load_balancer_health_check_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Health check path for the ALB target group",
+      "title": "Load Balancer Health Check Path"
+    },
+    "load_balancer_routing_algorithm": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Routing algorithm: least_outstanding_requests or round_robin",
+      "title": "Load Balancer Routing Algorithm"
+    },
+    "max_concurrent_requests": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Maximum concurrent requests per pod for nginx sidecar proxy",
+      "title": "Max Concurrent Requests"
+    },
+    "max_queue_size": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Maximum request queue size when concurrent limit is reached",
+      "title": "Max Queue Size"
+    },
+    "kubernetes": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Kubernetes customizations for the inference pod (initContainers, volumes, schedulerName)",
+      "title": "Kubernetes"
+    },
+    "replicas": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": 1,
+      "description": "Number of inference server replicas. Default 1.",
+      "title": "Replicas"
+    },
+    "initial_replica_count": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Number of desired pods. Defaults to 1.",
+      "title": "Initial Replica Count"
+    },
+    "worker_args": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Comma-separated arguments to the entrypoint",
+      "title": "Worker Args"
+    },
+    "worker_command": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Comma-separated entrypoint command array",
+      "title": "Worker Command"
+    },
+    "working_dir": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Working directory of the container",
+      "title": "Working Dir"
+    },
+    "overflow_status_code": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "HTTP status code when request limits exceeded. Default 429.",
+      "title": "Overflow Status Code"
+    },
+    "metrics_scrape_interval_seconds": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Scrape interval in seconds for metrics collection",
+      "title": "Metrics Scrape Interval Seconds"
+    },
+    "model_metrics_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Path where the model exposes metrics",
+      "title": "Model Metrics Path"
+    },
+    "model_metrics_port": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Port where the model exposes metrics",
+      "title": "Model Metrics Port"
+    },
+    "node_affinity": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Node affinity JSON for advanced scheduling",
+      "title": "Node Affinity"
+    },
+    "tags": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Tags as key-value pairs to add to the SageMaker Endpoint",
+      "title": "Tags"
+    },
+    "probes": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Container probes JSON (livenessProbe, readinessProbe, startupProbe)",
+      "title": "Probes"
+    },
+    "auto_scaling_spec": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Full autoScalingSpec JSON (overrides individual cloudwatch fields if provided)",
+      "title": "Auto Scaling Spec"
+    },
+    "huggingface_model_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "HuggingFace Hub model identifier in org/model format",
+      "title": "Huggingface Model Id"
+    },
+    "huggingface_commit_sha": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Git commit SHA for the model revision (40-char hex)",
+      "title": "Huggingface Commit Sha"
+    },
+    "huggingface_token_secret_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Name of the K8s Secret containing the HuggingFace API token",
+      "title": "Huggingface Token Secret Name"
+    },
+    "huggingface_token_secret_key": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Key in the K8s Secret for the HuggingFace API token",
+      "title": "Huggingface Token Secret Key"
+    },
+    "dns_hosted_zone_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Route53 Hosted Zone ID for DNS automation",
+      "title": "Dns Hosted Zone Id"
+    },
+    "data_capture": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Data capture configuration JSON for SageMaker, LoadBalancer, and Model Pod tiers",
+      "title": "Data Capture"
+    }
+  },
+  "required": [
+    "model_name",
+    "model_source_type",
+    "image_uri",
+    "container_port",
+    "model_volume_mount_name"
+  ],
+  "title": "FlatHPEndpoint",
+  "type": "object"
+}

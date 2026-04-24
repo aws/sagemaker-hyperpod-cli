@@ -21,6 +21,32 @@ from sagemaker.hyperpod.inference.config.hp_endpoint_config import (
     ModelVolumeMount,
     Resources,
     Worker,
+    Kubernetes,
+    CustomCertificateConfig,
+    NodeAffinity,
+    NodeSelectorTerm,
+    NodeSelectorRequirement,
+    NodeSelector,
+    PreferredSchedulingTerm,
+    Probe,
+    Probes,
+    RequestLimits,
+    Tags,
+    HuggingFaceModel,
+    TokenSecretRef,
+    DataCapture,
+    DataCaptureLoadBalancer,
+    DataCaptureModelPod,
+    DataCaptureSagemakerEndpoint,
+    CaptureOptions,
+    CaptureContentTypeHeader,
+    BufferConfig,
+    PayloadConfig,
+    DnsConfig,
+    DnsStatus,
+    InferenceEndpointConfigStatus,
+    TlsCertificate,
+    Status,
 )
 from sagemaker.hyperpod.inference.config.constants import *
 from sagemaker.hyperpod.common.config import Metadata
@@ -330,3 +356,99 @@ class TestHPEndpoint(unittest.TestCase):
         mock_core_api.return_value.list_namespaced_pod.assert_called_once_with(
             namespace="default"
         )
+
+
+class TestServiceAccountName(unittest.TestCase):
+    def test_kubernetes_with_service_account_name(self):
+        k8s = Kubernetes(service_account_name="my-inference-sa", scheduler_name="default-scheduler")
+        self.assertEqual(k8s.serviceAccountName, "my-inference-sa")
+
+    def test_kubernetes_service_account_name_camel_case(self):
+        k8s = Kubernetes(serviceAccountName="my-sa")
+        self.assertEqual(k8s.serviceAccountName, "my-sa")
+
+    def test_kubernetes_service_account_name_none_by_default(self):
+        k8s = Kubernetes()
+        self.assertIsNone(k8s.serviceAccountName)
+
+
+class TestHuggingFaceModelConfig(unittest.TestCase):
+    def test_huggingface_model_basic(self):
+        hf = HuggingFaceModel(model_id="meta-llama/Llama-3.1-8B-Instruct")
+        self.assertEqual(hf.modelId, "meta-llama/Llama-3.1-8B-Instruct")
+        self.assertIsNone(hf.commitSHA)
+        self.assertIsNone(hf.tokenSecretRef)
+
+    def test_huggingface_model_with_token(self):
+        hf = HuggingFaceModel(
+            model_id="meta-llama/Llama-3.1-8B-Instruct",
+            commit_sha="a" * 40,
+            token_secret_ref=TokenSecretRef(name="hf-secret", key="token"),
+        )
+        self.assertEqual(hf.commitSHA, "a" * 40)
+        self.assertEqual(hf.tokenSecretRef.name, "hf-secret")
+
+    def test_model_source_config_huggingface(self):
+        src = ModelSourceConfig(
+            model_source_type="huggingface",
+            hugging_face_model=HuggingFaceModel(model_id="meta-llama/Llama-3.1-8B-Instruct"),
+        )
+        self.assertEqual(src.modelSourceType, "huggingface")
+        self.assertIsNotNone(src.huggingFaceModel)
+
+    def test_model_source_config_kubernetes_volume(self):
+        src = ModelSourceConfig(model_source_type="kubernetesVolume", model_location="/mnt/models/my-model")
+        self.assertEqual(src.modelSourceType, "kubernetesVolume")
+
+
+class TestDataCaptureConfig(unittest.TestCase):
+    def test_data_capture_sagemaker_endpoint(self):
+        dc = DataCapture(sagemaker_endpoint=DataCaptureSagemakerEndpoint(enabled=True))
+        self.assertTrue(dc.sagemakerEndpoint.enabled)
+
+    def test_data_capture_model_pod(self):
+        dc = DataCapture(
+            model_pod=DataCaptureModelPod(
+                enabled=True, initial_sampling_percentage=50,
+                buffer_config=BufferConfig(batch_size=20, flush_interval_seconds=120),
+                capture_options=[CaptureOptions(capture_mode="Input"), CaptureOptions(capture_mode="Output")],
+            ),
+            s3_uri="s3://my-bucket/captures",
+        )
+        self.assertTrue(dc.modelPod.enabled)
+        self.assertEqual(dc.modelPod.bufferConfig.batchSize, 20)
+        self.assertEqual(len(dc.modelPod.captureOptions), 2)
+
+    def test_data_capture_full(self):
+        dc = DataCapture(
+            sagemaker_endpoint=DataCaptureSagemakerEndpoint(
+                enabled=True,
+                capture_content_type_header=CaptureContentTypeHeader(
+                    csv_content_types=["text/csv"], json_content_types=["application/json"],
+                ),
+            ),
+            load_balancer=DataCaptureLoadBalancer(enabled=False),
+            model_pod=DataCaptureModelPod(
+                enabled=True, payload_config=PayloadConfig(max_payload_size_kb=1024),
+                kms_key_id="arn:aws:kms:us-east-2:123:key/abc",
+            ),
+            s3_uri="s3://bucket/prefix",
+        )
+        self.assertEqual(dc.sagemakerEndpoint.captureContentTypeHeader.csvContentTypes, ["text/csv"])
+        self.assertFalse(dc.loadBalancer.enabled)
+        self.assertEqual(dc.modelPod.payloadConfig.maxPayloadSizeKB, 1024)
+
+
+class TestDnsConfigAndStatus(unittest.TestCase):
+    def test_dns_config(self):
+        dns = DnsConfig(hosted_zone_id="Z1234567890")
+        self.assertEqual(dns.hostedZoneId, "Z1234567890")
+
+    def test_dns_status(self):
+        ds = DnsStatus(dns_health="Active", hosted_zone_id="Z123", managed_by_operator=True, record_name="test.example.com")
+        self.assertEqual(ds.dnsHealth, "Active")
+        self.assertTrue(ds.managedByOperator)
+
+    def test_inference_status_with_dns(self):
+        status = InferenceEndpointConfigStatus(dns_status=DnsStatus(managed_by_operator=True, dns_health="Pending"))
+        self.assertEqual(status.dnsStatus.dnsHealth, "Pending")

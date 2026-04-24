@@ -12,15 +12,19 @@
 # language governing permissions and limitations under the License.
 from hyperpod_jumpstart_inference_template.v1_0 import model as v1_0
 from hyperpod_jumpstart_inference_template.v1_1 import model as v1_1
+from hyperpod_jumpstart_inference_template.v1_2 import model as v1_2
 from hyperpod_jumpstart_inference_template.v1_0.template import TEMPLATE_CONTENT as v1_0_template
 from hyperpod_jumpstart_inference_template.v1_1.template import TEMPLATE_CONTENT as v1_1_template
+from hyperpod_jumpstart_inference_template.v1_2.template import TEMPLATE_CONTENT as v1_2_template
 
 SCHEMA_REGISTRY = {
     "1.0": v1_0.FlatHPJumpStartEndpoint,
     "1.1": v1_1.FlatHPJumpStartEndpoint,
+    "1.2": v1_2.FlatHPJumpStartEndpoint,
 }
 
 TEMPLATE_REGISTRY = {
     "1.0": v1_0_template,
     "1.1": v1_1_template,
+    "1.2": v1_2_template,
 }

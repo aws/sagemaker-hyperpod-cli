@@ -107,10 +107,16 @@ def test_js_create_missing_required_args():
     assert "Missing option" in result.output
 
 
+@patch("sys.argv", ["pytest", "--version", "1.1"])
 def test_js_create_with_mig_profile():
     """
     Test js_create with MIG profile (accelerator partition) options using v1.1 schema.
     """
+    if "sagemaker.hyperpod.cli.commands.inference" in sys.modules:
+        importlib.reload(sys.modules["sagemaker.hyperpod.cli.commands.inference"])
+
+    from sagemaker.hyperpod.cli.commands.inference import js_create
+
     with patch(
         "sagemaker.hyperpod.cli.inference_utils.load_schema_for_version"
     ) as mock_load_schema, patch(
@@ -183,10 +189,16 @@ def test_js_create_missing_required_args():
     assert "Missing option" in result.output
 
 
+@patch("sys.argv", ["pytest", "--version", "1.1"])
 def test_js_create_mig_validation_error_handling():
     """
     Test js_create properly handles MIG profile validation errors using v1.1 schema.
     """
+    if "sagemaker.hyperpod.cli.commands.inference" in sys.modules:
+        importlib.reload(sys.modules["sagemaker.hyperpod.cli.commands.inference"])
+
+    from sagemaker.hyperpod.cli.commands.inference import js_create
+
     with patch(
         "sagemaker.hyperpod.cli.commands.inference.HPJumpStartEndpoint"
     ) as mock_endpoint_class, patch(
@@ -637,3 +649,111 @@ def test_custom_create_with_intelligent_routing_and_kv_cache():
 
             assert result.exit_code == 0, result.output
             domain_obj.create.assert_called_once_with(debug=False)
+
+
+# ── v1.2 new field to_domain tests ──────────────────────────────────────────
+
+
+def test_custom_to_domain_huggingface():
+    from hyperpod_custom_inference_template.v1_2.model import FlatHPEndpoint
+
+    flat = FlatHPEndpoint(
+        metadata_name="test", model_name="test-model", model_source_type="huggingface",
+        huggingface_model_id="meta-llama/Llama-3.1-8B-Instruct",
+        huggingface_token_secret_name="hf-secret", huggingface_token_secret_key="token",
+        image_uri="test:latest", container_port=8000, model_volume_mount_name="mw",
+        instance_type="ml.g5.8xlarge",
+    )
+    domain = flat.to_domain()
+    assert domain.modelSourceConfig.modelSourceType == "huggingface"
+    assert domain.modelSourceConfig.huggingFaceModel.modelId == "meta-llama/Llama-3.1-8B-Instruct"
+    assert domain.modelSourceConfig.huggingFaceModel.tokenSecretRef.name == "hf-secret"
+
+
+def test_custom_to_domain_kubernetes_volume():
+    from hyperpod_custom_inference_template.v1_2.model import FlatHPEndpoint
+
+    flat = FlatHPEndpoint(
+        metadata_name="test", model_name="test-model", model_source_type="kubernetesVolume",
+        model_location="/mnt/models/my-model",
+        image_uri="test:latest", container_port=8000, model_volume_mount_name="mw",
+        instance_type="ml.g5.8xlarge",
+    )
+    domain = flat.to_domain()
+    assert domain.modelSourceConfig.modelSourceType == "kubernetesVolume"
+    assert domain.modelSourceConfig.modelLocation == "/mnt/models/my-model"
+
+
+def test_custom_to_domain_dns_config():
+    from hyperpod_custom_inference_template.v1_2.model import FlatHPEndpoint
+
+    flat = FlatHPEndpoint(
+        metadata_name="test", model_name="test-model", model_source_type="s3",
+        s3_bucket_name="bucket", s3_region="us-east-2",
+        image_uri="test:latest", container_port=8000, model_volume_mount_name="mw",
+        instance_type="ml.g5.8xlarge", dns_hosted_zone_id="Z1234567890",
+    )
+    domain = flat.to_domain()
+    assert domain.dnsConfig.hostedZoneId == "Z1234567890"
+
+
+def test_custom_to_domain_data_capture_json():
+    from hyperpod_custom_inference_template.v1_2.model import FlatHPEndpoint
+
+    flat = FlatHPEndpoint(
+        metadata_name="test", model_name="test-model", model_source_type="s3",
+        s3_bucket_name="bucket", s3_region="us-east-2",
+        image_uri="test:latest", container_port=8000, model_volume_mount_name="mw",
+        instance_type="ml.g5.8xlarge",
+        data_capture={"sagemaker_endpoint": {"enabled": True}},
+    )
+    domain = flat.to_domain()
+    assert domain.dataCapture.sagemakerEndpoint.enabled is True
+
+
+def test_custom_to_domain_service_account_via_kubernetes():
+    from hyperpod_custom_inference_template.v1_2.model import FlatHPEndpoint
+
+    flat = FlatHPEndpoint(
+        metadata_name="test", model_name="test-model", model_source_type="s3",
+        s3_bucket_name="bucket", s3_region="us-east-2",
+        image_uri="test:latest", container_port=8000, model_volume_mount_name="mw",
+        instance_type="ml.g5.8xlarge",
+        kubernetes={"service_account_name": "my-sa"},
+    )
+    domain = flat.to_domain()
+    assert domain.kubernetes.serviceAccountName == "my-sa"
+
+
+def test_custom_huggingface_requires_model_id():
+    from hyperpod_custom_inference_template.v1_2.model import FlatHPEndpoint
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        FlatHPEndpoint(
+            metadata_name="test", model_name="test-model", model_source_type="huggingface",
+            image_uri="test:latest", container_port=8000, model_volume_mount_name="mw",
+            instance_type="ml.g5.8xlarge",
+        )
+
+
+def test_js_to_domain_dns_config():
+    from hyperpod_jumpstart_inference_template.v1_2.model import FlatHPJumpStartEndpoint
+
+    flat = FlatHPJumpStartEndpoint(
+        metadata_name="test", model_id="test-model", instance_type="ml.g5.8xlarge",
+        dns_hosted_zone_id="Z999",
+    )
+    domain = flat.to_domain()
+    assert domain.dnsConfig.hostedZoneId == "Z999"
+
+
+def test_js_to_domain_data_capture_json():
+    from hyperpod_jumpstart_inference_template.v1_2.model import FlatHPJumpStartEndpoint
+
+    flat = FlatHPJumpStartEndpoint(
+        metadata_name="test", model_id="test-model", instance_type="ml.g5.8xlarge",
+        data_capture={"load_balancer": {"enabled": True}},
+    )
+    domain = flat.to_domain()
+    assert domain.dataCapture.loadBalancer.enabled is True
