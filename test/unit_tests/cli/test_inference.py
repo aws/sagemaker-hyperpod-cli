@@ -757,3 +757,59 @@ def test_js_to_domain_data_capture_json():
     )
     domain = flat.to_domain()
     assert domain.dataCapture.loadBalancer.enabled is True
+
+
+def test_custom_node_affinity_without_instance_type():
+    from hyperpod_custom_inference_template.v1_2.model import FlatHPEndpoint
+
+    flat = FlatHPEndpoint(
+        metadata_name="test", model_name="test-model", model_source_type="kubernetesVolume",
+        image_uri="test:latest", container_port=8000, model_volume_mount_name="mw",
+        node_affinity={"required_during_scheduling_ignored_during_execution": {
+            "node_selector_terms": [{"match_expressions": [{"key": "kubernetes.io/hostname", "operator": "In", "values": ["node-1"]}]}]
+        }},
+    )
+    domain = flat.to_domain()
+    assert domain.nodeAffinity is not None
+    assert domain.instanceType is None
+
+
+def test_custom_node_affinity_with_instance_type_fails():
+    from hyperpod_custom_inference_template.v1_2.model import FlatHPEndpoint
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="node_affinity cannot be specified with instance_type"):
+        FlatHPEndpoint(
+            metadata_name="test", model_name="test-model", model_source_type="kubernetesVolume",
+            image_uri="test:latest", container_port=8000, model_volume_mount_name="mw",
+            instance_type="ml.g5.8xlarge",
+            node_affinity={"required_during_scheduling_ignored_during_execution": {
+                "node_selector_terms": [{"match_expressions": [{"key": "k", "operator": "In", "values": ["v"]}]}]
+            }},
+        )
+
+
+def test_custom_node_affinity_with_instance_types_fails():
+    from hyperpod_custom_inference_template.v1_2.model import FlatHPEndpoint
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="node_affinity cannot be specified with instance_type"):
+        FlatHPEndpoint(
+            metadata_name="test", model_name="test-model", model_source_type="kubernetesVolume",
+            image_uri="test:latest", container_port=8000, model_volume_mount_name="mw",
+            instance_types="ml.g5.8xlarge,ml.g5.4xlarge",
+            node_affinity={"required_during_scheduling_ignored_during_execution": {
+                "node_selector_terms": [{"match_expressions": [{"key": "k", "operator": "In", "values": ["v"]}]}]
+            }},
+        )
+
+
+def test_custom_no_instance_type_no_node_affinity_fails():
+    from hyperpod_custom_inference_template.v1_2.model import FlatHPEndpoint
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="Either instance_type, instance_types, or node_affinity must be provided"):
+        FlatHPEndpoint(
+            metadata_name="test", model_name="test-model", model_source_type="kubernetesVolume",
+            image_uri="test:latest", container_port=8000, model_volume_mount_name="mw",
+        )

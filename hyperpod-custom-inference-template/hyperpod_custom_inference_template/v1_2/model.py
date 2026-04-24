@@ -482,10 +482,13 @@ class FlatHPEndpoint(BaseModel):
 
     @model_validator(mode="after")
     def validate_instance_type_fields(self):
+        has_instance = self.instance_type or self.instance_types
         if self.instance_type and self.instance_types:
             raise ValueError("instance_type and instance_types are mutually exclusive")
-        if not self.instance_type and not self.instance_types:
-            raise ValueError("Either instance_type or instance_types must be provided")
+        if self.node_affinity and has_instance:
+            raise ValueError("node_affinity cannot be specified with instance_type or instance_types simultaneously")
+        if not has_instance and not self.node_affinity:
+            raise ValueError("Either instance_type, instance_types, or node_affinity must be provided")
         return self
 
     def to_domain(self) -> HPEndpoint:
