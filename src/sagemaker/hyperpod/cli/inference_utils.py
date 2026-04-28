@@ -85,6 +85,7 @@ def generate_click_command(
                 "probes",
                 "auto_scaling_spec",
                 "additional_configs",
+                "data_capture",
             ):
                 continue
 

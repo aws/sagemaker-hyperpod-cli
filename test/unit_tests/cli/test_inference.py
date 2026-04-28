@@ -692,6 +692,8 @@ def test_custom_to_domain_dns_config():
         s3_bucket_name="bucket", s3_region="us-east-2",
         image_uri="test:latest", container_port=8000, model_volume_mount_name="mw",
         instance_type="ml.g5.8xlarge", dns_hosted_zone_id="Z1234567890",
+        custom_certificate_acm_arn="arn:aws:acm:us-east-2:123456789012:certificate/abcd1234-abcd-1234-abcd-1234abcd1234",
+        custom_certificate_domain_name="test.example.com",
     )
     domain = flat.to_domain()
     assert domain.dnsConfig.hostedZoneId == "Z1234567890"
@@ -743,6 +745,8 @@ def test_js_to_domain_dns_config():
     flat = FlatHPJumpStartEndpoint(
         metadata_name="test", model_id="test-model", instance_type="ml.g5.8xlarge",
         dns_hosted_zone_id="Z999",
+        custom_certificate_acm_arn="arn:aws:acm:us-east-2:123456789012:certificate/abcd1234-abcd-1234-abcd-1234abcd1234",
+        custom_certificate_domain_name="test.example.com",
     )
     domain = flat.to_domain()
     assert domain.dnsConfig.hostedZoneId == "Z999"
@@ -813,3 +817,233 @@ def test_custom_no_instance_type_no_node_affinity_fails():
             metadata_name="test", model_name="test-model", model_source_type="kubernetesVolume",
             image_uri="test:latest", container_port=8000, model_volume_mount_name="mw",
         )
+
+
+# ── v1.2 validation fix tests (cert/DNS cross-validation, pattern validation, data_capture skip list) ──
+
+VALID_ACM_ARN = "arn:aws:acm:us-east-2:123456789012:certificate/abcd1234-abcd-1234-abcd-1234abcd1234"
+
+# Bug 2: cert mutual dependency — custom endpoint
+
+def test_custom_acm_arn_without_domain_raises():
+    from hyperpod_custom_inference_template.v1_2.model import FlatHPEndpoint
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="must both be provided together"):
+        FlatHPEndpoint(
+            metadata_name="test", model_name="m", model_source_type="s3",
+            s3_bucket_name="b", s3_region="us-east-2",
+            image_uri="i:l", container_port=8080, model_volume_mount_name="mw",
+            instance_type="ml.g5.8xlarge",
+            custom_certificate_acm_arn=VALID_ACM_ARN,
+        )
+
+
+def test_custom_domain_without_acm_arn_raises():
+    from hyperpod_custom_inference_template.v1_2.model import FlatHPEndpoint
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="must both be provided together"):
+        FlatHPEndpoint(
+            metadata_name="test", model_name="m", model_source_type="s3",
+            s3_bucket_name="b", s3_region="us-east-2",
+            image_uri="i:l", container_port=8080, model_volume_mount_name="mw",
+            instance_type="ml.g5.8xlarge",
+            custom_certificate_domain_name="test.example.com",
+        )
+
+
+def test_custom_both_cert_fields_valid():
+    from hyperpod_custom_inference_template.v1_2.model import FlatHPEndpoint
+
+    ep = FlatHPEndpoint(
+        metadata_name="test", model_name="m", model_source_type="s3",
+        s3_bucket_name="b", s3_region="us-east-2",
+        image_uri="i:l", container_port=8080, model_volume_mount_name="mw",
+        instance_type="ml.g5.8xlarge",
+        custom_certificate_acm_arn=VALID_ACM_ARN,
+        custom_certificate_domain_name="test.example.com",
+    )
+    assert ep.custom_certificate_acm_arn is not None
+    assert ep.custom_certificate_domain_name is not None
+
+
+# Bug 1: DNS requires both cert fields — custom endpoint
+
+def test_custom_dns_without_cert_raises():
+    from hyperpod_custom_inference_template.v1_2.model import FlatHPEndpoint
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="dns_hosted_zone_id requires both"):
+        FlatHPEndpoint(
+            metadata_name="test", model_name="m", model_source_type="s3",
+            s3_bucket_name="b", s3_region="us-east-2",
+            image_uri="i:l", container_port=8080, model_volume_mount_name="mw",
+            instance_type="ml.g5.8xlarge",
+            dns_hosted_zone_id="Z1234567890ABC",
+        )
+
+
+def test_custom_dns_with_only_acm_arn_raises():
+    from hyperpod_custom_inference_template.v1_2.model import FlatHPEndpoint
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="must both be provided together"):
+        FlatHPEndpoint(
+            metadata_name="test", model_name="m", model_source_type="s3",
+            s3_bucket_name="b", s3_region="us-east-2",
+            image_uri="i:l", container_port=8080, model_volume_mount_name="mw",
+            instance_type="ml.g5.8xlarge",
+            dns_hosted_zone_id="Z1234567890ABC",
+            custom_certificate_acm_arn=VALID_ACM_ARN,
+        )
+
+
+# Bug 3: pattern validation — custom endpoint
+
+def test_custom_invalid_acm_arn_pattern():
+    from hyperpod_custom_inference_template.v1_2.model import FlatHPEndpoint
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        FlatHPEndpoint(
+            metadata_name="test", model_name="m", model_source_type="s3",
+            s3_bucket_name="b", s3_region="us-east-2",
+            image_uri="i:l", container_port=8080, model_volume_mount_name="mw",
+            instance_type="ml.g5.8xlarge",
+            custom_certificate_acm_arn="not-a-valid-arn",
+            custom_certificate_domain_name="test.example.com",
+        )
+
+
+def test_custom_invalid_domain_name_pattern():
+    from hyperpod_custom_inference_template.v1_2.model import FlatHPEndpoint
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        FlatHPEndpoint(
+            metadata_name="test", model_name="m", model_source_type="s3",
+            s3_bucket_name="b", s3_region="us-east-2",
+            image_uri="i:l", container_port=8080, model_volume_mount_name="mw",
+            instance_type="ml.g5.8xlarge",
+            custom_certificate_acm_arn=VALID_ACM_ARN,
+            custom_certificate_domain_name="INVALID_DOMAIN!!",
+        )
+
+
+def test_custom_domain_name_too_long():
+    from hyperpod_custom_inference_template.v1_2.model import FlatHPEndpoint
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        FlatHPEndpoint(
+            metadata_name="test", model_name="m", model_source_type="s3",
+            s3_bucket_name="b", s3_region="us-east-2",
+            image_uri="i:l", container_port=8080, model_volume_mount_name="mw",
+            instance_type="ml.g5.8xlarge",
+            custom_certificate_acm_arn=VALID_ACM_ARN,
+            custom_certificate_domain_name="a" * 254,
+        )
+
+
+def test_custom_invalid_hosted_zone_id_pattern():
+    from hyperpod_custom_inference_template.v1_2.model import FlatHPEndpoint
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        FlatHPEndpoint(
+            metadata_name="test", model_name="m", model_source_type="s3",
+            s3_bucket_name="b", s3_region="us-east-2",
+            image_uri="i:l", container_port=8080, model_volume_mount_name="mw",
+            instance_type="ml.g5.8xlarge",
+            custom_certificate_acm_arn=VALID_ACM_ARN,
+            custom_certificate_domain_name="test.example.com",
+            dns_hosted_zone_id="invalid-zone",
+        )
+
+
+def test_custom_hosted_zone_must_start_with_z():
+    from hyperpod_custom_inference_template.v1_2.model import FlatHPEndpoint
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        FlatHPEndpoint(
+            metadata_name="test", model_name="m", model_source_type="s3",
+            s3_bucket_name="b", s3_region="us-east-2",
+            image_uri="i:l", container_port=8080, model_volume_mount_name="mw",
+            instance_type="ml.g5.8xlarge",
+            custom_certificate_acm_arn=VALID_ACM_ARN,
+            custom_certificate_domain_name="test.example.com",
+            dns_hosted_zone_id="A1234567890",
+        )
+
+
+# Jumpstart cert/DNS validation
+
+def test_js_acm_arn_without_domain_raises():
+    from hyperpod_jumpstart_inference_template.v1_2.model import FlatHPJumpStartEndpoint
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="must both be provided together"):
+        FlatHPJumpStartEndpoint(
+            model_id="test-model", instance_type="ml.g5.8xlarge", endpoint_name="ep",
+            custom_certificate_acm_arn=VALID_ACM_ARN,
+        )
+
+
+def test_js_dns_without_cert_raises():
+    from hyperpod_jumpstart_inference_template.v1_2.model import FlatHPJumpStartEndpoint
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="dns_hosted_zone_id requires both"):
+        FlatHPJumpStartEndpoint(
+            model_id="test-model", instance_type="ml.g5.8xlarge", endpoint_name="ep",
+            dns_hosted_zone_id="Z1234567890ABC",
+        )
+
+
+def test_js_invalid_acm_arn_pattern():
+    from hyperpod_jumpstart_inference_template.v1_2.model import FlatHPJumpStartEndpoint
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        FlatHPJumpStartEndpoint(
+            model_id="test-model", instance_type="ml.g5.8xlarge", endpoint_name="ep",
+            custom_certificate_acm_arn="bad-arn",
+            custom_certificate_domain_name="test.example.com",
+        )
+
+
+def test_js_invalid_hosted_zone_pattern():
+    from hyperpod_jumpstart_inference_template.v1_2.model import FlatHPJumpStartEndpoint
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        FlatHPJumpStartEndpoint(
+            model_id="test-model", instance_type="ml.g5.8xlarge", endpoint_name="ep",
+            custom_certificate_acm_arn=VALID_ACM_ARN,
+            custom_certificate_domain_name="test.example.com",
+            dns_hosted_zone_id="invalid",
+        )
+
+
+def test_js_cert_dns_all_valid():
+    from hyperpod_jumpstart_inference_template.v1_2.model import FlatHPJumpStartEndpoint
+
+    ep = FlatHPJumpStartEndpoint(
+        model_id="test-model", instance_type="ml.g5.8xlarge", endpoint_name="ep",
+        custom_certificate_acm_arn=VALID_ACM_ARN,
+        custom_certificate_domain_name="test.example.com",
+        dns_hosted_zone_id="Z1234567890ABC",
+    )
+    assert ep.dns_hosted_zone_id is not None
+
+
+# Bug 4: data_capture skip list in inference_utils
+
+def test_data_capture_in_inference_utils_skip_list():
+    import inspect
+    from sagemaker.hyperpod.cli.inference_utils import generate_click_command
+
+    source = inspect.getsource(generate_click_command)
+    assert '"data_capture"' in source

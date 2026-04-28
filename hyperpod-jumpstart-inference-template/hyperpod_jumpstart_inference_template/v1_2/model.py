@@ -114,11 +114,14 @@ class FlatHPJumpStartEndpoint(BaseModel):
         None,
         alias="custom_certificate_acm_arn",
         description="ACM certificate ARN for custom TLS certificate",
+        pattern=r"^arn:aws:acm:[a-z0-9-]+:[0-9]{12}:certificate/[a-fA-F0-9-]+$",
     )
     custom_certificate_domain_name: Optional[str] = Field(
         None,
         alias="custom_certificate_domain_name",
         description="Domain name for the custom TLS certificate",
+        max_length=253,
+        pattern=r"^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$",
     )
 
     # Intelligent Routing
@@ -224,6 +227,7 @@ class FlatHPJumpStartEndpoint(BaseModel):
     dns_hosted_zone_id: Optional[str] = Field(
         None, alias="dns_hosted_zone_id",
         description="Route53 Hosted Zone ID for DNS automation",
+        pattern=r"^Z[A-Z0-9]+$",
     )
 
     # Data capture (JSON flag)
@@ -236,6 +240,21 @@ class FlatHPJumpStartEndpoint(BaseModel):
     def validate_name(self):
         if not self.metadata_name and not self.endpoint_name:
             raise ValueError("Either metadata_name or endpoint_name must be provided")
+        return self
+
+    @model_validator(mode="after")
+    def validate_certificate_and_dns(self):
+        has_acm = self.custom_certificate_acm_arn is not None
+        has_domain = self.custom_certificate_domain_name is not None
+        has_dns = self.dns_hosted_zone_id is not None
+        if has_acm != has_domain:
+            raise ValueError(
+                "custom_certificate_acm_arn and custom_certificate_domain_name must both be provided together"
+            )
+        if has_dns and not (has_acm and has_domain):
+            raise ValueError(
+                "dns_hosted_zone_id requires both custom_certificate_acm_arn and custom_certificate_domain_name"
+            )
         return self
 
     def to_domain(self) -> HPJumpStartEndpoint:
