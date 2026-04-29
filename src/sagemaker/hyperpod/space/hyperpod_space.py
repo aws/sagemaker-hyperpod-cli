@@ -1,4 +1,5 @@
 import logging
+import re
 import yaml
 import boto3
 from sagemaker.hyperpod.common.utils import create_boto3_client
@@ -819,12 +820,15 @@ class HPSpace(BaseModel):
         except Exception as e:
             handle_exception(e, pod_name, self.config.namespace)
 
+    # Validates the {ide}-remote pattern: alphanumeric segments separated by single hyphens.
+    _remote_connection_type_regex = re.compile(r"^[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*-remote$")
+
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_space_access")
     def create_space_access(self, connection_type: str = "vscode-remote") -> Dict[str, str]:
         """Create a space access for this space.
 
         Creates a space access resource that provides remote connection capabilities
-        to the space. Supports VS Code remote development and web UI access types.
+        to the space. Supports IDE remote development and web UI access types.
 
         **Parameters:**
 
@@ -837,7 +841,9 @@ class HPSpace(BaseModel):
              - Description
            * - connection_type
              - str, optional
-             - The IDE type for remote access. Must be "vscode-remote" or "web-ui" (default: "vscode-remote")
+             - The connection type for remote access. Must be "web-ui" or follow the
+               '{ide}-remote' pattern (e.g. "vscode-remote", "kiro-remote", "cursor-remote").
+               Default: "vscode-remote"
 
         **Returns:**
 
@@ -845,7 +851,7 @@ class HPSpace(BaseModel):
 
         **Raises:**
 
-        ValueError: If connection_type is not "vscode-remote" or "web-ui"
+        ValueError: If connection_type is not "web-ui" or a valid '{ide}-remote' pattern
         Exception: If the space access creation fails or Kubernetes API call fails
 
         .. dropdown:: Usage Examples
@@ -858,6 +864,10 @@ class HPSpace(BaseModel):
               >>> access = space.create_space_access("vscode-remote")
               >>> print(f"Connection URL: {access['SpaceConnectionUrl']}")
               
+              >>> # Create Kiro remote access
+              >>> access = space.create_space_access("kiro-remote")
+              >>> print(f"Connection URL: {access['SpaceConnectionUrl']}")
+
               >>> # Create web UI access
               >>> access = space.create_space_access("web-ui")
               >>> print(f"Web UI URL: {access['SpaceConnectionUrl']}")
@@ -865,8 +875,11 @@ class HPSpace(BaseModel):
         self.verify_kube_config()
         logger = self.get_logger()
 
-        if connection_type not in {"vscode-remote", "web-ui"}:
-            raise ValueError("--connection-type must be 'vscode-remote' or 'web-ui'.")
+        if connection_type != "web-ui" and not self._remote_connection_type_regex.match(connection_type):
+            raise ValueError(
+                f"--connection-type must be 'web-ui' or follow the '{{ide}}-remote' pattern "
+                f"(e.g. 'vscode-remote', 'kiro-remote', 'cursor-remote')."
+            )
 
         config = {
             "metadata": {

@@ -326,12 +326,13 @@ hyp create hyp-space-access [OPTIONS]
 |-----------|------|----------|-------------|
 | `--name` | TEXT | Yes | Name of the space to create access for |
 | `--namespace, -n` | TEXT | No | Kubernetes namespace (default: "default") |
-| `--connection-type, -t` | TEXT | No | Remote access type: vscode-remote or web-ui (default: "vscode-remote") |
+| `--connection-type, -t` | TEXT | No | Connection type: 'web-ui' or any '{ide}-remote' pattern (e.g. vscode-remote, kiro-remote, cursor-remote). Default: "vscode-remote" |
 
 #### Example
 
 ```bash
 hyp create hyp-space-access --name my-space --namespace default --connection-type vscode-remote
+hyp create hyp-space-access --name my-space --connection-type kiro-remote
 ```
 
 ## Space Template Commands

@@ -879,10 +879,12 @@ hyp delete hyp-space-template --name <template-name>
 
 #### Space Access
 
-Create remote access to spaces:
+Create remote access to spaces. The `--connection-type` accepts `web-ui` or any `{ide}-remote` pattern (e.g. `vscode-remote`, `kiro-remote`, `cursor-remote`):
 
 ```bash
 hyp create hyp-space-access --name myspace --connection-type vscode-remote
+hyp create hyp-space-access --name myspace --connection-type kiro-remote
+hyp create hyp-space-access --name myspace --connection-type cursor-remote
 hyp create hyp-space-access --name myspace --connection-type web-ui
 ```
 
@@ -1388,6 +1390,10 @@ space = HPSpace.get(name="myspace")
 # Create VS Code remote access
 vscode_access = space.create_space_access(connection_type="vscode-remote")
 print(f"VS Code URL: {vscode_access['SpaceConnectionUrl']}")
+
+# Create Kiro remote access
+kiro_access = space.create_space_access(connection_type="kiro-remote")
+print(f"Kiro URL: {kiro_access['SpaceConnectionUrl']}")
 
 # Create web UI access
 web_access = space.create_space_access(connection_type="web-ui")

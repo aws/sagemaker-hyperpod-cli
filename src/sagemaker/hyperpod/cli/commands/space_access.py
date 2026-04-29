@@ -13,7 +13,7 @@ from sagemaker.hyperpod.common.cli_decorators import handle_cli_exceptions
 @click.option("--connection-type", "-t",
     required=False,
     default="vscode-remote",
-    help="Remote access type supported values: [vscode-remote, web-ui] [default: vscode-remote]"
+    help="Connection type: 'web-ui' or '{ide}-remote' pattern (e.g. vscode-remote, kiro-remote, cursor-remote) [default: vscode-remote]"
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "create_space_access")
 @handle_cli_exceptions()
