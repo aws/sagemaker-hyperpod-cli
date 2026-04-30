@@ -142,6 +142,12 @@ This will print a `JSON`-formatted output to the console that contains a `SpaceC
 
 ![VSCode connected](../images/vscode-connected.png)
 
+You can also connect using other IDEs that support the `{ide}-remote` pattern, such as Kiro or Cursor:
+```bash
+hyp create hyp-space-access --name $SPACE_NAME --connection-type kiro-remote
+hyp create hyp-space-access --name $SPACE_NAME --connection-type cursor-remote
+```
+
 Lastly let's generate a JupyterLab web UI URL (if the web ui has been enabled in your environment):
 ```bash
 hyp create hyp-space-access --name $SPACE_NAME --connection-type web-ui

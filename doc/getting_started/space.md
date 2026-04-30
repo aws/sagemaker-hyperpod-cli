@@ -244,6 +244,9 @@ Access the space via `http://localhost:<local-port>` after port forwarding is es
 # Create VS Code remote access
 hyp create hyp-space-access --name myspace --connection-type vscode-remote
 
+# Create Kiro remote access
+hyp create hyp-space-access --name myspace --connection-type kiro-remote
+
 # Create web UI access
 hyp create hyp-space-access --name myspace --connection-type web-ui
 ```
@@ -258,6 +261,10 @@ space = HPSpace.get(name="myspace")
 # Create VS Code remote access
 vscode_access = space.create_space_access(connection_type="vscode-remote")
 print(f"VS Code URL: {vscode_access['SpaceConnectionUrl']}")
+
+# Create Kiro remote access
+kiro_access = space.create_space_access(connection_type="kiro-remote")
+print(f"Kiro URL: {kiro_access['SpaceConnectionUrl']}")
 
 # Create web UI access
 web_access = space.create_space_access(connection_type="web-ui")
