@@ -94,7 +94,7 @@ class FlatHPEndpoint(BaseModel):
 
     # metrics.*
     metrics_enabled: Optional[bool] = Field(
-        False,
+        None,
         alias="metrics_enabled",
         description="Enable metrics collection",
     )
@@ -550,11 +550,13 @@ class FlatHPEndpoint(BaseModel):
                 path=self.model_metrics_path,
                 port=self.model_metrics_port,
             )
-        metrics = Metrics(
-            enabled=self.metrics_enabled,
-            metrics_scrape_interval_seconds=self.metrics_scrape_interval_seconds,
-            model_metrics=model_metrics,
-        )
+        metrics = None
+        if self.metrics_enabled is not None or self.metrics_scrape_interval_seconds is not None or model_metrics is not None:
+            metrics = Metrics(
+                enabled=self.metrics_enabled,
+                metrics_scrape_interval_seconds=self.metrics_scrape_interval_seconds,
+                model_metrics=model_metrics,
+            )
 
         # Validate storage choice and build nested storage config
         if self.model_source_type == "s3":

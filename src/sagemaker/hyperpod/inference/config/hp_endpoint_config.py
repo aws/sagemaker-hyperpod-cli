@@ -357,7 +357,7 @@ class CustomCertificateConfig(BaseModel):
 
 
 class Probe(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     exec: Optional[Dict[str, Any]] = None
     failureThreshold: Optional[int] = Field(default=None, alias="failure_threshold")
@@ -376,7 +376,7 @@ class Probe(BaseModel):
 
 
 class Probes(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     livenessProbe: Optional[Probe] = Field(default=None, alias="liveness_probe")
     readinessProbe: Optional[Probe] = Field(default=None, alias="readiness_probe")

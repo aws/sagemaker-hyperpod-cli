@@ -97,7 +97,7 @@
           "type": "null"
         }
       ],
-      "default": false,
+      "default": null,
       "description": "Enable metrics collection",
       "title": "Metrics Enabled"
     },
@@ -593,7 +593,8 @@
     "custom_certificate_acm_arn": {
       "anyOf": [
         {
-          "type": "string"
+          "type": "string",
+          "pattern": "^arn:aws:acm:[a-z0-9-]+:[0-9]{12}:certificate/[a-fA-F0-9-]+$"
         },
         {
           "type": "null"
@@ -606,7 +607,9 @@
     "custom_certificate_domain_name": {
       "anyOf": [
         {
-          "type": "string"
+          "type": "string",
+          "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$",
+          "maxLength": 253
         },
         {
           "type": "null"
@@ -912,7 +915,8 @@
     "dns_hosted_zone_id": {
       "anyOf": [
         {
-          "type": "string"
+          "type": "string",
+          "pattern": "^Z[A-Z0-9]+$"
         },
         {
           "type": "null"

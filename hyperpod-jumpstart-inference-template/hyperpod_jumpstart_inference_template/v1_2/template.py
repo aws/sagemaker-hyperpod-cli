@@ -20,6 +20,10 @@ spec:
     {% endif %}
   tlsConfig:
     tlsCertificateOutputS3Uri: {{ tls_certificate_output_s3_uri or "" }}
+{% if custom_certificate_acm_arn and custom_certificate_domain_name %}    customCertificateConfig:
+      acmArn: "{{ custom_certificate_acm_arn }}"
+      domainName: "{{ custom_certificate_domain_name }}"
+{% endif %}
 {% if dns_hosted_zone_id is not none %}  dnsConfig:
     hostedZoneId: "{{ dns_hosted_zone_id }}"
 {% endif %}

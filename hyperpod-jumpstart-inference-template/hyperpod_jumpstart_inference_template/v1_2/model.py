@@ -327,14 +327,14 @@ class FlatHPJumpStartEndpoint(BaseModel):
             env_vars = [EnvironmentVariables(name=k, value=v) for k, v in self.env.items()]
 
         # Build metrics
+        model_metrics = None
+        if self.model_metrics_path or self.model_metrics_port:
+            model_metrics = ModelMetrics(
+                path=self.model_metrics_path,
+                port=self.model_metrics_port,
+            )
         metrics = None
-        if self.metrics_enabled is not None:
-            model_metrics = None
-            if self.model_metrics_path or self.model_metrics_port:
-                model_metrics = ModelMetrics(
-                    path=self.model_metrics_path,
-                    port=self.model_metrics_port,
-                )
+        if self.metrics_enabled is not None or self.metrics_scrape_interval_seconds is not None or model_metrics is not None:
             metrics = Metrics(
                 enabled=self.metrics_enabled,
                 metrics_scrape_interval_seconds=self.metrics_scrape_interval_seconds,
