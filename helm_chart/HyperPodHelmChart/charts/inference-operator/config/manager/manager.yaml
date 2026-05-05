@@ -131,7 +131,7 @@ spec:
           env:
             - name: CHECKS
               value: "drivers crds"
-          image: "public.ecr.aws/bitnami/kubectl:1.30"
+          image: "{{ .Values.image.repository }}/{{ .Values.image.initContainer.repository }}:{{ .Values.image.initContainer.tag }}"
           imagePullPolicy: Always
           name: check-csi-drivers
           resources: { }
@@ -190,8 +190,8 @@ spec:
           name: webhook-certs
           readOnly: true
         env:
-          - name: HYPERPOD_CLUSTER_ARN
-            value: {{ .Values.hyperpodClusterArn }}
+          - name: AWS_REGION
+            value: {{ .Values.region }}
           - name: EXECUTION_ROLE_ARN
             value: {{ .Values.executionRoleArn }}
           - name: JUMPSTART_GATED_MODEL_DOWNLOAD_ARN
@@ -204,10 +204,18 @@ spec:
             value: {{ .Values.tlsCertificateS3Bucket }}
           - name: ENABLE_WEBHOOKS
             value: "{{ .Values.enableWebhooks }}"
+          - name: ENABLE_CUSTOM_SERVICE_ACCOUNTS
+            value: "{{ .Values.enableCustomServiceAccounts }}"
+          - name: OPERATOR_SERVICE_ACCOUNT_NAME
+            value: {{ .Values.namePrefix }}-controller-manager
+          - name: OPERATOR_NAMESPACE
+            value: {{ .Values.shortPrefix }}-system
           - name: CHART_VERSION
             value: {{ .Chart.Version | quote }}
           - name: APP_VERSION
             value: {{ .Chart.AppVersion | quote }}
+          - name: HYPERPOD_CLUSTER_ARN
+            value: {{ .Values.hyperpodClusterArn | default "" }}
       serviceAccountName: {{ .Values.namePrefix }}-controller-manager
       terminationGracePeriodSeconds: 10
       volumes:
