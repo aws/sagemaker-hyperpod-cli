@@ -2,7 +2,7 @@ gpu-operator:
   enabled: true
   operator:
     image: "mirror-gpu-operator"
-    version: "v25.3.4"
+    version: "v25.10.1"
     tolerations:
       - operator: "Exists"
     initContainer:
@@ -15,21 +15,21 @@ gpu-operator:
     enabled: false
   toolkit:
     image: "container-toolkit"
-    version: "v1.17.9-ubi8"
+    version: "v1.18.1"
   devicePlugin:
     enabled: true
     image: "mirror-k8s-device-plugin"
-    version: "v0.17.4"
+    version: "v0.18.1"
   dcgm:
     enabled: false
   dcgmExporter:
     enabled: false
   gfd:
     image: "mirror-k8s-device-plugin"
-    version: "v0.17.4"
+    version: "v0.18.1"
   migManager:
     image: "k8s-mig-manager"
-    version: "v0.12.3-ubuntu20.04"
+    version: "v0.13.1"
     config:
       create: true
       name: "default-mig-config"
@@ -38,7 +38,7 @@ gpu-operator:
         value: "true"
   validator:
     image: "gpu-operator-validator"
-    version: "v25.3.4"
+    version: "v25.10.1"
   vgpuDeviceManager:
     enabled: false
   vfioManager:

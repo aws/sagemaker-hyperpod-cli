@@ -270,7 +270,7 @@ spec:
                         type: string
                       serverAddress:
                         description: Server address for AMP workspace
-                        pattern: ^https:\/\/aps-workspaces\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.amazonaws\.com\/workspaces\/ws-[a-zA-Z0-9-]+\/[a-zA-Z0-9-]+$|^$
+                        pattern: ^https:\/\/aps-workspaces\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.amazonaws\.com\/workspaces\/ws-[a-zA-Z0-9-]+$|^$
                         type: string
                       targetValue:
                         description: Target metric value for scaling
@@ -315,7 +315,7 @@ spec:
                           type: string
                         serverAddress:
                           description: Server address for AMP workspace
-                          pattern: ^https:\/\/aps-workspaces\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.amazonaws\.com\/workspaces\/ws-[a-zA-Z0-9-]+\/[a-zA-Z0-9-]+$|^$
+                          pattern: ^https:\/\/aps-workspaces\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.amazonaws\.com\/workspaces\/ws-[a-zA-Z0-9-]+$|^$
                           type: string
                         targetValue:
                           description: Target metric value for scaling
@@ -342,6 +342,211 @@ spec:
                     format: int32
                     minimum: 0
                     type: integer
+                type: object
+              dataCapture:
+                description: Configuration for data capture across multiple tiers
+                  (SageMaker, LoadBalancer, Model Pod)
+                properties:
+                  loadBalancer:
+                    description: Configuration for LoadBalancer level data capture
+                      (Tier 2)
+                    properties:
+                      enabled:
+                        description: Enable or disable load balancer access logs
+                        type: boolean
+                    required:
+                    - enabled
+                    type: object
+                  modelPod:
+                    description: Configuration for Model Pod level data capture (Tier
+                      3)
+                    properties:
+                      bufferConfig:
+                        description: Configuration for buffering and flushing captured
+                          data
+                        properties:
+                          batchSize:
+                            default: 10
+                            description: Number of records to batch before writing
+                              to S3
+                            format: int32
+                            maximum: 1000
+                            minimum: 1
+                            type: integer
+                          flushIntervalSeconds:
+                            default: 60
+                            description: Flush interval in seconds
+                            format: int32
+                            maximum: 300
+                            minimum: 10
+                            type: integer
+                        type: object
+                      captureContentTypeHeader:
+                        description: Configuration for how to treat different content
+                          type headers during capture
+                        properties:
+                          csvContentTypes:
+                            description: |-
+                              List of content type headers to treat as CSV
+                              Each item must be 1-256 characters and match pattern: [a-zA-Z0-9](-*[a-zA-Z0-9])*/[a-zA-Z0-9](-*[a-zA-Z0-9.])*
+                              Example: text/csv, application/csv
+                            items:
+                              type: string
+                            maxItems: 10
+                            minItems: 1
+                            type: array
+                            x-kubernetes-list-type: set
+                          jsonContentTypes:
+                            description: |-
+                              List of content type headers to treat as JSON
+                              Each item must be 1-256 characters and match pattern: [a-zA-Z0-9](-*[a-zA-Z0-9])*/[a-zA-Z0-9](-*[a-zA-Z0-9.])*
+                              Example: application/json, application/jsonlines
+                            items:
+                              type: string
+                            maxItems: 10
+                            minItems: 1
+                            type: array
+                            x-kubernetes-list-type: set
+                        type: object
+                      captureOptions:
+                        description: Capture options (Input, Output, or both). Defaults
+                          to [Input, Output] when enabled.
+                        items:
+                          description: CaptureOption defines what data to capture
+                            (input, output, or both).
+                          properties:
+                            captureMode:
+                              description: 'Capture mode: Input or Output'
+                              enum:
+                              - Input
+                              - Output
+                              type: string
+                          required:
+                          - captureMode
+                          type: object
+                        maxItems: 32
+                        minItems: 1
+                        type: array
+                      enabled:
+                        description: Enable or disable model pod data capture
+                        type: boolean
+                      initialSamplingPercentage:
+                        description: Percentage of requests to capture (0-100). Defaults
+                          to 100 when enabled.
+                        format: int32
+                        maximum: 100
+                        minimum: 0
+                        type: integer
+                      kmsKeyId:
+                        description: Optional KMS key ID, ARN, alias name, or alias
+                          ARN for encrypting captured data
+                        maxLength: 2048
+                        pattern: ^[a-zA-Z0-9:/_-]*$
+                        type: string
+                      payloadConfig:
+                        description: Configuration for payload size limits
+                        properties:
+                          maxPayloadSizeKB:
+                            default: 0
+                            description: Maximum payload size in KB to capture. 0
+                              means no limit (capture full payload).
+                            format: int32
+                            maximum: 10240
+                            minimum: 0
+                            type: integer
+                        type: object
+                    required:
+                    - enabled
+                    type: object
+                  s3Uri:
+                    description: |-
+                      Common S3 URI for all data capture tiers. Each tier will write to a specific prefix within this bucket.
+                      Must use s3:// protocol (required by ALB access logs).
+                      If not provided, the TLS certificate bucket will be used for data capture storage.
+                    maxLength: 512
+                    pattern: ^s3://([^/]+)(/[^,=]*)?$
+                    type: string
+                  sagemakerEndpoint:
+                    description: Configuration for SageMaker Endpoint level data capture
+                      (Tier 1)
+                    properties:
+                      captureContentTypeHeader:
+                        description: Configuration for how to treat different content
+                          type headers during capture
+                        properties:
+                          csvContentTypes:
+                            description: |-
+                              List of content type headers to treat as CSV
+                              Each item must be 1-256 characters and match pattern: [a-zA-Z0-9](-*[a-zA-Z0-9])*/[a-zA-Z0-9](-*[a-zA-Z0-9.])*
+                              Example: text/csv, application/csv
+                            items:
+                              type: string
+                            maxItems: 10
+                            minItems: 1
+                            type: array
+                            x-kubernetes-list-type: set
+                          jsonContentTypes:
+                            description: |-
+                              List of content type headers to treat as JSON
+                              Each item must be 1-256 characters and match pattern: [a-zA-Z0-9](-*[a-zA-Z0-9])*/[a-zA-Z0-9](-*[a-zA-Z0-9.])*
+                              Example: application/json, application/jsonlines
+                            items:
+                              type: string
+                            maxItems: 10
+                            minItems: 1
+                            type: array
+                            x-kubernetes-list-type: set
+                        type: object
+                      captureOptions:
+                        description: Capture options (Input, Output, or both). Defaults
+                          to [Input, Output] when enabled.
+                        items:
+                          description: CaptureOption defines what data to capture
+                            (input, output, or both).
+                          properties:
+                            captureMode:
+                              description: 'Capture mode: Input or Output'
+                              enum:
+                              - Input
+                              - Output
+                              type: string
+                          required:
+                          - captureMode
+                          type: object
+                        maxItems: 32
+                        minItems: 1
+                        type: array
+                      enabled:
+                        description: Enable or disable SageMaker endpoint data capture
+                        type: boolean
+                      initialSamplingPercentage:
+                        description: Percentage of requests to capture (0-100). Defaults
+                          to 100 when enabled.
+                        format: int32
+                        maximum: 100
+                        minimum: 0
+                        type: integer
+                      kmsKeyId:
+                        description: Optional KMS key ID, ARN, alias name, or alias
+                          ARN for encrypting captured data
+                        maxLength: 2048
+                        pattern: ^[a-zA-Z0-9:/_-]*$
+                        type: string
+                    required:
+                    - enabled
+                    type: object
+                type: object
+              dnsConfig:
+                description: DNS automation configuration for Route53. Requires tlsConfig.customCertificateConfig
+                  to be set.
+                properties:
+                  hostedZoneId:
+                    description: Route53 Hosted Zone ID where the DNS record will
+                      be created.
+                    pattern: ^Z[A-Z0-9]+$
+                    type: string
+                required:
+                - hostedZoneId
                 type: object
               endpointName:
                 description: |-
@@ -589,7 +794,7 @@ spec:
                             type: string
                           serverAddress:
                             description: Server address for AMP workspace
-                            pattern: ^https:\/\/aps-workspaces\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.amazonaws\.com\/workspaces\/ws-[a-zA-Z0-9-]+\/[a-zA-Z0-9-]+$|^$
+                            pattern: ^https:\/\/aps-workspaces\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.amazonaws\.com\/workspaces\/ws-[a-zA-Z0-9-]+$|^$
                             type: string
                           targetValue:
                             description: Target metric value for scaling
@@ -636,7 +841,7 @@ spec:
                               type: string
                             serverAddress:
                               description: Server address for AMP workspace
-                              pattern: ^https:\/\/aps-workspaces\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.amazonaws\.com\/workspaces\/ws-[a-zA-Z0-9-]+\/[a-zA-Z0-9-]+$|^$
+                              pattern: ^https:\/\/aps-workspaces\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.amazonaws\.com\/workspaces\/ws-[a-zA-Z0-9-]+$|^$
                               type: string
                             targetValue:
                               description: Target metric value for scaling
@@ -2227,6 +2432,14 @@ spec:
                     description: |-
                       Name of the scheduler to use for pod scheduling.
                       If not specified, the default Kubernetes scheduler will be used.
+                    maxLength: 253
+                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                    type: string
+                  serviceAccountName:
+                    description: |-
+                      Name of the Kubernetes ServiceAccount to use for the inference pod.
+                      If not specified, the namespace's default service account will be used.
+                      This is useful for providing AWS credentials via IRSA to init containers or the worker.
                     maxLength: 253
                     pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                     type: string
@@ -4249,6 +4462,50 @@ spec:
                     required:
                     - fileSystemId
                     type: object
+                  huggingFaceModel:
+                    description: HuggingFace model configuration. Required when modelSourceType
+                      is "huggingface".
+                    properties:
+                      commitSHA:
+                        description: |-
+                          Git commit SHA for the model revision. Must be a full 40-character lowercase hex SHA.
+                          If not provided, the operator defaults to "main" branch.
+                        pattern: ^[0-9a-f]{40}$
+                        type: string
+                      modelId:
+                        description: HuggingFace Hub model identifier in org/model
+                          format (e.g. "meta-llama/Llama-3.1-8B-Instruct").
+                        pattern: ^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$
+                        type: string
+                      tokenSecretRef:
+                        description: |-
+                          Reference to a Kubernetes Secret containing the HuggingFace API token.
+                          The token is injected as the HF_TOKEN environment variable into the InitContainer only.
+                        properties:
+                          key:
+                            description: The key of the secret to select from.  Must
+                              be a valid secret key.
+                            type: string
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            type: string
+                          optional:
+                            description: Specify whether the Secret or its key must
+                              be defined
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                        x-kubernetes-map-type: atomic
+                    required:
+                    - modelId
+                    type: object
                   modelLocation:
                     description: Specific location where the model data exists
                     type: string
@@ -4256,6 +4513,8 @@ spec:
                     enum:
                     - fsx
                     - s3
+                    - huggingface
+                    - kubernetesVolume
                     type: string
                   prefetchEnabled:
                     default: false
@@ -5378,6 +5637,34 @@ spec:
                   - type
                   type: object
                 type: array
+              dataCaptureStatus:
+                description: Health status of the data capture pipeline
+                properties:
+                  modelPod:
+                    description: Health status of the model pod data capture tier
+                    properties:
+                      lastTransitionTime:
+                        description: Time of the last health state transition
+                        format: date-time
+                        type: string
+                      message:
+                        description: Human-readable message describing the health
+                          state
+                        type: string
+                      reason:
+                        description: Reason for unhealthy status (e.g., OOMKilled,
+                          S3UploadFailure, MultipleContainerRestarts)
+                        type: string
+                      status:
+                        description: Current health status
+                        enum:
+                        - Healthy
+                        - Unhealthy
+                        type: string
+                    required:
+                    - status
+                    type: object
+                type: object
               deploymentStatus:
                 description: Details of the native kubernetes deployment that hosts
                   the model
@@ -5491,6 +5778,44 @@ spec:
                 required:
                 - lastUpdated
                 - name
+                type: object
+              dnsStatus:
+                description: Status of the operator-managed Route53 DNS record
+                properties:
+                  dnsHealth:
+                    description: 'DNS resolution status: Active, Pending, or Error.'
+                    enum:
+                    - Active
+                    - Pending
+                    - Error
+                    type: string
+                  hostedZoneId:
+                    description: Route53 hosted zone ID.
+                    type: string
+                  lastTransitionTime:
+                    description: When the status last transitioned, used for propagation
+                      timeout.
+                    format: date-time
+                    type: string
+                  managedByOperator:
+                    description: Whether the operator manages this DNS record.
+                    type: boolean
+                  message:
+                    description: Human-readable status or error message.
+                    type: string
+                  previousHostedZoneId:
+                    description: Previous hosted zone ID, retained during domain/zone
+                      changes until cleanup completes.
+                    type: string
+                  previousRecordName:
+                    description: Previous record name, retained during domain/zone
+                      changes until cleanup completes.
+                    type: string
+                  recordName:
+                    description: Route53 record name.
+                    type: string
+                required:
+                - managedByOperator
                 type: object
               endpoints:
                 description: EndpointStatus contains the status of SageMaker endpoints
@@ -5801,7 +6126,7 @@ spec:
                         type: string
                       serverAddress:
                         description: Server address for AMP workspace
-                        pattern: ^https:\/\/aps-workspaces\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.amazonaws\.com\/workspaces\/ws-[a-zA-Z0-9-]+\/[a-zA-Z0-9-]+$|^$
+                        pattern: ^https:\/\/aps-workspaces\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.amazonaws\.com\/workspaces\/ws-[a-zA-Z0-9-]+$|^$
                         type: string
                       targetValue:
                         description: Target metric value for scaling

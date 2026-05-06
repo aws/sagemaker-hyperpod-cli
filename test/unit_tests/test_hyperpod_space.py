@@ -709,6 +709,44 @@ class TestHPSpace(unittest.TestCase):
 
     @patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi')
     @patch.object(HPSpace, 'verify_kube_config')
+    def test_create_space_access_kiro_remote(self, mock_verify_config, mock_custom_api_class):
+        """Test space access creation with kiro-remote connection type"""
+        mock_custom_api = Mock()
+        mock_custom_api_class.return_value = mock_custom_api
+        mock_custom_api.create_namespaced_custom_object.return_value = {
+            "status": {"workspaceConnectionUrl": "https://example.com/kiro-access"}
+        }
+
+        result = self.hp_space.create_space_access(connection_type="kiro-remote")
+
+        self.assertEqual(result["SpaceConnectionType"], "kiro-remote")
+        self.assertEqual(result["SpaceConnectionUrl"], "https://example.com/kiro-access")
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi')
+    @patch.object(HPSpace, 'verify_kube_config')
+    def test_create_space_access_cursor_remote(self, mock_verify_config, mock_custom_api_class):
+        """Test space access creation with cursor-remote connection type"""
+        mock_custom_api = Mock()
+        mock_custom_api_class.return_value = mock_custom_api
+        mock_custom_api.create_namespaced_custom_object.return_value = {
+            "status": {"workspaceConnectionUrl": "https://example.com/cursor-access"}
+        }
+
+        result = self.hp_space.create_space_access(connection_type="cursor-remote")
+
+        self.assertEqual(result["SpaceConnectionType"], "cursor-remote")
+        self.assertEqual(result["SpaceConnectionUrl"], "https://example.com/cursor-access")
+
+    @patch.object(HPSpace, 'verify_kube_config')
+    def test_create_space_access_invalid_pattern(self, mock_verify_config):
+        """Test space access creation rejects invalid connection type patterns"""
+        invalid_types = ["invalid-type", "-remote", "remote", "", "my--vscode-remote", "vscode_remote"]
+        for invalid_type in invalid_types:
+            with self.assertRaises(ValueError):
+                self.hp_space.create_space_access(connection_type=invalid_type)
+
+    @patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi')
+    @patch.object(HPSpace, 'verify_kube_config')
     @patch('sagemaker.hyperpod.space.hyperpod_space.handle_exception')
     def test_create_space_access_failure(self, mock_handle_exception, mock_verify_config, mock_custom_api_class):
         """Test space access creation failure"""
