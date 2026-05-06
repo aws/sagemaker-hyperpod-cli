@@ -27,12 +27,16 @@ image:
   tag: v3.1
   pullPolicy: Always
   repository:
+  initContainer:
+    repository: hyperpod-inference-operator-init-container
+    tag: v1.0
 hyperpodClusterArn:
 executionRoleArn:
 jumpstartGatedModelDownloadRoleArn: ""
 stage: "prod"
 tlsCertificateS3Bucket:
 enableWebhooks: true
+enableCustomServiceAccounts: false
 
 s3:
   enabled: true
