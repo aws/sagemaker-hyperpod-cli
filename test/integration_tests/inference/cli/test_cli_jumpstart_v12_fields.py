@@ -56,13 +56,18 @@ def test_create_with_v12_fields(runner, endpoint_name):
         "--load-balancer-routing-algorithm", "round_robin",
         "--env", '{"TEST_KEY":"test_value"}',
         "--additional-configs", '{"config1":"value1"}',
-        "--auto-scaling-spec", '{"minReplicaCount":1,"maxReplicaCount":5,"pollingInterval":60}',
-        "--custom-certificate-acm-arn", "arn:aws:acm:us-east-2:249127818294:certificate/test-cert",
+        "--auto-scaling-spec", '{"min_replica_count":1,"max_replica_count":5,"polling_interval":60}',
+        "--custom-certificate-acm-arn", "arn:aws:acm:us-east-2:249127818294:certificate/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "--custom-certificate-domain-name", "test.example.com",
         "--gated-model-download-role", "arn:aws:iam::249127818294:role/gated-download",
         "--model-hub-name", "SageMakerPublicHub",
     ])
     assert result.exit_code == 0, result.output
+
+    # Verify the CR was actually created on the cluster
+    from sagemaker.hyperpod.inference.hp_jumpstart_endpoint import HPJumpStartEndpoint
+    ep = HPJumpStartEndpoint.get(name=endpoint_name, namespace=NAMESPACE)
+    assert ep is not None, f"Endpoint {endpoint_name} not found on cluster after creation"
 
 
 @pytest.mark.dependency(name="js_verify_v12", depends=["js_create_v12"])
@@ -116,7 +121,7 @@ def test_verify_v12_fields_via_sdk(endpoint_name):
     assert ep.autoScalingSpec.pollingInterval == 60
 
     # Custom certificate
-    assert ep.tlsConfig.customCertificateConfig.acmArn == "arn:aws:acm:us-east-2:249127818294:certificate/test-cert"
+    assert ep.tlsConfig.customCertificateConfig.acmArn == "arn:aws:acm:us-east-2:249127818294:certificate/a1b2c3d4-e5f6-7890-abcd-ef1234567890"
     assert ep.tlsConfig.customCertificateConfig.domainName == "test.example.com"
 
 

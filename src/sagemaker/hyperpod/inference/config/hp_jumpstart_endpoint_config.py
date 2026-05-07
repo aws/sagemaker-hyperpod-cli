@@ -3,16 +3,17 @@ from typing import Optional, List, Literal
 
 
 class Dimensions(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     name: str = Field(description="CloudWatch Metric dimension name")
     value: str = Field(description="CloudWatch Metric dimension value")
 
 
 class CloudWatchTrigger(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """CloudWatch metric trigger to use for autoscaling"""
 
-    model_config = ConfigDict(extra="forbid")
 
     activationTargetValue: Optional[float] = Field(
         default=0,
@@ -71,9 +72,10 @@ class CloudWatchTrigger(BaseModel):
 
 
 class PrometheusTrigger(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Prometheus metric trigger to use for autoscaling"""
 
-    model_config = ConfigDict(extra="forbid")
 
     activationTargetValue: Optional[float] = Field(
         default=0,
@@ -117,7 +119,7 @@ class PrometheusTrigger(BaseModel):
 
 
 class CloudWatchTriggerList(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     activationTargetValue: Optional[float] = Field(
         default=0,
@@ -176,7 +178,7 @@ class CloudWatchTriggerList(BaseModel):
 
 
 class PrometheusTriggerList(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     activationTargetValue: Optional[float] = Field(
         default=0,
@@ -220,7 +222,7 @@ class PrometheusTriggerList(BaseModel):
 
 
 class AutoScalingSpec(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     cloudWatchTrigger: Optional[CloudWatchTrigger] = Field(
         default=None,
@@ -280,7 +282,7 @@ class AutoScalingSpec(BaseModel):
 
 
 class EnvironmentVariables(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     name: str
     value: str
@@ -289,7 +291,7 @@ class EnvironmentVariables(BaseModel):
 class ModelMetrics(BaseModel):
     """Configuration for model container metrics scraping"""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     path: Optional[str] = Field(
         default="/metrics", description="Path where the model exposes metrics"
@@ -301,9 +303,10 @@ class ModelMetrics(BaseModel):
 
 
 class Metrics(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Configuration for metrics collection and exposure"""
 
-    model_config = ConfigDict(extra="forbid")
 
     enabled: Optional[bool] = Field(
         default=True, description="Enable metrics collection for this model deployment"
@@ -321,14 +324,14 @@ class Metrics(BaseModel):
 
 
 class AdditionalConfigs(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     name: str
     value: str
 
 
 class Model(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     acceptEula: bool = Field(
         default=False,
@@ -360,7 +363,7 @@ class Model(BaseModel):
 
 
 class SageMakerEndpoint(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     name: Optional[str] = Field(
         default="",
@@ -379,7 +382,7 @@ class Validations(BaseModel):
 
 
 class Server(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     executionRole: Optional[str] = Field(
         default=None,
@@ -404,9 +407,10 @@ class Server(BaseModel):
 
 
 class IntelligentRoutingSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Configuration for intelligent routing"""
 
-    model_config = ConfigDict(extra="forbid")
 
     autoScalingSpec: Optional[AutoScalingSpec] = Field(
         default=None, alias="auto_scaling_spec"
@@ -420,7 +424,7 @@ class IntelligentRoutingSpec(BaseModel):
 
 
 class L2CacheSpec(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     l2CacheBackend: Optional[str] = Field(
         default=None, alias="l2_cache_backend"
@@ -431,7 +435,7 @@ class L2CacheSpec(BaseModel):
 
 
 class KvCacheSpec(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     cacheConfigFile: Optional[str] = Field(
         default=None, alias="cache_config_file"
@@ -448,7 +452,7 @@ class KvCacheSpec(BaseModel):
 
 
 class LoadBalancer(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     healthCheckPath: Optional[str] = Field(
         default="/ping", alias="health_check_path"
@@ -459,14 +463,14 @@ class LoadBalancer(BaseModel):
 
 
 class CustomCertificateConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     acmArn: str = Field(alias="acm_arn", description="ACM certificate ARN")
     domainName: str = Field(alias="domain_name")
 
 
 class TlsConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     customCertificateConfig: Optional[CustomCertificateConfig] = Field(
         default=None, alias="custom_certificate_config"
@@ -477,9 +481,10 @@ class TlsConfig(BaseModel):
 
 
 class CaptureContentTypeHeader(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Configuration for how to treat different content type headers during capture"""
 
-    model_config = ConfigDict(extra="forbid")
 
     csvContentTypes: Optional[List[str]] = Field(
         default=None,
@@ -494,9 +499,10 @@ class CaptureContentTypeHeader(BaseModel):
 
 
 class CaptureOptions(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """CaptureOption defines what data to capture (input, output, or both)."""
 
-    model_config = ConfigDict(extra="forbid")
 
     captureMode: Literal["Input", "Output"] = Field(
         alias="capture_mode", description="Capture mode: Input or Output"
@@ -504,9 +510,10 @@ class CaptureOptions(BaseModel):
 
 
 class BufferConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Configuration for buffering and flushing captured data"""
 
-    model_config = ConfigDict(extra="forbid")
 
     batchSize: Optional[int] = Field(
         default=10,
@@ -521,9 +528,10 @@ class BufferConfig(BaseModel):
 
 
 class PayloadConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Configuration for payload size limits"""
 
-    model_config = ConfigDict(extra="forbid")
 
     maxPayloadSizeKB: Optional[int] = Field(
         default=0,
@@ -533,9 +541,10 @@ class PayloadConfig(BaseModel):
 
 
 class DataCaptureModelPod(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Configuration for Model Pod level data capture (Tier 3)"""
 
-    model_config = ConfigDict(extra="forbid")
 
     bufferConfig: Optional[BufferConfig] = Field(
         default=None, alias="buffer_config",
@@ -557,9 +566,10 @@ class DataCaptureModelPod(BaseModel):
 
 
 class DataCaptureSagemakerEndpoint(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Configuration for SageMaker Endpoint level data capture (Tier 1)"""
 
-    model_config = ConfigDict(extra="forbid")
 
     captureContentTypeHeader: Optional[CaptureContentTypeHeader] = Field(
         default=None, alias="capture_content_type_header",
@@ -577,15 +587,16 @@ class DataCaptureSagemakerEndpoint(BaseModel):
 class DataCaptureLoadBalancer(BaseModel):
     """Configuration for LoadBalancer level data capture (Tier 2)"""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     enabled: bool = Field(description="Enable or disable load balancer access logs")
 
 
 class DataCapture(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Configuration for data capture across multiple tiers (SageMaker, LoadBalancer, Model Pod)"""
 
-    model_config = ConfigDict(extra="forbid")
 
     loadBalancer: Optional[DataCaptureLoadBalancer] = Field(
         default=None, alias="load_balancer",
@@ -600,9 +611,10 @@ class DataCapture(BaseModel):
 
 
 class DnsConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """DNS automation configuration for Route53."""
 
-    model_config = ConfigDict(extra="forbid")
 
     hostedZoneId: str = Field(
         alias="hosted_zone_id",
@@ -613,7 +625,7 @@ class DnsConfig(BaseModel):
 class _HPJumpStartEndpoint(BaseModel):
     """Config defines the desired state of JumpStartModel."""
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
     autoScalingSpec: Optional[AutoScalingSpec] = Field(
         default=None, alias="auto_scaling_spec"
@@ -669,9 +681,10 @@ class _HPJumpStartEndpoint(BaseModel):
 
 
 class Conditions(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """DeploymentCondition describes the state of a deployment at a certain point."""
 
-    model_config = ConfigDict(extra="forbid")
 
     lastTransitionTime: Optional[str] = Field(
         default=None,
@@ -702,9 +715,10 @@ class Conditions(BaseModel):
 
 
 class Status(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Status of the Deployment Object"""
 
-    model_config = ConfigDict(extra="forbid")
 
     availableReplicas: Optional[int] = Field(
         default=None,
@@ -752,9 +766,10 @@ class Status(BaseModel):
 
 
 class DeploymentStatus(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Details of the native kubernetes deployment that hosts the model"""
 
-    model_config = ConfigDict(extra="forbid")
 
     deploymentObjectOverallState: Optional[str] = Field(
         default=None,
@@ -777,9 +792,10 @@ class DeploymentStatus(BaseModel):
 
 
 class Sagemaker(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Status of the SageMaker endpoint"""
 
-    model_config = ConfigDict(extra="forbid")
 
     configArn: Optional[str] = Field(
         default=None,
@@ -802,17 +818,17 @@ class Sagemaker(BaseModel):
 class Endpoints(BaseModel):
     """EndpointStatus contains the status of SageMaker endpoints"""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     sagemaker: Optional[Sagemaker] = Field(
         default=None, description="Status of the SageMaker endpoint"
     )
 
 
-class ModelMetrics(BaseModel):
+class ModelMetricsStatus(BaseModel):
     """Status of model container metrics collection"""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     path: Optional[str] = Field(
         default=None, description="The path where metrics are available"
@@ -823,9 +839,10 @@ class ModelMetrics(BaseModel):
 
 
 class MetricsStatus(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Status of metrics collection"""
 
-    model_config = ConfigDict(extra="forbid")
 
     enabled: bool = Field(description="Whether metrics collection is enabled")
     errorMessage: Optional[str] = Field(
@@ -838,7 +855,7 @@ class MetricsStatus(BaseModel):
         alias="metrics_scrape_interval_seconds",
         description="Scrape interval in seconds for metrics collection from sidecar and model container.",
     )
-    modelMetrics: Optional[ModelMetrics] = Field(
+    modelMetrics: Optional[ModelMetricsStatus] = Field(
         default=None,
         alias="model_metrics",
         description="Status of model container metrics collection",
@@ -849,9 +866,10 @@ class MetricsStatus(BaseModel):
 
 
 class TlsCertificate(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """CertificateStatus represents the status of TLS certificates"""
 
-    model_config = ConfigDict(extra="forbid")
 
     certificateARN: Optional[str] = Field(
         default=None,
@@ -899,9 +917,10 @@ class TlsCertificate(BaseModel):
 
 
 class DataCaptureModelPodStatus(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Health status of the model pod data capture tier"""
 
-    model_config = ConfigDict(extra="forbid")
 
     lastTransitionTime: Optional[str] = Field(
         default=None,
@@ -922,9 +941,10 @@ class DataCaptureModelPodStatus(BaseModel):
 
 
 class DataCaptureStatus(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Health status of the data capture pipeline"""
 
-    model_config = ConfigDict(extra="forbid")
 
     modelPod: Optional[DataCaptureModelPodStatus] = Field(
         default=None,
@@ -934,9 +954,10 @@ class DataCaptureStatus(BaseModel):
 
 
 class DnsStatus(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Status of the operator-managed Route53 DNS record"""
 
-    model_config = ConfigDict(extra="forbid")
 
     dnsHealth: Optional[Literal["Active", "Pending", "Error"]] = Field(
         default=None, alias="dns_health",
@@ -969,9 +990,10 @@ class DnsStatus(BaseModel):
 
 
 class JumpStartModelStatus(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """ModelDeploymentStatus defines the observed state of ModelDeployment"""
 
-    model_config = ConfigDict(extra="forbid")
 
     conditions: Optional[List[Conditions]] = Field(
         default=None,

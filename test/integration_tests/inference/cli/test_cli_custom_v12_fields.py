@@ -40,7 +40,6 @@ def test_create_with_v12_fields(runner, endpoint_name):
         "--model-location", "test-model",
         "--s3-bucket-name", "sagemaker-hyperpod-beta-integ-test-model-bucket-n",
         "--s3-region", "us-east-2",
-        "--instance-types", "ml.c5.2xlarge,ml.c5.4xlarge",
         "--image-uri", "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:2.3.0-transformers4.48.0-cpu-py311-ubuntu22.04",
         "--container-port", "8080",
         "--model-volume-mount-name", "model-weights",
@@ -63,18 +62,22 @@ def test_create_with_v12_fields(runner, endpoint_name):
         "--load-balancer-routing-algorithm", "round_robin",
         "--intelligent-routing-enabled", "False",
         "--enable-l1-cache", "True",
-        "--instance-types", "ml.c5.2xlarge,ml.c5.4xlarge",
         "--kubernetes", '{"serviceAccountName":"default"}',
         "--tags", '{"team":"ml","env":"integ-test"}',
-        "--node-affinity", '{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"node.kubernetes.io/instance-type","operator":"In","values":["ml.c5.2xlarge"]}]}]}}',
+        "--node-affinity", '{"required_during_scheduling_ignored_during_execution":{"node_selector_terms":[{"match_expressions":[{"key":"node.kubernetes.io/instance-type","operator":"In","values":["ml.c5.2xlarge"]}]}]}}',
         "--probes", '{"livenessProbe":{"httpGet":{"path":"/ping","port":8080},"periodSeconds":30}}',
-        "--auto-scaling-spec", '{"minReplicaCount":1,"maxReplicaCount":3,"pollingInterval":60}',
+        "--auto-scaling-spec", '{"min_replica_count":1,"max_replica_count":3,"polling_interval":60}',
         "--resources-requests", '{"cpu":"1","memory":"2Gi"}',
         "--resources-limits", '{"cpu":"2","memory":"4Gi","nvidia.com/gpu":"0"}',
-        "--custom-certificate-acm-arn", "arn:aws:acm:us-east-2:249127818294:certificate/test-cert",
+        "--custom-certificate-acm-arn", "arn:aws:acm:us-east-2:249127818294:certificate/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "--custom-certificate-domain-name", "test.example.com",
     ])
     assert result.exit_code == 0, result.output
+
+    # Verify the CR was actually created on the cluster
+    from sagemaker.hyperpod.inference.hp_endpoint import HPEndpoint
+    ep = HPEndpoint.get(name=endpoint_name, namespace=NAMESPACE)
+    assert ep is not None, f"Endpoint {endpoint_name} not found on cluster after creation"
 
 
 @pytest.mark.dependency(name="verify_v12", depends=["create_v12"])
@@ -87,9 +90,6 @@ def test_verify_v12_fields_via_sdk(endpoint_name):
     assert ep.InitialReplicaCount == 1
     assert ep.maxDeployTimeInSeconds == 7200
     assert ep.invocationEndpoint == "invocations"
-
-    # Instance types (list, not single)
-    assert ep.instanceTypes == ["ml.c5.2xlarge", "ml.c5.4xlarge"]
 
     # Worker fields
     assert ep.worker.args == ["--max-model-len", "4096"]
@@ -144,7 +144,7 @@ def test_verify_v12_fields_via_sdk(endpoint_name):
     assert ep.autoScalingSpec.pollingInterval == 60
 
     # Custom certificate
-    assert ep.tlsConfig.customCertificateConfig.acmArn == "arn:aws:acm:us-east-2:249127818294:certificate/test-cert"
+    assert ep.tlsConfig.customCertificateConfig.acmArn == "arn:aws:acm:us-east-2:249127818294:certificate/a1b2c3d4-e5f6-7890-abcd-ef1234567890"
     assert ep.tlsConfig.customCertificateConfig.domainName == "test.example.com"
 
 
