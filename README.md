@@ -572,7 +572,7 @@ Pre-trained Jumpstart models can be gotten from https://sagemaker.readthedocs.io
 
 ```bash
 hyp create hyp-jumpstart-endpoint \
-    --version 1.0 \
+    --version 1.2 \
     --model-id jumpstart-model-id\
     --instance-type ml.g5.8xlarge \
     --endpoint-name endpoint-jumpstart
@@ -587,8 +587,36 @@ hyp create hyp-jumpstart-endpoint \
 | `--accept-eula` | BOOLEAN | No | Whether model terms of use have been accepted (default: false) |
 | `--model-version` | TEXT | No | Semantic version of the model (e.g., "1.0.0", 5-14 characters) |
 | `--endpoint-name` | TEXT | No | Name of SageMaker endpoint (1-63 characters, alphanumeric with hyphens) |
-| `--tls-certificate-output-s3-uri` | TEXT | No | S3 URI to write the TLS certificate (optional) |
+| `--tls-certificate-output-s3-uri` | TEXT | No | S3 URI to write the TLS certificate |
 | `--debug` | FLAG | No | Enable debug mode (default: false) |
+| `--version` | TEXT | No | Schema version to use (default: "1.2") |
+| `--accelerator-partition-type` | TEXT | No | MIG profile for GPU partitioning (must start with "mig-") |
+| `--accelerator-partition-validation` | BOOLEAN | No | Enable MIG validation (default: true) |
+| `--replicas` | INTEGER | No | Number of inference server replicas (default: 1) |
+| `--max-deploy-time-in-seconds` | INTEGER | No | Maximum deployment time in seconds (default: 3600) |
+| `--execution-role` | TEXT | No | IAM role ARN for deploying and managing the inference server |
+| `--env` | JSON | No | Environment variables as JSON, e.g. `'{"KEY":"value"}'` |
+| `--metrics-enabled` | BOOLEAN | No | Enable metrics collection |
+| `--metrics-scrape-interval-seconds` | INTEGER | No | Scrape interval for metrics collection |
+| `--model-metrics-path` | TEXT | No | Path where the model exposes metrics |
+| `--model-metrics-port` | INTEGER | No | Port where the model exposes metrics |
+| `--additional-configs` | JSON | No | Additional model configs as JSON key-value pairs |
+| `--gated-model-download-role` | TEXT | No | IAM role ARN for downloading gated models |
+| `--model-hub-name` | TEXT | No | Name of the model hub |
+| `--intelligent-routing-enabled` | BOOLEAN | No | Enable intelligent routing |
+| `--routing-strategy` | TEXT | No | Routing strategy: prefixaware, kvaware, session, or roundrobin |
+| `--enable-l1-cache` | BOOLEAN | No | Enable L1 cache (CPU offloading) |
+| `--enable-l2-cache` | BOOLEAN | No | Enable L2 cache |
+| `--l2-cache-backend` | TEXT | No | L2 cache backend type |
+| `--l2-cache-local-url` | TEXT | No | L2 cache URL to local storage |
+| `--cache-config-file` | TEXT | No | KV cache configuration file path |
+| `--load-balancer-health-check-path` | TEXT | No | Health check path for the ALB target group |
+| `--load-balancer-routing-algorithm` | TEXT | No | Routing algorithm: least_outstanding_requests or round_robin |
+| `--custom-certificate-acm-arn` | TEXT | No | ACM certificate ARN for custom TLS |
+| `--custom-certificate-domain-name` | TEXT | No | Domain name for the custom TLS certificate |
+| `--auto-scaling-spec` | JSON | No | Full autoScalingSpec JSON for autoscaling configuration |
+| `--dns-hosted-zone-id` | TEXT | No | Route53 Hosted Zone ID for DNS automation |
+| `--data-capture` | JSON | No | Data capture configuration JSON for SageMaker, LoadBalancer, and Model Pod tiers |
 
 
 #### Invoke a JumpstartModel Endpoint
@@ -671,7 +699,7 @@ hyp create
 #### **Option 2**: Create custom endpoint through create command
 ```bash
 hyp create hyp-custom-endpoint \
-    --version 1.0 \
+    --version 1.2 \
     --endpoint-name endpoint-custom \
     --model-name my-pytorch-model \
     --model-source-type s3 \
@@ -686,17 +714,22 @@ hyp create hyp-custom-endpoint \
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `--instance-type` | TEXT | Yes | EC2 instance type for inference (must start with "ml.") |
 | `--model-name` | TEXT | Yes | Name of model to create on SageMaker (1-63 characters, alphanumeric with hyphens) |
-| `--model-source-type` | TEXT | Yes | Model source type ("s3" or "fsx") |
+| `--model-source-type` | TEXT | Yes | Model source type: "s3", "fsx", "huggingface", or "kubernetesVolume" |
 | `--image-uri` | TEXT | Yes | Docker image URI for inference |
 | `--container-port` | INTEGER | Yes | Port on which model server listens (1-65535) |
 | `--model-volume-mount-name` | TEXT | Yes | Name of the model volume mount |
 | `--namespace` | TEXT | No | Kubernetes namespace |
 | `--metadata-name` | TEXT | No | Name of the custom endpoint object |
 | `--endpoint-name` | TEXT | No | Name of SageMaker endpoint (1-63 characters, alphanumeric with hyphens) |
-| `--env` | OBJECT | No | Environment variables as key-value pairs |
+| `--version` | TEXT | No | Schema version to use (default: "1.2") |
+| `--instance-type` | TEXT | No | EC2 instance type (mutually exclusive with --instance-types) |
+| `--instance-types` | TEXT | No | Comma-separated list of instance types in order of preference |
+| `--env` | JSON | No | Environment variables as JSON, e.g. `'{"KEY":"value"}'` |
 | `--metrics-enabled` | BOOLEAN | No | Enable metrics collection (default: false) |
+| `--metrics-scrape-interval-seconds` | INTEGER | No | Scrape interval for metrics collection |
+| `--model-metrics-path` | TEXT | No | Path where the model exposes metrics |
+| `--model-metrics-port` | INTEGER | No | Port where the model exposes metrics |
 | `--model-version` | TEXT | No | Version of the model (semantic version format) |
 | `--model-location` | TEXT | No | Specific model data location |
 | `--prefetch-enabled` | BOOLEAN | No | Whether to pre-fetch model data (default: false) |
@@ -706,10 +739,42 @@ hyp create hyp-custom-endpoint \
 | `--fsx-mount-name` | TEXT | No | FSx File System Mount Name |
 | `--s3-bucket-name` | TEXT | No | S3 bucket location |
 | `--s3-region` | TEXT | No | S3 bucket region |
+| `--huggingface-model-id` | TEXT | No | HuggingFace Hub model identifier (e.g. "meta-llama/Llama-3.1-8B-Instruct") |
+| `--huggingface-commit-sha` | TEXT | No | Git commit SHA for the model revision (40-char hex) |
+| `--huggingface-token-secret-name` | TEXT | No | Name of the K8s Secret containing the HuggingFace API token |
+| `--huggingface-token-secret-key` | TEXT | No | Key in the K8s Secret for the HuggingFace API token |
 | `--model-volume-mount-path` | TEXT | No | Path inside container for model volume (default: "/opt/ml/model") |
-| `--resources-limits` | OBJECT | No | Resource limits for the worker |
-| `--resources-requests` | OBJECT | No | Resource requests for the worker |
-| `--dimensions` | OBJECT | No | CloudWatch Metric dimensions as key-value pairs |
+| `--resources-limits` | JSON | No | Resource limits, e.g. `'{"nvidia.com/gpu":"1"}'` |
+| `--resources-requests` | JSON | No | Resource requests, e.g. `'{"cpu":"1","memory":"2Gi"}'` |
+| `--replicas` | INTEGER | No | Number of inference server replicas (default: 1) |
+| `--initial-replica-count` | INTEGER | No | Number of desired pods (defaults to 1) |
+| `--max-deploy-time-in-seconds` | INTEGER | No | Maximum deployment time in seconds (default: 3600) |
+| `--worker-args` | TEXT | No | Comma-separated arguments to the entrypoint |
+| `--worker-command` | TEXT | No | Comma-separated entrypoint command array |
+| `--working-dir` | TEXT | No | Working directory of the container |
+| `--invocation-endpoint` | TEXT | No | Invocation endpoint path (default: "invocations") |
+| `--intelligent-routing-enabled` | BOOLEAN | No | Enable intelligent routing |
+| `--routing-strategy` | TEXT | No | Routing strategy: prefixaware, kvaware, session, or roundrobin |
+| `--enable-l1-cache` | BOOLEAN | No | Enable L1 cache (CPU offloading) |
+| `--enable-l2-cache` | BOOLEAN | No | Enable L2 cache |
+| `--l2-cache-backend` | TEXT | No | L2 cache backend type |
+| `--l2-cache-local-url` | TEXT | No | L2 cache URL to local storage |
+| `--cache-config-file` | TEXT | No | KV cache configuration file path |
+| `--load-balancer-health-check-path` | TEXT | No | Health check path for the ALB target group |
+| `--load-balancer-routing-algorithm` | TEXT | No | Routing algorithm: least_outstanding_requests or round_robin |
+| `--max-concurrent-requests` | INTEGER | No | Maximum concurrent requests per pod |
+| `--max-queue-size` | INTEGER | No | Maximum request queue size |
+| `--overflow-status-code` | INTEGER | No | HTTP status code when request limits exceeded (default: 429) |
+| `--custom-certificate-acm-arn` | TEXT | No | ACM certificate ARN for custom TLS |
+| `--custom-certificate-domain-name` | TEXT | No | Domain name for the custom TLS certificate |
+| `--kubernetes` | JSON | No | Kubernetes customizations (initContainers, volumes, schedulerName, serviceAccountName) |
+| `--node-affinity` | JSON | No | Node affinity JSON for advanced scheduling |
+| `--tags` | JSON | No | Tags as JSON key-value pairs |
+| `--probes` | JSON | No | Container probes JSON (livenessProbe, readinessProbe, startupProbe) |
+| `--auto-scaling-spec` | JSON | No | Full autoScalingSpec JSON (overrides individual CloudWatch fields) |
+| `--dns-hosted-zone-id` | TEXT | No | Route53 Hosted Zone ID for DNS automation |
+| `--data-capture` | JSON | No | Data capture configuration JSON for SageMaker, LoadBalancer, and Model Pod tiers |
+| `--dimensions` | JSON | No | CloudWatch Metric dimensions as key-value pairs |
 | `--metric-collection-period` | INTEGER | No | Period for CloudWatch query (default: 300) |
 | `--metric-collection-start-time` | INTEGER | No | StartTime for CloudWatch query (default: 300) |
 | `--metric-name` | TEXT | No | Metric name to query for CloudWatch trigger |
@@ -720,7 +785,6 @@ hyp create hyp-custom-endpoint \
 | `--cloud-watch-trigger-namespace` | TEXT | No | AWS CloudWatch namespace for the metric |
 | `--target-value` | NUMBER | No | Target value for the CloudWatch metric |
 | `--use-cached-metrics` | BOOLEAN | No | Enable caching of metric values (default: true) |
-| `--invocation-endpoint` | TEXT | No | Invocation endpoint path (default: "invocations") |
 | `--debug` | FLAG | No | Enable debug mode (default: false) |
 
 

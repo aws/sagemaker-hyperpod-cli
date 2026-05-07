@@ -3,16 +3,17 @@ from typing import Optional, List, Literal
 
 
 class Dimensions(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     name: str = Field(description="CloudWatch Metric dimension name")
     value: str = Field(description="CloudWatch Metric dimension value")
 
 
 class CloudWatchTrigger(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """CloudWatch metric trigger to use for autoscaling"""
 
-    model_config = ConfigDict(extra="forbid")
 
     activationTargetValue: Optional[float] = Field(
         default=0,
@@ -71,9 +72,113 @@ class CloudWatchTrigger(BaseModel):
 
 
 class PrometheusTrigger(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Prometheus metric trigger to use for autoscaling"""
 
-    model_config = ConfigDict(extra="forbid")
+
+    activationTargetValue: Optional[float] = Field(
+        default=0,
+        alias="activation_target_value",
+        description="Activation Value for Prometheus metric to scale from 0 to 1. Only applicable if minReplicaCount = 0",
+    )
+    customHeaders: Optional[str] = Field(
+        default=None,
+        alias="custom_headers",
+        description="Custom headers to include while querying the prometheus endpoint.",
+    )
+    metricType: Optional[Literal["Value", "Average"]] = Field(
+        default="Average",
+        alias="metric_type",
+        description="The type of metric to be used by HPA. Enum: AverageValue - Uses average value of metric per pod, Value - Uses absolute metric value",
+    )
+    name: Optional[str] = Field(
+        default=None, description="Name for the Prometheus trigger"
+    )
+    namespace: Optional[str] = Field(
+        default=None, description="Namespace for namespaced queries"
+    )
+    query: Optional[str] = Field(
+        default=None, description="PromQLQuery for the metric."
+    )
+    serverAddress: Optional[str] = Field(
+        default=None,
+        alias="server_address",
+        description="Server address for AMP workspace",
+    )
+    targetValue: Optional[float] = Field(
+        default=None,
+        alias="target_value",
+        description="Target metric value for scaling",
+    )
+    useCachedMetrics: Optional[bool] = Field(
+        default=True,
+        alias="use_cached_metrics",
+        description="Enable caching of metric values during polling interval. Default is true",
+    )
+
+
+class CloudWatchTriggerList(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    activationTargetValue: Optional[float] = Field(
+        default=0,
+        alias="activation_target_value",
+        description="Activation Value for CloudWatch metric to scale from 0 to 1. Only applicable if minReplicaCount = 0",
+    )
+    dimensions: Optional[List[Dimensions]] = Field(
+        default=None, description="Dimensions for Cloudwatch metrics"
+    )
+    metricCollectionPeriod: Optional[int] = Field(
+        default=300,
+        alias="metric_collection_period",
+        description="Defines the Period for CloudWatch query",
+    )
+    metricCollectionStartTime: Optional[int] = Field(
+        default=300,
+        alias="metric_collection_start_time",
+        description="Defines the StartTime for CloudWatch query",
+    )
+    metricName: Optional[str] = Field(
+        default=None,
+        alias="metric_name",
+        description="Metric name to query for Cloudwatch trigger",
+    )
+    metricStat: Optional[str] = Field(
+        default="Average",
+        alias="metric_stat",
+        description="Statistics metric to be used by Trigger. Used to define Stat for CloudWatch query. Default is Average.",
+    )
+    metricType: Optional[Literal["Value", "Average"]] = Field(
+        default="Average",
+        alias="metric_type",
+        description="The type of metric to be used by HPA. Enum: AverageValue - Uses average value of metric per pod, Value - Uses absolute metric value",
+    )
+    minValue: Optional[float] = Field(
+        default=0,
+        alias="min_value",
+        description="Minimum metric value used in case of empty response from CloudWatch. Default is 0.",
+    )
+    name: Optional[str] = Field(
+        default=None, description="Name for the CloudWatch trigger"
+    )
+    namespace: Optional[str] = Field(
+        default=None, description="AWS CloudWatch namespace for metric"
+    )
+    targetValue: Optional[float] = Field(
+        default=None,
+        alias="target_value",
+        description="TargetValue for CloudWatch metric",
+    )
+    useCachedMetrics: Optional[bool] = Field(
+        default=True,
+        alias="use_cached_metrics",
+        description="Enable caching of metric values during polling interval. Default is true",
+    )
+
+
+class PrometheusTriggerList(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     activationTargetValue: Optional[float] = Field(
         default=0,
@@ -117,12 +222,17 @@ class PrometheusTrigger(BaseModel):
 
 
 class AutoScalingSpec(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     cloudWatchTrigger: Optional[CloudWatchTrigger] = Field(
         default=None,
         alias="cloud_watch_trigger",
         description="CloudWatch metric trigger to use for autoscaling",
+    )
+    cloudWatchTriggerList: Optional[List[CloudWatchTriggerList]] = Field(
+        default=None,
+        alias="cloud_watch_trigger_list",
+        description="Multiple CloudWatch metric triggers to use for autoscaling. Takes priority over CloudWatchTrigger if both are provided.",
     )
     cooldownPeriod: Optional[int] = Field(
         default=300,
@@ -154,6 +264,11 @@ class AutoScalingSpec(BaseModel):
         alias="prometheus_trigger",
         description="Prometheus metric trigger to use for autoscaling",
     )
+    prometheusTriggerList: Optional[List[PrometheusTriggerList]] = Field(
+        default=None,
+        alias="prometheus_trigger_list",
+        description="Multiple Prometheus metric triggers to use for autoscaling. Takes priority over PrometheusTrigger if both are provided.",
+    )
     scaleDownStabilizationTime: Optional[int] = Field(
         default=300,
         alias="scale_down_stabilization_time",
@@ -167,7 +282,7 @@ class AutoScalingSpec(BaseModel):
 
 
 class EnvironmentVariables(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     name: str
     value: str
@@ -176,7 +291,7 @@ class EnvironmentVariables(BaseModel):
 class ModelMetrics(BaseModel):
     """Configuration for model container metrics scraping"""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     path: Optional[str] = Field(
         default="/metrics", description="Path where the model exposes metrics"
@@ -188,9 +303,10 @@ class ModelMetrics(BaseModel):
 
 
 class Metrics(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Configuration for metrics collection and exposure"""
 
-    model_config = ConfigDict(extra="forbid")
 
     enabled: Optional[bool] = Field(
         default=True, description="Enable metrics collection for this model deployment"
@@ -208,14 +324,14 @@ class Metrics(BaseModel):
 
 
 class AdditionalConfigs(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     name: str
     value: str
 
 
 class Model(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     acceptEula: bool = Field(
         default=False,
@@ -247,7 +363,7 @@ class Model(BaseModel):
 
 
 class SageMakerEndpoint(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     name: Optional[str] = Field(
         default="",
@@ -266,7 +382,7 @@ class Validations(BaseModel):
 
 
 class Server(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     executionRole: Optional[str] = Field(
         default=None,
@@ -290,21 +406,239 @@ class Server(BaseModel):
     )
 
 
-class TlsConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class IntelligentRoutingSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
+    """Configuration for intelligent routing"""
+
+
+    autoScalingSpec: Optional[AutoScalingSpec] = Field(
+        default=None, alias="auto_scaling_spec"
+    )
+    enabled: Optional[bool] = Field(
+        default=False, description="Once set, the enabled field cannot be modified"
+    )
+    routingStrategy: Optional[
+        Literal["prefixaware", "kvaware", "session", "roundrobin"]
+    ] = Field(default="prefixaware", alias="routing_strategy")
+
+
+class L2CacheSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    l2CacheBackend: Optional[str] = Field(
+        default=None, alias="l2_cache_backend"
+    )
+    l2CacheLocalUrl: Optional[str] = Field(
+        default=None, alias="l2_cache_local_url"
+    )
+
+
+class KvCacheSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    cacheConfigFile: Optional[str] = Field(
+        default=None, alias="cache_config_file"
+    )
+    enableL1Cache: Optional[bool] = Field(
+        default=True, alias="enable_l1_cache"
+    )
+    enableL2Cache: Optional[bool] = Field(
+        default=False, alias="enable_l2_cache"
+    )
+    l2CacheSpec: Optional[L2CacheSpec] = Field(
+        default=None, alias="l2_cache_spec"
+    )
+
+
+class LoadBalancer(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    healthCheckPath: Optional[str] = Field(
+        default="/ping", alias="health_check_path"
+    )
+    routingAlgorithm: Optional[Literal["least_outstanding_requests", "round_robin"]] = (
+        Field(default="least_outstanding_requests", alias="routing_algorithm")
+    )
+
+
+class CustomCertificateConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    acmArn: str = Field(alias="acm_arn", description="ACM certificate ARN")
+    domainName: str = Field(alias="domain_name")
+
+
+class TlsConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    customCertificateConfig: Optional[CustomCertificateConfig] = Field(
+        default=None, alias="custom_certificate_config"
+    )
     tlsCertificateOutputS3Uri: Optional[str] = Field(
         default=None, alias="tls_certificate_output_s3_uri"
+    )
+
+
+class CaptureContentTypeHeader(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    """Configuration for how to treat different content type headers during capture"""
+
+
+    csvContentTypes: Optional[List[str]] = Field(
+        default=None,
+        alias="csv_content_types",
+        description="List of content type headers to treat as CSV",
+    )
+    jsonContentTypes: Optional[List[str]] = Field(
+        default=None,
+        alias="json_content_types",
+        description="List of content type headers to treat as JSON",
+    )
+
+
+class CaptureOptions(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    """CaptureOption defines what data to capture (input, output, or both)."""
+
+
+    captureMode: Literal["Input", "Output"] = Field(
+        alias="capture_mode", description="Capture mode: Input or Output"
+    )
+
+
+class BufferConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    """Configuration for buffering and flushing captured data"""
+
+
+    batchSize: Optional[int] = Field(
+        default=10,
+        alias="batch_size",
+        description="Number of records to batch before writing to S3",
+    )
+    flushIntervalSeconds: Optional[int] = Field(
+        default=60,
+        alias="flush_interval_seconds",
+        description="Flush interval in seconds",
+    )
+
+
+class PayloadConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    """Configuration for payload size limits"""
+
+
+    maxPayloadSizeKB: Optional[int] = Field(
+        default=0,
+        alias="max_payload_size_kb",
+        description="Maximum payload size in KB to capture. 0 means no limit.",
+    )
+
+
+class DataCaptureModelPod(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    """Configuration for Model Pod level data capture (Tier 3)"""
+
+
+    bufferConfig: Optional[BufferConfig] = Field(
+        default=None, alias="buffer_config",
+    )
+    captureContentTypeHeader: Optional[CaptureContentTypeHeader] = Field(
+        default=None, alias="capture_content_type_header",
+    )
+    captureOptions: Optional[List[CaptureOptions]] = Field(
+        default=None, alias="capture_options",
+    )
+    enabled: bool = Field(description="Enable or disable model pod data capture")
+    initialSamplingPercentage: Optional[int] = Field(
+        default=None, alias="initial_sampling_percentage",
+    )
+    kmsKeyId: Optional[str] = Field(default=None, alias="kms_key_id")
+    payloadConfig: Optional[PayloadConfig] = Field(
+        default=None, alias="payload_config",
+    )
+
+
+class DataCaptureSagemakerEndpoint(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    """Configuration for SageMaker Endpoint level data capture (Tier 1)"""
+
+
+    captureContentTypeHeader: Optional[CaptureContentTypeHeader] = Field(
+        default=None, alias="capture_content_type_header",
+    )
+    captureOptions: Optional[List[CaptureOptions]] = Field(
+        default=None, alias="capture_options",
+    )
+    enabled: bool = Field(description="Enable or disable SageMaker endpoint data capture")
+    initialSamplingPercentage: Optional[int] = Field(
+        default=None, alias="initial_sampling_percentage",
+    )
+    kmsKeyId: Optional[str] = Field(default=None, alias="kms_key_id")
+
+
+class DataCaptureLoadBalancer(BaseModel):
+    """Configuration for LoadBalancer level data capture (Tier 2)"""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    enabled: bool = Field(description="Enable or disable load balancer access logs")
+
+
+class DataCapture(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    """Configuration for data capture across multiple tiers (SageMaker, LoadBalancer, Model Pod)"""
+
+
+    loadBalancer: Optional[DataCaptureLoadBalancer] = Field(
+        default=None, alias="load_balancer",
+    )
+    modelPod: Optional[DataCaptureModelPod] = Field(
+        default=None, alias="model_pod",
+    )
+    s3Uri: Optional[str] = Field(default=None, alias="s3_uri")
+    sagemakerEndpoint: Optional[DataCaptureSagemakerEndpoint] = Field(
+        default=None, alias="sagemaker_endpoint",
+    )
+
+
+class DnsConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    """DNS automation configuration for Route53."""
+
+
+    hostedZoneId: str = Field(
+        alias="hosted_zone_id",
+        description="Route53 Hosted Zone ID where the DNS record will be created.",
     )
 
 
 class _HPJumpStartEndpoint(BaseModel):
     """Config defines the desired state of JumpStartModel."""
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
     autoScalingSpec: Optional[AutoScalingSpec] = Field(
         default=None, alias="auto_scaling_spec"
+    )
+    dataCapture: Optional[DataCapture] = Field(
+        default=None,
+        alias="data_capture",
+        description="Configuration for data capture across multiple tiers (SageMaker, LoadBalancer, Model Pod)",
+    )
+    dnsConfig: Optional[DnsConfig] = Field(
+        default=None,
+        alias="dns_config",
+        description="DNS automation configuration for Route53. Requires tlsConfig.customCertificateConfig to be set.",
     )
     environmentVariables: Optional[List[EnvironmentVariables]] = Field(
         default=None,
@@ -315,6 +649,21 @@ class _HPJumpStartEndpoint(BaseModel):
         default=3600,
         alias="max_deploy_time_in_seconds",
         description="Maximum allowed time in seconds for the deployment to complete before timing out. Defaults to 1 hour (3600 seconds)",
+    )
+    intelligentRoutingSpec: Optional[IntelligentRoutingSpec] = Field(
+        default=None,
+        alias="intelligent_routing_spec",
+        description="Configuration for intelligent routing",
+    )
+    kvCacheSpec: Optional[KvCacheSpec] = Field(
+        default=None,
+        alias="kv_cache_spec",
+        description="Configuration for KV Cache specification",
+    )
+    loadBalancer: Optional[LoadBalancer] = Field(
+        default=None,
+        alias="load_balancer",
+        description="Configuration for Application Load Balancer",
     )
     metrics: Optional[Metrics] = Field(
         default=None, description="Configuration for metrics collection and exposure"
@@ -332,9 +681,10 @@ class _HPJumpStartEndpoint(BaseModel):
 
 
 class Conditions(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """DeploymentCondition describes the state of a deployment at a certain point."""
 
-    model_config = ConfigDict(extra="forbid")
 
     lastTransitionTime: Optional[str] = Field(
         default=None,
@@ -365,9 +715,10 @@ class Conditions(BaseModel):
 
 
 class Status(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Status of the Deployment Object"""
 
-    model_config = ConfigDict(extra="forbid")
 
     availableReplicas: Optional[int] = Field(
         default=None,
@@ -397,6 +748,11 @@ class Status(BaseModel):
         default=None,
         description="Total number of non-terminated pods targeted by this deployment (their labels match the selector).",
     )
+    terminatingReplicas: Optional[int] = Field(
+        default=None,
+        alias="terminating_replicas",
+        description="Total number of terminating pods targeted by this deployment.",
+    )
     unavailableReplicas: Optional[int] = Field(
         default=None,
         alias="unavailable_replicas",
@@ -410,9 +766,10 @@ class Status(BaseModel):
 
 
 class DeploymentStatus(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Details of the native kubernetes deployment that hosts the model"""
 
-    model_config = ConfigDict(extra="forbid")
 
     deploymentObjectOverallState: Optional[str] = Field(
         default=None,
@@ -435,9 +792,10 @@ class DeploymentStatus(BaseModel):
 
 
 class Sagemaker(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Status of the SageMaker endpoint"""
 
-    model_config = ConfigDict(extra="forbid")
 
     configArn: Optional[str] = Field(
         default=None,
@@ -460,17 +818,17 @@ class Sagemaker(BaseModel):
 class Endpoints(BaseModel):
     """EndpointStatus contains the status of SageMaker endpoints"""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     sagemaker: Optional[Sagemaker] = Field(
         default=None, description="Status of the SageMaker endpoint"
     )
 
 
-class ModelMetrics(BaseModel):
+class ModelMetricsStatus(BaseModel):
     """Status of model container metrics collection"""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     path: Optional[str] = Field(
         default=None, description="The path where metrics are available"
@@ -481,9 +839,10 @@ class ModelMetrics(BaseModel):
 
 
 class MetricsStatus(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """Status of metrics collection"""
 
-    model_config = ConfigDict(extra="forbid")
 
     enabled: bool = Field(description="Whether metrics collection is enabled")
     errorMessage: Optional[str] = Field(
@@ -496,7 +855,7 @@ class MetricsStatus(BaseModel):
         alias="metrics_scrape_interval_seconds",
         description="Scrape interval in seconds for metrics collection from sidecar and model container.",
     )
-    modelMetrics: Optional[ModelMetrics] = Field(
+    modelMetrics: Optional[ModelMetricsStatus] = Field(
         default=None,
         alias="model_metrics",
         description="Status of model container metrics collection",
@@ -507,9 +866,10 @@ class MetricsStatus(BaseModel):
 
 
 class TlsCertificate(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """CertificateStatus represents the status of TLS certificates"""
 
-    model_config = ConfigDict(extra="forbid")
 
     certificateARN: Optional[str] = Field(
         default=None,
@@ -520,6 +880,11 @@ class TlsCertificate(BaseModel):
         default=None,
         alias="certificate_domain_names",
         description="The certificate domain names that is attached to the certificate",
+    )
+    certificateHealth: Optional[Literal["Valid", "Expiring", "Expired"]] = Field(
+        default=None,
+        alias="certificate_health",
+        description="Certificate health status",
     )
     certificateName: Optional[str] = Field(
         default=None,
@@ -551,19 +916,103 @@ class TlsCertificate(BaseModel):
     )
 
 
+class DataCaptureModelPodStatus(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    """Health status of the model pod data capture tier"""
+
+
+    lastTransitionTime: Optional[str] = Field(
+        default=None,
+        alias="last_transition_time",
+        description="Time of the last health state transition",
+    )
+    message: Optional[str] = Field(
+        default=None,
+        description="Human-readable message describing the health state",
+    )
+    reason: Optional[str] = Field(
+        default=None,
+        description="Reason for unhealthy status (e.g., OOMKilled, S3UploadFailure, MultipleContainerRestarts)",
+    )
+    status: Literal["Healthy", "Unhealthy"] = Field(
+        description="Current health status"
+    )
+
+
+class DataCaptureStatus(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    """Health status of the data capture pipeline"""
+
+
+    modelPod: Optional[DataCaptureModelPodStatus] = Field(
+        default=None,
+        alias="model_pod",
+        description="Health status of the model pod data capture tier",
+    )
+
+
+class DnsStatus(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    """Status of the operator-managed Route53 DNS record"""
+
+
+    dnsHealth: Optional[Literal["Active", "Pending", "Error"]] = Field(
+        default=None, alias="dns_health",
+        description="DNS resolution status: Active, Pending, or Error.",
+    )
+    hostedZoneId: Optional[str] = Field(
+        default=None, alias="hosted_zone_id",
+        description="Route53 hosted zone ID.",
+    )
+    lastTransitionTime: Optional[str] = Field(
+        default=None, alias="last_transition_time",
+        description="When the status last transitioned, used for propagation timeout.",
+    )
+    managedByOperator: bool = Field(
+        alias="managed_by_operator",
+        description="Whether the operator manages this DNS record.",
+    )
+    message: Optional[str] = Field(
+        default=None, description="Human-readable status or error message."
+    )
+    previousHostedZoneId: Optional[str] = Field(
+        default=None, alias="previous_hosted_zone_id",
+    )
+    previousRecordName: Optional[str] = Field(
+        default=None, alias="previous_record_name",
+    )
+    recordName: Optional[str] = Field(
+        default=None, alias="record_name", description="Route53 record name."
+    )
+
+
 class JumpStartModelStatus(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
     """ModelDeploymentStatus defines the observed state of ModelDeployment"""
 
-    model_config = ConfigDict(extra="forbid")
 
     conditions: Optional[List[Conditions]] = Field(
         default=None,
         description="Detailed conditions representing the state of the deployment",
     )
+    dataCaptureStatus: Optional[DataCaptureStatus] = Field(
+        default=None,
+        alias="data_capture_status",
+        description="Health status of the data capture pipeline",
+    )
     deploymentStatus: Optional[DeploymentStatus] = Field(
         default=None,
         alias="deployment_status",
         description="Details of the native kubernetes deployment that hosts the model",
+    )
+    dnsStatus: Optional[DnsStatus] = Field(
+        default=None,
+        alias="dns_status",
+        description="Status of the operator-managed Route53 DNS record",
     )
     endpoints: Optional[Endpoints] = Field(
         default=None,

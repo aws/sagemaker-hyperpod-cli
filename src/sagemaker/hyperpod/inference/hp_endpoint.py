@@ -51,7 +51,11 @@ class HPEndpoint(_HPEndpoint, HPEndpointBase):
             annotations=self.metadata.annotations if self.metadata else None,
         )
 
-        self.validate_instance_type(spec.instanceType)
+        if spec.instanceType:
+            self.validate_instance_type(spec.instanceType)
+        elif spec.instanceTypes:
+            for it in spec.instanceTypes:
+                self.validate_instance_type(it)
 
         self.call_create_api(
             metadata=metadata,

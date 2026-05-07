@@ -49,6 +49,13 @@ def generate_click_command(
             "dimensions": ("JSON object of dimensions, e.g. " '\'{"VAR1":"foo","VAR2":"bar"}\''),
             "resources_limits": ('JSON object of resource limits, e.g. \'{"cpu":"2","memory":"4Gi"}\''),
             "resources_requests": ('JSON object of resource requests, e.g. \'{"cpu":"1","memory":"2Gi"}\''),
+            "kubernetes": ('JSON object for kubernetes customizations, e.g. \'{"initContainers":[...],"volumes":[...],"schedulerName":"..."}\''),
+            "node_affinity": ('JSON object for node affinity scheduling'),
+            "tags": ('JSON object of tags, e.g. \'{"team":"ml","env":"prod"}\''),
+            "probes": ('JSON object for container probes, e.g. \'{"livenessProbe":{...},"readinessProbe":{...}}\''),
+            "auto_scaling_spec": ('JSON object for full autoscaling config'),
+            "additional_configs": ('JSON object of additional model configs, e.g. \'{"key1":"val1"}\''),
+            "data_capture": ('JSON object for data capture config, e.g. \'{"sagemakerEndpoint":{"enabled":true}}\''),
         }
 
         for flag_name, help_text in json_flags.items():
@@ -72,6 +79,13 @@ def generate_click_command(
                 "dimensions",
                 "resources_limits",
                 "resources_requests",
+                "kubernetes",
+                "node_affinity",
+                "tags",
+                "probes",
+                "auto_scaling_spec",
+                "additional_configs",
+                "data_capture",
             ):
                 continue
 
