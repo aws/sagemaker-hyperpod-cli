@@ -986,3 +986,38 @@ class HPSpace(BaseModel):
             logger.debug("Stopping space port forward...")
         finally:
             pf.stop()
+
+    @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "ssh_space")
+    def ssh(self, region: Optional[str] = None) -> Dict[str, str]:
+        """Create an SSH connection access for this space.
+
+        Creates a space access resource with 'ssh-remote' connection type
+        and returns the connection details needed to establish an SSM session.
+
+        **Parameters:**
+
+        .. list-table::
+           :header-rows: 1
+           :widths: 20 20 60
+
+           * - Parameter
+             - Type
+             - Description
+           * - region
+             - str, optional
+             - AWS region. If not specified, uses the configured default.
+
+        **Returns:**
+
+        Dict[str, str]: Dictionary containing 'SpaceConnectionType' and 'SpaceConnectionUrl' keys
+
+        .. dropdown:: Usage Examples
+           :open:
+
+           .. code-block:: python
+
+              >>> space = HPSpace.get("my-space")
+              >>> ssh_info = space.ssh()
+              >>> print(f"SSH URL: {ssh_info['SpaceConnectionUrl']}")
+        """
+        return self.create_space_access(connection_type="ssh-remote")
