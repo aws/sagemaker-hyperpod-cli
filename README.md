@@ -854,6 +854,12 @@ hyp create hyp-space \
 | `--service-account-name` | TEXT | No | ServiceAccountName specifies the name of the ServiceAccount to use for the workspace pod |
 | `--queue-name` | TEXT | No | Queue name for space scheduling (1-63 characters, alphanumeric with hyphens). Required when task governance is enabled on HyperPod EKS clusters. |
 | `--priority` | TEXT | No | Priority class for space scheduling. Sets the `kueue.x-k8s.io/priority-class` label. |
+| `--access-type` | TEXT | No | AccessType specifies who can connect to the workspace ('Public' or 'OwnerOnly') |
+| `--env` | TEXT | No | Environment variables for the workspace container (JSON string, list of {name, value} objects) |
+| `--access-strategy` | TEXT | No | References a WorkspaceAccessStrategy. Format: --access-strategy name=<name>,namespace=<namespace> |
+| `--pod-security-context` | TEXT | No | Pod-level security context. Overrides template defaults when specified (JSON string) |
+| `--container-security-context` | TEXT | No | Container-level security context for the main workspace container. Overrides template defaults (JSON string) |
+| `--init-containers` | TEXT | No | Init containers to run before the workspace container starts (JSON string, max 10) |
 | `--idle-shutdown` | TEXT | No | Idle shutdown configuration. Format: --idle-shutdown enabled=<bool>,idleTimeoutInMinutes=<int>,detection=<JSON string> |
 | `--template-ref` | TEXT | No | TemplateRef references a WorkspaceTemplate to use as base configuration. Format: --template-ref name=<name>,namespace=<namespace> |
 | `--container-config` | TEXT | No | Container configuration. Format: --container-config command=<cmd>,args=<arg1;arg2> |

@@ -2,6 +2,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional, List, Dict, Literal, Any
 from enum import Enum
 
+# Minimum amazon-sagemaker-spaces addon version required for this template version
+MIN_ADDON_VERSION = "0.1.1"
+
 
 class OwnershipType(str, Enum):
     PUBLIC = "Public"

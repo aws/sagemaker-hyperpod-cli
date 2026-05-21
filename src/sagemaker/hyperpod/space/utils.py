@@ -1,11 +1,64 @@
 """Utility functions for space operations."""
 
+import logging
 import os
 import re
+import warnings
+from functools import wraps
 from typing import Dict, Any, Set, List, Tuple, Optional
 from pydantic import BaseModel
 from kubernetes import client
 from sagemaker.hyperpod.training.constants import VALIDATE_PROFILE_IN_CLUSTER
+from sagemaker.hyperpod.cli.utils import get_eks_cluster_name
+from hyperpod_space_template.v1_1.model import MIN_ADDON_VERSION
+
+logger = logging.getLogger(__name__)
+
+SPACES_ADDON_NAME = "amazon-sagemaker-spaces"
+
+
+def _parse_version(version_str: str) -> Tuple[int, ...]:
+    """Parse a version string like '0.1.6' into a comparable tuple."""
+    return tuple(int(x) for x in version_str.split("."))
+
+
+def get_spaces_addon_version(eks_cluster_name: str) -> Optional[str]:
+    """Get the installed version of the amazon-sagemaker-spaces addon.
+
+    Returns the version string (e.g., "0.1.1") or None if it cannot be determined.
+    """
+    try:
+        from sagemaker.hyperpod.common.utils import create_boto3_client
+        from sagemaker.hyperpod.cli.utils import get_hyperpod_cluster_region
+        region = get_hyperpod_cluster_region()
+        response = create_boto3_client("eks", region_name=region).describe_addon(
+            clusterName=eks_cluster_name, addonName=SPACES_ADDON_NAME,
+        )
+        raw_version = response["addon"]["addonVersion"]
+        match = re.match(r"v?(\d+\.\d+\.\d+)", raw_version)
+        return match.group(1) if match else None
+    except Exception as e:
+        logger.debug(f"Could not determine spaces addon version: {e}")
+        return None
+
+
+def warn_if_addon_version_incompatible(func):
+    """Decorator that warns if the space template requires a newer addon version than installed."""
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        try:
+            eks_cluster_name = get_eks_cluster_name()
+            addon_version = get_spaces_addon_version(eks_cluster_name)
+            if addon_version and _parse_version(addon_version) < _parse_version(MIN_ADDON_VERSION):
+                warnings.warn(
+                    f"The installed '{SPACES_ADDON_NAME}' addon version is {addon_version}, "
+                    f"but this operation requires version >= {MIN_ADDON_VERSION}. "
+                    f"Some space parameters may be ignored or rejected by the addon.",
+                )
+        except Exception as e:
+            logger.debug(f"Addon version check skipped: {e}")
+        return func(self, *args, **kwargs)
+    return wrapper
 
 
 def camel_to_snake(name: str) -> str:

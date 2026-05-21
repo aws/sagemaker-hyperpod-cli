@@ -21,6 +21,7 @@ from sagemaker.hyperpod.space.utils import (
     map_kubernetes_response_to_model,
     validate_space_mig_resources,
     validate_mig_profile_in_cluster,
+    warn_if_addon_version_incompatible,
 )
 from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
     _hyperpod_telemetry_emitter,
@@ -312,6 +313,7 @@ class HPSpace(BaseModel):
         return mig_profiles
 
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_space")
+    @warn_if_addon_version_incompatible
     def create(self, debug: bool = False):
         """Create and submit the HyperPod Space to the Kubernetes cluster.
 
@@ -586,6 +588,7 @@ class HPSpace(BaseModel):
             handle_exception(e, self.config.name, self.config.namespace)
 
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "update_space")
+    @warn_if_addon_version_incompatible
     def update(self, **kwargs):
         """Update the HyperPod Space configuration.
 

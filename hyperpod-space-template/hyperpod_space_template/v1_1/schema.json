@@ -1,5 +1,33 @@
 {
   "$defs": {
+    "AccessStrategyRef": {
+      "description": "AccessStrategyRef references a WorkspaceAccessStrategy",
+      "properties": {
+        "name": {
+          "description": "Name of the WorkspaceAccessStrategy",
+          "title": "Name",
+          "type": "string"
+        },
+        "namespace": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Namespace where the WorkspaceAccessStrategy is located",
+          "title": "Namespace"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "AccessStrategyRef",
+      "type": "object"
+    },
     "ContainerConfig": {
       "description": "ContainerConfig defines container command and args configuration",
       "properties": {
@@ -484,6 +512,92 @@
       "default": null,
       "description": "ServiceAccountName specifies the name of the ServiceAccount to use for the workspace pod",
       "title": "Service Account Name"
+    },
+    "access_type": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/OwnershipType"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "AccessType specifies who can connect to the workspace. 'Public' means anyone with RBAC permissions can connect. 'OwnerOnly' means only the creator can connect."
+    },
+    "env": {
+      "anyOf": [
+        {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Environment variables for the workspace container (list of {name, value} objects)",
+      "title": "Env"
+    },
+    "access_strategy": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AccessStrategyRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "AccessStrategy references a WorkspaceAccessStrategy to use"
+    },
+    "pod_security_context": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Pod-level security context. Overrides template defaults when specified (JSON string)",
+      "title": "Pod Security Context"
+    },
+    "container_security_context": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Container-level security context for the main workspace container. Overrides template defaults (JSON string)",
+      "title": "Container Security Context"
+    },
+    "init_containers": {
+      "anyOf": [
+        {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Init containers to run before the workspace container starts (JSON string, max 10)",
+      "title": "Init Containers"
     },
     "queue_name": {
       "anyOf": [
