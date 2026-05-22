@@ -1,6 +1,8 @@
+{{- if .Values.namespace.create }}
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: aws-hyperpod
+  name: {{ .Values.namespace.name }}
   labels:
-    name: aws-hyperpod
+    name: {{ .Values.namespace.name }}
+{{- end }}
