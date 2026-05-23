@@ -1,0 +1,60 @@
+@@ -0,0 +1,60 @@
+apiVersion: inference.sagemaker.aws.amazon.com/v1
+kind: InferenceEndpointConfig
+metadata:
+  name: byo-cert-test
+  namespace: default
+spec:
+  replicas: 1
+  modelName: test-model
+  endpointName: byo-cert-test-endpoint
+  instanceType: ml.g5.2xlarge
+  invocationEndpoint: invocations
+  modelSourceConfig:
+    modelSourceType: s3
+    s3Storage:
+      bucketName: my-hyperpod-tls-bucket
+      region: us-east-2
+    modelLocation: models/tinyllama
+    prefetchEnabled: true
+  metrics:
+    enabled: true
+  loadBalancer:
+    healthCheckPath: /ping
+  tlsConfig:
+    customCertificateConfig:
+      acmArn: arn:aws:acm:us-east-2:123456789012:certificate/12345678-1234-1234-1234-123456789012
+      domainName: api.example.com
+    tlsCertificateOutputS3Uri: s3://my-hyperpod-tls-bucket/certs/
+  worker:
+    resources:
+      requests:
+        cpu: "6"
+        memory: 24Gi
+        nvidia.com/gpu: 1
+      limits:
+        nvidia.com/gpu: 1
+    image: 763104351884.dkr.ecr.us-east-2.amazonaws.com/djl-inference:0.32.0-lmi14.0.0-cu124
+    environmentVariables:
+      - name: OPTION_ROLLING_BATCH
+        value: "vllm"
+      - name: SERVING_CHUNKED_READ_TIMEOUT
+        value: "480"
+      - name: DJL_OFFLINE
+        value: "true"
+      - name: NUM_SHARD
+        value: "1"
+      - name: MODEL_CACHE_ROOT
+        value: "/opt/ml/model"
+      - name: SAGEMAKER_MODEL_SERVER_WORKERS
+        value: "1"
+      - name: SAGEMAKER_MODEL_SERVER_TIMEOUT
+        value: "3600"
+      - name: OPTION_TRUST_REMOTE_CODE
+        value: "true"
+    modelInvocationPort:
+      containerPort: 8080
+      name: http
+    modelVolumeMount:
+      name: model-weights
+      mountPath: /opt/ml/model
