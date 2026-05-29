@@ -3,14 +3,15 @@
 import logging
 import os
 import re
+import sys
 import warnings
 from functools import wraps
 from typing import Dict, Any, Set, List, Tuple, Optional
 from pydantic import BaseModel
 from kubernetes import client
 from sagemaker.hyperpod.training.constants import VALIDATE_PROFILE_IN_CLUSTER
-from sagemaker.hyperpod.cli.utils import get_eks_cluster_name
-from hyperpod_space_template.v1_1.model import MIN_ADDON_VERSION
+from sagemaker.hyperpod.cli.utils import get_eks_cluster_name, get_hyperpod_cluster_region
+from sagemaker.hyperpod.common.utils import create_boto3_client
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +29,6 @@ def get_spaces_addon_version(eks_cluster_name: str) -> Optional[str]:
     Returns the version string (e.g., "0.1.1") or None if it cannot be determined.
     """
     try:
-        from sagemaker.hyperpod.common.utils import create_boto3_client
-        from sagemaker.hyperpod.cli.utils import get_hyperpod_cluster_region
         region = get_hyperpod_cluster_region()
         response = create_boto3_client("eks", region_name=region).describe_addon(
             clusterName=eks_cluster_name, addonName=SPACES_ADDON_NAME,
@@ -47,12 +46,15 @@ def warn_if_addon_version_incompatible(func):
     @wraps(func)
     def wrapper(self, *args, **kwargs):
         try:
+            config_module = sys.modules[type(self.config).__module__]
+            min_version = getattr(config_module, 'MIN_ADDON_VERSION')
+
             eks_cluster_name = get_eks_cluster_name()
             addon_version = get_spaces_addon_version(eks_cluster_name)
-            if addon_version and _parse_version(addon_version) < _parse_version(MIN_ADDON_VERSION):
+            if addon_version and _parse_version(addon_version) < _parse_version(min_version):
                 warnings.warn(
                     f"The installed '{SPACES_ADDON_NAME}' addon version is {addon_version}, "
-                    f"but this operation requires version >= {MIN_ADDON_VERSION}. "
+                    f"but this operation requires version >= {min_version}. "
                     f"Some space parameters may be ignored or rejected by the addon.",
                 )
         except Exception as e:

@@ -301,8 +301,8 @@ class TestSpaceUtils(unittest.TestCase):
     def test_parse_version_comparison_greater_than(self):
         self.assertTrue(_parse_version("0.2.0") > _parse_version("0.1.6"))
 
-    @patch("sagemaker.hyperpod.cli.utils.get_hyperpod_cluster_region", return_value="us-west-2")
-    @patch("sagemaker.hyperpod.common.utils.create_boto3_client")
+    @patch("sagemaker.hyperpod.space.utils.get_hyperpod_cluster_region", return_value="us-west-2")
+    @patch("sagemaker.hyperpod.space.utils.create_boto3_client")
     def test_get_addon_version_parses_eksbuild_suffix(self, mock_client_factory, mock_region):
         mock_client = Mock()
         mock_client.describe_addon.return_value = {
@@ -316,8 +316,8 @@ class TestSpaceUtils(unittest.TestCase):
             clusterName="my-cluster", addonName=SPACES_ADDON_NAME
         )
 
-    @patch("sagemaker.hyperpod.cli.utils.get_hyperpod_cluster_region", return_value="us-west-2")
-    @patch("sagemaker.hyperpod.common.utils.create_boto3_client")
+    @patch("sagemaker.hyperpod.space.utils.get_hyperpod_cluster_region", return_value="us-west-2")
+    @patch("sagemaker.hyperpod.space.utils.create_boto3_client")
     def test_get_addon_version_without_v_prefix(self, mock_client_factory, mock_region):
         mock_client = Mock()
         mock_client.describe_addon.return_value = {
@@ -328,8 +328,8 @@ class TestSpaceUtils(unittest.TestCase):
         result = get_spaces_addon_version("my-cluster")
         self.assertEqual(result, "0.1.1")
 
-    @patch("sagemaker.hyperpod.cli.utils.get_hyperpod_cluster_region", return_value="us-west-2")
-    @patch("sagemaker.hyperpod.common.utils.create_boto3_client")
+    @patch("sagemaker.hyperpod.space.utils.get_hyperpod_cluster_region", return_value="us-west-2")
+    @patch("sagemaker.hyperpod.space.utils.create_boto3_client")
     def test_get_addon_version_returns_none_on_exception(self, mock_client_factory, mock_region):
         mock_client = Mock()
         mock_client.describe_addon.side_effect = Exception("Not found")
@@ -338,8 +338,8 @@ class TestSpaceUtils(unittest.TestCase):
         result = get_spaces_addon_version("my-cluster")
         self.assertIsNone(result)
 
-    @patch("sagemaker.hyperpod.cli.utils.get_hyperpod_cluster_region", return_value="us-west-2")
-    @patch("sagemaker.hyperpod.common.utils.create_boto3_client")
+    @patch("sagemaker.hyperpod.space.utils.get_hyperpod_cluster_region", return_value="us-west-2")
+    @patch("sagemaker.hyperpod.space.utils.create_boto3_client")
     def test_get_addon_version_returns_none_on_unparseable(self, mock_client_factory, mock_region):
         mock_client = Mock()
         mock_client.describe_addon.return_value = {
@@ -351,9 +351,12 @@ class TestSpaceUtils(unittest.TestCase):
         self.assertIsNone(result)
 
     def _make_decorated_class(self):
+        from hyperpod_space_template.v1_1.model import SpaceConfig
+
         class FakeSpace:
             def __init__(self):
                 self.called = False
+                self.config = SpaceConfig(name="fake", display_name="Fake")
 
             @warn_if_addon_version_incompatible
             def create(self):

@@ -3,14 +3,17 @@ import re
 import yaml
 import boto3
 from sagemaker.hyperpod.common.utils import create_boto3_client
-from typing import List, Optional, ClassVar, Dict, Set, Any
+from typing import List, Optional, ClassVar, Dict, Set, Any, Union
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 from kr8s.objects import Pod
 
 from sagemaker.hyperpod.common.config.metadata import Metadata
-from hyperpod_space_template.v1_1.model import ResourceRequirements
+from hyperpod_space_template.v1_0.model import SpaceConfig as SpaceConfigV1_0
+from hyperpod_space_template.v1_1.model import SpaceConfig as SpaceConfigV1_1, ResourceRequirements
+
+SpaceConfig = Union[SpaceConfigV1_0, SpaceConfigV1_1]
 from sagemaker.hyperpod.common.utils import (
     handle_exception,
     get_default_namespace,
@@ -38,7 +41,6 @@ from sagemaker.hyperpod.cli.constants.space_access_constants import (
     SPACE_ACCESS_VERSION,
     SPACE_ACCESS_PLURAL,
 )
-from hyperpod_space_template.v1_1.model import SpaceConfig, ResourceRequirements
 
 
 class HPSpace(BaseModel):
@@ -456,8 +458,8 @@ class HPSpace(BaseModel):
                     created_by = item.get('metadata', {}).get('annotations', {}).get('workspace.jupyter.org/created-by')
                     ownership_type = item.get('spec', {}).get('ownershipType', '')
                     if created_by == caller_arn or ownership_type == "Public":
-                        config_data = map_kubernetes_response_to_model(item, SpaceConfig)
-                        space_config = SpaceConfig(**config_data)
+                        config_data = map_kubernetes_response_to_model(item, SpaceConfigV1_1)
+                        space_config = SpaceConfigV1_1(**config_data)
                         
                         space = cls(
                             config=space_config,
@@ -537,9 +539,9 @@ class HPSpace(BaseModel):
             )
 
             # Use dynamic mapping based on SpaceConfig model
-            config_data = map_kubernetes_response_to_model(response, SpaceConfig)
+            config_data = map_kubernetes_response_to_model(response, SpaceConfigV1_1)
                     
-            space_config = SpaceConfig(**config_data)
+            space_config = SpaceConfigV1_1(**config_data)
             
             return cls(
                 config=space_config,
@@ -594,7 +596,9 @@ class HPSpace(BaseModel):
 
         Updates the space configuration with the provided parameters. Validates
         MIG profiles if resource updates are requested and ensures compatibility
-        with the current node instance type.
+        with the current node instance type. The configuration is always
+        reconstructed using the latest schema version (v1.1), preserving all
+        existing fields on the space.
 
         **Parameters:**
 
@@ -660,8 +664,12 @@ class HPSpace(BaseModel):
 
         # Update space config with the input config
         current_config = self.config.model_dump(by_alias=True)
+        # Convert any Pydantic model instances in kwargs to dicts for compatibility
+        for key, value in kwargs.items():
+            if isinstance(value, BaseModel):
+                kwargs[key] = value.model_dump(exclude_none=True)
         current_config.update(kwargs)
-        self.config = SpaceConfig(**current_config)
+        self.config = SpaceConfigV1_1(**current_config)
 
         # Convert to domain model and extract spec
         domain_config = self.config.to_domain()

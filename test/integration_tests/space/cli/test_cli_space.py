@@ -71,6 +71,7 @@ class TestSpaceCLI:
     def test_space_create(self, runner, space_name):
         """Test creating a space via CLI."""
         result = runner.invoke(space_create, [
+            "--version", VERSION,
             "--name", space_name,
             "--display-name", DISPLAY_NAME,
             "--namespace", NAMESPACE,
