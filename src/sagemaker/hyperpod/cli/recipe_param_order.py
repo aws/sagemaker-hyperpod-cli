@@ -49,7 +49,7 @@ _PARAM_ORDER: list[tuple[str, str]] = [
     ("max_steps",               "Core Hyperparameters"),
 
     # Advanced Hyperparameters (includes technique-specific params)
-    ("lr_warmup_ratio",         "Advanced Hyperparameters"),
+    ("lr_warmup_steps_ratio",   "Advanced Hyperparameters"),
     ("max_context_length",      "Advanced Hyperparameters"),
     ("max_prompt_length",       "Advanced Hyperparameters"),
     ("max_length",              "Advanced Hyperparameters"),
