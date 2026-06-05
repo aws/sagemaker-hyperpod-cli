@@ -38,6 +38,27 @@ tlsCertificateS3Bucket:
 enableWebhooks: true
 enableCustomServiceAccounts: false
 
+# Architecture-aware scheduling for the operator deployment.
+# Pins to amd64 Linux nodes since operator images are amd64-only.
+# Override via EKS AddOn configurationValues if needed.
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/arch
+              operator: In
+              values:
+                - amd64
+            - key: kubernetes.io/os
+              operator: In
+              values:
+                - linux
+
+nodeSelector: {}
+
+tolerations: []
+
 s3:
   enabled: true
   # IAM role ARN used for S3 CSI driver k8s service account
