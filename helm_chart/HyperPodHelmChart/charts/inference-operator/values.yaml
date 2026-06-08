@@ -24,7 +24,7 @@ image:
     ap-southeast-4: 311141544681.dkr.ecr.ap-southeast-4.amazonaws.com
     ap-southeast-3: 158128612970.dkr.ecr.ap-southeast-3.amazonaws.com
     eu-south-2: 025050981094.dkr.ecr.eu-south-2.amazonaws.com
-  tag: v3.1
+  tag: v3.2
   pullPolicy: Always
   repository:
   initContainer:
@@ -37,6 +37,27 @@ stage: "prod"
 tlsCertificateS3Bucket:
 enableWebhooks: true
 enableCustomServiceAccounts: false
+
+# Architecture-aware scheduling for the operator deployment.
+# Pins to amd64 Linux nodes since operator images are amd64-only.
+# Override via EKS AddOn configurationValues if needed.
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/arch
+              operator: In
+              values:
+                - amd64
+            - key: kubernetes.io/os
+              operator: In
+              values:
+                - linux
+
+nodeSelector: {}
+
+tolerations: []
 
 s3:
   enabled: true
