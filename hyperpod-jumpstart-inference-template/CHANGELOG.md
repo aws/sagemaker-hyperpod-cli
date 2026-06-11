@@ -1,3 +1,9 @@
+## v1.2.0 (2026-06-11)
+
+### Features
+
+* Add v1.2 schema and template support for JumpStart inference endpoints (#417)
+
 ## v1.1.1 (2025-11-25)
 
 ### Features

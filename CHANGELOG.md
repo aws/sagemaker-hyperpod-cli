@@ -1,5 +1,27 @@
 # Changelog
 
+## v3.9.0 (2026-06-11)
+
+### Features
+- Support generic `{ide}-remote` connection types for space access (#414)
+- Add v1.1 Space parameters (`queue_name`, `priority` for task governance) and addon version validation warning; bump space template to v1.1.0 (#421)
+- Add v1.2 schema support for custom and jumpstart inference endpoints (#417)
+
+### Inference Operator
+- Update inference helm chart to v2.1.1 with latest CRDs (init container support, custom service accounts, templated manager config) (#416, #418)
+- DPD CRD changes with chart version bump to v3.2; pin operator to amd64 nodes via nodeAffinity; bump inference-operator subchart to v2.2.1 (#427)
+
+### GPU Operator
+- Upgrade GPU Operator v25.3.4 → v26.3.1 to remediate CVEs in base images (#415, #419)
+- Add ap-south-2 (HYD) ECR regional-values for GPU operator (#424)
+
+### Health Monitoring Agent
+- Release Health Monitoring Agent 1.0.1892.0_1.0.424.0 with bug fixes (add 2 min sleep before nvml component checks to prevent missing GPU false positives) (#425)
+
+### Bug Fixes
+- Exclude `kubernetes==36.0.0` which breaks EKS auth and relax `pyyaml` pin (#426)
+- Rename `lr_warmup_ratio` to `lr_warmup_steps_ratio` to match Hub recipe schema (#428)
+
 ## v3.8.0 (2026-04-16)
 
 ### Features
