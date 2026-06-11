@@ -41,7 +41,7 @@ hyp create hyp-space \
 ````{tab-item} SDK
 ```python
 from sagemaker.hyperpod.space.hyperpod_space import HPSpace
-from hyperpod_space_template.v1_0.model import SpaceConfig
+from hyperpod_space_template.v1_1.model import SpaceConfig
 
 # Create space configuration
 space_config = SpaceConfig(
@@ -66,16 +66,14 @@ When creating a space, you'll need to specify:
 | **display-name** | TEXT | Yes | Human-readable name for the space |
 | **namespace** | TEXT | No | Kubernetes namespace |
 | **image** | TEXT | No | Docker image for the workspace environment |
-| **cpu** | TEXT | No | CPU resource request |
-| **cpu-limit** | TEXT | No | CPU resource limit |
-| **memory** | TEXT | No | Memory resource request |
-| **memory-limit** | TEXT | No | Memory resource limit |
-| **gpu** | TEXT | No | GPU resource request |
-| **gpu-limit** | TEXT | No | GPU resource limit |
-| **accelerator-partition-type** | TEXT | No | Fractional GPU partition type (e.g., 'mig-3g.20gb') |
-| **accelerator-partition-count** | TEXT | No | Fractional GPU partition count |
-| **volume** | TEXT | No | Volume configuration (can be specified multiple times) |
-| **debug** | FLAG | No | Enable debug mode |
+| **cpu** | TEXT | No | CPU resource request (e.g., '500m') |
+| **memory** | TEXT | No | Memory resource request (e.g., '2Gi') |
+| **gpu** | TEXT | No | GPU resource request (e.g., '1') |
+| **volume** | TEXT | No | Volume configuration. Format: `name=<name>,mountPath=<path>,persistentVolumeClaimName=<pvc_name>` |
+| **queue-name** | TEXT | No | Queue name for space scheduling. Required when task governance is enabled. |
+| **template-ref** | TEXT | No | Reference to a WorkspaceTemplate. Format: `name=<name>,namespace=<namespace>` |
+
+For the full list of parameters, see the [CLI reference](../cli/space/cli_space.md) or run `hyp create hyp-space --help`.
 
 
 ## Managing Spaces

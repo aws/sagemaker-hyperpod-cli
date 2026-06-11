@@ -25,6 +25,6 @@ HPSpaceTemplate
 Space Configs
 -------------
 
-.. automodule:: hyperpod_space_template.v1_0.model
+.. automodule:: hyperpod_space_template.v1_1.model
     :members: SpaceConfig
     :show-inheritance:

@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch, MagicMock
 from kubernetes.client.rest import ApiException
 
 from sagemaker.hyperpod.space.hyperpod_space import HPSpace
-from hyperpod_space_template.v1_0.model import SpaceConfig, ResourceRequirements
+from hyperpod_space_template.v1_1.model import SpaceConfig, ResourceRequirements
 
 
 class TestHPSpace(unittest.TestCase):
@@ -66,7 +66,7 @@ class TestHPSpace(unittest.TestCase):
             }
         }
         
-        with patch('hyperpod_space_template.v1_0.model.SpaceConfig.to_domain', return_value=mock_domain_config):
+        with patch('hyperpod_space_template.v1_1.model.SpaceConfig.to_domain', return_value=mock_domain_config):
             self.hp_space.create()
         
         mock_verify_config.assert_called_once()
@@ -92,7 +92,7 @@ class TestHPSpace(unittest.TestCase):
             }
         }
         
-        with patch('hyperpod_space_template.v1_0.model.SpaceConfig.to_domain', return_value=mock_domain_config):
+        with patch('hyperpod_space_template.v1_1.model.SpaceConfig.to_domain', return_value=mock_domain_config):
             self.hp_space.create()
         
         mock_handle_exception.assert_called_once()
@@ -443,7 +443,7 @@ class TestHPSpace(unittest.TestCase):
             }
         }
         
-        with patch('hyperpod_space_template.v1_0.model.SpaceConfig.to_domain', return_value=mock_domain_config):
+        with patch('hyperpod_space_template.v1_1.model.SpaceConfig.to_domain', return_value=mock_domain_config):
             self.hp_space.update(desired_status="Stopped")
         
         mock_custom_api.patch_namespaced_custom_object.assert_called_once_with(
@@ -466,7 +466,7 @@ class TestHPSpace(unittest.TestCase):
         
         mock_domain_config = {"space_spec": {"spec": {}}}
         
-        with patch('hyperpod_space_template.v1_0.model.SpaceConfig.to_domain', return_value=mock_domain_config):
+        with patch('hyperpod_space_template.v1_1.model.SpaceConfig.to_domain', return_value=mock_domain_config):
             self.hp_space.update(desired_status="Stopped")
         
         mock_handle_exception.assert_called_once()
@@ -626,7 +626,7 @@ class TestHPSpace(unittest.TestCase):
         }
         
         with patch('sagemaker.hyperpod.space.hyperpod_space.client.CustomObjectsApi'):
-            with patch('hyperpod_space_template.v1_0.model.SpaceConfig.to_domain', return_value=mock_domain_config):
+            with patch('hyperpod_space_template.v1_1.model.SpaceConfig.to_domain', return_value=mock_domain_config):
                 self.hp_space.create(debug=True)
         
         mock_setup_logging.assert_called_once()
@@ -1022,7 +1022,7 @@ class TestHPSpace(unittest.TestCase):
             }
         }
         
-        with patch('hyperpod_space_template.v1_0.model.SpaceConfig.to_domain', return_value=mock_domain_config):
+        with patch('hyperpod_space_template.v1_1.model.SpaceConfig.to_domain', return_value=mock_domain_config):
             self.hp_space.create()
         
         mock_validate_mig.assert_called_once_with(self.hp_space.config.resources)

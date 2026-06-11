@@ -38,7 +38,7 @@ def generate_click_command(
         raise ValueError("You must pass a registry mapping version→Model")
 
     # get schema defaults for manually handled options
-    schema = load_schema_for_version(version_key or "1.0", schema_pkg)
+    schema = load_schema_for_version(version_key or "1.1", schema_pkg)
     props = schema.get("properties", {})
 
     def decorator(func: Callable) -> Callable:
@@ -169,6 +169,22 @@ def generate_click_command(
             except Exception as e:
                 raise click.UsageError(f"Error parsing template ref: {str(e)}")
 
+        def _parse_access_strategy(ctx, param, value):
+            """Parse access strategy from command line format to dictionary format."""
+            if not value:
+                return None
+
+            try:
+                parts = {}
+                for item in value.split(','):
+                    if '=' not in item:
+                        raise click.UsageError(f"Invalid access-strategy format: '{item}' should be key=value")
+                    key, val = item.split('=', 1)
+                    parts[key.strip()] = val.strip()
+                return parts
+            except Exception as e:
+                raise click.UsageError(f"Error parsing access-strategy: {str(e)}")
+
         def _parse_idle_shutdown_param(ctx, param, value):
             """Parse idle shutdown parameters from command line format to dictionary format."""
             if not value:
@@ -199,7 +215,7 @@ def generate_click_command(
 
         # 1) the wrapper click will call
         def wrapped_func(*args, **kwargs):
-            version = version_key or kwargs.pop("version", "1.0")
+            version = version_key or kwargs.pop("version", "1.1")
             debug = kwargs.pop("debug", False)
 
             Model = registry.get(version)
@@ -234,6 +250,10 @@ def generate_click_command(
             template_ref = kwargs.pop("template_ref", None)
             if template_ref is not None:
                 kwargs["template_ref"] = template_ref
+
+            access_strategy = kwargs.pop("access_strategy", None)
+            if access_strategy is not None:
+                kwargs["access_strategy"] = access_strategy
 
             idle_shutdown = kwargs.pop("idle_shutdown", None)
             if idle_shutdown is not None:
@@ -383,6 +403,12 @@ def generate_click_command(
         )(wrapped_func)
 
         wrapped_func = click.option(
+            "--access-strategy",
+            callback=_parse_access_strategy,
+            help="AccessStrategy references a WorkspaceAccessStrategy. Format: --access-strategy name=<name>,namespace=<namespace>",
+        )(wrapped_func)
+
+        wrapped_func = click.option(
             "--idle-shutdown",
             callback=_parse_idle_shutdown_param,
             help="Idle shutdown configuration. Format: --idle-shutdown enabled=<bool>,idleTimeoutInMinutes=<int>,detection=<JSON string>",
@@ -397,6 +423,7 @@ def generate_click_command(
                 "storage",
                 "container_config",
                 "template_ref",
+                "access_strategy",
                 "idle_shutdown",
                 "debug",  # Exclude debug from validation
             ]
@@ -442,7 +469,7 @@ def generate_click_command(
         if version_key is None:
             wrapped_func = click.option(
                 "--version",
-                default="1.0",
+                default="1.1",
                 help="Schema version to use",
             )(wrapped_func)
 

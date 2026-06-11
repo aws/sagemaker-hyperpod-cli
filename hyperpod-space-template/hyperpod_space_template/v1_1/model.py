@@ -3,7 +3,7 @@ from typing import Optional, List, Dict, Literal, Any
 from enum import Enum
 
 # Minimum amazon-sagemaker-spaces addon version required for this template version
-MIN_ADDON_VERSION = "0.1.1"
+MIN_ADDON_VERSION = "0.1.6"
 
 
 class OwnershipType(str, Enum):
@@ -43,6 +43,17 @@ class ContainerConfig(BaseModel):
     args: Optional[List[str]] = Field(
         default=None,
         description="Args specifies the container arguments"
+    )
+
+
+class AccessStrategyRef(BaseModel):
+    """AccessStrategyRef references a WorkspaceAccessStrategy"""
+    name: str = Field(
+        description="Name of the WorkspaceAccessStrategy"
+    )
+    namespace: Optional[str] = Field(
+        default=None,
+        description="Namespace where the WorkspaceAccessStrategy is located"
     )
 
 
@@ -199,6 +210,48 @@ class SpaceConfig(BaseModel):
         alias="service_account_name",
         description="ServiceAccountName specifies the name of the ServiceAccount to use for the workspace pod"
     )
+    access_type: Optional[OwnershipType] = Field(
+        default=None,
+        alias="access_type",
+        description="AccessType specifies who can connect to the workspace. 'Public' means anyone with RBAC permissions can connect. 'OwnerOnly' means only the creator can connect."
+    )
+    env: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        description="Environment variables for the workspace container (list of {name, value} objects)"
+    )
+    access_strategy: Optional[AccessStrategyRef] = Field(
+        default=None,
+        alias="access_strategy",
+        description="AccessStrategy references a WorkspaceAccessStrategy to use"
+    )
+    pod_security_context: Optional[Dict[str, Any]] = Field(
+        default=None,
+        alias="pod_security_context",
+        description="Pod-level security context. Overrides template defaults when specified (JSON string)"
+    )
+    container_security_context: Optional[Dict[str, Any]] = Field(
+        default=None,
+        alias="container_security_context",
+        description="Container-level security context for the main workspace container. Overrides template defaults (JSON string)"
+    )
+    init_containers: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        alias="init_containers",
+        description="Init containers to run before the workspace container starts (JSON string, max 10)"
+    )
+    queue_name: Optional[str] = Field(
+        default=None,
+        alias="queue_name",
+        description="Queue name for space scheduling",
+        min_length=1,
+        max_length=63,
+        pattern=r'^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+    )
+    priority: Optional[str] = Field(
+        default=None,
+        description="Priority class for space scheduling",
+        min_length=1
+    )
 
     @field_validator('volumes')
     def validate_no_duplicate_volumes(cls, v):
@@ -258,11 +311,32 @@ class SpaceConfig(BaseModel):
             spec["appType"] = self.app_type
         if self.service_account_name is not None:
             spec["serviceAccountName"] = self.service_account_name
+        if self.access_type is not None:
+            spec["accessType"] = self.access_type.value
+        if self.env is not None:
+            spec["env"] = self.env
+        if self.access_strategy is not None:
+            spec["accessStrategy"] = self.access_strategy.model_dump(exclude_none=True)
+        if self.pod_security_context is not None:
+            spec["podSecurityContext"] = self.pod_security_context
+        if self.container_security_context is not None:
+            spec["containerSecurityContext"] = self.container_security_context
+        if self.init_containers is not None:
+            spec["initContainers"] = self.init_containers
 
         # Create metadata
         metadata = {"name": self.name}
         if self.namespace is not None:
             metadata["namespace"] = self.namespace
+
+        # Add kueue labels for task governance
+        labels = {}
+        if self.queue_name is not None:
+            labels["kueue.x-k8s.io/queue-name"] = self.queue_name
+        if self.priority is not None:
+            labels["kueue.x-k8s.io/priority-class"] = self.priority
+        if labels:
+            metadata["labels"] = labels
 
         # Create the complete space configuration
         space_config = {

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hyperpod-space-template"
-version = "1.0.0"
+version = "1.1.0"
 description = "Template for HyperPod Space configuration"
 authors = [
     {name = "Amazon Web Services"},
@@ -24,3 +24,4 @@ include = ["hyperpod_space_template*"]
 
 [tool.setuptools.package-data]
 "hyperpod_space_template.v1_0" = ["schema.json"]
+"hyperpod_space_template.v1_1" = ["schema.json"]

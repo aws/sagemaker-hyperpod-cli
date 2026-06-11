@@ -45,24 +45,16 @@ class TestSpaceCommands:
         # Mock model registry
         mock_model = Mock()
         mock_model.return_value = Mock()
-        mock_model.return_value.to_domain.return_value = {
-            "name": "test-space",
-            "display_name": "Test Space",
-            "namespace": "test-ns",
-            "space_spec": {"spec": {"image": "test-image"}}
-        }
+        mock_model.return_value.name = "test-space"
+        mock_model.return_value.namespace = "test-ns"
 
         with patch('hyperpod_space_template.registry.SCHEMA_REGISTRY', {'1.0': mock_model}):
-            with patch('sagemaker.hyperpod.cli.commands.space.SpaceConfig') as mock_space_config:
-                mock_space_config.return_value.name = "test-space"
-                mock_space_config.return_value.namespace = "test-ns"
-                
-                result = self.runner.invoke(space_create, [
-                    '--version', '1.0',
-                    '--name', 'test-space',
-                    '--display-name', 'Test Space',
-                    '--namespace', 'test-ns'
-                ])
+            result = self.runner.invoke(space_create, [
+                '--version', '1.0',
+                '--name', 'test-space',
+                '--display-name', 'Test Space',
+                '--namespace', 'test-ns'
+            ])
 
         assert result.exit_code == 0
         assert "Space 'test-space' created successfully" in result.output
@@ -274,9 +266,8 @@ class TestSpaceCommands:
             "space_spec": {"spec": {"image": "updated-image"}}
         }
 
-        with patch('hyperpod_space_template.registry.SCHEMA_REGISTRY', {'1.0': mock_model}):
+        with patch('hyperpod_space_template.registry.SCHEMA_REGISTRY', {'1.1': mock_model}):
             result = self.runner.invoke(space_update, [
-                '--version', '1.0',
                 '--name', 'test-space',
                 '--display-name', 'Test Space',
                 '--namespace', 'test-ns'

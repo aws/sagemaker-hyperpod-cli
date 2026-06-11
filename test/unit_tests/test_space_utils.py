@@ -1,6 +1,7 @@
 """Unit tests for space utils module."""
 
 import os
+import warnings
 import unittest
 from unittest.mock import Mock, patch
 from kubernetes import client
@@ -11,6 +12,10 @@ from sagemaker.hyperpod.space.utils import (
     get_pod_instance_type,
     validate_space_mig_resources,
     validate_mig_profile_in_cluster,
+    _parse_version,
+    get_spaces_addon_version,
+    warn_if_addon_version_incompatible,
+    SPACES_ADDON_NAME,
 )
 from hyperpod_space_template.v1_0.model import SpaceConfig
 
@@ -280,3 +285,133 @@ class TestSpaceUtils(unittest.TestCase):
         
         self.assertTrue(valid)
         self.assertEqual(err, "")
+
+    def test_parse_version_standard(self):
+        self.assertEqual(_parse_version("0.1.6"), (0, 1, 6))
+
+    def test_parse_version_major(self):
+        self.assertEqual(_parse_version("1.0.0"), (1, 0, 0))
+
+    def test_parse_version_comparison_less_than(self):
+        self.assertTrue(_parse_version("0.1.1") < _parse_version("0.1.6"))
+
+    def test_parse_version_comparison_equal(self):
+        self.assertEqual(_parse_version("0.1.6"), _parse_version("0.1.6"))
+
+    def test_parse_version_comparison_greater_than(self):
+        self.assertTrue(_parse_version("0.2.0") > _parse_version("0.1.6"))
+
+    @patch("sagemaker.hyperpod.space.utils.get_hyperpod_cluster_region", return_value="us-west-2")
+    @patch("sagemaker.hyperpod.space.utils.create_boto3_client")
+    def test_get_addon_version_parses_eksbuild_suffix(self, mock_client_factory, mock_region):
+        mock_client = Mock()
+        mock_client.describe_addon.return_value = {
+            "addon": {"addonVersion": "v0.1.6-eksbuild.1"}
+        }
+        mock_client_factory.return_value = mock_client
+
+        result = get_spaces_addon_version("my-cluster")
+        self.assertEqual(result, "0.1.6")
+        mock_client.describe_addon.assert_called_once_with(
+            clusterName="my-cluster", addonName=SPACES_ADDON_NAME
+        )
+
+    @patch("sagemaker.hyperpod.space.utils.get_hyperpod_cluster_region", return_value="us-west-2")
+    @patch("sagemaker.hyperpod.space.utils.create_boto3_client")
+    def test_get_addon_version_without_v_prefix(self, mock_client_factory, mock_region):
+        mock_client = Mock()
+        mock_client.describe_addon.return_value = {
+            "addon": {"addonVersion": "0.1.1-eksbuild.2"}
+        }
+        mock_client_factory.return_value = mock_client
+
+        result = get_spaces_addon_version("my-cluster")
+        self.assertEqual(result, "0.1.1")
+
+    @patch("sagemaker.hyperpod.space.utils.get_hyperpod_cluster_region", return_value="us-west-2")
+    @patch("sagemaker.hyperpod.space.utils.create_boto3_client")
+    def test_get_addon_version_returns_none_on_exception(self, mock_client_factory, mock_region):
+        mock_client = Mock()
+        mock_client.describe_addon.side_effect = Exception("Not found")
+        mock_client_factory.return_value = mock_client
+
+        result = get_spaces_addon_version("my-cluster")
+        self.assertIsNone(result)
+
+    @patch("sagemaker.hyperpod.space.utils.get_hyperpod_cluster_region", return_value="us-west-2")
+    @patch("sagemaker.hyperpod.space.utils.create_boto3_client")
+    def test_get_addon_version_returns_none_on_unparseable(self, mock_client_factory, mock_region):
+        mock_client = Mock()
+        mock_client.describe_addon.return_value = {
+            "addon": {"addonVersion": "invalid-version"}
+        }
+        mock_client_factory.return_value = mock_client
+
+        result = get_spaces_addon_version("my-cluster")
+        self.assertIsNone(result)
+
+    def _make_decorated_class(self):
+        from hyperpod_space_template.v1_1.model import SpaceConfig
+
+        class FakeSpace:
+            def __init__(self):
+                self.called = False
+                self.config = SpaceConfig(name="fake", display_name="Fake")
+
+            @warn_if_addon_version_incompatible
+            def create(self):
+                self.called = True
+                return "created"
+
+        return FakeSpace
+
+    @patch("sagemaker.hyperpod.space.utils.get_spaces_addon_version", return_value="0.1.1")
+    @patch("sagemaker.hyperpod.space.utils.get_eks_cluster_name", return_value="my-cluster")
+    def test_decorator_warns_when_version_too_old(self, mock_cluster, mock_version):
+        space = self._make_decorated_class()()
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = space.create()
+
+        self.assertEqual(result, "created")
+        self.assertTrue(space.called)
+        self.assertEqual(len(w), 1)
+        self.assertIn("0.1.1", str(w[0].message))
+        self.assertIn("0.1.6", str(w[0].message))
+
+    @patch("sagemaker.hyperpod.space.utils.get_spaces_addon_version", return_value="0.1.6")
+    @patch("sagemaker.hyperpod.space.utils.get_eks_cluster_name", return_value="my-cluster")
+    def test_decorator_no_warning_when_version_sufficient(self, mock_cluster, mock_version):
+        space = self._make_decorated_class()()
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = space.create()
+
+        self.assertEqual(result, "created")
+        self.assertEqual(len(w), 0)
+
+    @patch("sagemaker.hyperpod.space.utils.get_spaces_addon_version", return_value=None)
+    @patch("sagemaker.hyperpod.space.utils.get_eks_cluster_name", return_value="my-cluster")
+    def test_decorator_no_warning_when_version_unknown(self, mock_cluster, mock_version):
+        space = self._make_decorated_class()()
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = space.create()
+
+        self.assertEqual(result, "created")
+        self.assertEqual(len(w), 0)
+
+    @patch("sagemaker.hyperpod.space.utils.get_eks_cluster_name", side_effect=Exception("no context"))
+    def test_decorator_no_warning_when_cluster_unavailable(self, mock_cluster):
+        space = self._make_decorated_class()()
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = space.create()
+
+        self.assertEqual(result, "created")
+        self.assertTrue(space.called)
+        self.assertEqual(len(w), 0)

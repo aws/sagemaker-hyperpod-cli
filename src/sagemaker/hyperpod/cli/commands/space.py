@@ -6,7 +6,6 @@ from sagemaker.hyperpod.space.hyperpod_space import HPSpace
 from sagemaker.hyperpod.cli.space_utils import generate_click_command
 from sagemaker.hyperpod.cli.clients.kubernetes_client import KubernetesClient
 from hyperpod_space_template.registry import SCHEMA_REGISTRY
-from hyperpod_space_template.v1_0.model import SpaceConfig
 from sagemaker.hyperpod.common.telemetry.telemetry_logging import (
     _hyperpod_telemetry_emitter,
 )
@@ -25,6 +24,7 @@ from sagemaker.hyperpod.common.cli_decorators import handle_cli_exceptions
 @handle_cli_exceptions()
 def space_create(version, debug, config):
     """Create a space resource."""
+    SpaceConfig = SCHEMA_REGISTRY[version]
     space_config = SpaceConfig(**config)
     space = HPSpace(config=space_config)
     space.create(debug=debug)
@@ -125,6 +125,7 @@ def space_delete(name, namespace):
     schema_pkg="hyperpod_space_template",
     registry=SCHEMA_REGISTRY,
     is_update=True,
+    version_key="1.1",
 )
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "update_space")
 @handle_cli_exceptions()
