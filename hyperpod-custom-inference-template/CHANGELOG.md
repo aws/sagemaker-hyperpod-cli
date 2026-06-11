@@ -1,3 +1,9 @@
+## v1.2.1 (2026-06-11)
+
+### Features
+
+* Add v1.2 schema and template support for custom inference endpoints (#417)
+
 ## v1.2.0 (2025-11-21)
 
 ### Features
