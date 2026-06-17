@@ -53,8 +53,9 @@ spec:
             properties:
               InitialReplicaCount:
                 description: |-
-                  Number of desired pods. This is a pointer to distinguish between explicit
-                  zero and not specified. Defaults to 1.
+                  Deprecated: This field has no effect and will be removed in a future release.
+                  Use spec.replicas for initial pod count and spec.autoScalingSpec.minReplicaCount
+                  for the steady-state floor under autoscaling.
                 format: int32
                 type: integer
               autoScalingSpec:
@@ -6794,8 +6795,9 @@ spec:
             properties:
               InitialReplicaCount:
                 description: |-
-                  Number of desired pods. This is a pointer to distinguish between explicit
-                  zero and not specified. Defaults to 1.
+                  Deprecated: This field has no effect and will be removed in a future release.
+                  Use spec.replicas for initial pod count and spec.autoScalingSpec.minReplicaCount
+                  for the steady-state floor under autoscaling.
                 format: int32
                 type: integer
               autoScalingSpec:
