@@ -9,6 +9,7 @@
 Cluster Management <getting_started/cluster_management>
 Training <getting_started/training>
 Inference <getting_started/inference>
+Space <getting_started/space>
 
 ```
 
