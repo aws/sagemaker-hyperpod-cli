@@ -54,6 +54,7 @@ from sagemaker.hyperpod.cli.commands.space_template import (
     space_template_update,
 )
 from sagemaker.hyperpod.cli.commands.space_access import space_access_create
+from sagemaker.hyperpod.cli.commands.ssh import space_ssh
 
 from sagemaker.hyperpod.cli.commands.init import (
     init,
@@ -166,6 +167,12 @@ def stop():
 
 
 @cli.group(cls=CLICommand)
+def ssh():
+    """SSH into space pods via SSM Session Manager."""
+    pass
+
+
+@cli.group(cls=CLICommand)
 def portforward():
     """Port forward for space resources."""
     pass
@@ -273,6 +280,8 @@ get_logs.add_command(custom_get_logs)
 get_logs.add_command(space_get_logs)
 
 portforward.add_command(space_portforward)
+
+ssh.add_command(space_ssh)
 
 get_operator_logs.add_command(pytorch_get_operator_logs)
 recipe_get_operator_logs_cmd = copy.copy(pytorch_get_operator_logs)
