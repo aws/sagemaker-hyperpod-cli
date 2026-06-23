@@ -111,10 +111,6 @@ tolerations: []
 
 affinity: {}
 
-namespace:
-  create: true
-  name: aws-hyperpod
-
 cert-manager:
   enabled: false
   namespace: cert-manager
@@ -276,6 +272,10 @@ health-monitoring-agent:
   # region: "us-east-1"
 deep-health-check:
   enabled: true
+  namespace:
+    create: true
+    name: aws-hyperpod
+    
 job-auto-restart:
   enabled: true
 hyperpod-patching:
