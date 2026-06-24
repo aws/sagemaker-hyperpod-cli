@@ -242,10 +242,14 @@ helm upgrade dependencies helm_chart/HyperPodHelmChart --namespace kube-system
   eu-north-1 (Europe (Stockholm)):        654654141839.dkr.ecr.eu-north-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1892.0_1.0.424.0
   eu-west-1 (Europe (Ireland)):           533267293120.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1892.0_1.0.424.0
   eu-west-2 (Europe (London)):            011528288831.dkr.ecr.eu-west-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1892.0_1.0.424.0
+  eu-south-2 (Europe (Spain)):            626887787726.dkr.ecr.eu-south-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1892.0_1.0.424.0
   ap-northeast-1 (Asia Pacific (Tokyo)):  533267052152.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1892.0_1.0.424.0
   ap-south-1 (Asia Pacific (Mumbai)):     011528288864.dkr.ecr.ap-south-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1892.0_1.0.424.0
   ap-southeast-1 (Asia Pacific (Singapore)): 905418428165.dkr.ecr.ap-southeast-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1892.0_1.0.424.0
   ap-southeast-2 (Asia Pacific (Sydney)):    851725636348.dkr.ecr.ap-southeast-2.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1892.0_1.0.424.0
+  ap-southeast-3 (Asia Pacific (Jakarta)):   971422672635.dkr.ecr.ap-southeast-3.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1892.0_1.0.424.0
+  ap-southeast-4 (Asia Pacific (Melbourne)): 084375568333.dkr.ecr.ap-southeast-4.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1892.0_1.0.424.0
+  ca-central-1 (Canada (Central)):        843976229209.dkr.ecr.ca-central-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1892.0_1.0.424.0
   sa-east-1 (South America (São Paulo)):     025066253954.dkr.ecr.sa-east-1.amazonaws.com/hyperpod-health-monitoring-agent:1.0.1892.0_1.0.424.0
   ```
 
