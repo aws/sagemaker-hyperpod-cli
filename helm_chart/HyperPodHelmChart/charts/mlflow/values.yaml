@@ -1,5 +1,5 @@
 mlflow:
   serviceAccount:
     name: "mlflow-service-account1"
-    namespace: "kubeflow"
+    namespace: "default"
     roleARN: "arn:aws:iam::555555555555:role/hyperpod-mlflow-role"
