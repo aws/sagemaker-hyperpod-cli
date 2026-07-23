@@ -54,6 +54,7 @@ from sagemaker.hyperpod.cli.commands.space_template import (
     space_template_update,
 )
 from sagemaker.hyperpod.cli.commands.space_access import space_access_create
+from sagemaker.hyperpod.cli.commands.migrate import migrate
 
 from sagemaker.hyperpod.cli.commands.init import (
     init,
@@ -205,6 +206,7 @@ cli.add_command(init)
 cli.add_command(reset)
 cli.add_command(configure)
 cli.add_command(validate)
+cli.add_command(migrate)
 
 create.add_command(pytorch_create)
 # create.add_command(create_recipe_job_interactive)

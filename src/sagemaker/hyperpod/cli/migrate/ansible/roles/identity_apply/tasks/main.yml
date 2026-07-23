@@ -1,0 +1,50 @@
+---
+# identity_apply/tasks/main.yml — TARGET.
+# Recreate groups + users with the EXACT numeric UID/GID captured from source.
+# This is the correctness core: never auto-assign.
+#
+# For identity_model == 'sssd' the whole local-user creation is skipped; users
+# and IDs come from the directory. We only ensure the SSSD join is present
+# (handled by the parent hpmigrate CLI re-running setup_sssd.py) and manage
+# nothing locally here.
+
+- name: Skip local identity for directory-managed (SSSD/AD) clusters
+  ansible.builtin.debug:
+    msg: "identity_model=sssd -> users/IDs come from directory; skipping local user creation"
+  when: identity_model == 'sssd'
+
+- name: Recreate groups with pinned GIDs
+  ansible.builtin.group:
+    name: "{{ item.name }}"
+    gid: "{{ item.gid }}"
+    state: present
+  loop: "{{ captured_groups }}"
+  loop_control: { label: "{{ item.name }} (gid={{ item.gid }})" }
+  when: identity_model == 'local'
+
+- name: Recreate users with pinned UID/GID and same home path
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    uid: "{{ item.uid }}"
+    group: "{{ item.gid }}"          # primary group by GID
+    home: "{{ item.home }}"
+    shell: "{{ item.shell | default('/bin/bash') }}"
+    comment: "{{ item.gecos | default('') }}"
+    create_home: false               # home comes from DRA-import / OpenZFS-restore
+    state: present
+  loop: "{{ captured_users }}"
+  loop_control: { label: "{{ item.name }} (uid={{ item.uid }} gid={{ item.gid }})" }
+  when: identity_model == 'local'
+
+- name: Restore supplementary group memberships (per user)
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    # all groups (other than primary) whose member list includes this user
+    groups: >-
+      {{ captured_groups
+         | selectattr('members', 'contains', item.name)
+         | map(attribute='name') | list }}
+    append: true
+  loop: "{{ captured_users }}"
+  loop_control: { label: "{{ item.name }}" }
+  when: identity_model == 'local'

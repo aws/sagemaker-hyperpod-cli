@@ -1,0 +1,94 @@
+---
+# identity_capture/tasks/main.yml — SOURCE, read-only.
+# Turns live getent state into structured JSON artifacts. getent is the source
+# of record: it captures ALL users regardless of how they were created
+# (shared_users.txt, SSSD, or ad-hoc useradd).
+
+- name: Capture passwd entries
+  ansible.builtin.getent:
+    database: passwd
+  # populates ansible_facts.getent_passwd
+
+- name: Capture group entries
+  ansible.builtin.getent:
+    database: group
+
+- name: Build human user list (uid >= uid_min), with real home + which fs it is on
+  ansible.builtin.set_fact:
+    captured_users: >-
+      {{ captured_users | default([]) + [ {
+           'name': item.key,
+           'uid': item.value[1] | int,
+           'gid': item.value[2] | int,
+           'gecos': item.value[3],
+           'home': item.value[4],
+           'shell': item.value[5],
+           'home_fs': ('lustre' if item.value[4] is match('^/fsx/')
+                       else ('openzfs' if item.value[4] is match('^/home/')
+                             else 'other'))
+         } ] }}
+  loop: "{{ ansible_facts.getent_passwd | dict2items }}"
+  loop_control: { label: "{{ item.key }}" }
+  when:
+    - (item.value[1] | int) >= (uid_min | int)
+    - (item.value[1] | int) < 65000        # exclude nobody/system ceiling accounts
+
+- name: Build group list (keep human groups + explicitly-kept system groups)
+  ansible.builtin.set_fact:
+    captured_groups: >-
+      {{ captured_groups | default([]) + [ {
+           'name': item.key,
+           'gid': item.value[1] | int,
+           'members': (item.value[2] | default('')) | split(',') | reject('equalto','') | list
+         } ] }}
+  loop: "{{ ansible_facts.getent_group | dict2items }}"
+  loop_control: { label: "{{ item.key }}" }
+  when: >-
+    (item.value[1] | int) >= (gid_min | int)
+    or item.key in system_groups_keep
+
+# ---- Per-user .ssh inventory (truth before migration) ----------------------
+- name: Stat each user's .ssh dir
+  ansible.builtin.stat:
+    path: "{{ item.home }}/.ssh"
+  loop: "{{ captured_users }}"
+  loop_control: { label: "{{ item.name }}" }
+  register: _ssh_stats
+
+- name: Build ssh inventory
+  ansible.builtin.set_fact:
+    captured_ssh: >-
+      {{ captured_ssh | default([]) + [ {
+           'name': item.item.name,
+           'home': item.item.home,
+           'home_fs': item.item.home_fs,
+           'ssh_dir': item.item.home ~ '/.ssh',
+           'exists': item.stat.exists,
+           'owner_uid': (item.stat.uid | default(omit)),
+           'mode': (item.stat.mode | default(omit))
+         } ] }}
+  loop: "{{ _ssh_stats.results }}"
+  loop_control: { label: "{{ item.item.name }}" }
+
+# ---- Write + upload artifacts ---------------------------------------------
+- name: Write identity artifacts locally
+  ansible.builtin.copy:
+    dest: "{{ hpm_workdir }}/{{ item.file }}"
+    content: "{{ item.data | to_nice_json }}"
+    mode: "0600"
+  loop:
+    - { file: users.json,          data: "{{ captured_users }}" }
+    - { file: groups.json,         data: "{{ captured_groups }}" }
+    - { file: ssh_inventory.json,  data: "{{ captured_ssh }}" }
+    - { file: identity_model.json, data: "{{ {'identity_model': identity_model} }}" }
+  loop_control: { label: "{{ item.file }}" }
+
+- name: Upload identity artifacts to S3
+  ansible.builtin.command: >-
+    aws s3 cp {{ hpm_workdir }}/{{ item }} {{ hpm_identity_prefix }}/{{ item }}
+  changed_when: true
+  loop:
+    - users.json
+    - groups.json
+    - ssh_inventory.json
+    - identity_model.json

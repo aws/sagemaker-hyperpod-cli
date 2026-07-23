@@ -96,6 +96,14 @@ setup(
         "hyperpod-cluster-stack-template>=1.0.0, <2.0.0",
         "hyperpod_space_template>=1.0.0, <2.0.0" 
     ],
+    extras_require={
+        # Required only for `hyp migrate` (Slurm cluster migration).
+        # Also needs the AWS Session Manager plugin and the collections:
+        #   ansible-galaxy collection install amazon.aws community.aws ansible.posix
+        "migrate": [
+            "ansible-core>=2.16",
+        ],
+    },
     entry_points={
         "console_scripts": [
             "hyp=sagemaker.hyperpod.cli.hyp_cli:cli",

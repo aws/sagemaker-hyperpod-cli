@@ -1,0 +1,8 @@
+---
+- name: reload slurm
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: restarted
+  loop:
+    - slurmctld
+  failed_when: false

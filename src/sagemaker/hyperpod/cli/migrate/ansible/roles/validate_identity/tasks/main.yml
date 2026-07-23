@@ -1,0 +1,90 @@
+---
+# validate_identity/tasks/main.yml — TARGET. The hard cutover gate.
+# Re-read live getent + .ssh perms and diff against the captured snapshot.
+# FAIL on any UID/GID or .ssh owner/mode mismatch (design §11.4).
+
+- name: Skip user-ID diff for SSSD (directory guarantees stable IDs)
+  ansible.builtin.debug:
+    msg: "identity_model=sssd -> IDs are directory-managed; validating .ssh perms only"
+  when: identity_model == 'sssd'
+
+- name: Read live passwd on target
+  ansible.builtin.getent:
+    database: passwd
+
+- name: Assert each captured user exists with identical UID/GID
+  ansible.builtin.assert:
+    that:
+      - item.name in ansible_facts.getent_passwd
+      - (ansible_facts.getent_passwd[item.name][1] | int) == (item.uid | int)
+      - (ansible_facts.getent_passwd[item.name][2] | int) == (item.gid | int)
+    fail_msg: >-
+      IDENTITY MISMATCH for {{ item.name }}:
+      expected uid={{ item.uid }} gid={{ item.gid }},
+      got {{ ansible_facts.getent_passwd[item.name] | default('MISSING') }}.
+      Cutover blocked — files (incl. ~/.ssh) would be owned by the wrong account.
+    success_msg: "{{ item.name }} uid/gid OK"
+  loop: "{{ captured_users }}"
+  loop_control: { label: "{{ item.name }}" }
+  when: identity_model == 'local'
+
+# ---- .ssh ownership + perms (both models) ----------------------------------
+# Validate against the CAPTURED SOURCE state (owner + mode), not a hardcoded
+# policy — the goal is "target matches source". Only enforce for users whose
+# home is on a filesystem the tool migrates (/home OpenZFS). Homes on /fsx ride
+# the customer's DRA and are validated after the customer hydrates /fsx.
+- name: Stat target .ssh dirs
+  ansible.builtin.stat:
+    path: "{{ item.home }}/.ssh"
+  loop: "{{ captured_users }}"
+  loop_control: { label: "{{ item.name }}" }
+  register: _tgt_ssh
+
+- name: Assert .ssh dir matches captured source (owner + mode)
+  ansible.builtin.assert:
+    that:
+      - item.0.stat.exists
+      - item.0.stat.uid | int == item.1.uid | int
+      - item.0.stat.mode == (_src_ssh.mode | regex_replace('^0', ''))
+        or item.0.stat.mode == _src_ssh.mode
+    fail_msg: >-
+      SSH PERMS MISMATCH for {{ item.1.name }} at {{ item.1.home }}/.ssh:
+      target owner={{ item.0.stat.uid | default('?') }} mode={{ item.0.stat.mode | default('?') }},
+      source owner={{ item.1.uid }} mode={{ _src_ssh.mode | default('?') }}. Login would fail.
+    success_msg: "{{ item.1.name }} .ssh matches source (mode {{ _src_ssh.mode }})"
+  vars:
+    _src_ssh: "{{ captured_ssh | selectattr('name','equalto', item.1.name) | first | default({}) }}"
+  loop: "{{ _tgt_ssh.results | zip(captured_users) | list }}"
+  loop_control: { label: "{{ item.1.name }}" }
+  # Only enforce where the source .ssh existed AND home is on a tool-migrated
+  # filesystem (/home). /fsx homes are customer-DRA — skipped here.
+  when: >-
+    (captured_ssh | selectattr('name','equalto', item.1.name)
+     | map(attribute='exists') | first | default(false))
+    and (item.1.home is match('^/home/'))
+
+# ---- Storage: /home must actually be mounted for Shape B (fsx+OpenZFS) ------
+# OpenZFS /home mounts only when BOTH enable_fsx_openzfs and fsx_openzfs_dns_name
+# are set; otherwise the cluster comes up InService with no /home. Assert it.
+- name: Check /home mount when source was fsx+OpenZFS
+  ansible.builtin.command: findmnt --noheadings /home
+  register: _home_mnt
+  changed_when: false
+  failed_when: false
+  when: storage_shape == 'fsx_openzfs'
+
+- name: Assert /home is mounted (OpenZFS)
+  ansible.builtin.assert:
+    that:
+      - _home_mnt.rc == 0
+      - _home_mnt.stdout is search('nfs')
+    fail_msg: >-
+      Source was fsx+OpenZFS but /home is not mounted on the target. Check that
+      enable_fsx_openzfs=True (config.py) AND fsx_openzfs_dns_name
+      (provisioning_parameters.json) are both set, then re-provision.
+    success_msg: "/home (OpenZFS) is mounted"
+  when: storage_shape == 'fsx_openzfs'
+
+- name: Validation passed
+  ansible.builtin.debug:
+    msg: "IDENTITY VALIDATION PASSED — safe to proceed to cutover."

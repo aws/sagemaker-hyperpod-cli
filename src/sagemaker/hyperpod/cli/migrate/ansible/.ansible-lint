@@ -1,0 +1,16 @@
+---
+# .ansible-lint
+profile: production
+
+exclude_paths:
+  - .venv/
+  - inventory.generated.ini
+
+# The runtime inventory is generated; role vars come from S3-loaded snapshots,
+# so some vars are legitimately not defined at lint time.
+warn_list:
+  - var-naming[no-role-prefix]   # roles share hpm_* vars by design
+  - no-changed-when              # some aws s3 cp are inherently side-effecting
+
+skip_list:
+  - fqcn[action-core]            # allow builtin short names in a few spots

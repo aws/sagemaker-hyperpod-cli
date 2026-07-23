@@ -1,0 +1,2 @@
+# Ship the vendored migration Ansible assets used by `hyp migrate`.
+recursive-include src/sagemaker/hyperpod/cli/migrate/ansible *.yml *.yaml *.cfg *.ini *.py *.txt *.md

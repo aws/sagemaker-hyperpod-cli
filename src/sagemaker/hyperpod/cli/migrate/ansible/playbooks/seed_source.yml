@@ -1,0 +1,61 @@
+---
+# seed_source.yml — populate the SOURCE cluster with representative state so the
+# migration has something meaningful to capture and reproduce.
+# Creates: fsx-users group (gid 5000), two users with pinned UID/GID whose homes
+# live on /fsx, their .ssh dirs + authorized_keys, and a marker file.
+- name: Seed source cluster identity state
+  hosts: controller
+  become: true
+  vars:
+    seed_users:
+      - { name: researcher1, uid: 5001, gid: 5000 }
+      - { name: researcher2, uid: 5002, gid: 5000 }
+  tasks:
+    - name: Create fsx-users group (gid 5000)
+      ansible.builtin.group:
+        name: fsx-users
+        gid: 5000
+        state: present
+
+    - name: Create seed users with pinned UID/GID, home on /fsx
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        uid: "{{ item.uid }}"
+        group: "{{ item.gid }}"
+        home: "/fsx/{{ item.name }}"
+        shell: /bin/bash
+        create_home: true
+      loop: "{{ seed_users }}"
+      loop_control: { label: "{{ item.name }} uid={{ item.uid }}" }
+
+    - name: Create .ssh dirs
+      ansible.builtin.file:
+        path: "/fsx/{{ item.name }}/.ssh"
+        state: directory
+        owner: "{{ item.uid }}"
+        group: "{{ item.gid }}"
+        mode: "0700"
+      loop: "{{ seed_users }}"
+      loop_control: { label: "{{ item.name }}" }
+
+    - name: Install an authorized_keys per user
+      ansible.builtin.copy:
+        dest: "/fsx/{{ item.name }}/.ssh/authorized_keys"
+        content: "ssh-ed25519 AAAAC3NzaC1SEEDKEY {{ item.name }}@source\n"
+        owner: "{{ item.uid }}"
+        group: "{{ item.gid }}"
+        mode: "0600"
+      loop: "{{ seed_users }}"
+      loop_control: { label: "{{ item.name }}" }
+
+    - name: Show resulting identity state
+      ansible.builtin.shell: |
+        echo "=== passwd ==="; getent passwd researcher1 researcher2
+        echo "=== group ==="; getent group fsx-users
+        echo "=== ssh ==="; ls -ln /fsx/researcher1/.ssh /fsx/researcher2/.ssh
+      register: seed_out
+      changed_when: false
+
+    - name: Seed summary
+      ansible.builtin.debug:
+        var: seed_out.stdout_lines

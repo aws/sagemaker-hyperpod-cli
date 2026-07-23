@@ -1,0 +1,56 @@
+---
+# slurm_capture/tasks/main.yml — SOURCE, read-only.
+# Stage Slurm config files + accounting dump into the remote workdir, then push
+# to S3. All work happens ON the node (remote_src copies), consistent with
+# identity_capture; nothing is pulled to the control host.
+
+- name: Ensure remote slurm workdir exists
+  ansible.builtin.file:
+    path: "{{ hpm_workdir }}/slurm"
+    state: directory
+    mode: "0755"
+
+- name: Locate slurm config files
+  ansible.builtin.stat:
+    path: "{{ slurm_conf_dir }}/{{ item }}"
+  loop:
+    - slurm.conf
+    - gres.conf
+    - cgroup.conf
+    - topology.conf
+  register: _slurm_files
+
+- name: Stage existing slurm config files into workdir (remote copy)
+  ansible.builtin.copy:
+    src: "{{ item.stat.path }}"
+    dest: "{{ hpm_workdir }}/slurm/{{ item.item }}"
+    remote_src: true
+    mode: "0644"
+  loop: "{{ _slurm_files.results }}"
+  loop_control: { label: "{{ item.item }}" }
+  when: item.stat.exists
+
+- name: Dump slurm accounting (associations / users / QOS)
+  ansible.builtin.shell: >-
+    set -o pipefail;
+    ( command -v sacctmgr >/dev/null 2>&1 && sacctmgr --noheader dump )
+    || ( [ -x /opt/slurm/bin/sacctmgr ] && /opt/slurm/bin/sacctmgr --noheader dump )
+    || echo "SACCTMGR_UNAVAILABLE"
+  args:
+    executable: /bin/bash
+  register: _sacctmgr
+  changed_when: false
+  failed_when: false
+  when: capture_accounting_dump | bool
+
+- name: Save sacctmgr dump
+  ansible.builtin.copy:
+    dest: "{{ hpm_workdir }}/slurm/sacctmgr_dump.cfg"
+    content: "{{ _sacctmgr.stdout | default('') }}"
+    mode: "0644"
+  when: capture_accounting_dump | bool and _sacctmgr.stdout is defined
+
+- name: Upload slurm artifacts to S3
+  ansible.builtin.command: >-
+    aws s3 cp {{ hpm_workdir }}/slurm/ {{ hpm_slurm_prefix }}/ --recursive
+  changed_when: true

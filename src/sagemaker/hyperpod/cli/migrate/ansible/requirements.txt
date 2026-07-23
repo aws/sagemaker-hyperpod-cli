@@ -1,0 +1,8 @@
+# Python deps for the runner host (CI or operator laptop).
+# pip install -r requirements.txt
+ansible-core>=2.16,<2.19
+boto3>=1.34.0
+botocore>=1.34.0
+# Dev / CI only:
+ansible-lint>=24.0.0
+yamllint>=1.35.0

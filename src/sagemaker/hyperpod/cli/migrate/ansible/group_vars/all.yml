@@ -1,0 +1,47 @@
+---
+# group_vars/all.yml — shared config for snapshot / converge / validate.
+# Most values are provided at runtime by bin/hpmigrate-ansible.sh via -e, but
+# defaults live here so playbooks are runnable standalone for debugging.
+
+# S3 artifact store (durable snapshot + results). Overridden by HPM_BUCKET.
+hpm_bucket: "{{ lookup('env', 'HPM_BUCKET') | default('s3://CHANGE-ME-hpmigrate-artifacts', true) }}"
+hpm_run_id: "{{ lookup('env', 'HPM_RUN_ID') | default('dev-run', true) }}"
+
+# Derived S3 prefixes for the snapshot artifacts.
+hpm_prefix: "{{ hpm_bucket }}/{{ hpm_run_id }}"
+hpm_identity_prefix: "{{ hpm_prefix }}/identity"
+hpm_slurm_prefix: "{{ hpm_prefix }}/slurm"
+hpm_storage_prefix: "{{ hpm_prefix }}/storage"
+
+# Local staging dir on the controller node during capture/converge.
+hpm_workdir: /opt/hpmigrate
+
+# ---- Detection outputs (filled by the discover role) ----------------------
+# storage_shape: "fsx_only" | "fsx_openzfs"
+# identity_model: "local" | "sssd"
+# These are auto-detected; set here only to force a value for testing.
+storage_shape: ""
+identity_model: ""
+
+# ---- Identity policy ------------------------------------------------------
+# Never auto-assign IDs. If a captured user is missing a numeric UID/GID the
+# converge run FAILS rather than guessing (correctness over convenience).
+require_numeric_ids: true
+
+# UID/GID floor: skip system accounts below this when capturing human users.
+# HyperPod human users are typically >= 1000; fsx-users group is captured
+# regardless via the explicit system_groups_keep list.
+uid_min: 1000
+gid_min: 1000
+system_groups_keep:
+  - fsx-users
+
+# ---- SSH perms enforcement ------------------------------------------------
+ssh_dir_mode: "0700"
+ssh_privkey_mode: "0600"
+ssh_authkeys_mode: "0600"
+
+# ---- Slurm ----------------------------------------------------------------
+slurm_conf_dir: /opt/slurm/etc          # base-config default location
+capture_accounting_dump: true            # sacctmgr dump (assoc/qos)
+# Full DB mysqldump is handled by the parent hpmigrate CLI, not Ansible.

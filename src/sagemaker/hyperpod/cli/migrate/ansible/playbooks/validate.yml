@@ -1,0 +1,18 @@
+---
+# validate.yml — TARGET cluster. The hard cutover GATE (design §11.4).
+# Re-reads live getent + .ssh perms and diffs against the captured snapshot.
+# FAILS the run on any UID/GID or .ssh owner/mode mismatch.
+
+- name: Validate target identity matches source snapshot
+  hosts: controller
+  gather_facts: true
+  become: true
+  vars:
+    hpm_mode: validate
+  pre_tasks:
+    - name: Load captured snapshot from S3
+      ansible.builtin.include_role:
+        name: discover
+        tasks_from: load_snapshot.yml
+  roles:
+    - role: validate_identity
