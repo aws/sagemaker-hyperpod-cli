@@ -13,6 +13,8 @@ rules:
   - jumpstartmodels
   - inferenceendpointconfigs
   - sagemakerendpointregistrations
+  - modelweightscacheconfigs
+  - modelimagecaches
   verbs:
   - create
   - delete
@@ -27,6 +29,8 @@ rules:
   - jumpstartmodels/finalizers
   - inferenceendpointconfigs/finalizers
   - sagemakerendpointregistrations/finalizers
+  - modelweightscacheconfigs/finalizers
+  - modelimagecaches/finalizers
   verbs:
   - update
 - apiGroups:
@@ -35,6 +39,8 @@ rules:
   - jumpstartmodels/status
   - inferenceendpointconfigs/status
   - sagemakerendpointregistrations/status
+  - modelweightscacheconfigs/status
+  - modelimagecaches/status
   verbs:
   - get
   - patch
@@ -119,3 +125,20 @@ rules:
     - get
     - list
     - watch
+- apiGroups:
+  - scheduling.k8s.io
+  resources:
+  - priorityclasses
+  verbs:
+  - create
+  - list
+  - watch
+- apiGroups:
+  - scheduling.k8s.io
+  resources:
+  - priorityclasses
+  resourceNames:
+  - hyperpod-image-cache
+  verbs:
+  - get
+  - delete

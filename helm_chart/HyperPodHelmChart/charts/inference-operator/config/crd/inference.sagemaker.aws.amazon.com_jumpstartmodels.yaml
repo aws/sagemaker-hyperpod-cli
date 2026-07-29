@@ -907,6 +907,13 @@ spec:
                       to /ping if not specified.
                     pattern: ^/.*
                     type: string
+                  idleTimeoutSeconds:
+                    description: Idle timeout in seconds for the ALB connection. If
+                      not specified, defaults to 60 seconds.
+                    format: int32
+                    maximum: 4000
+                    minimum: 1
+                    type: integer
                   routingAlgorithm:
                     default: least_outstanding_requests
                     description: Routing algorithm for the ALB target group (least_oustanding_requests
@@ -1006,6 +1013,39 @@ spec:
                 required:
                 - acceptEula
                 - modelId
+                type: object
+              modelCacheConfig:
+                description: Configuration for model caching (image and data).
+                properties:
+                  imageCache:
+                    description: |-
+                      Configuration for image caching. When enabled, the operator pre-pulls the
+                      inference server container image onto target nodes via a DaemonSet.
+                    properties:
+                      enabled:
+                        description: |-
+                          Enable or disable image caching for this deployment.
+                          When enabled, the operator creates a ModelImageCache resource that pins
+                          the inference server image on target nodes.
+                        type: boolean
+                    required:
+                    - enabled
+                    type: object
+                  weightsCache:
+                    description: Configuration for pre-caching model weights on local
+                      NVMe storage.
+                    properties:
+                      enabled:
+                        default: false
+                        description: Whether model data caching is enabled.
+                        type: boolean
+                      hostPath:
+                        default: /opt/dlami/nvme
+                        description: Host path where cached model weights are stored.
+                        maxLength: 255
+                        minLength: 1
+                        type: string
+                    type: object
                 type: object
               replicas:
                 default: 1
@@ -1348,6 +1388,30 @@ spec:
                     required:
                     - state
                     type: object
+                type: object
+              imageCacheStatus:
+                description: Status of model server image caching
+                properties:
+                  message:
+                    description: Human-readable message.
+                    type: string
+                  readyNodes:
+                    description: Number of nodes where the image is cached.
+                    format: int32
+                    type: integer
+                  state:
+                    description: Current state of the image cache.
+                    enum:
+                    - Pending
+                    - Downloading
+                    - Ready
+                    - Failed
+                    - PartiallyReady
+                    type: string
+                  targetNodes:
+                    description: Total number of target nodes.
+                    format: int32
+                    type: integer
                 type: object
               metricsStatus:
                 description: Status of metrics collection
