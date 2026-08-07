@@ -158,6 +158,12 @@ nvidia-device-plugin:
           - key: node.kubernetes.io/instance-type
             operator: In
             values:
+              - ml.g4dn.xlarge
+              - ml.g4dn.2xlarge
+              - ml.g4dn.4xlarge
+              - ml.g4dn.8xlarge
+              - ml.g4dn.12xlarge
+              - ml.g4dn.16xlarge
               - ml.g5.xlarge
               - ml.g5.2xlarge
               - ml.g5.4xlarge
@@ -257,6 +263,9 @@ aws-efa-k8s-device-plugin:
       - ml.trn1n.32xlarge
       - ml.trn2.3xlarge
       - ml.trn2.48xlarge
+      - ml.g4dn.8xlarge
+      - ml.g4dn.12xlarge
+      - ml.g4dn.16xlarge
   tolerations:
     - key: CriticalAddonsOnly
       operator: Exists
