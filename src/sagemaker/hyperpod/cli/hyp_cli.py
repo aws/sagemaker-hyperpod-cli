@@ -54,6 +54,7 @@ from sagemaker.hyperpod.cli.commands.space_template import (
     space_template_update,
 )
 from sagemaker.hyperpod.cli.commands.space_access import space_access_create
+from sagemaker.hyperpod.cli.commands.ray_dashboard_connection import create_ray_dashboard_connection
 
 from sagemaker.hyperpod.cli.commands.init import (
     init,
@@ -216,6 +217,7 @@ create.add_command(_default_create)
 create.add_command(space_create)
 create.add_command(space_template_create)
 create.add_command(space_access_create)
+create.add_command(create_ray_dashboard_connection)
 
 list.add_command(list_jobs)
 recipe_list_cmd = copy.copy(list_jobs)
