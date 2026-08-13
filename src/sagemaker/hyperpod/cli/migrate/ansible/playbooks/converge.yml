@@ -1,0 +1,34 @@
+---
+# converge.yml — TARGET cluster.
+# Reads the snapshot from S3 and reproduces an ID-pinned identity + Slurm state.
+# Idempotent: safe to re-run and usable as the LCS bootstrap convergence step.
+#
+# Order matters: identity (groups+users with pinned numeric IDs) must exist
+# BEFORE data is populated/mounted so DRA-import / OpenZFS-restore ownership
+# lines up. hpmigrate sequences this playbook before the data-move for that
+# reason.
+
+- name: Converge HyperPod target cluster (identity + ssh + slurm)
+  hosts: controller
+  gather_facts: true
+  become: true
+  vars:
+    hpm_mode: converge
+  pre_tasks:
+    - name: Load captured snapshot from S3
+      ansible.builtin.include_role:
+        name: discover
+        tasks_from: load_snapshot.yml
+
+  roles:
+    - role: identity_apply     # groups + users with EXACT numeric UID/GID
+    - role: ssh_perms          # ~/.ssh 700, keys 600, correct owner
+    - role: slurm_apply        # place slurm.conf/gres.conf, sacctmgr load
+
+  post_tasks:
+    - name: Converge summary
+      ansible.builtin.debug:
+        msg:
+          - "identity_model = {{ identity_model }}"
+          - "users applied = {{ (identity_model == 'sssd') | ternary('skipped (directory-managed)', captured_users | length) }}"
+          - "run local `validate.yml` before cutover"

@@ -1,0 +1,61 @@
+---
+# discover/tasks/main.yml — detect storage shape, identity model, and per-user
+# home locations on the SOURCE cluster. Read-only.
+
+- name: Ensure workdir exists
+  ansible.builtin.file:
+    path: "{{ hpm_workdir }}"
+    state: directory
+    mode: "0755"
+
+# ---- Storage shape: fsx_only vs fsx_openzfs --------------------------------
+- name: Detect mounts
+  ansible.builtin.command: findmnt -rno TARGET,SOURCE,FSTYPE
+  register: _mounts
+  changed_when: false
+
+- name: Determine storage shape
+  ansible.builtin.set_fact:
+    storage_shape: >-
+      {{ 'fsx_openzfs' if (_mounts.stdout is search('/home')
+         and (_mounts.stdout is search('nfs') or _mounts.stdout is search('zfs')))
+         else 'fsx_only' }}
+
+- name: Detect FSx Lustre mount (/fsx)
+  ansible.builtin.set_fact:
+    has_fsx_lustre: "{{ _mounts.stdout is search('/fsx') }}"
+
+# ---- Identity model: local (shared_users.txt) vs SSSD/AD -------------------
+- name: Check for SSSD
+  ansible.builtin.stat:
+    path: /etc/sssd/sssd.conf
+  register: _sssd
+
+- name: Check sssd service
+  ansible.builtin.command: systemctl is-active sssd
+  register: _sssd_svc
+  changed_when: false
+  failed_when: false
+
+- name: Determine identity model
+  ansible.builtin.set_fact:
+    identity_model: >-
+      {{ 'sssd' if (_sssd.stat.exists or _sssd_svc.stdout == 'active')
+         else 'local' }}
+
+- name: Announce detection
+  ansible.builtin.debug:
+    msg: "shape={{ storage_shape }} identity_model={{ identity_model }} fsx={{ has_fsx_lustre }}"
+
+- name: Persist storage shape artifact
+  ansible.builtin.copy:
+    dest: "{{ hpm_workdir }}/shape.json"
+    content: "{{ {'storage_shape': storage_shape, 'has_fsx_lustre': has_fsx_lustre} | to_nice_json }}"
+    mode: "0644"
+  when: hpm_mode == 'snapshot'
+
+- name: Upload shape + identity_model to S3
+  ansible.builtin.command: >-
+    aws s3 cp {{ hpm_workdir }}/shape.json {{ hpm_storage_prefix }}/shape.json
+  changed_when: true
+  when: hpm_mode == 'snapshot'

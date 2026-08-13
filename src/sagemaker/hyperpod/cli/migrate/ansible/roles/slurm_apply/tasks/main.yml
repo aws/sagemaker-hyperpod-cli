@@ -1,0 +1,41 @@
+---
+# slurm_apply/tasks/main.yml — TARGET.
+# Place captured slurm config + reload accounting. Config files are captured
+# verbatim; hpmigrate (parent CLI) re-templates node/host-specific values before
+# this playbook runs, so here we place-and-reload only.
+
+- name: Ensure slurm conf dir exists
+  ansible.builtin.file:
+    path: "{{ slurm_conf_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Download slurm artifacts from S3
+  ansible.builtin.command: >-
+    aws s3 cp {{ hpm_slurm_prefix }}/ {{ hpm_workdir }}/slurm/ --recursive
+  changed_when: false
+
+- name: Place slurm config files
+  ansible.builtin.copy:
+    src: "{{ hpm_workdir }}/slurm/{{ item }}"
+    dest: "{{ slurm_conf_dir }}/{{ item }}"
+    remote_src: true
+    owner: slurm
+    group: slurm
+    mode: "0644"
+  loop:
+    - slurm.conf
+    - gres.conf
+    - cgroup.conf
+    - topology.conf
+  register: _placed
+  failed_when: false
+  notify: reload slurm
+
+- name: Load accounting dump (associations / users / QOS)
+  ansible.builtin.command: >-
+    sacctmgr --immediate load file={{ hpm_workdir }}/slurm/sacctmgr_dump.cfg
+  register: _load
+  changed_when: "'Nothing new added' not in _load.stdout | default('')"
+  failed_when: false
+  when: capture_accounting_dump | bool

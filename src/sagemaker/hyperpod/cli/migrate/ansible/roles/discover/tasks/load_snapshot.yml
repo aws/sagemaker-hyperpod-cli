@@ -1,0 +1,65 @@
+---
+# discover/tasks/load_snapshot.yml — pull the captured snapshot from S3 into
+# facts on the TARGET, for converge.yml / validate.yml.
+
+- name: Ensure workdir exists
+  ansible.builtin.file:
+    path: "{{ hpm_workdir }}"
+    state: directory
+    mode: "0755"
+
+- name: Download identity + storage snapshot from S3
+  ansible.builtin.command: >-
+    aws s3 cp {{ item.src }} {{ hpm_workdir }}/{{ item.dest }}
+  loop:
+    - { src: "{{ hpm_identity_prefix }}/users.json",          dest: users.json }
+    - { src: "{{ hpm_identity_prefix }}/groups.json",         dest: groups.json }
+    - { src: "{{ hpm_identity_prefix }}/ssh_inventory.json",  dest: ssh_inventory.json }
+    - { src: "{{ hpm_identity_prefix }}/identity_model.json", dest: identity_model.json }
+    - { src: "{{ hpm_storage_prefix }}/shape.json",           dest: shape.json }
+  changed_when: false
+
+# The snapshot files live on the REMOTE node (aws s3 cp ran there), so read them
+# with slurp (remote) rather than lookup('file') (which reads the control host).
+- name: Slurp snapshot files from the remote node
+  ansible.builtin.slurp:
+    src: "{{ hpm_workdir }}/{{ item }}"
+  loop:
+    - users.json
+    - groups.json
+    - ssh_inventory.json
+    - identity_model.json
+    - shape.json
+  register: _snap
+
+- name: Index slurped snapshot content by filename
+  ansible.builtin.set_fact:
+    _snap_map: "{{ dict(_snap.results | map(attribute='item') | list
+                        | zip(_snap.results | map(attribute='content') | list)) }}"
+
+- name: Load captured users
+  ansible.builtin.set_fact:
+    captured_users: "{{ (_snap_map['users.json'] | b64decode) | from_json }}"
+
+- name: Load captured groups
+  ansible.builtin.set_fact:
+    captured_groups: "{{ (_snap_map['groups.json'] | b64decode) | from_json }}"
+
+- name: Load captured ssh inventory
+  ansible.builtin.set_fact:
+    captured_ssh: "{{ (_snap_map['ssh_inventory.json'] | b64decode) | from_json }}"
+
+- name: Load identity model + storage shape
+  ansible.builtin.set_fact:
+    identity_model: "{{ ((_snap_map['identity_model.json'] | b64decode) | from_json).identity_model }}"
+    storage_shape: "{{ ((_snap_map['shape.json'] | b64decode) | from_json).storage_shape }}"
+
+- name: Fail if numeric IDs missing and required
+  ansible.builtin.assert:
+    that:
+      - item.uid is defined and item.uid | int > 0
+      - item.gid is defined and item.gid | int > 0
+    fail_msg: "captured user {{ item.name }} lacks a numeric UID/GID; refusing to auto-assign"
+  loop: "{{ captured_users }}"
+  loop_control: { label: "{{ item.name }}" }
+  when: require_numeric_ids | bool and identity_model == 'local'

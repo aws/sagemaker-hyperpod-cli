@@ -1,0 +1,27 @@
+---
+# snapshot.yml — SOURCE cluster, READ-ONLY.
+# Captures identity + Slurm state and stores it in S3 for later converge.
+# Runs on the controller/head/login node(s) only.
+#
+# Guarantee: nothing on the source is modified. Only getent / slurp /
+# `sacctmgr dump` (read) are used.
+
+- name: Snapshot HyperPod source cluster (identity + slurm)
+  hosts: controller
+  gather_facts: true
+  become: true
+  vars:
+    hpm_mode: snapshot
+  roles:
+    - role: discover           # storage_shape + identity_model + per-user homes
+    - role: identity_capture   # getent -> users.json / groups.json / ssh_inventory.json
+    - role: slurm_capture      # slurm.conf, gres.conf, sacctmgr dump
+
+  post_tasks:
+    - name: Snapshot summary
+      ansible.builtin.debug:
+        msg:
+          - "storage_shape = {{ storage_shape }}"
+          - "identity_model = {{ identity_model }}"
+          - "users captured = {{ captured_users | length }}"
+          - "artifacts -> {{ hpm_prefix }}/"

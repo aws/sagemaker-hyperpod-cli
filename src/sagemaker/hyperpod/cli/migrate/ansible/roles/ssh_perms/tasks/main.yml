@@ -1,0 +1,48 @@
+---
+# ssh_perms/tasks/main.yml — TARGET.
+# DRA-import / OpenZFS-restore bring the .ssh dirs and keys with their numeric
+# ownership. This role ENFORCES correct owner + mode so sshd accepts the keys.
+# It operates on whatever filesystem holds each user's $HOME (Shape A: /fsx,
+# Shape B: /fsx and/or /home) — driven entirely by the captured home path.
+
+- name: Build set of users whose source .ssh existed
+  ansible.builtin.set_fact:
+    ssh_users: >-
+      {{ captured_users | selectattr('name', 'in',
+           captured_ssh | selectattr('exists') | map(attribute='name') | list)
+         | list }}
+
+- name: Ensure ~/.ssh has correct ownership and mode
+  ansible.builtin.file:
+    path: "{{ item.home }}/.ssh"
+    state: directory
+    owner: "{{ item.uid }}"
+    group: "{{ item.gid }}"
+    mode: "{{ ssh_dir_mode }}"
+  loop: "{{ ssh_users }}"
+  loop_control: { label: "{{ item.name }} -> {{ item.home }}/.ssh" }
+  when: identity_model == 'local'
+  failed_when: false
+
+- name: Fix authorized_keys mode/owner if present
+  ansible.builtin.file:
+    path: "{{ item.home }}/.ssh/authorized_keys"
+    owner: "{{ item.uid }}"
+    group: "{{ item.gid }}"
+    mode: "{{ ssh_authkeys_mode }}"
+  loop: "{{ ssh_users }}"
+  loop_control: { label: "{{ item.name }}" }
+  when: identity_model == 'local'
+  failed_when: false
+
+- name: Normalize private key perms (id_* files, not .pub)
+  ansible.builtin.shell: >-
+    if [ -d "{{ item.home }}/.ssh" ]; then find "{{ item.home }}/.ssh" -maxdepth 1 -type f -name 'id_*' ! -name '*.pub' -exec chown {{ item.uid }}:{{ item.gid }} {} + -exec chmod {{ ssh_privkey_mode }} {} +; fi
+  args:
+    executable: /bin/bash
+  loop: "{{ ssh_users }}"
+  loop_control: { label: "{{ item.name }}" }
+  when:
+    - identity_model == 'local'
+    - item.home is match('^/(fsx|home)/')
+  changed_when: false

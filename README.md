@@ -17,6 +17,9 @@ Note: Old `hyperpod`CLI V2 has been moved to `release_v2` branch. Please refer [
     - [Getting Started](#getting-started)
     - [CLI](#cli)
         - [Cluster Management](#cluster-management)
+        - [Slurm Cluster Migration](#slurm-cluster-migration)
+            - [Training plans](#training-plans)
+            - [Cross-Region migrations](#cross-region-migrations)
         - [Training](#training)
         - [Inference](#inference)
             - [Jumpstart Endpoint](#jumpstart-endpoint-creation)
@@ -234,6 +237,100 @@ Reset configuration to default values:
 ```bash
 hyp reset
 ```
+
+### Slurm Cluster Migration
+
+Migrate a HyperPod Slurm cluster to a new Availability Zone or Region — for
+example when a training plan expires and new capacity is only available
+elsewhere. `hyp migrate` captures the source cluster's user identity, `~/.ssh`,
+and Slurm configuration (including accounting configuration: accounts, users,
+associations, QOS) into a versioned S3 manifest, then reproduces that state on a
+target cluster with **pinned numeric UID/GID** and a **fail-closed validation
+gate**. The target FSx for Lustre / OpenZFS filesystems are created and `/home`
+is restored; bulk `/fsx` datasets are re-attached by the customer via their FSx
+Data Repository Associations (DRA).
+
+**Prerequisites** (installed separately from the base CLI):
+
+```bash
+pip install "sagemaker-hyperpod[migrate]"      # ansible-core
+ansible-galaxy collection install amazon.aws community.aws ansible.posix
+# plus the AWS Session Manager plugin (session-manager-plugin)
+```
+
+`hyp migrate` provides five subcommands:
+
+| Subcommand | Purpose |
+|------------|---------|
+| `snapshot` | Capture identity + Slurm state from the SOURCE cluster (read-only) → S3 |
+| `plan`     | Inspect a target training plan (reserved instance type, AZ, capacity) |
+| `provision`| Generate the target cluster instance-group config (training-plan aware) |
+| `converge` | Reproduce identity + Slurm state on the TARGET cluster |
+| `validate` | Fail-closed gate: assert TARGET identity/`~/.ssh` match the source |
+
+Use an S3 bucket named `sagemaker-*` (both the runner and the node execution
+role must be able to read/write it). `snapshot`/`converge`/`validate` share a
+`--run-id`:
+
+```bash
+# 1) Snapshot the SOURCE cluster (read-only)
+hyp migrate snapshot --cluster my-source --region us-east-2 \
+    --bucket s3://sagemaker-my-artifacts --run-id 20260101-migration
+
+# 2) Converge the TARGET cluster (recreate ID-pinned identity + Slurm state)
+hyp migrate converge --cluster my-target --region us-west-1 \
+    --bucket s3://sagemaker-my-artifacts --run-id 20260101-migration
+
+# 3) Validate the TARGET before cutover (fails if identity does not match)
+hyp migrate validate --cluster my-target --region us-west-1 \
+    --bucket s3://sagemaker-my-artifacts --run-id 20260101-migration
+```
+
+Add `--groups controller-machine,login-group` to target specific instance
+groups, or `--debug` for verbose Ansible output. Ansible reaches HyperPod nodes
+over the SSM `aws_ssm` connection plugin; no SSH keys or bastion are required.
+
+#### Training plans
+
+When the target cluster is backed by a **training plan**, capacity is AZ-pinned
+and bound per instance group. Inspect the plan, then generate a cluster config
+that binds the plan to the **worker group** (controller/login stay on-demand):
+
+```bash
+# Inspect the target plan — reports the reserved instance type + AZ
+hyp migrate plan --plan-arn <target-training-plan-arn> --region us-west-1
+
+# Generate the CreateCluster instance-group config (worker on the plan)
+hyp migrate provision \
+    --bucket s3://sagemaker-my-tgt-artifacts \
+    --execution-role-arn <cluster-exec-role-arn> \
+    --plan-arn <target-training-plan-arn> \
+    --region us-west-1 --out cluster-config.json
+```
+
+Place the target cluster **subnet in the plan's reserved AZ** (reported by
+`hyp migrate plan`) or the reserved capacity will not attach. The execution role
+must include EC2/VPC + ENI permissions and read/write on the `sagemaker-*`
+artifact bucket.
+
+#### Cross-Region migrations
+
+The SSM transport bucket is Region-local, so for a cross-Region move copy the
+snapshot manifest into a `sagemaker-*` bucket in the **target Region** before
+`converge`, and grant the target node role read access to it:
+
+```bash
+aws s3 cp s3://sagemaker-src-artifacts/RUN/ s3://sagemaker-tgt-artifacts/RUN/ \
+    --recursive --source-region us-east-2 --region us-west-1
+```
+
+Then run `converge`/`validate` against the target-Region bucket.
+
+> **Storage note:** the tool creates the target FSx filesystems and restores
+> `/home` (OpenZFS) plus login-critical `~/.ssh`. Bulk `/fsx` datasets are
+> re-attached by the customer via their FSx Data Repository Associations (DRA);
+> users whose home is on `/fsx` have their identity migrated, and their `~/.ssh`
+> arrives once `/fsx` is hydrated.
 
 ### Training 
 
