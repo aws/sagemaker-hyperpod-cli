@@ -25,7 +25,7 @@ image:
     ap-southeast-3: 158128612970.dkr.ecr.ap-southeast-3.amazonaws.com
     ap-south-2: 680458885894.dkr.ecr.ap-south-2.amazonaws.com
     eu-south-2: 025050981094.dkr.ecr.eu-south-2.amazonaws.com
-  tag: v3.3
+  tag: v3.4
   pullPolicy: Always
   repository:
   initContainer:
