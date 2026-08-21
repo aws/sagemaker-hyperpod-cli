@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.10.0 (2026-08-21)
+
+### Features
+- Add the HyperPod Ray endpoint operator Helm chart (#445)
+- Add the `hyp create ray-dashboard-connection` command for retrieving Ray dashboard URLs (#446)
+
+### Bug Fixes
+- Render HyperPod recipe templates with a sandboxed Jinja environment (#441)
+
 ## v3.9.0 (2026-06-11)
 
 ### Features
