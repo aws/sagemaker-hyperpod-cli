@@ -34,7 +34,7 @@ def test_create_with_v12_fields(runner, endpoint_name):
         "--namespace", NAMESPACE,
         "--version", VERSION,
         "--model-id", "deepseek-llm-r1-distill-qwen-1-5b",
-        "--instance-type", "ml.g5.8xlarge",
+        "--instance-type", "ml.g6e.2xlarge",
         "--endpoint-name", endpoint_name,
         "--accept-eula", "True",
         # v1.2 new fields
