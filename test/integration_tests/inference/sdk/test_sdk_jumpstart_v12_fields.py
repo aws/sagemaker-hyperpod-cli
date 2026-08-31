@@ -22,8 +22,8 @@ def endpoint_obj():
 
     return HPJumpStartEndpoint(
         metadata=metadata,
-        model=Model(model_id="deepseek-llm-r1-distill-qwen-1-5b", accept_eula=True),
-        server=Server(instance_type="ml.g6e.2xlarge"),
+        model=Model(model_id="huggingface-llm-phi-2", accept_eula=True),
+        server=Server(instance_type="ml.g5.8xlarge"),
         sage_maker_endpoint=SageMakerEndpoint(name=ENDPOINT_NAME),
         replicas=1,
         max_deploy_time_in_seconds=5400,

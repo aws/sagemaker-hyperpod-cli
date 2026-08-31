@@ -14,8 +14,8 @@ NAMESPACE = "integration"
 REGION = "us-east-2"
 ENDPOINT_NAME = "js-sdk-integration-" + get_time_str()
 
-INSTANCE_TYPE = "ml.g6e.2xlarge"
-MODEL_ID = "deepseek-llm-r1-distill-qwen-1-5b"
+INSTANCE_TYPE = "ml.g5.8xlarge"
+MODEL_ID = "huggingface-llm-phi-2"
 
 TIMEOUT_MINUTES = 20
 POLL_INTERVAL_SECONDS = 30
