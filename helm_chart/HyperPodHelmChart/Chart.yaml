@@ -24,10 +24,6 @@ version: 0.1.0
 appVersion: "1.16.0"
 
 dependencies:
-  - name: cert-manager
-    version: "v1.18.2"
-    repository: oci://quay.io/jetstack/charts
-    condition: cert-manager.enabled
   - name: training-operators
     version: "0.1.0"
     repository: "file://charts/training-operators"
