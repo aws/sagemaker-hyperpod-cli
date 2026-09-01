@@ -1,4 +1,3 @@
-
 # SageMaker HyperPod command-line interface
 
 The Amazon SageMaker HyperPod command-line interface (HyperPod CLI) is a tool that helps manage clusters, training jobs, and inference endpoints on the SageMaker HyperPod clusters orchestrated by Amazon EKS.
