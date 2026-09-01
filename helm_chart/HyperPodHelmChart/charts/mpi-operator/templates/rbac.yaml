@@ -1,3 +1,4 @@
+{{- if .Values.namespace.create }}
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -7,6 +8,7 @@ metadata:
     app.kubernetes.io/name: mpi-operator
     kustomize.component: mpi-operator
   name: mpi-operator
+{{- end }}
 ---
 apiVersion: v1
 kind: ServiceAccount

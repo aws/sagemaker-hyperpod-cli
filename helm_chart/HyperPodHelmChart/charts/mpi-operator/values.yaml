@@ -36,3 +36,6 @@ mpiOperator:
 
 ## Apply extra labels to all created resources
 extraLabels: {}
+
+namespace:
+  create: true
