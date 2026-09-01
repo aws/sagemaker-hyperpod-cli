@@ -1,0 +1,84 @@
+apiVersion: inference.sagemaker.aws.amazon.com/v1
+kind: InferenceEndpointConfig
+metadata:
+  name: llama-70b
+  namespace: default
+spec:
+  replicas: 1
+  modelName: llama-70b
+  endpointName: llama-70b
+  instanceType: ml.p4d.24xlarge
+  invocationEndpoint: v1/chat/completions
+  modelSourceConfig:
+    modelSourceType: s3
+    s3Storage:
+      bucketName: <YOUR_MODEL_BUCKET>
+      region: us-west-2
+    modelLocation: llama-70b
+    prefetchEnabled: true
+  metrics:
+    enabled: true
+    modelMetrics:
+      port: 8000
+  loadBalancer:
+    healthCheckPath: /health
+  worker:
+    resources:
+      requests:
+        cpu: 11000m
+        memory: 150Gi
+        nvidia.com/gpu: 4
+      limits:
+        nvidia.com/gpu: 4
+    image: lmcache/vllm-openai:v0.3.7
+    environmentVariables:
+      - name: PYTHONHASHSEED
+        value: "123"
+      - name: PROMETHEUS_MULTIPROC_DIR
+        value: /tmp
+      - name: VLLM_REQUEST_TIMEOUT
+        value: "600"
+      - name: MODEL_PORT
+        value: "8000"
+    args:
+      - "/opt/ml/model"
+      - "--port"
+      - "8000"
+      - "--max-model-len"
+      - "4096"
+      - "--tensor-parallel-size"
+      - "4"
+    modelInvocationPort:
+      containerPort: 8000
+      name: http
+    modelVolumeMount:
+      name: model-weights
+      mountPath: /opt/ml/model
+    probes:
+      livenessProbe:
+        httpGet:
+          path: /health
+          port: 8000
+        initialDelaySeconds: 60
+        periodSeconds: 15
+        timeoutSeconds: 5
+        failureThreshold: 3
+      # Readiness probe to check if container is ready to serve
+      readinessProbe:
+        httpGet:
+          path: /health
+          port: 8000
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 3
+        successThreshold: 1
+        failureThreshold: 3
+      # Startup probe for slow-starting model loading
+      startupProbe:
+        httpGet:
+          path: /health
+          port: 8000
+        initialDelaySeconds: 0
+        periodSeconds: 20
+        timeoutSeconds: 5
+        failureThreshold: 30  # 30 * 20s = 10 minutes max startup time

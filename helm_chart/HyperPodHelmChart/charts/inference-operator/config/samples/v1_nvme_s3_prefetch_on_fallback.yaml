@@ -1,0 +1,85 @@
+# Case 2-2: Model on some nodes, S3 + prefetch ON (to RAM)
+# initContainer checks NVMe, falls back to S3 download via IRSA, then copies to RAM emptyDir.
+# Worker reads from model-weights-copy (RAM) for fastest inference.
+# Requires: serviceaccount with S3 access (my-inference-sa)
+apiVersion: inference.sagemaker.aws.amazon.com/v1
+kind: InferenceEndpointConfig
+metadata:
+  name: case2-2-s3-prefetch-on-fallback
+  namespace: default
+spec:
+  endpointName: case2-2-s3-prefetch-on-fallback
+  modelName: Qwen2.5-VL-7B-Instruct
+  invocationEndpoint: v1/chat/completions
+  replicas: 1
+  modelSourceConfig:
+    modelSourceType: s3
+    s3Storage:
+      bucketName: <YOUR_MODEL_BUCKET>
+      region: us-east-2
+    prefetchEnabled: true
+  kubernetes:
+    serviceAccountName: my-inference-sa
+    initContainers:
+      - name: smart-loader
+        image: public.ecr.aws/aws-cli/aws-cli:latest
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            # Ensure model is on NVMe (download from S3 if missing)
+            if [ "$(ls -A /nvme)" ]; then
+              echo "NVMe hit ($(du -sh /nvme | cut -f1))"
+            else
+              echo "NVMe miss — downloading from S3"
+              aws s3 sync s3://<YOUR_MODEL_BUCKET>/Qwen2.5-VL-7B-Instruct/ /nvme/
+            fi
+            # Prefetch: copy from NVMe to RAM for fastest inference
+            echo "Copying model to RAM..."
+            cp -r /nvme/* /model/
+            echo "Done. $(du -sh /model | cut -f1) in RAM."
+        volumeMounts:
+          - name: nvme-cache
+            mountPath: /nvme
+          - name: model-weights-copy
+            mountPath: /model
+    volumes:
+      - name: nvme-cache
+        hostPath:
+          path: /opt/dlami/nvme/Qwen2.5-VL-7B-Instruct/Qwen2.5-VL-7B-Instruct
+          type: DirectoryOrCreate
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - <YOUR_HYPERPOD_NODE>
+  loadBalancer:
+    healthCheckPath: /health
+  worker:
+    image: lmcache/vllm-openai:latest
+    args:
+      - /opt/ml/model
+      - --max-model-len
+      - "15000"
+      - --tensor-parallel-size
+      - "1"
+    modelInvocationPort:
+      containerPort: 8000
+      name: http
+    modelVolumeMount:
+      name: model-weights
+      mountPath: /opt/ml/model
+    resources:
+      limits:
+        nvidia.com/gpu: "1"
+      requests:
+        cpu: "6"
+        memory: 30Gi
+        nvidia.com/gpu: "1"
+    environmentVariables:
+      - name: PYTHONHASHSEED
+        value: "123"
+      - name: VLLM_REQUEST_TIMEOUT
+        value: "600"

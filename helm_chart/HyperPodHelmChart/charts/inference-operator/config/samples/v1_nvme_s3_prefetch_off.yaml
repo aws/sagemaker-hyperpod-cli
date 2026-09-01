@@ -1,0 +1,60 @@
+# Case 1-1: Model on NVMe on ALL nodes, S3 + prefetch OFF
+# Override model-weights with hostPath. Worker reads from NVMe directly. No initContainers.
+apiVersion: inference.sagemaker.aws.amazon.com/v1
+kind: InferenceEndpointConfig
+metadata:
+  name: case1-1-s3-prefetch-off
+  namespace: default
+spec:
+  endpointName: case1-1-s3-prefetch-off
+  modelName: Qwen2.5-VL-7B-Instruct
+  invocationEndpoint: v1/chat/completions
+  replicas: 1
+  modelSourceConfig:
+    modelSourceType: s3
+    s3Storage:
+      bucketName: <YOUR_TLS_BUCKET>
+      region: us-east-2
+    prefetchEnabled: false
+  kubernetes:
+    volumes:
+      - name: model-weights
+        hostPath:
+          path: /opt/dlami/nvme/Qwen2.5-VL-7B-Instruct/Qwen2.5-VL-7B-Instruct
+          type: Directory
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - <YOUR_HYPERPOD_NODE>
+  loadBalancer:
+    healthCheckPath: /health
+  worker:
+    image: lmcache/vllm-openai:latest
+    args:
+      - /opt/ml/model
+      - --max-model-len
+      - "15000"
+      - --tensor-parallel-size
+      - "1"
+    modelInvocationPort:
+      containerPort: 8000
+      name: http
+    modelVolumeMount:
+      name: model-weights
+      mountPath: /opt/ml/model
+    resources:
+      limits:
+        nvidia.com/gpu: "1"
+      requests:
+        cpu: "6"
+        memory: 30Gi
+        nvidia.com/gpu: "1"
+    environmentVariables:
+      - name: PYTHONHASHSEED
+        value: "123"
+      - name: VLLM_REQUEST_TIMEOUT
+        value: "600"

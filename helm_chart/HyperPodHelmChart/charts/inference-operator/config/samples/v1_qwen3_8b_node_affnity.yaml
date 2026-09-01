@@ -1,0 +1,84 @@
+apiVersion: inference.sagemaker.aws.amazon.com/v1
+kind: InferenceEndpointConfig
+metadata:
+  name: lmcache-test-3
+  namespace: default
+spec:
+  replicas: 6
+  modelName: Llama-3.1-8B-Instruct
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values: ["ml.g5.16xlarge", "ml.g5.12xlarge", "ml.g5.8xlarge"]
+        - key: topology.kubernetes.io/zone
+          operator: In
+          values: ["us-east-2a", "us-east-2b"]
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      preference:
+        matchExpressions:
+        - key: node.kubernetes.io/instanceType
+          operator: In
+          values: ["ml.g5.8xlarge"]
+    - weight: 50
+      preference:
+        matchExpressions:
+        - key: topology.kubernetes.io/zone
+          operator: In
+          values: ["us-east-2a"]
+  invocationEndpoint: v1/chat/completions
+  intelligentRoutingSpec:
+    enabled: false
+    routingStrategy: "prefixaware"
+  modelSourceConfig:
+    modelSourceType: s3
+    s3Storage:
+      bucketName: <YOUR_MODEL_BUCKET>
+      region: us-east-2
+    modelLocation: Llama-3.1-8B-Instruct
+    prefetchEnabled: false
+  kvCacheSpec:
+    enableL1Cache: true
+    enableL2Cache: false
+    l2CacheSpec:
+      l2CacheBackend: redis
+      l2CacheLocalUrl: redis://redis.default.svc.cluster.local:6379
+  tlsConfig:
+    tlsCertificateOutputS3Uri: s3://<YOUR_TLS_BUCKET>
+  metrics:
+    enabled: true
+    modelMetrics:
+      port: 8000
+  loadBalancer:
+    healthCheckPath: /health
+  worker:
+    resources:
+      limits:
+        nvidia.com/gpu: "1"
+      requests:
+        cpu: "6"
+        memory: 30Gi
+        nvidia.com/gpu: "1"
+    image: lmcache/vllm-openai:latest
+    environmentVariables:
+     - name: PYTHONHASHSEED
+       value: "123"
+     - name: PROMETHEUS_MULTIPROC_DIR
+       value: /tmp
+     - name: VLLM_REQUEST_TIMEOUT
+       value: "600"
+    args:
+      - "/opt/ml/model"
+      - "--max-model-len"
+      - "15000"
+      - "--tensor-parallel-size"
+      - "1"
+    modelInvocationPort:
+      containerPort: 8000
+      name: http
+    modelVolumeMount:
+      name: model-weights
+      mountPath: /opt/ml/model

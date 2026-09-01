@@ -1,0 +1,62 @@
+apiVersion: inference.sagemaker.aws.amazon.com/v1
+kind: InferenceEndpointConfig
+metadata:
+  name: lmcache-test-2
+  namespace: default
+spec:
+  replicas: 10
+  modelName: Llama-3.1-8B-Instruct
+  instanceTypes: ["ml.p4d.24xlarge","ml.g5.12xlarge"]
+  invocationEndpoint: v1/chat/completions
+  intelligentRoutingSpec:
+    enabled: false
+    routingStrategy: "prefixaware"
+  modelSourceConfig:
+    modelSourceType: s3
+    s3Storage:
+      bucketName: <YOUR_MODEL_BUCKET>
+      region: us-west-2
+    modelLocation: Llama-3.1-8B-Instruct
+    prefetchEnabled: false
+  kvCacheSpec:
+    enableL1Cache: true
+    enableL2Cache: false
+    l2CacheSpec:
+      l2CacheBackend: redis
+      l2CacheLocalUrl: redis://redis.default.svc.cluster.local:6379
+  tlsConfig:
+    tlsCertificateOutputS3Uri: s3://<YOUR_TLS_BUCKET>
+  metrics:
+    enabled: true
+    modelMetrics:
+      port: 8000
+  loadBalancer:
+    healthCheckPath: /health
+  worker:
+    resources:
+      limits:
+        nvidia.com/gpu: "1"
+      requests:
+        cpu: "6"
+        memory: 30Gi
+        nvidia.com/gpu: "1"
+    image: lmcache/vllm-openai:latest
+    environmentVariables:
+     - name: PYTHONHASHSEED
+       value: "123"
+     - name: PROMETHEUS_MULTIPROC_DIR
+       value: /tmp
+     - name: VLLM_REQUEST_TIMEOUT
+       value: "600"
+    args:
+      - "/opt/ml/model"
+      - "--max-model-len"
+      - "15000"
+      - "--tensor-parallel-size"
+      - "1"
+    modelInvocationPort:
+      containerPort: 8000
+      name: http
+    modelVolumeMount:
+      name: model-weights
+      mountPath: /opt/ml/model

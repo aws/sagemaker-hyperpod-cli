@@ -1,0 +1,41 @@
+# HuggingFace Model Source — Qwen2.5 1.5B Instruct with TGI
+# Model size: ~3GB — fast deploy for testing
+apiVersion: inference.sagemaker.aws.amazon.com/v1
+kind: InferenceEndpointConfig
+metadata:
+  name: qwen-1-5b
+  namespace: test-hf
+spec:
+  modelName: qwen-1-5b
+  endpointName: hf-qwen-1-5b-endpoint-test
+  modelSourceConfig:
+    modelSourceType: huggingface
+    prefetchEnabled: false
+    huggingFaceModel:
+      modelId: "Qwen/Qwen2.5-1.5B-Instruct"
+  instanceType: "ml.g5.8xlarge"
+  invocationEndpoint: v1/chat/completions
+  worker:
+    image: "ghcr.io/huggingface/text-generation-inference:2.4.1"
+    modelInvocationPort:
+      containerPort: 8080
+      name: http
+    modelVolumeMount:
+      name: model-weights
+      mountPath: /opt/ml/model
+    resources:
+      requests:
+        nvidia.com/gpu: "1"
+        memory: "16Gi"
+        cpu: "4"
+      limits:
+        nvidia.com/gpu: "1"
+        memory: "16Gi"
+        cpu: "4"
+    environmentVariables:
+      - name: PORT
+        value: "8080"
+      - name: MAX_INPUT_LENGTH
+        value: "2048"
+      - name: MAX_TOTAL_TOKENS
+        value: "4096"
