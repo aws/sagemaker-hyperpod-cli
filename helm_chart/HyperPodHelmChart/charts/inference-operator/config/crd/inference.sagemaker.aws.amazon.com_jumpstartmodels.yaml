@@ -619,6 +619,25 @@ spec:
                   type: object
                 maxItems: 100
                 type: array
+              inferenceGateway:
+                description: |-
+                  InferenceGateway opts this model into the shared inference gateway. When
+                  enabled, the operator registers a scheduler entry for this model on an
+                  InferenceGatewayConfig so it is served behind the shared gateway endpoint.
+                  Mutually exclusive with intelligentRoutingSpec.
+                properties:
+                  enabled:
+                    default: false
+                    description: Enabled opts this model into the shared inference
+                      gateway.
+                    type: boolean
+                  name:
+                    description: |-
+                      Name of the gateway (InferenceGatewayConfig) this model attaches to.
+                      Models with the same name in the same namespace share one gateway.
+                      When empty, the operator creates a new gateway named inf-igw-<uuid>.
+                    type: string
+                type: object
               intelligentRoutingSpec:
                 description: |-
                   Configuration for intelligent routing
@@ -1520,6 +1539,11 @@ spec:
             - model
             - server
             type: object
+            x-kubernetes-validations:
+            - message: inferenceGateway.enabled and intelligentRoutingSpec.enabled
+                are mutually exclusive
+              rule: '!(has(self.inferenceGateway) && self.inferenceGateway.enabled
+                && has(self.intelligentRoutingSpec) && self.intelligentRoutingSpec.enabled)'
           status:
             description: ModelDeploymentStatus defines the observed state of ModelDeployment
             properties:
@@ -1810,6 +1834,29 @@ spec:
                     description: Total number of target nodes.
                     format: int32
                     type: integer
+                type: object
+              inferenceGateway:
+                description: |-
+                  Status of the shared inference gateway for this model. Present only when
+                  spec.inferenceGateway.enable is true; mirrored from the backing
+                  InferenceGatewayConfig.
+                properties:
+                  name:
+                    description: |-
+                      Name is the InferenceGatewayConfig this model is wired into. When
+                      spec.inferenceGateway.name is set it mirrors that value; when the name is
+                      left empty the operator generates one on the first reconcile and records
+                      it here so subsequent reconciles reuse the same gateway.
+                    type: string
+                  state:
+                    description: |-
+                      State is Pending while the gateway provisions, Ready when it can serve
+                      traffic, and Failed on a provisioning error.
+                    enum:
+                    - Pending
+                    - Ready
+                    - Failed
+                    type: string
                 type: object
               metricsStatus:
                 description: Status of metrics collection
