@@ -7,7 +7,7 @@ dependencies:
   version: 3.12.2
 - name: aws-fsx-csi-driver
   repository: https://kubernetes-sigs.github.io/aws-fsx-csi-driver
-  version: 1.11.0
+  version: 1.17.0
 - name: aws-load-balancer-controller
   repository: https://aws.github.io/eks-charts
   version: 1.13.2
@@ -17,5 +17,5 @@ dependencies:
 - name: keda
   repository: https://kedacore.github.io/charts
   version: 2.17.1
-digest: sha256:f54ece80a00cb4da98440551765d9c660a0704d6b59f4f9030a5a9e86eab4eea
-generated: "2025-10-27T17:20:29.746399171Z"
+digest: sha256:534d93414e9a3a600b9272ce30f04c84ad88af1dea0b4be37e309b35b9982992
+generated: "2026-09-10T08:13:16.920008-07:00"
