@@ -12,6 +12,7 @@ rules:
   resources:
   - jumpstartmodels
   - inferenceendpointconfigs
+  - inferencegatewayconfigs
   - sagemakerendpointregistrations
   - modelweightscacheconfigs
   - modelimagecaches
@@ -45,6 +46,12 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - inference.sagemaker.aws.amazon.com
+  resources:
+  - inferencegatewayconfigs/status
+  verbs:
+  - get
 - apiGroups:
   - ""
   - apps
