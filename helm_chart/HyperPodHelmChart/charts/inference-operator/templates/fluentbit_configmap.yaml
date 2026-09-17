@@ -1,0 +1,49 @@
+{{- if .Values.logging.cloudWatch.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.namePrefix }}-fluentbit
+  namespace: {{ .Values.shortPrefix }}-system
+data:
+  fluent-bit.conf: |
+    [SERVICE]
+        Flush         5
+        Log_Level     warn
+        Daemon        off
+        HTTP_Server   On
+        HTTP_Port     2020
+        Parsers_File  /fluent-bit/etc/parsers.conf
+
+    [INPUT]
+        Name              tail
+        Path              /logs/operator*.log
+        Tag               operator.*
+        Refresh_Interval  5
+        Read_from_Head    On
+        Mem_Buf_Limit     10MB
+        DB                /logs/fb.db
+        Parser            json
+
+    [FILTER]
+        Name   modify
+        Match  operator.*
+        Add    cluster   ${EKS_CLUSTER_NAME}
+        Add    namespace {{ .Values.shortPrefix }}-system
+
+    [OUTPUT]
+        Name               cloudwatch_logs
+        Match              operator.*
+        region             ${AWS_REGION}
+        log_group_name     /aws/hyperpod/${EKS_CLUSTER_NAME}/inference-operator
+        log_stream_prefix  operator-
+        auto_create_group  true
+        retry_limit        3
+
+  parsers.conf: |
+    [PARSER]
+        Name        json
+        Format      json
+        Time_Key    ts
+        Time_Format %Y-%m-%dT%H:%M:%S.%LZ
+        Time_Keep   On
+{{- end }}
