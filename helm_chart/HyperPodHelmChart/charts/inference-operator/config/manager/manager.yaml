@@ -31,6 +31,9 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . | quote }}
+      {{- end }}
       securityContext:
         runAsNonRoot: true
         # TODO(user): For common cases that do not require escalating privileges
@@ -181,6 +184,10 @@ spec:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: webhook-certs
           readOnly: true
+        {{- if .Values.logging.cloudWatch.enabled }}
+        - mountPath: /logs
+          name: logs
+        {{- end }}
         env:
           - name: AWS_REGION
             value: {{ .Values.region }}
@@ -208,9 +215,60 @@ spec:
             value: {{ .Chart.AppVersion | quote }}
           - name: HYPERPOD_CLUSTER_ARN
             value: {{ .Values.hyperpodClusterArn | default "" }}
+          - name: CONSOLE_LOG_LEVEL
+            value: {{ .Values.logging.console.logLevel | default "debug" | quote }}
+          {{- if .Values.logging.cloudWatch.enabled }}
+          - name: LOG_FILE_PATH
+            value: /logs/operator.log
+          - name: CLOUDWATCH_LOG_LEVEL
+            value: {{ .Values.logging.cloudWatch.logLevel | default "info" | quote }}
+          {{- end }}
+      {{- if .Values.logging.cloudWatch.enabled }}
+      - name: fluent-bit
+        image: "{{ .Values.logging.cloudWatch.fluentBit.registryDomain }}/{{ .Values.logging.cloudWatch.fluentBit.repository }}:{{ .Values.logging.cloudWatch.fluentBit.tag }}"
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsUser: 65532
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - "ALL"
+          readOnlyRootFilesystem: true
+        livenessProbe:
+          httpGet:
+            path: /api/v1/uptime
+            port: 2020
+          initialDelaySeconds: 10
+        resources:
+          limits:
+            cpu: 50m
+            memory: 64Mi
+          requests:
+            cpu: 5m
+            memory: 30Mi
+        env:
+          - name: AWS_REGION
+            value: {{ .Values.region }}
+          - name: EKS_CLUSTER_NAME
+            value: {{ .Values.eksClusterName }}
+        volumeMounts:
+          - mountPath: /logs
+            name: logs
+          - mountPath: /fluent-bit/etc
+            name: fluentbit-config
+            readOnly: true
+      {{- end }}
       serviceAccountName: {{ .Values.namePrefix }}-controller-manager
       terminationGracePeriodSeconds: 10
       volumes:
       - name: webhook-certs
         secret:
           secretName: webhook-server-cert
+      {{- if .Values.logging.cloudWatch.enabled }}
+      - name: logs
+        emptyDir:
+          sizeLimit: 200Mi
+      - name: fluentbit-config
+        configMap:
+          name: {{ .Values.namePrefix }}-fluentbit
+      {{- end }}
