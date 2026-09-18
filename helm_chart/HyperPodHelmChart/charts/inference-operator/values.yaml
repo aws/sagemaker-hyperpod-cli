@@ -25,7 +25,7 @@ image:
     ap-southeast-3: 158128612970.dkr.ecr.ap-southeast-3.amazonaws.com
     ap-south-2: 680458885894.dkr.ecr.ap-south-2.amazonaws.com
     eu-south-2: 025050981094.dkr.ecr.eu-south-2.amazonaws.com
-  tag: v3.6
+  tag: v3.7
   pullPolicy: Always
   repository:
   initContainer:
@@ -59,6 +59,8 @@ affinity:
 nodeSelector: {}
 
 tolerations: []
+
+priorityClassName: ""
 
 s3:
   enabled: true
@@ -106,6 +108,35 @@ cert-manager:
   namespace: cert-manager
   crds:
     enabled: true
+
+logging:
+  cloudWatch:
+    enabled: false
+    logLevel: info
+    fluentBit:
+      repository: eks/observability/aws-for-fluent-bit
+      tag: "3.4.6"
+      registryDomain: ""
+      registryAccountMap:
+        us-east-1: "602401143452"
+        us-east-2: "602401143452"
+        us-west-1: "602401143452"
+        us-west-2: "602401143452"
+        eu-west-1: "602401143452"
+        eu-west-2: "602401143452"
+        eu-central-1: "602401143452"
+        eu-north-1: "602401143452"
+        ap-northeast-1: "602401143452"
+        ap-southeast-1: "602401143452"
+        ap-southeast-2: "602401143452"
+        ap-south-1: "602401143452"
+        sa-east-1: "602401143452"
+        ap-southeast-3: "296578399912"
+        ap-southeast-4: "491585149902"
+        eu-south-2: "455263428931"
+        ap-south-2: "900889452093"
+  console:
+    logLevel: debug
 
 keda:
   enabled: true

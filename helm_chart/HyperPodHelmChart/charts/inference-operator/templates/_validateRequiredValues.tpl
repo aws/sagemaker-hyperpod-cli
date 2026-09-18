@@ -56,4 +56,11 @@
 {{- $_ := set .Values.image "repository" (index .Values.image.repositoryDomainMap $region) -}}
 {{- end -}}
 
+{{- if .Values.logging.cloudWatch.enabled -}}
+{{- if not (hasKey .Values.logging.cloudWatch.fluentBit.registryAccountMap $region) -}}
+{{- fail "Unsupported AWS Region" -}}
+{{- end -}}
+{{- $_ := set .Values.logging.cloudWatch.fluentBit "registryDomain" (printf "%s.dkr.ecr.%s.amazonaws.com" (index .Values.logging.cloudWatch.fluentBit.registryAccountMap $region) $region) -}}
+{{- end -}}
+
 {{- end -}}
