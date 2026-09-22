@@ -106,6 +106,8 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
+          - name: OPERATOR_VERSION
+            value: {{ include "hyperpod-ray-endpoint-operator.imageTag" . | quote }}
 {{- if or .Values.manager.env (and (kindIs "map" .Values.manager.envOverrides) (not (empty .Values.manager.envOverrides))) }}
           {{- if .Values.manager.env }}
           {{- toYaml .Values.manager.env | nindent 10 }}
