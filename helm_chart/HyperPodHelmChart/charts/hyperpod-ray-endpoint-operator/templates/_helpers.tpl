@@ -63,6 +63,15 @@ Otherwise, use the standard resourceName helper with "controller-manager" suffix
 {{- end }}
 
 {{/*
+Resolve the container image tag.
+Defaults to the pinned operator version when .Values.image.tag is not set.
+Reused by both imageUri and the manager's OPERATOR_VERSION env var.
+*/}}
+{{- define "hyperpod-ray-endpoint-operator.imageTag" -}}
+{{- .Values.image.tag | default "1.0.188.0_1.0.19.0" -}}
+{{- end }}
+
+{{/*
 Resolve the container image URI.
 Priority for region:
   1. .Values.region (explicit setting)
@@ -114,7 +123,7 @@ Priority for image URI:
   {{- fail (printf "Unsupported AWS region: %s. Set image.override explicitly for non-standard regions." $region) -}}
 {{- end -}}
 
-{{- $imageTag := .Values.image.tag | default "1.0.188.0_1.0.19.0" -}}
+{{- $imageTag := include "hyperpod-ray-endpoint-operator.imageTag" . -}}
 {{- printf "%s.dkr.ecr.%s.amazonaws.com/hyperpod-ray-endpoint-operator:%s" $accountId $region $imageTag -}}
 {{- end -}}
 {{- end }}
