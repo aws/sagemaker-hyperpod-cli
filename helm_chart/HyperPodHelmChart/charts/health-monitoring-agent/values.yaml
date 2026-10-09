@@ -31,6 +31,11 @@ hmaimage: ""
 # Enable debug output for region selection process
 debug: true
 
+# Additional environment variables to inject into the HMA containers.
+# Each entry must have a `name` and a `value`. Rendered before the
+# built-in NODE_NAME / NODE_IP fieldRef variables.
+env: []
+
 # PriorityClass for the HMA DaemonSet pods.
 # system-node-critical ensures HMA is the last pod evicted under node pressure
 # (e.g. DiskPressure), preventing loss of health monitoring. See P438078245.
