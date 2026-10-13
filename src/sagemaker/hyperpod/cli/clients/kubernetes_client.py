@@ -67,9 +67,18 @@ class KubernetesClient:
     _kube_client = None
 
     def __new__(cls, config_file: Optional[str] = None) -> "KubernetesClient":
+        if config_file is not None:
+            instance = super(KubernetesClient, cls).__new__(cls)
+            instance._config_file = config_file
+            instance._kube_client = config.new_client_from_config(
+                config_file=config_file
+            )
+            return instance
+
         if cls._instance is None:
             cls._instance = super(KubernetesClient, cls).__new__(cls)
-            config.load_kube_config(config_file=config_file or KUBE_CONFIG_PATH)
+            cls._instance._config_file = KUBE_CONFIG_PATH
+            config.load_kube_config(config_file=KUBE_CONFIG_PATH)
             cls._instance._kube_client = client.ApiClient()
         return cls._instance
 
@@ -110,8 +119,10 @@ class KubernetesClient:
         with open(KUBE_CONFIG_PATH, "w") as file:
             yaml.safe_dump(kubeconfig, file)
 
-        # Load the updated kubeconfig
+        # Load the updated kubeconfig and refresh this client's configuration.
         config.load_kube_config(config_file=KUBE_CONFIG_PATH)
+        self._config_file = KUBE_CONFIG_PATH
+        self._kube_client = client.ApiClient()
         logger.debug(f"Current context set to '{context_name}'")
 
     def get_core_v1_api(self) -> client.CoreV1Api:
@@ -182,13 +193,16 @@ class KubernetesClient:
             file (str): The path to the kubeconfig file
             selector_str (str): Selector to filter
         """
-        config.load_kube_config(config_file=file)
-        v1Client = client.CoreV1Api()
+        api_client = self._kube_client
+        if getattr(self, "_config_file", None) != file:
+            api_client = config.new_client_from_config(config_file=file)
+
+        v1_client = client.CoreV1Api(api_client)
         _continue = None
 
         nodes = []
         while True:
-            response = v1Client.list_node(
+            response = v1_client.list_node(
                 label_selector=selector_str,
                 limit=200,  # Set a reasonable limit
                 _continue=_continue,
@@ -236,7 +250,9 @@ class KubernetesClient:
         if namespace is None:
             return None
         try:
-            response = client.CoreV1Api().read_namespace(name=namespace)
+            response = client.CoreV1Api(self._kube_client).read_namespace(
+                name=namespace
+            )
             labels = response.metadata.labels
             if labels and SAGEMAKER_MANAGED_QUEUE_LABEL in labels and labels[SAGEMAKER_MANAGED_QUEUE_LABEL] == "true":
                 return response
@@ -254,12 +270,12 @@ class KubernetesClient:
         )
 
     def list_pods_in_all_namespaces_with_labels(self, label_selector: str):
-        v1Client = client.CoreV1Api()
+        v1_client = client.CoreV1Api(self._kube_client)
         pods = []
         _continue = None
 
         while True:
-            response = v1Client.list_pod_for_all_namespaces(
+            response = v1_client.list_pod_for_all_namespaces(
                 label_selector=label_selector,
                 limit=200,  # Set a reasonable limit
                 _continue=_continue,
@@ -367,7 +383,9 @@ class KubernetesClient:
         )
     
     def get_cluster_queue(self, cluster_queue_name: str):
-        return client.CustomObjectsApi().get_cluster_custom_object(
+        return client.CustomObjectsApi(
+            self._kube_client
+        ).get_cluster_custom_object(
             group=KUEUE_CUSTOM_OBJECT_GROUP,
             version=KUEUE_CUSTOM_OBJECT_VERSION,
             plural=CLUSTER_QUEUE_PRIORITY_CLASS_CUSTOM_OBJECT_PLURAL,

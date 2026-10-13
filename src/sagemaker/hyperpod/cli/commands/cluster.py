@@ -307,7 +307,7 @@ def rate_limited_operation(
         nodes = k8s_client.list_node_with_temp_config(
             temp_config_file, SAGEMAKER_HYPERPOD_NAME_LABEL
         )
-        nodes_info = _aggregate_nodes_info(nodes)
+        nodes_info = _aggregate_nodes_info(nodes, k8s_client)
 
         ns_nominal_quota = {}
         ns_quota_usage = {}
@@ -466,10 +466,13 @@ def _restructure_output(summary_list, namespaces):
 
 def _aggregate_nodes_info(
     nodes: List[client.V1Node],
+    k8s_client: Optional[KubernetesClient] = None,
 ) -> Dict[str, Dict[str, Any]]:
     list_pods_service = ListPods()
     nodes_resource_allocated_dict = (
-        list_pods_service.list_pods_and_get_requested_resources_group_by_node_name()
+        list_pods_service.list_pods_and_get_requested_resources_group_by_node_name(
+            k8s_client
+        )
     )
     nodes_summary: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 

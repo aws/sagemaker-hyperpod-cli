@@ -66,13 +66,14 @@ class ListPods:
 
     def list_pods_and_get_requested_resources_group_by_node_name(
         self,
+        k8s_client: Optional[KubernetesClient] = None,
     ):
         """
         List pods for all namespaces and initialized by kubeflow.
         Group by the node_name of the pod and the value is the
         accelerator devices resources requested
         """
-        k8s_client = KubernetesClient()
+        k8s_client = k8s_client or KubernetesClient()
 
         label_filter = f"training.kubeflow.org/job-name"
         pods = k8s_client.list_pods_in_all_namespaces_with_labels(label_filter)

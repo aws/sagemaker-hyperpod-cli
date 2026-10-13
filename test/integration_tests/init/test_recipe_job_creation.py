@@ -180,22 +180,40 @@ def test_wait_for_recipe_job_running(job_name, test_directory):
                     pytest.fail(f"Job {job_name} pods are crash-looping")
 
             if "Running" in output and "Status:             True" in output:
-                print(f"[INFO] Job {job_name} is Running")
+                remaining_seconds = max(1, int(deadline - time.time()))
+                wait_timeout = min(POLL_INTERVAL_SECONDS, remaining_seconds)
+                print(
+                    f"[INFO] Job {job_name} is Running; waiting for its pods "
+                    "to be Ready..."
+                )
+                execute_command([
+                    "kubectl", "wait",
+                    "--for=condition=Ready",
+                    "pod",
+                    "--selector", f"HPJob={job_name}",
+                    "--namespace", NAMESPACE,
+                    f"--timeout={wait_timeout}s",
+                ])
+                print(f"[INFO] Job {job_name} pods are Ready")
                 return
 
         except RuntimeError as e:
             print(f"[DEBUG] Exception during polling: {e}")
 
-        time.sleep(POLL_INTERVAL_SECONDS)
+        remaining_seconds = deadline - time.time()
+        if remaining_seconds <= 0:
+            break
+        time.sleep(min(POLL_INTERVAL_SECONDS, remaining_seconds))
 
-    pytest.fail(f"[ERROR] Timed out waiting for job {job_name} to be Running after {TIMEOUT_MINUTES}m")
+    pytest.fail(
+        f"[ERROR] Timed out waiting for job {job_name} pods to be Ready "
+        f"after {TIMEOUT_MINUTES}m"
+    )
 
 
 @pytest.mark.dependency(name="list_pods", depends=["wait"])
 def test_list_pods_recipe_job(job_name, test_directory):
     """List pods associated with the recipe job."""
-    time.sleep(10)
-
     result = execute_command([
         "hyp", "list-pods", "hyp-recipe-job",
         "--job-name", job_name,
