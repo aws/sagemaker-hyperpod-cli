@@ -7,15 +7,18 @@ Only run with proper cost controls and cleanup procedures in place.
 Tests complete user workflow: init -> configure -> validate -> create -> wait -> delete.
 Uses real AWS resources (SageMaker Hub, S3, Kubernetes) with cost implications.
 """
-import time
-import yaml
-import pytest
 import os
+import re
 import sys
 import tempfile
+import time
+import uuid
 from pathlib import Path
 from unittest.mock import patch
 
+import boto3
+import pytest
+import yaml
 from click.testing import CliRunner
 from sagemaker.hyperpod.cli.commands.init import init, configure, validate, reset
 from test.integration_tests.init.utils import (
@@ -42,7 +45,7 @@ def runner():
 
 @pytest.fixture(scope="module")
 def job_name():
-    return "recipe-integ-" + get_time_str()
+    return "recipe-integ-{}-{}".format(get_time_str(), uuid.uuid4().hex[:8])
 
 
 @pytest.fixture(scope="module")
@@ -54,6 +57,121 @@ def test_directory():
             yield temp_dir
         finally:
             os.chdir(original_cwd)
+
+
+def _run_cleanup_command(command, errors):
+    try:
+        execute_command(command)
+    except RuntimeError as error:
+        errors.append(str(error))
+
+
+@pytest.fixture(scope="module")
+def recipe_fsx_resources(job_name, test_directory):
+    """Create an isolated static FSx PV/PVC for this recipe test run."""
+    fsx_id = os.getenv("FSX_ID")
+    assert fsx_id, "FSX_ID must be set for recipe integration tests"
+
+    response = boto3.client("fsx", region_name=REGION).describe_file_systems(
+        FileSystemIds=[fsx_id]
+    )
+    file_systems = response.get("FileSystems", [])
+    assert len(file_systems) == 1, "Expected exactly one FSx filesystem"
+
+    file_system = file_systems[0]
+    assert file_system.get("FileSystemType") == "LUSTRE"
+    assert file_system.get("Lifecycle") == "AVAILABLE"
+
+    lustre_config = file_system.get("LustreConfiguration", {})
+    dns_name = file_system.get("DNSName")
+    mount_name = lustre_config.get("MountName")
+    storage = "{}Gi".format(file_system.get("StorageCapacity"))
+    assert dns_name and mount_name
+
+    pv_name = "{}-fsx-pv".format(job_name)
+    pvc_name = "{}-fsx-pvc".format(job_name)
+    assert pv_name != "fsx-pv-new"
+    assert pvc_name != "fsx-claim"
+
+    manifest = [
+        {
+            "apiVersion": "v1",
+            "kind": "PersistentVolume",
+            "metadata": {"name": pv_name},
+            "spec": {
+                "capacity": {"storage": storage},
+                "volumeMode": "Filesystem",
+                "accessModes": ["ReadWriteMany"],
+                "mountOptions": ["flock"],
+                "persistentVolumeReclaimPolicy": "Retain",
+                "storageClassName": "",
+                "csi": {
+                    "driver": "fsx.csi.aws.com",
+                    "volumeHandle": fsx_id,
+                    "volumeAttributes": {
+                        "dnsname": dns_name,
+                        "mountname": mount_name,
+                    },
+                },
+            },
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "PersistentVolumeClaim",
+            "metadata": {"name": pvc_name, "namespace": NAMESPACE},
+            "spec": {
+                "accessModes": ["ReadWriteMany"],
+                "volumeMode": "Filesystem",
+                "storageClassName": "",
+                "volumeName": pv_name,
+                "resources": {"requests": {"storage": storage}},
+            },
+        },
+    ]
+    manifest_path = Path(test_directory) / ".recipe-fsx-resources.yaml"
+    manifest_path.write_text(yaml.safe_dump_all(manifest, sort_keys=False))
+
+    try:
+        execute_command(["kubectl", "apply", "-f", str(manifest_path)])
+        execute_command([
+            "kubectl", "wait",
+            "--for=jsonpath={.status.phase}=Bound",
+            "persistentvolumeclaim/{}".format(pvc_name),
+            "--namespace", NAMESPACE,
+            "--timeout=120s",
+        ])
+        yield {"pv_name": pv_name, "pvc_name": pvc_name}
+    finally:
+        cleanup_errors = []
+        _run_cleanup_command([
+            "kubectl", "delete", "hyperpodpytorchjob", job_name,
+            "--namespace", NAMESPACE,
+            "--ignore-not-found=true", "--wait=true", "--timeout=180s",
+        ], cleanup_errors)
+        _run_cleanup_command([
+            "kubectl", "delete", "pod",
+            "--selector", "HPJob={}".format(job_name),
+            "--namespace", NAMESPACE,
+            "--ignore-not-found=true", "--wait=true", "--timeout=180s",
+        ], cleanup_errors)
+        _run_cleanup_command([
+            "kubectl", "delete", "configmap", "training-config-{}".format(job_name),
+            "--namespace", NAMESPACE,
+            "--ignore-not-found=true", "--wait=true", "--timeout=180s",
+        ], cleanup_errors)
+        _run_cleanup_command([
+            "kubectl", "delete", "persistentvolumeclaim", pvc_name,
+            "--namespace", NAMESPACE,
+            "--ignore-not-found=true", "--wait=true", "--timeout=180s",
+        ], cleanup_errors)
+        _run_cleanup_command([
+            "kubectl", "delete", "persistentvolume", pv_name,
+            "--ignore-not-found=true", "--wait=true", "--timeout=180s",
+        ], cleanup_errors)
+        if cleanup_errors:
+            raise RuntimeError("Recipe resource cleanup failed: {}".format(
+                "; ".join(cleanup_errors)
+            ))
 
 
 # --------- Recipe Job Tests ---------
@@ -73,17 +191,28 @@ def test_init_recipe_job(runner, job_name, test_directory):
     assert (base / "config.yaml").exists(), f"config.yaml not found in {test_directory}. Output: {result.output}"
     assert (base / ".override_spec.json").exists(), f".override_spec.json not found in {test_directory}"
     assert (base / "k8s.jinja").exists(), f"k8s.jinja not found in {test_directory}"
+    assert "claimName: fsx-claim" in (base / "k8s.jinja").read_text()
 
 
 @pytest.mark.dependency(name="configure", depends=["init"])
-def test_configure_recipe_job(runner, job_name, test_directory):
+def test_configure_recipe_job(
+    runner, job_name, test_directory, recipe_fsx_resources
+):
     """Configure recipe job with training parameters."""
-    # Patch EFA to 1 in k8s.jinja — the S3 template may ship with a higher value
-    import re
+    # Patch this run's PVC and reduce EFA in the downloaded template.
     k8s_jinja = Path("k8s.jinja")
-    k8s_jinja.write_text(
-        re.sub(r'(vpc\.amazonaws\.com/efa:\s*)\d+', r'\g<1>1', k8s_jinja.read_text())
+    template = k8s_jinja.read_text()
+    default_claim = "claimName: fsx-claim"
+    assert template.count(default_claim) == 1
+    template = template.replace(
+        default_claim,
+        "claimName: {}".format(recipe_fsx_resources["pvc_name"]),
+        1,
     )
+    template = re.sub(
+        r"(vpc\.amazonaws\.com/efa:\s*)\d+", r"\g<1>1", template
+    )
+    k8s_jinja.write_text(template)
 
     with patch.object(sys, 'argv', ['hyp', 'configure']):
         import importlib
@@ -99,9 +228,9 @@ def test_configure_recipe_job(runner, job_name, test_directory):
         "--learning-rate", "0.0001",
         "--lr-warmup-steps-ratio", "0.1",
         "--max-epochs", "20", 
-        "--output-path", "/data/output/qwen3-sft",
-        "--results-directory", "/data/results/qwen3-sft",
-        "--resume-from-path", "/data/output/qwen3-sft",
+        "--output-path", "/data/output/{}".format(job_name),
+        "--results-directory", "/data/results/{}".format(job_name),
+        "--resume-from-path", "/data/output/{}".format(job_name),
         "--training-data-name", "zc_train_256",
         "--validation-data-name", "zc_train_256",
         "--validation-data-path", "/data/recipes-data/sft/zc_train_256.jsonl",
@@ -125,7 +254,9 @@ def test_validate_recipe_job(runner, job_name, test_directory):
 
 
 @pytest.mark.dependency(name="create", depends=["validate", "configure", "init"])
-def test_create_recipe_job(runner, job_name, test_directory):
+def test_create_recipe_job(
+    runner, job_name, test_directory, recipe_fsx_resources
+):
     """Submit recipe job to Kubernetes and verify submission."""
     from sagemaker.hyperpod.cli.commands.init import _default_create as create_cmd
 
@@ -140,6 +271,8 @@ def test_create_recipe_job(runner, job_name, test_directory):
     # Verify job name appears in rendered output
     k8s_yaml = (run_dir / "k8s.yaml").read_text()
     assert job_name in k8s_yaml
+    assert "claimName: {}".format(recipe_fsx_resources["pvc_name"]) in k8s_yaml
+    assert "claimName: fsx-claim" not in k8s_yaml
 
 
 @pytest.mark.dependency(name="wait", depends=["create"])
@@ -229,16 +362,14 @@ def test_list_pods_recipe_job(job_name, test_directory):
 @pytest.mark.dependency(name="get_logs", depends=["wait"])
 def test_get_logs_recipe_job(job_name, test_directory):
     """Get logs from the first pod of the recipe job."""
-    pods_result = execute_command([
-        "hyp", "list-pods", "hyp-recipe-job",
-        "--job-name", job_name,
+    pod_result = execute_command([
+        "kubectl", "get", "pods",
         "--namespace", NAMESPACE,
+        "--selector", "HPJob={}".format(job_name),
+        "--output", "jsonpath={.items[0].metadata.name}",
     ])
-    assert pods_result.returncode == 0
-    # Extract first pod name — pod rows start with the job name
-    lines = [l for l in pods_result.stdout.splitlines() if l.strip().startswith(job_name)]
-    assert lines, "No pod found for job"
-    pod_name = lines[0].split()[0]
+    pod_name = pod_result.stdout.strip()
+    assert pod_name, "No pod found for job"
 
     result = execute_command([
         "hyp", "get-logs", "hyp-recipe-job",

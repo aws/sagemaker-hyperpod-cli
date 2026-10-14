@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from datetime import datetime, timezone
 import unittest
 from unittest import mock
 from unittest.mock import MagicMock
@@ -40,7 +41,7 @@ SAMPLE_OUTPUT: V1PodList = V1PodList(
             metadata=V1ObjectMeta(
                 name="test-name",
                 namespace="kubeflow",
-                creation_timestamp="timestamp",
+                creation_timestamp=datetime(2024, 1, 1, tzinfo=timezone.utc),
             ),
             spec=V1PodSpec(
                 node_name="test-node-name",

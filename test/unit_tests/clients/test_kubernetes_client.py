@@ -80,7 +80,6 @@ pods_with_next_token: V1PodList = V1PodList(
             metadata=V1ObjectMeta(
                 name="test-name",
                 namespace="kubeflow",
-                creation_timestamp="timestamp",
             )
         )
     ],
@@ -95,7 +94,6 @@ pods_no_next_token: V1PodList = V1PodList(
             metadata=V1ObjectMeta(
                 name="test-name",
                 namespace="kubeflow",
-                creation_timestamp="timestamp",
             )
         )
     ],
@@ -110,7 +108,6 @@ nodes_with_next_token: V1NodeList = V1NodeList(
             metadata=V1ObjectMeta(
                 name="test-name",
                 namespace="kubeflow",
-                creation_timestamp="timestamp",
             )
         )
     ],
@@ -125,7 +122,6 @@ nodes_no_next_token: V1NodeList = V1NodeList(
             metadata=V1ObjectMeta(
                 name="test-name",
                 namespace="kubeflow",
-                creation_timestamp="timestamp",
             )
         )
     ],

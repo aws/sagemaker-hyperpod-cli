@@ -27,6 +27,36 @@ from kubernetes.client import (
 from sagemaker.hyperpod.cli.constants.command_constants import NVIDIA_GPU_RESOURCE_LIMIT_KEY
 from sagemaker.hyperpod.cli.service.discover_namespaces import DiscoverNamespaces
 
+def _list_pods_and_get_requested_resources_group_by_node_name(
+    k8s_client: KubernetesClient,
+):
+    label_filter = "training.kubeflow.org/job-name"
+    pods = k8s_client.list_pods_in_all_namespaces_with_labels(label_filter)
+
+    accelerator_devices_requests_by_node = defaultdict(int)
+    for pod in pods:
+        node_name = pod.spec.node_name
+        if node_name:
+            for container in pod.spec.containers:
+                if container.resources and container.resources.requests:
+                    gpu_request = container.resources.requests.get(
+                        NVIDIA_GPU_RESOURCE_LIMIT_KEY
+                    )
+                    neuron_request = container.resources.requests.get(
+                        "aws.amazon.com/neurondevice"
+                    )
+                    if gpu_request:
+                        accelerator_devices_requests_by_node[node_name] += int(
+                            gpu_request
+                        )
+                    if neuron_request:
+                        accelerator_devices_requests_by_node[node_name] += int(
+                            neuron_request
+                        )
+
+    return accelerator_devices_requests_by_node
+
+
 class ListPods:
     def __init__(self):
         return
@@ -66,42 +96,15 @@ class ListPods:
 
     def list_pods_and_get_requested_resources_group_by_node_name(
         self,
-        k8s_client: Optional[KubernetesClient] = None,
     ):
         """
         List pods for all namespaces and initialized by kubeflow.
         Group by the node_name of the pod and the value is the
         accelerator devices resources requested
         """
-        k8s_client = k8s_client or KubernetesClient()
-
-        label_filter = f"training.kubeflow.org/job-name"
-        pods = k8s_client.list_pods_in_all_namespaces_with_labels(label_filter)
-
-        # Dictionary to hold total GPU/Neuron requests per node
-        accelerator_devices_requests_by_node = defaultdict(int)
-
-        # Loop through each pod and aggregate the GPU resource requests per node
-        for pod in pods:
-            node_name = pod.spec.node_name
-            # Check if the pod has a node_name assigned, if pod is not scheduled, it may not have node_name
-            if node_name:
-                for container in pod.spec.containers:
-                    if container.resources and container.resources.requests:
-                        gpu_request = container.resources.requests.get(NVIDIA_GPU_RESOURCE_LIMIT_KEY)
-                        neuron_request = container.resources.requests.get(
-                            "aws.amazon.com/neurondevice"
-                        )
-                        if gpu_request:
-                            accelerator_devices_requests_by_node[node_name] += int(
-                                gpu_request
-                            )
-                        if neuron_request:
-                            accelerator_devices_requests_by_node[node_name] += int(
-                                neuron_request
-                            )
-
-        return accelerator_devices_requests_by_node
+        return _list_pods_and_get_requested_resources_group_by_node_name(
+            KubernetesClient()
+        )
 
     def _generate_list_pods_output(self, pods: V1PodList) -> Optional[str]:
         output_pods = {"pods": []}

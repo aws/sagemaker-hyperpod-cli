@@ -67,20 +67,21 @@ class KubernetesClient:
     _kube_client = None
 
     def __new__(cls, config_file: Optional[str] = None) -> "KubernetesClient":
-        if config_file is not None:
-            instance = super(KubernetesClient, cls).__new__(cls)
-            instance._config_file = config_file
-            instance._kube_client = config.new_client_from_config(
-                config_file=config_file
-            )
-            return instance
-
         if cls._instance is None:
             cls._instance = super(KubernetesClient, cls).__new__(cls)
-            cls._instance._config_file = KUBE_CONFIG_PATH
-            config.load_kube_config(config_file=KUBE_CONFIG_PATH)
+            cls._instance._config_file = config_file or KUBE_CONFIG_PATH
+            config.load_kube_config(config_file=config_file or KUBE_CONFIG_PATH)
             cls._instance._kube_client = client.ApiClient()
         return cls._instance
+
+    @classmethod
+    def _from_config_file(cls, config_file: str) -> "KubernetesClient":
+        instance = super(KubernetesClient, cls).__new__(cls)
+        instance._config_file = config_file
+        instance._kube_client = config.new_client_from_config(
+            config_file=config_file
+        )
+        return instance
 
     def set_context(
         self,
@@ -209,7 +210,7 @@ class KubernetesClient:
             )
             nodes.extend(response.items)
 
-            _continue = response._metadata._continue  # Get the continue token
+            _continue = response.metadata._continue  # Get the continue token
 
             if not _continue:  # If there's no more data, break the loop
                 break
@@ -282,7 +283,7 @@ class KubernetesClient:
             )
             pods.extend(response.items)
 
-            _continue = response._metadata._continue  # Get the continue token
+            _continue = response.metadata._continue  # Get the continue token
 
             if not _continue:  # If there's no more data, break the loop
                 break

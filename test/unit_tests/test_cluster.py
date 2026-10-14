@@ -266,7 +266,7 @@ class ClusterTest(unittest.TestCase):
     @mock.patch(
         "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient._from_config_file")
     @mock.patch("subprocess.run")
     def test_get_clusters(
         self,
@@ -319,7 +319,7 @@ class ClusterTest(unittest.TestCase):
     @mock.patch(
         "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient._from_config_file")
     @mock.patch("subprocess.run")
     @mock.patch("logging.Logger.debug")
     def test_get_clusters_debug_mode(
@@ -375,7 +375,7 @@ class ClusterTest(unittest.TestCase):
     @mock.patch(
         "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient._from_config_file")
     @mock.patch("subprocess.run")
     def test_get_clusters_maximum_number(
         self,
@@ -434,7 +434,7 @@ class ClusterTest(unittest.TestCase):
     @mock.patch(
         "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient._from_config_file")
     @mock.patch("subprocess.run")
     def test_get_clusters_no_cluster_summary(
         self,
@@ -486,7 +486,7 @@ class ClusterTest(unittest.TestCase):
     @mock.patch(
         "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient._from_config_file")
     @mock.patch("subprocess.run")
     def test_get_clusters_table_output(
         self,
@@ -540,10 +540,10 @@ class ClusterTest(unittest.TestCase):
     @mock.patch(
         "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient._from_config_file")
     @mock.patch("subprocess.run")
     @mock.patch(
-        "sagemaker.hyperpod.cli.service.list_pods.ListPods.list_pods_and_get_requested_resources_group_by_node_name"
+        "sagemaker.hyperpod.cli.commands.cluster._list_pods_and_get_requested_resources_group_by_node_name"
     )
     def test_get_clusters_with_deep_health_check_enabled_and_gpu_devices(
         self,
@@ -599,10 +599,10 @@ class ClusterTest(unittest.TestCase):
     @mock.patch(
         "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient._from_config_file")
     @mock.patch("subprocess.run")
     @mock.patch(
-        "sagemaker.hyperpod.cli.service.list_pods.ListPods.list_pods_and_get_requested_resources_group_by_node_name"
+        "sagemaker.hyperpod.cli.commands.cluster._list_pods_and_get_requested_resources_group_by_node_name"
     )
     def test_get_clusters_with_unexpected_health_status(
         self,
@@ -659,10 +659,10 @@ class ClusterTest(unittest.TestCase):
     @mock.patch(
         "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient._from_config_file")
     @mock.patch("subprocess.run")
     @mock.patch(
-        "sagemaker.hyperpod.cli.service.list_pods.ListPods.list_pods_and_get_requested_resources_group_by_node_name"
+        "sagemaker.hyperpod.cli.commands.cluster._list_pods_and_get_requested_resources_group_by_node_name"
     )
     def test_get_clusters_with_no_status(
         self,
@@ -753,7 +753,7 @@ class ClusterTest(unittest.TestCase):
     @mock.patch(
         "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient._from_config_file")
     @mock.patch("subprocess.run")
     def test_list_clusters_with_clusters_list(
         self,
@@ -808,7 +808,7 @@ class ClusterTest(unittest.TestCase):
     @mock.patch(
         "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient._from_config_file")
     @mock.patch("subprocess.run")
     def test_list_clusters_failed_list_cluster_error(
         self,
@@ -858,7 +858,7 @@ class ClusterTest(unittest.TestCase):
     @mock.patch(
         "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient._from_config_file")
     @mock.patch("subprocess.run")
     def test_list_clusters_failed_unexpected_error(
         self,
@@ -911,7 +911,7 @@ class ClusterTest(unittest.TestCase):
     @mock.patch(
         "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient._from_config_file")
     @mock.patch("subprocess.run")
     def test_list_clusters_skipped_not_eks_clusters(
         self,
@@ -962,7 +962,7 @@ class ClusterTest(unittest.TestCase):
     @mock.patch(
         "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient._from_config_file")
     @mock.patch("subprocess.run")
     def test_get_clusters_with_sm_managed_namespace(
         self,
@@ -1043,7 +1043,7 @@ class ClusterTest(unittest.TestCase):
     @mock.patch(
         "sagemaker.hyperpod.cli.commands.cluster.ClusterValidator.validate_cluster_and_get_eks_arn"
     )
-    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient._from_config_file")
     @mock.patch("subprocess.run")
     def test_get_clusters_with_not_sm_managed_namespace(
         self,
@@ -1105,7 +1105,7 @@ class ClusterTest(unittest.TestCase):
         json.loads(result.output)
 
     @mock.patch("subprocess.run")
-    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient.__new__")
+    @mock.patch("sagemaker.hyperpod.cli.clients.kubernetes_client.KubernetesClient._from_config_file")
     @mock.patch("sagemaker.hyperpod.cli.validators.cluster_validator.ClusterValidator.validate_cluster_and_get_eks_arn")
     @mock.patch("sagemaker.hyperpod.cli.validators.cluster_validator.ClusterValidator.validate_aws_credential")
     @mock.patch("boto3.Session")
