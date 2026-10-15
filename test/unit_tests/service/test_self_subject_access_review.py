@@ -27,7 +27,7 @@ class TestSelfSubjectAccessReview(unittest.TestCase):
         mock_kubernetes_client().get_auth_v1_api.return_value = mock_auth_v1_api
         
         # Create a mock response for create_self_subject_access_review
-        mock_response = MagicMock(spec=V1SelfSubjectAccessReview)
+        mock_response = MagicMock()
         mock_response.status.allowed = True
         mock_auth_v1_api.create_self_subject_access_review.return_value = mock_response
 
@@ -53,7 +53,13 @@ class TestSelfSubjectAccessReview(unittest.TestCase):
         # Capture and inspect the arguments passed in the call
         args, kwargs = mock_auth_v1_api.create_self_subject_access_review.call_args
         self.assertIsInstance(kwargs['body'], V1SelfSubjectAccessReview)
-        self.assertEqual(kwargs['body'].spec.resource_attributes['namespace'], 'test-namespace')
+        resource_attributes_body = kwargs["body"].spec.resource_attributes
+        namespace = (
+            resource_attributes_body["namespace"]
+            if isinstance(resource_attributes_body, dict)
+            else resource_attributes_body.namespace
+        )
+        self.assertEqual(namespace, "test-namespace")
 
 
 if __name__ == "__main__":

@@ -1190,7 +1190,7 @@ def _generate_deep_health_check_nodes_list():
                     DEEP_HEALTH_CHECK_STATUS_LABEL: "Passed",
                 },
             ),
-            status=client.V1NodeStatus(allocatable={"nvidia.com/gpu": 24}),
+            status=client.V1NodeStatus(allocatable={"nvidia.com/gpu": "24"}),
         ),
         client.V1Node(
             metadata=client.V1ObjectMeta(
@@ -1201,7 +1201,7 @@ def _generate_deep_health_check_nodes_list():
                     INSTANCE_TYPE_LABEL: "ml.trn1.32xlarge",
                 },
             ),
-            status=client.V1NodeStatus(allocatable={"aws.amazon.com/neurondevice": 16}),
+            status=client.V1NodeStatus(allocatable={"aws.amazon.com/neurondevice": "16"}),
         ),
         client.V1Node(
             metadata=client.V1ObjectMeta(
@@ -1211,7 +1211,7 @@ def _generate_deep_health_check_nodes_list():
                     INSTANCE_TYPE_LABEL: "ml.trn1.32xlarge",
                 },
             ),
-            status=client.V1NodeStatus(allocatable={"aws.amazon.com/neurondevice": 16}),
+            status=client.V1NodeStatus(allocatable={"aws.amazon.com/neurondevice": "16"}),
         ),
         client.V1Node(
             metadata=client.V1ObjectMeta(
