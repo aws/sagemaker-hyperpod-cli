@@ -80,7 +80,6 @@ pods_with_next_token: V1PodList = V1PodList(
             metadata=V1ObjectMeta(
                 name="test-name",
                 namespace="kubeflow",
-                creation_timestamp="timestamp",
             )
         )
     ],
@@ -95,7 +94,6 @@ pods_no_next_token: V1PodList = V1PodList(
             metadata=V1ObjectMeta(
                 name="test-name",
                 namespace="kubeflow",
-                creation_timestamp="timestamp",
             )
         )
     ],
@@ -110,7 +108,6 @@ nodes_with_next_token: V1NodeList = V1NodeList(
             metadata=V1ObjectMeta(
                 name="test-name",
                 namespace="kubeflow",
-                creation_timestamp="timestamp",
             )
         )
     ],
@@ -125,7 +122,6 @@ nodes_no_next_token: V1NodeList = V1NodeList(
             metadata=V1ObjectMeta(
                 name="test-name",
                 namespace="kubeflow",
-                creation_timestamp="timestamp",
             )
         )
     ],
@@ -418,7 +414,7 @@ class TestKubernetesClient(unittest.TestCase):
         auth_v1_api = test_client.get_auth_v1_api()
         self.assertIsInstance(auth_v1_api, client.AuthorizationV1Api)
 
-    @patch("kubernetes.config.load_kube_config")
+    @patch("kubernetes.config.new_client_from_config")
     @patch(
         "kubernetes.client.CoreV1Api.list_node",
         return_value=nodes_no_next_token,
@@ -426,13 +422,14 @@ class TestKubernetesClient(unittest.TestCase):
     def test_list_node_with_temp_config_no_next_token(
         self,
         mock_core_client: Mock,
-        mock_kube_config: Mock,
+        mock_new_client: Mock,
     ):
-        mock_kube_config.return_value = None
+        mock_new_client.return_value = MagicMock()
         test_client = KubernetesClient()
         test_client.list_node_with_temp_config("temp-file", "temp-label")
+        mock_new_client.assert_called_once_with(config_file="temp-file")
 
-    @patch("kubernetes.config.load_kube_config")
+    @patch("kubernetes.config.new_client_from_config")
     @patch(
         "kubernetes.client.CoreV1Api.list_node",
         side_effect=[
@@ -443,11 +440,12 @@ class TestKubernetesClient(unittest.TestCase):
     def test_list_node_with_temp_config_no_next_token_with_pagination(
         self,
         mock_core_client: Mock,
-        mock_kube_config: Mock,
+        mock_new_client: Mock,
     ):
-        mock_kube_config.return_value = None
+        mock_new_client.return_value = MagicMock()
         test_client = KubernetesClient()
         test_client.list_node_with_temp_config("temp-file", "temp-label")
+        mock_new_client.assert_called_once_with(config_file="temp-file")
 
     @patch("kubernetes.client.CustomObjectsApi")
     def test_delete_training_job_with_namepsace(

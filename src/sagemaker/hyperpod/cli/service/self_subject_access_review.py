@@ -38,7 +38,6 @@ class SelfSubjectAccessReview:
             spec=V1SelfSubjectAccessReviewSpec(
                 resource_attributes=resource_attributes,
                 non_resource_attributes=non_resource_attributes,
-                local_vars_configuration=local_vars_configuration,
             )
         )
 

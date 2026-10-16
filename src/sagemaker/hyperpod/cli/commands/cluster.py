@@ -48,7 +48,7 @@ from sagemaker.hyperpod.common.telemetry.user_agent import (
     get_user_agent_extra_suffix,
 )
 from sagemaker.hyperpod.cli.service.list_pods import (
-    ListPods,
+    _list_pods_and_get_requested_resources_group_by_node_name,
 )
 from sagemaker.hyperpod.cli.utils import (
     get_name_from_arn,
@@ -303,11 +303,11 @@ def rate_limited_operation(
             return None
         eks_cluster_name = get_name_from_arn(eks_cluster_arn)
         _update_kube_config(eks_cluster_name, region, temp_config_file)
-        k8s_client = KubernetesClient(config_file=temp_config_file)
+        k8s_client = KubernetesClient._from_config_file(temp_config_file)
         nodes = k8s_client.list_node_with_temp_config(
             temp_config_file, SAGEMAKER_HYPERPOD_NAME_LABEL
         )
-        nodes_info = _aggregate_nodes_info(nodes)
+        nodes_info = _aggregate_nodes_info(nodes, k8s_client)
 
         ns_nominal_quota = {}
         ns_quota_usage = {}
@@ -466,10 +466,10 @@ def _restructure_output(summary_list, namespaces):
 
 def _aggregate_nodes_info(
     nodes: List[client.V1Node],
+    k8s_client: KubernetesClient,
 ) -> Dict[str, Dict[str, Any]]:
-    list_pods_service = ListPods()
     nodes_resource_allocated_dict = (
-        list_pods_service.list_pods_and_get_requested_resources_group_by_node_name()
+        _list_pods_and_get_requested_resources_group_by_node_name(k8s_client)
     )
     nodes_summary: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
