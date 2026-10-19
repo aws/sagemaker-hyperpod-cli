@@ -1,5 +1,23 @@
 # Changelog
 
+## v3.12.0 (2026-10-19)
+
+### Features
+- Add g7 instance support to the nvidia-device-plugin and aws-efa-k8s-device-plugin (#447)
+- Grant the inference operator access to `InferenceGatewayConfig` via RBAC (#463)
+
+### Bug Fixes and Other Changes
+- Stabilize integration cluster tests (#469)
+- Add compatibility with the Kubernetes Python client 37.x for `list-cluster` (#469)
+- Load Kubernetes credentials for `hyp create ray-dashboard-connection` through `load_kubeconfig` (#458)
+
+### Helm Chart Changes
+- Upgrade the inference operator to v3.7 with configurable logging priority (#464)
+- Update the inference-operator subchart to v3.6 (chart 2.6.0) (#461)
+- Bump the hyperpod-inference-operator subchart reference to 2.7.0 (#466)
+- Upgrade the GPU operator subchart from v26.3.1 to v26.7.0 (#467)
+- Release Health Monitoring Agent 1.0.2710.0_1.0.501.0 with bug fixes and CVE fixes (#468)
+
 ## v3.11.0 (2026-09-02)
 
 ### Features
