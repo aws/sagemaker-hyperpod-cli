@@ -181,11 +181,13 @@ hyp create --region <region>
 
 **Note**: The region flag is optional. If not provided, the command will use the default region from your AWS credentials configuration.
 
-#### List Cluster Stacks
+#### List CloudFormation Stacks
 
 ```bash
 hyp list cluster-stack
 ```
+
+**Note**: This command lists all CloudFormation stacks in the current AWS account and Region. It does not currently filter the results to HyperPod-created stacks.
 
 | Option | Type | Description |
 |--------|------|-------------|
@@ -1002,13 +1004,15 @@ cluster_stack = HpClusterStack(
 response = cluster_stack.create(region="us-east-2")
 ```
 
-#### Listing Cluster Stacks
+#### Listing CloudFormation Stacks
 
 ```python
-# List all cluster stacks
+# List all CloudFormation stacks in the Region
 stacks = HpClusterStack.list(region="us-east-2")
 print(f"Found {len(stacks['StackSummaries'])} stacks")
 ```
+
+**Note**: `HpClusterStack.list()` returns all CloudFormation stacks in the current account and Region; it does not filter to HyperPod cluster stacks.
 
 #### Describing a Cluster Stack
 

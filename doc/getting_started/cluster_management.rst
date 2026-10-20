@@ -127,7 +127,12 @@ Check the status of your cluster:
    **Region-Specific Stack Names**: Cluster stack names are unique within each AWS region. When describing a stack, ensure you specify the correct region where the stack was created, or the command will fail to find the stack.
          
 
-List all clusters:
+List CloudFormation stacks:
+
+.. note::
+   ``hyp list cluster-stack`` lists all CloudFormation stacks in the current
+   account and Region. It does not currently filter the results to HyperPod
+   cluster stacks.
 
 .. tab-set::
 

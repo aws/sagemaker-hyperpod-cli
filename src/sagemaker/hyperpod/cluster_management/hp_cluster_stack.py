@@ -355,6 +355,11 @@ class HpClusterStack(ClusterStackBase):
         .. note::
            Stack listings are region-specific. If no region is provided, uses the default region from your AWS configuration.
 
+        .. note::
+           This method does not filter results to HyperPod-related stacks. The
+           CloudFormation ListStacks API does not return stack tags, so callers
+           that need a specific subset must make additional API calls.
+
         **Parameters:**
 
         .. list-table::

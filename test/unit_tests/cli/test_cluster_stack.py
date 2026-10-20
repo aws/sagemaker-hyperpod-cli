@@ -86,10 +86,49 @@ class TestListClusterStacks:
         
         # Assert
         assert result.exit_code == 0
-        assert 'HyperPod Cluster Stacks (1 found)' in result.output
+        assert 'CloudFormation Stacks (1 found)' in result.output
         assert 'test-stack' in result.output
         assert 'CREATE_COMPLETE' in result.output
         mock_hp_cluster_list.assert_called_once_with(region=None, stack_status_filter=None)
+
+    @patch('sagemaker.hyperpod.cli.commands.cluster_stack.HpClusterStack.list')
+    @patch('sagemaker.hyperpod.cli.commands.cluster_stack.setup_logging')
+    def test_list_cluster_stacks_includes_unrelated_cloudformation_stacks(self, mock_setup_logging, mock_hp_cluster_list):
+        """The command returns all CloudFormation stacks, not only HyperPod stacks."""
+        mock_setup_logging.return_value = Mock()
+        mock_hp_cluster_list.return_value = {
+            'StackSummaries': [
+                {
+                    'StackName': 'hyperpod-cluster-stack',
+                    'StackStatus': 'CREATE_COMPLETE',
+                    'CreationTime': datetime(2024, 1, 1, 12, 0, 0),
+                },
+                {
+                    'StackName': 'unrelated-application-stack',
+                    'StackStatus': 'UPDATE_COMPLETE',
+                    'CreationTime': datetime(2024, 1, 2, 12, 0, 0),
+                },
+            ]
+        }
+
+        result = CliRunner().invoke(list_cluster_stacks, [])
+
+        assert result.exit_code == 0
+        assert 'CloudFormation Stacks (2 found)' in result.output
+        assert 'HyperPod Cluster Stacks' not in result.output
+        assert 'hyperpod-cluster-stack' in result.output
+        assert 'unrelated-application-stack' in result.output
+
+    def test_list_cluster_stacks_help_describes_all_stacks(self):
+        """The help output does not claim that results are limited to HyperPod stacks."""
+        result = CliRunner().invoke(list_cluster_stacks, ['--help'])
+
+        assert result.exit_code == 0
+        help_text = ' '.join(result.output.split())
+        assert 'List CloudFormation stacks in the current AWS account and Region.' in help_text
+        assert 'Returns all CloudFormation stacks in the current account and Region.' in help_text
+        assert 'does not currently filter results to stacks created for HyperPod clusters.' in help_text
+        assert 'HyperPod Cluster Stacks' not in help_text
 
     @patch('sagemaker.hyperpod.cli.commands.cluster_stack.HpClusterStack.list')
     @patch('sagemaker.hyperpod.cli.commands.cluster_stack.setup_logging')
