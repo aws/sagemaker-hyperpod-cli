@@ -4,7 +4,7 @@ import sys
 import shutil
 from pathlib import Path
 from datetime import datetime
-from jinja2 import Template
+from jinja2.sandbox import ImmutableSandboxedEnvironment
 from sagemaker.hyperpod.cli.constants.init_constants import (
     USAGE_GUIDE_TEXT_CFN,
     USAGE_GUIDE_TEXT_CRD,
@@ -435,7 +435,12 @@ def _create_standard_template(dir_path: Path, data: dict, template: str, version
 
     try:
         template_source = jinja_file.read_text()
-        tpl = Template(template_source)
+        # Render template manifests inside a sandboxed Jinja2 environment so
+        # that template expressions cannot access unsafe Python attributes or
+        # callables. This matches the sandboxed rendering used elsewhere
+        # (recipe_utils._render_k8s_template) and keeps the two paths aligned.
+        env = ImmutableSandboxedEnvironment()
+        tpl = env.from_string(template_source)
         rendered = tpl.render(**data)
     except Exception as e:
         click.secho(f"❌  Failed to render template: {e}", fg="red")
