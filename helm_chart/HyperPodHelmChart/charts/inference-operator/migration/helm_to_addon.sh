@@ -12,6 +12,24 @@ AWS_REGION=""
 HELM_NAMESPACE=""
 S3_MOUNTPOINT_ROLE_ARN=""
 FSX_ROLE_ARN=""
+# Optional customer-provided roles for the addon. When a flag is not passed, the
+# script creates the role with the same trust and permissions the HyperPod
+# Inference addon CloudFormation flow uses (addon-iam-roles-cfn-template).
+USER_EXECUTION_ROLE_ARN=""
+USER_ALB_ROLE_ARN=""
+USER_KEDA_ROLE_ARN=""
+USER_JS_GATED_ROLE_ARN=""
+# amazon-sagemaker-hyperpod-inference addon version. Empty = use the EKS default version for the
+# cluster's Kubernetes version (resolved at runtime). Override with --addon-version.
+ADDON_VERSION=""
+
+usage() {
+    echo "Usage: $0 [--auto-approve] [--step-by-step] [--skip-dependencies-migration]"
+    echo "          [--cluster-name NAME] [--region REGION] [--helm-namespace NAMESPACE]"
+    echo "          [--s3-mountpoint-role-arn ARN] [--fsx-role-arn ARN]"
+    echo "          [--execution-role-arn ARN] [--alb-role-arn ARN] [--keda-role-arn ARN]"
+    echo "          [--jumpstart-gated-role-arn ARN] [--addon-version VERSION]"
+}
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -47,9 +65,33 @@ while [[ $# -gt 0 ]]; do
             FSX_ROLE_ARN="$2"
             shift 2
             ;;
+        --execution-role-arn)
+            USER_EXECUTION_ROLE_ARN="$2"
+            shift 2
+            ;;
+        --alb-role-arn)
+            USER_ALB_ROLE_ARN="$2"
+            shift 2
+            ;;
+        --keda-role-arn)
+            USER_KEDA_ROLE_ARN="$2"
+            shift 2
+            ;;
+        --jumpstart-gated-role-arn)
+            USER_JS_GATED_ROLE_ARN="$2"
+            shift 2
+            ;;
+        --addon-version)
+            ADDON_VERSION="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
         *)
             echo "Unknown option $1"
-            echo "Usage: $0 [--auto-approve] [--step-by-step] [--skip-dependencies-migration] [--cluster-name NAME] [--region REGION] [--helm-namespace NAMESPACE] [--s3-mountpoint-role-arn ARN] [--fsx-role-arn ARN]"
+            usage
             exit 1
             ;;
     esac
@@ -72,99 +114,131 @@ print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-# Function to backup trust policy
+# Function to delete a role this script created (inline + managed policies first)
+delete_created_role() {
+    local role_name="$1"
+    aws iam list-attached-role-policies --role-name "$role_name" --query 'AttachedPolicies[].PolicyArn' --output text 2>/dev/null | tr '\t' '\n' | grep -v '^$' | while read -r arn; do
+        aws iam detach-role-policy --role-name "$role_name" --policy-arn "$arn" 2>/dev/null || true
+    done
+    aws iam list-role-policies --role-name "$role_name" --query 'PolicyNames[]' --output text 2>/dev/null | tr '\t' '\n' | grep -v '^$' | while read -r pname; do
+        aws iam delete-role-policy --role-name "$role_name" --policy-name "$pname" 2>/dev/null || true
+    done
+    aws iam delete-role --role-name "$role_name" 2>/dev/null || print_warning "Failed to delete role: $role_name"
+}
+
 # Function to rollback changes
 rollback() {
+    # Rollback must not re-enter the error handler or stop half-way
+    trap - ERR INT TERM
+    set +e
     print_error "=== ROLLBACK INITIATED ==="
     print_info "Backup directory: $BACKUP_DIR"
-    
-    # Delete new roles if they were created
-    if [[ -f "$BACKUP_DIR/alb-role-name-new.txt" ]]; then
-        NEW_ALB_ROLE=$(cat "$BACKUP_DIR/alb-role-name-new.txt")
-        print_info "Deleting new ALB role: $NEW_ALB_ROLE"
-        aws iam list-attached-role-policies --role-name "$NEW_ALB_ROLE" --query 'AttachedPolicies[].PolicyArn' --output text 2>/dev/null | xargs -n1 -I{} aws iam detach-role-policy --role-name "$NEW_ALB_ROLE" --policy-arn {} 2>/dev/null
-        aws iam delete-role --role-name "$NEW_ALB_ROLE" 2>/dev/null || print_warning "Failed to delete new ALB role"
-    fi
-    
-    if [[ -f "$BACKUP_DIR/keda-role-name-new.txt" ]]; then
-        NEW_KEDA_ROLE=$(cat "$BACKUP_DIR/keda-role-name-new.txt")
-        print_info "Deleting new KEDA role: $NEW_KEDA_ROLE"
-        aws iam list-attached-role-policies --role-name "$NEW_KEDA_ROLE" --query 'AttachedPolicies[].PolicyArn' --output text 2>/dev/null | xargs -n1 -I{} aws iam detach-role-policy --role-name "$NEW_KEDA_ROLE" --policy-arn {} 2>/dev/null
-        aws iam delete-role --role-name "$NEW_KEDA_ROLE" 2>/dev/null || print_warning "Failed to delete new KEDA role"
-    fi
-    
-    # Scale Helm deployment back up if it was scaled down
-    if [[ -f "$BACKUP_DIR/helm-scaled-down.flag" ]]; then
-        print_info "Deleting addon deployments and restoring Helm deployment..."
-        kubectl delete deployment hyperpod-inference-controller-manager -n hyperpod-inference-system --ignore-not-found=true
-        kubectl delete deployment hyperpod-inference-alb -n hyperpod-inference-system --ignore-not-found=true
-        kubectl delete deployment keda-operator keda-operator-metrics-apiserver keda-admission-webhooks -n hyperpod-inference-system --ignore-not-found=true
-        
-        # Check if Helm deployment was deleted, if so run helm rollback
-        if ! kubectl get deployment hyperpod-inference-operator-controller-manager -n hyperpod-inference-system >/dev/null 2>&1; then
-            print_info "Running Helm rollback..."
-            helm rollback hyperpod-inference-operator 1 -n kube-system || print_warning "Failed to rollback Helm release"
+    local addon_ns="hyperpod-inference-system"
+    local helm_ns="${HELM_NAMESPACE:-kube-system}"
+    local addon_installed=false
+    [[ -f "$BACKUP_DIR/addon-installed.flag" ]] && addon_installed=true
+
+    # Model resources (JumpStartModel, InferenceEndpointConfig) and their CRDs are never deleted by
+    # this rollback. Save them first so they can be restored by hand if anything goes wrong.
+    kubectl get jumpstartmodels,inferenceendpointconfigs -A -o yaml > "$BACKUP_DIR/model-crs-at-rollback.yaml" 2>/dev/null \
+        && print_info "Model resources saved to $BACKUP_DIR/model-crs-at-rollback.yaml"
+
+    # 1. Remove the add-on. --preserve is required: the add-on owns the inference CRDs, and deleting it
+    #    without --preserve would delete every model resource. Its controllers keep running until the
+    #    Helm controllers are back (step 4).
+    if [[ "$addon_installed" == "true" ]]; then
+        print_info "Removing addon (keeping its Kubernetes resources)..."
+        if aws eks describe-addon --cluster-name "$CLUSTER_NAME" --addon-name amazon-sagemaker-hyperpod-inference --region "$AWS_REGION" >/dev/null 2>&1; then
+            aws eks delete-addon --cluster-name "$CLUSTER_NAME" --addon-name amazon-sagemaker-hyperpod-inference \
+                --region "$AWS_REGION" --preserve >/dev/null || print_warning "Failed to remove addon"
+            aws eks wait addon-deleted --cluster-name "$CLUSTER_NAME" --addon-name amazon-sagemaker-hyperpod-inference \
+                --region "$AWS_REGION" || print_warning "Timed out waiting for addon deletion"
+        fi
+
+        # 2. The add-on took over shared objects (CRD conversion webhook, ALB/KEDA webhooks, KEDA external
+        #    metrics APIService, service accounts). Re-apply the Helm release so they point back at the Helm
+        #    controllers. Objects now owned by other EKS add-ons are skipped.
+        print_info "Restoring Helm release objects..."
+        local skip_s3=false skip_metrics=false
+        aws eks describe-addon --cluster-name "$CLUSTER_NAME" --addon-name aws-mountpoint-s3-csi-driver --region "$AWS_REGION" >/dev/null 2>&1 && skip_s3=true
+        aws eks describe-addon --cluster-name "$CLUSTER_NAME" --addon-name metrics-server --region "$AWS_REGION" >/dev/null 2>&1 && skip_metrics=true
+        if helm get manifest hyperpod-inference-operator -n "$helm_ns" > "$BACKUP_DIR/helm-manifest.yaml" 2>/dev/null; then
+            kubectl create --dry-run=client -o json -f "$BACKUP_DIR/helm-manifest.yaml" 2>/dev/null \
+              | jq -s --argjson s3 "$skip_s3" --argjson ms "$skip_metrics" '
+                  [ .[] | if .kind == "List" then .items[] else . end
+                    | select(($s3 | not) or ((.kind == "DaemonSet" and .metadata.name == "s3-csi-node") or (.kind == "CSIDriver" and .metadata.name == "s3.csi.aws.com") | not))
+                    | select(($ms | not) or ((.kind == "APIService" and .metadata.name == "v1beta1.metrics.k8s.io") or (.kind == "Deployment" and .metadata.name == "hyperpod-inference-operator-metrics") | not)) ]
+                  | {apiVersion: "v1", kind: "List", items: .}' > "$BACKUP_DIR/helm-restore.json" \
+              && kubectl apply --server-side --force-conflicts --field-manager=helm -f "$BACKUP_DIR/helm-restore.json" >/dev/null \
+              && print_success "Helm release objects restored" \
+              || print_warning "Failed to restore Helm objects; see $BACKUP_DIR/helm-manifest.yaml"
         else
-            kubectl scale deployment hyperpod-inference-operator-controller-manager --replicas=1 -n hyperpod-inference-system || print_warning "Failed to scale Helm deployment back up"
+            print_warning "Could not read the Helm release manifest"
         fi
     fi
 
-    # Remove tags from ALB resources
+    # 3. Scale the Helm controllers back up (no-op for ones already restored above)
+    if [[ -f "$BACKUP_DIR/helm-scaled-down.flag" ]]; then
+        print_info "Scaling Helm inference operator back up..."
+        kubectl scale deployment hyperpod-inference-operator-controller-manager --replicas=1 -n "$addon_ns" || print_warning "Failed to scale Helm deployment back up"
+    fi
+    [[ -f "$BACKUP_DIR/alb-scaled-down.flag" ]] && { kubectl scale deployment hyperpod-inference-operator-alb --replicas=2 -n "$helm_ns" || print_warning "Failed to scale ALB controller back up"; }
+    [[ -f "$BACKUP_DIR/keda-scaled-down.flag" ]] && { kubectl scale deployment keda-operator --replicas=1 -n "$helm_ns" || print_warning "Failed to scale KEDA operator back up"; }
+    [[ -f "$BACKUP_DIR/keda-metrics-scaled-down.flag" ]] && { kubectl scale deployment keda-operator-metrics-apiserver --replicas=1 -n "$helm_ns" || print_warning "Failed to scale KEDA metrics apiserver back up"; }
+    [[ -f "$BACKUP_DIR/keda-webhooks-scaled-down.flag" ]] && { kubectl scale deployment keda-admission-webhooks --replicas=1 -n "$helm_ns" || print_warning "Failed to scale KEDA admission webhooks back up"; }
+
+    # 4. Once the Helm controllers are ready, remove the add-on's controllers
+    if [[ "$addon_installed" == "true" ]]; then
+        print_info "Waiting for Helm controllers to become ready..."
+        local d
+        for d in hyperpod-inference-operator-alb keda-operator keda-operator-metrics-apiserver keda-admission-webhooks; do
+            kubectl rollout status deployment "$d" -n "$helm_ns" --timeout=10m >/dev/null 2>&1 || print_warning "$helm_ns/$d is not ready yet"
+        done
+        # Becomes Ready only after the cluster inference watcher is re-enabled (can take several minutes)
+        kubectl rollout status deployment hyperpod-inference-operator-controller-manager -n "$addon_ns" --timeout=20m >/dev/null 2>&1 \
+            || print_warning "Helm inference operator is not ready yet; it becomes ready once the cluster inference watcher is enabled"
+        print_info "Removing addon controllers..."
+        kubectl delete deployment -n "$addon_ns" --ignore-not-found=true \
+            hyperpod-inference-controller-manager hyperpod-inference-alb keda-operator keda-operator-metrics-apiserver keda-admission-webhooks
+    fi
+
+    # 5. Remove only the tags this script added
     if [[ -f "$BACKUP_DIR/alb-arns.txt" ]]; then
         print_info "Removing tags from ALB resources..."
         while read -r alb_arn; do
             aws elbv2 remove-tags --resource-arns "$alb_arn" --tag-keys "CreatedBy" --region "$AWS_REGION" 2>/dev/null || true
         done < "$BACKUP_DIR/alb-arns.txt"
     fi
-
-    # Remove tags from ACM certificates
     if [[ -f "$BACKUP_DIR/acm-arns.txt" ]]; then
         print_info "Removing tags from ACM certificates..."
         while read -r cert_arn; do
             aws acm remove-tags-from-certificate --certificate-arn "$cert_arn" --tags Key="CreatedBy" --region "$AWS_REGION" 2>/dev/null || true
         done < "$BACKUP_DIR/acm-arns.txt"
     fi
-
-    # Remove tags from S3 objects
     if [[ -f "$BACKUP_DIR/s3-objects.txt" ]]; then
-        print_info "Removing tags from S3 objects..."
+        print_info "Restoring tags on S3 objects..."
         while read -r line; do
             bucket=$(echo "$line" | cut -d'|' -f1)
             key=$(echo "$line" | cut -d'|' -f2)
-            aws s3api delete-object-tagging --bucket "$bucket" --key "$key" 2>/dev/null || true
+            orig=$(echo "$line" | cut -d'|' -f3-)
+            if [[ -z "$orig" || "$orig" == '{"TagSet":[]}' ]]; then
+                aws s3api delete-object-tagging --bucket "$bucket" --key "$key" 2>/dev/null || true
+            else
+                aws s3api put-object-tagging --bucket "$bucket" --key "$key" --tagging "$orig" 2>/dev/null || true
+            fi
         done < "$BACKUP_DIR/s3-objects.txt"
     fi
 
-    # Scale ALB controller back up if it was scaled down
-    if [[ -f "$BACKUP_DIR/alb-scaled-down.flag" ]]; then
-        print_info "Scaling ALB controller back up..."
-        kubectl scale deployment hyperpod-inference-operator-alb --replicas=2 -n kube-system || print_warning "Failed to scale ALB controller back up"
+    # 6. Delete the IAM roles this script created, last, so no controller loses its credentials mid-way
+    #    (customer-provided or pre-existing roles are left untouched)
+    if [[ -f "$BACKUP_DIR/created-roles.txt" ]]; then
+        while read -r created_role; do
+            [[ -z "$created_role" ]] && continue
+            print_info "Deleting role created by migration: $created_role"
+            delete_created_role "$created_role"
+        done < "$BACKUP_DIR/created-roles.txt"
     fi
 
-    # Scale KEDA operator back up if it was scaled down
-    if [[ -f "$BACKUP_DIR/keda-scaled-down.flag" ]]; then
-        print_info "Scaling KEDA operator back up..."
-        kubectl scale deployment keda-operator --replicas=1 -n kube-system || print_warning "Failed to scale KEDA operator back up"
-    fi
-
-    # Scale KEDA metrics apiserver back up if it was scaled down
-    if [[ -f "$BACKUP_DIR/keda-metrics-scaled-down.flag" ]]; then
-        print_info "Scaling KEDA metrics apiserver back up..."
-        kubectl scale deployment keda-operator-metrics-apiserver --replicas=1 -n kube-system || print_warning "Failed to scale KEDA metrics apiserver back up"
-    fi
-
-    # Scale KEDA admission webhooks back up if it was scaled down
-    if [[ -f "$BACKUP_DIR/keda-webhooks-scaled-down.flag" ]]; then
-        print_info "Scaling KEDA admission webhooks back up..."
-        kubectl scale deployment keda-admission-webhooks --replicas=1 -n kube-system || print_warning "Failed to scale KEDA admission webhooks back up"
-    fi
-    
-    # Remove addon if it was installed
-    if [[ -f "$BACKUP_DIR/addon-installed.flag" ]]; then
-        print_info "Removing addon..."
-        aws eks delete-addon --cluster-name "$CLUSTER_NAME" --addon-name amazon-sagemaker-hyperpod-inference --region "$AWS_REGION" --preserve || print_warning "Failed to remove addon"
-    fi
-    
     print_info "Rollback completed. Check backup directory for original configurations: $BACKUP_DIR"
     exit 1
 }
@@ -233,6 +307,18 @@ confirm_action() {
     fi
 }
 
+# Like confirm_action, but for a detected problem: never auto-approved.
+# In --auto-approve mode the script stops so a misconfiguration cannot slip through unattended.
+confirm_risk() {
+    local action="$1"
+    if [[ "$AUTO_APPROVE" == "true" ]]; then
+        print_error "Refusing to auto-approve: $action"
+        print_error "Fix the issue above and re-run, or re-run without --auto-approve to accept it explicitly."
+        exit 1
+    fi
+    confirm_action "$action"
+}
+
 # Function to pause between steps
 pause_step() {
     if [[ "$STEP_BY_STEP" == "true" ]]; then
@@ -247,6 +333,118 @@ if [[ "$AUTO_APPROVE" == "true" ]]; then
     print_info "Running in auto-approve mode - no confirmation prompts except in case of rollback needed"
 fi
 echo
+
+# Cluster name and region are needed before any AWS/kubectl call below
+if [[ -z "$CLUSTER_NAME" ]]; then
+    prompt_user "Enter your EKS cluster name:" CLUSTER_NAME
+fi
+if [[ -z "$AWS_REGION" ]]; then
+    prompt_user "Enter your AWS region:" AWS_REGION
+fi
+
+# Validate the format of customer-provided role ARNs (same pattern the addon schema enforces)
+ROLE_ARN_PATTERN='^arn:aws:iam::[0-9]{12}:role/.+$'
+for provided_arn in "$USER_EXECUTION_ROLE_ARN" "$USER_ALB_ROLE_ARN" "$USER_KEDA_ROLE_ARN" "$USER_JS_GATED_ROLE_ARN"; do
+    if [[ -n "$provided_arn" && ! "$provided_arn" =~ $ROLE_ARN_PATTERN ]]; then
+        print_error "Invalid IAM role ARN: $provided_arn"
+        exit 1
+    fi
+done
+
+# Create an IAM role if it does not exist; record it for rollback only if this script created it.
+# Usage: create_or_get_role <role-name> <trust-policy-file>   (prints the role ARN)
+create_or_get_role() {
+    local role_name="$1"
+    local trust_file="$2"
+    local arn
+    if arn=$(aws iam create-role \
+            --role-name "$role_name" \
+            --assume-role-policy-document "file://$trust_file" \
+            --path "/" \
+            --query 'Role.Arn' --output text 2>/dev/null); then
+        echo "$role_name" >> "$BACKUP_DIR/created-roles.txt"
+    else
+        # Role already exists (e.g. previous run). Reuse it and make sure the trust policy is the expected one.
+        arn=$(aws iam get-role --role-name "$role_name" --query 'Role.Arn' --output text) || return 1
+        aws iam update-assume-role-policy --role-name "$role_name" --policy-document "file://$trust_file" >/dev/null || return 1
+    fi
+    [[ -n "$arn" && "$arn" != "None" ]] || return 1
+    echo "$arn"
+}
+
+# Warn if a customer-provided role cannot be assumed by the addon's service account.
+# Usage: check_role_trust <role-arn> <service-account-subject>
+check_role_trust() {
+    local role_arn="$1"
+    local expected_sub="$2"
+    local role_name trust
+    role_name=$(echo "$role_arn" | awk -F'role/' '{print $2}' | awk -F'/' '{print $NF}')
+    if ! trust=$(aws iam get-role --role-name "$role_name" --query 'Role.AssumeRolePolicyDocument' --output json 2>/dev/null); then
+        print_error "Provided role not found or not readable: $role_arn"
+        exit 1
+    fi
+    if ! echo "$trust" | grep -q "$expected_sub" && ! echo "$trust" | grep -q 'system:serviceaccount:\*'; then
+        print_warning "Role $role_arn does not appear to trust '$expected_sub'."
+        print_warning "The addon will not be able to assume it unless the trust policy allows that service account."
+        print_warning "Helm-era roles trust different service accounts (kube-system:aws-load-balancer-controller,"
+        print_warning "kube-system:keda-operator, hyperpod-inference-system:hyperpod-inference-operator-controller-manager)."
+        print_warning "Add the addon subject to the role's trust policy (keep the Helm subject if you want rollback to work)."
+        confirm_risk "Continue with role $role_arn anyway"
+    fi
+}
+
+# Warn if a customer-provided execution role cannot read/write the TLS buckets used by existing models.
+# AmazonSageMakerHyperPodInferenceAccess does not grant access to customer TLS buckets, so the role needs
+# explicit S3 permissions on every bucket (the script adds these itself only to roles it creates).
+# Usage: check_tls_bucket_access <role-arn> <bucket>...
+check_tls_bucket_access() {
+    local role_arn="$1"; shift
+    local bucket decisions missing=() acm_decisions
+    # The operator tags everything it writes with CreatedBy=HyperPodInference, and the managed policy
+    # (AmazonSageMakerHyperPodInferenceAccess) conditions on that tag, so pass it to the simulation.
+    local ctx=("ContextKeyName=aws:ResourceAccount,ContextKeyValues=${ACCOUNT_ID},ContextKeyType=string"
+               "ContextKeyName=aws:PrincipalAccount,ContextKeyValues=${ACCOUNT_ID},ContextKeyType=string"
+               "ContextKeyName=s3:ExistingObjectTag/CreatedBy,ContextKeyValues=HyperPodInference,ContextKeyType=string"
+               "ContextKeyName=s3:RequestObjectTag/CreatedBy,ContextKeyValues=HyperPodInference,ContextKeyType=string"
+               "ContextKeyName=aws:RequestTag/CreatedBy,ContextKeyValues=HyperPodInference,ContextKeyType=string"
+               "ContextKeyName=aws:ResourceTag/CreatedBy,ContextKeyValues=HyperPodInference,ContextKeyType=string"
+               "ContextKeyName=aws:TagKeys,ContextKeyValues=CreatedBy,ContextKeyType=stringList"
+               "ContextKeyName=aws:RequestedRegion,ContextKeyValues=${AWS_REGION},ContextKeyType=string")
+    for bucket in "$@"; do
+        [[ -z "$bucket" ]] && continue
+        if ! decisions=$(aws iam simulate-principal-policy \
+                --policy-source-arn "$role_arn" \
+                --action-names s3:GetObject s3:PutObject s3:PutObjectTagging s3:DeleteObject \
+                --resource-arns "arn:aws:s3:::${bucket}/migration-access-check" \
+                --context-entries "${ctx[@]}" \
+                --query 'EvaluationResults[].EvalDecision' --output text 2>/dev/null); then
+            print_warning "Could not simulate S3 access for $role_arn (needs iam:SimulatePrincipalPolicy). Verify manually that it can Get/Put/Delete objects in: $*"
+            return 0
+        fi
+        if [[ "$(echo "$decisions" | tr '\t' '\n' | grep -c '^allowed$')" -lt 4 ]]; then
+            missing+=("$bucket")
+        fi
+    done
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        print_warning "Execution role $role_arn may be missing s3:GetObject/PutObject/PutObjectTagging/DeleteObject on TLS bucket(s): ${missing[*]}"
+        print_warning "AmazonSageMakerHyperPodInferenceAccess only covers buckets named hyperpod-tls*."
+        print_warning "Existing models using these buckets can fail certificate operations after migration."
+        print_warning "See the TLSBucketsAccess policy in the migration doc and attach it to this role."
+        confirm_risk "Continue with execution role $role_arn anyway"
+    fi
+    # TLS certificates are imported into ACM and tagged CreatedBy=HyperPodInference
+    acm_decisions=$(aws iam simulate-principal-policy \
+            --policy-source-arn "$role_arn" \
+            --action-names acm:ImportCertificate acm:AddTagsToCertificate acm:DeleteCertificate \
+            --resource-arns "arn:aws:acm:${AWS_REGION}:${ACCOUNT_ID}:certificate/migration-access-check" \
+            --context-entries "${ctx[@]}" \
+            --query 'EvaluationResults[].EvalDecision' --output text 2>/dev/null) || return 0
+    if [[ "$(echo "$acm_decisions" | tr '\t' '\n' | grep -c '^allowed$')" -lt 3 ]]; then
+        print_warning "Execution role $role_arn may be missing acm:ImportCertificate/AddTagsToCertificate/DeleteCertificate."
+        print_warning "New models will fail to import their TLS certificate. Attach AmazonSageMakerHyperPodInferenceAccess."
+        confirm_risk "Continue with execution role $role_arn anyway"
+    fi
+}
 
 # Configure kubectl for EKS cluster first
 if [[ -n "$CLUSTER_NAME" && -n "$AWS_REGION" ]]; then
@@ -341,7 +539,7 @@ print_success "Successfully retrieved Helm configuration"
 
 # Extract values from Helm
 HYPERPOD_CLUSTER_ARN=$(echo "$HELM_VALUES" | jq -r '.hyperpodClusterArn // empty')
-EXECUTION_ROLE_ARN=$(echo "$HELM_VALUES" | jq -r '.executionRoleArn // empty')
+HELM_EXECUTION_ROLE_ARN=$(echo "$HELM_VALUES" | jq -r '.executionRoleArn // empty')
 TLS_BUCKET_NAME=$(echo "$HELM_VALUES" | jq -r '.tlsCertificateS3Bucket // empty' | sed 's|^s3://||')
 TLS_BUCKETS=("$TLS_BUCKET_NAME")
 
@@ -375,9 +573,15 @@ for hostname in $INGRESS_HOSTNAMES; do
     if [[ -n "$hostname" ]]; then
         ALB_ARN=$(aws elbv2 describe-load-balancers --region "$AWS_REGION" --query "LoadBalancers[?DNSName=='$hostname'].LoadBalancerArn" --output text 2>/dev/null || true)
         if [[ -n "$ALB_ARN" && "$ALB_ARN" != "None" ]]; then
-            print_info "Tagging ALB: $ALB_ARN"
-            aws elbv2 add-tags --resource-arns "$ALB_ARN" --tags Key="$TAG_KEY",Value="$TAG_VALUE" --region "$AWS_REGION" || print_warning "Failed to tag ALB: $ALB_ARN"
-            echo "$ALB_ARN" >> "$BACKUP_DIR/alb-arns.txt"
+            EXISTING_TAG=$(aws elbv2 describe-tags --resource-arns "$ALB_ARN" --region "$AWS_REGION" --query "TagDescriptions[0].Tags[?Key=='$TAG_KEY'].Value | [0]" --output text 2>/dev/null || true)
+            if [[ "$EXISTING_TAG" == "$TAG_VALUE" ]]; then
+                print_info "ALB already tagged: $ALB_ARN"
+            else
+                print_info "Tagging ALB: $ALB_ARN"
+                # Only tags added by this script are recorded, so rollback never strips the operator's own tags
+                aws elbv2 add-tags --resource-arns "$ALB_ARN" --tags Key="$TAG_KEY",Value="$TAG_VALUE" --region "$AWS_REGION" \
+                    && echo "$ALB_ARN" >> "$BACKUP_DIR/alb-arns.txt" || print_warning "Failed to tag ALB: $ALB_ARN"
+            fi
         fi
     fi
 done
@@ -390,9 +594,16 @@ IEC_ACM_ARNS=$(echo "$IEC_MODELS" | jq -r '.items[].status.tlsCertificate.certif
 # Tag ACM certificates created by inference
 for cert_arn in $INGRESS_ACM_ARNS $JS_ACM_ARNS $IEC_ACM_ARNS; do
     if [[ -n "$cert_arn" ]]; then
-        print_info "Tagging ACM certificate: $cert_arn"
-        aws acm add-tags-to-certificate --certificate-arn "$cert_arn" --tags Key="$TAG_KEY",Value="$TAG_VALUE" --region "$AWS_REGION" || print_warning "Failed to tag ACM certificate: $cert_arn"
-        echo "$cert_arn" >> "$BACKUP_DIR/acm-arns.txt"
+        grep -qx "$cert_arn" "$BACKUP_DIR/acm-seen.txt" 2>/dev/null && continue
+        echo "$cert_arn" >> "$BACKUP_DIR/acm-seen.txt"
+        EXISTING_TAG=$(aws acm list-tags-for-certificate --certificate-arn "$cert_arn" --region "$AWS_REGION" --query "Tags[?Key=='$TAG_KEY'].Value | [0]" --output text 2>/dev/null || true)
+        if [[ "$EXISTING_TAG" == "$TAG_VALUE" ]]; then
+            print_info "ACM certificate already tagged: $cert_arn"
+        else
+            print_info "Tagging ACM certificate: $cert_arn"
+            aws acm add-tags-to-certificate --certificate-arn "$cert_arn" --tags Key="$TAG_KEY",Value="$TAG_VALUE" --region "$AWS_REGION" \
+                && echo "$cert_arn" >> "$BACKUP_DIR/acm-arns.txt" || print_warning "Failed to tag ACM certificate: $cert_arn"
+        fi
     fi
 done
 
@@ -405,8 +616,16 @@ for bucket in "${TLS_BUCKETS[@]}"; do
         # Tag specific certificate objects
         for cert_key in $JS_CERT_KEYS $IEC_CERT_KEYS; do
             if [[ -n "$cert_key" ]]; then
-                aws s3api put-object-tagging --bucket "$bucket" --key "$cert_key" --tagging "TagSet=[{Key=$TAG_KEY,Value=$TAG_VALUE}]" 2>/dev/null || true
-                echo "$bucket|$cert_key" >> "$BACKUP_DIR/s3-objects.txt"
+                # put-object-tagging replaces the whole tag set: merge with existing tags and save the
+                # original set so rollback restores it exactly.
+                ORIG_TAGS=$(aws s3api get-object-tagging --bucket "$bucket" --key "$cert_key" --query 'TagSet' --output json 2>/dev/null) || continue
+                if echo "$ORIG_TAGS" | jq -e --arg k "$TAG_KEY" --arg v "$TAG_VALUE" 'any(.[]; .Key==$k and .Value==$v)' >/dev/null; then
+                    continue
+                fi
+                MERGED_TAGS=$(echo "$ORIG_TAGS" | jq -c --arg k "$TAG_KEY" --arg v "$TAG_VALUE" '{TagSet: ([.[] | select(.Key != $k)] + [{Key:$k, Value:$v}])}')
+                if aws s3api put-object-tagging --bucket "$bucket" --key "$cert_key" --tagging "$MERGED_TAGS" 2>/dev/null; then
+                    echo "$bucket|$cert_key|$(echo "$ORIG_TAGS" | jq -c '{TagSet: .}')" >> "$BACKUP_DIR/s3-objects.txt"
+                fi
             fi
         done
     fi
@@ -414,151 +633,10 @@ done
 
 print_success "Resource tagging completed"
 
-# Extract HyperPod cluster ID for unique role naming
-HYPERPOD_CLUSTER_ID=$(echo "$HYPERPOD_CLUSTER_ARN" | cut -d'/' -f2 | cut -c1-8)
-
 # Get OIDC issuer URL for trust policies
 print_info "Getting OIDC issuer URL for cluster..."
 OIDC_ISSUER=$(aws eks describe-cluster --name "$CLUSTER_NAME" --region "$AWS_REGION" --query "cluster.identity.oidc.issuer" --output text | sed 's|https://||')
 print_success "OIDC Issuer: $OIDC_ISSUER"
-
-# Create new Execution Role for addon
-print_info "Creating new execution role for addon..."
-NEW_EXECUTION_ROLE_NAME="SageMakerHyperPodInference-${HYPERPOD_CLUSTER_ID}-execution-role"
-
-# Create trust policy based on existing execution role
-EXISTING_EXECUTION_ROLE_NAME=$(echo "$EXECUTION_ROLE_ARN" | cut -d'/' -f2)
-EXISTING_TRUST_POLICY=$(aws iam get-role --role-name "$EXISTING_EXECUTION_ROLE_NAME" --query 'Role.AssumeRolePolicyDocument' --output json)
-
-# Update the service account name in the trust policy
-EXECUTION_TRUST_POLICY=$(echo "$EXISTING_TRUST_POLICY" | sed 's/system:serviceaccount:hyperpod-inference-system:hyperpod-inference-operator-controller-manager/system:serviceaccount:hyperpod-inference-system:hyperpod-inference-controller-manager/g')
-
-# Create role
-echo "$EXECUTION_TRUST_POLICY" > /tmp/execution-trust-policy.json
-NEW_EXECUTION_ROLE_ARN=$(aws iam create-role \
-    --role-name "$NEW_EXECUTION_ROLE_NAME" \
-    --assume-role-policy-document file:///tmp/execution-trust-policy.json \
-    --query 'Role.Arn' --output text 2>/dev/null || \
-    aws iam get-role --role-name "$NEW_EXECUTION_ROLE_NAME" --query 'Role.Arn' --output text)
-
-# Attach managed policy
-aws iam attach-role-policy --role-name "$NEW_EXECUTION_ROLE_NAME" --policy-arn "arn:aws:iam::aws:policy/AmazonSageMakerHyperPodInferenceAccess"
-
-# Create S3 permissions for TLS buckets
-S3_BUCKET_RESOURCES=""
-S3_OBJECT_RESOURCES=""
-for bucket in "${TLS_BUCKETS[@]}"; do
-    if [[ -n "$bucket" ]]; then
-        S3_BUCKET_RESOURCES="$S3_BUCKET_RESOURCES\"arn:aws:s3:::$bucket\","
-        S3_OBJECT_RESOURCES="$S3_OBJECT_RESOURCES\"arn:aws:s3:::$bucket/*\","
-    fi
-done
-S3_BUCKET_RESOURCES=${S3_BUCKET_RESOURCES%,}
-S3_OBJECT_RESOURCES=${S3_OBJECT_RESOURCES%,}
-
-# Create inline policy for TLS buckets
-S3_INLINE_POLICY=$(cat <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "TLSBucketDeleteObjectsPermission",
-      "Effect": "Allow",
-      "Action": ["s3:DeleteObject"],
-      "Resource": [$S3_OBJECT_RESOURCES],
-      "Condition": {
-        "StringEquals": {
-          "aws:ResourceAccount": "\${aws:PrincipalAccount}"
-        }
-      }
-    },
-    {
-      "Sid": "TLSBucketGetObjectAccess",
-      "Effect": "Allow",
-      "Action": ["s3:GetObject"],
-      "Resource": [$S3_OBJECT_RESOURCES]
-    },
-    {
-      "Sid": "TLSBucketPutObjectAccess",
-      "Effect": "Allow",
-      "Action": ["s3:PutObject", "s3:PutObjectTagging"],
-      "Resource": [$S3_OBJECT_RESOURCES],
-      "Condition": {
-        "StringEquals": {
-          "aws:ResourceAccount": "\${aws:PrincipalAccount}"
-        }
-      }
-    }
-  ]
-}
-EOF
-)
-
-echo "$S3_INLINE_POLICY" > /tmp/s3-inline-policy.json
-aws iam put-role-policy --role-name "$NEW_EXECUTION_ROLE_NAME" --policy-name "TLSBucketsAccess" --policy-document file:///tmp/s3-inline-policy.json
-
-print_success "New execution role created: $NEW_EXECUTION_ROLE_ARN"
-
-# Create JumpStart Gated Model role
-print_info "Creating JumpStart Gated Model role..."
-JS_GATED_MODEL_ROLE_NAME="js-gated-role-${HYPERPOD_CLUSTER_ID}"
-
-# Create JS Gated Model trust policy
-JS_GATED_MODEL_TRUST_POLICY=$(cat <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "sagemaker.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    },
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Federated": "arn:aws:iam::$(aws sts get-caller-identity --query Account --output text):oidc-provider/$OIDC_ISSUER"
-      },
-      "Action": "sts:AssumeRoleWithWebIdentity",
-      "Condition": {
-        "StringLike": {
-          "$OIDC_ISSUER:aud": "sts.amazonaws.com",
-          "$OIDC_ISSUER:sub": "system:serviceaccount:*:hyperpod-inference-service-account*"
-        }
-      }
-    }
-  ]
-}
-EOF
-)
-
-# Create role
-echo "$JS_GATED_MODEL_TRUST_POLICY" > /tmp/js-gated-model-trust-policy.json
-JS_GATED_MODEL_ROLE_ARN=$(aws iam create-role \
-    --role-name "$JS_GATED_MODEL_ROLE_NAME" \
-    --assume-role-policy-document file:///tmp/js-gated-model-trust-policy.json \
-    --query 'Role.Arn' --output text 2>/dev/null || \
-    aws iam get-role --role-name "$JS_GATED_MODEL_ROLE_NAME" --query 'Role.Arn' --output text)
-
-# Attach managed policy
-aws iam attach-role-policy --role-name "$JS_GATED_MODEL_ROLE_NAME" --policy-arn "arn:aws:iam::aws:policy/AmazonSageMakerHyperPodGatedModelAccess"
-
-print_success "JumpStart Gated Model role created: $JS_GATED_MODEL_ROLE_ARN"
-
-# Get ALB role ARN from Helm values or service account
-ALB_ROLE_ARN=$(echo "$HELM_VALUES" | jq -r '.alb.serviceAccount.roleArn // empty')
-if [[ -z "$ALB_ROLE_ARN" || "$ALB_ROLE_ARN" == "null" ]]; then
-    ALB_SA_ANNOTATION=$(kubectl get serviceaccount aws-load-balancer-controller -n "$HELM_NAMESPACE" -o jsonpath='{.metadata.annotations.eks\.amazonaws\.com/role-arn}' 2>/dev/null || echo "")
-    ALB_ROLE_ARN="$ALB_SA_ANNOTATION"
-fi
-
-# Get KEDA role ARN from Helm values or service account
-KEDA_ROLE_ARN=$(echo "$HELM_VALUES" | jq -r '.keda.podIdentity.aws.irsa.roleArn // empty')
-if [[ -z "$KEDA_ROLE_ARN" || "$KEDA_ROLE_ARN" == "null" ]]; then
-    KEDA_SA_ANNOTATION=$(kubectl get serviceaccount keda-operator -n "$HELM_NAMESPACE" -o jsonpath='{.metadata.annotations.eks\.amazonaws\.com/role-arn}' 2>/dev/null || echo "")
-    KEDA_ROLE_ARN="$KEDA_SA_ANNOTATION"
-fi
 
 # Get S3 role ARN from Helm values or service account
 if [[ -z "$S3_MOUNTPOINT_ROLE_ARN" ]]; then
@@ -629,20 +707,10 @@ else
     SKIP_FSX_ADDON=false
 fi
 
-# Collect required information (with auto-derived defaults)
-if [[ -z "$CLUSTER_NAME" ]]; then
-    prompt_user "Enter your EKS cluster name:" CLUSTER_NAME
-fi
-if [[ -z "$AWS_REGION" ]]; then
-    prompt_user "Enter your AWS region:" AWS_REGION
-fi
-
-# Show auto-derived values and allow override
+# Show auto-derived values
 echo -e "${GREEN}Auto-derived values:${NC}"
 echo "HyperPod Cluster ARN: $HYPERPOD_CLUSTER_ARN"
-echo "Execution Role ARN: $EXECUTION_ROLE_ARN"
-echo "ALB Role ARN: $ALB_ROLE_ARN"
-echo "KEDA Role ARN: $KEDA_ROLE_ARN"
+echo "Helm Execution Role ARN (not reused by addon): $HELM_EXECUTION_ROLE_ARN"
 echo "TLS Bucket Name: $TLS_BUCKET_NAME"
 if [[ "$SKIP_S3_ADDON" == "false" ]]; then
     echo "S3 Mountpoint Role ARN: $S3_MOUNTPOINT_ROLE_ARN"
@@ -654,88 +722,489 @@ if [[ "$SKIP_FSX_ADDON" == "false" ]]; then
 else
     echo "FSX: Skipping (CSI driver exists)"
 fi
+echo -e "${GREEN}Addon roles (provided via flags, or created by this script):${NC}"
+echo "Execution Role: ${USER_EXECUTION_ROLE_ARN:-<will be created>}"
+echo "ALB Controller Role: ${USER_ALB_ROLE_ARN:-<will be created>}"
+echo "KEDA Role: ${USER_KEDA_ROLE_ARN:-<will be created>}"
+echo "JumpStart Gated Model Role: ${USER_JS_GATED_ROLE_ARN:-<will be created>}"
 echo
 
 # Validate required values
 if [[ -z "$HYPERPOD_CLUSTER_ARN" ]]; then
     prompt_user "HyperPod Cluster ARN not found. Enter manually:" HYPERPOD_CLUSTER_ARN
 fi
-if [[ -z "$EXECUTION_ROLE_ARN" ]]; then
-    prompt_user "Execution Role ARN not found. Enter manually:" EXECUTION_ROLE_ARN
-fi
-if [[ -z "$ALB_ROLE_ARN" ]]; then
-    prompt_user "ALB Role ARN not found. Enter manually:" ALB_ROLE_ARN
-fi
-if [[ -z "$KEDA_ROLE_ARN" ]]; then
-    prompt_user "KEDA Role ARN not found. Enter manually:" KEDA_ROLE_ARN
-fi
 if [[ -z "$TLS_BUCKET_NAME" ]]; then
     prompt_user "TLS Bucket Name not found. Enter manually:" TLS_BUCKET_NAME
+    TLS_BUCKETS+=("$TLS_BUCKET_NAME")
 fi
 
-# Step 1: Create new ALB role (keep old role for rollback)
-print_info "Step 1: Creating new ALB role..."
-confirm_action "Create new ALB role for addon (old role preserved for rollback)"
+# Extract HyperPod cluster ID for unique role naming
+HYPERPOD_CLUSTER_ID=$(echo "$HYPERPOD_CLUSTER_ARN" | cut -d'/' -f2 | cut -c1-8)
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+OIDC_PROVIDER_ARN="arn:aws:iam::${ACCOUNT_ID}:oidc-provider/${OIDC_ISSUER}"
 
-OLD_ALB_ROLE_NAME=$(echo "$ALB_ROLE_ARN" | cut -d'/' -f2)
-echo "$OLD_ALB_ROLE_NAME" > "$BACKUP_DIR/alb-role-name-original.txt"
+# Addon service accounts (all in the addon namespace hyperpod-inference-system)
+EXECUTION_SA_SUB="system:serviceaccount:hyperpod-inference-system:hyperpod-inference-controller-manager"
+ALB_SA_SUB="system:serviceaccount:hyperpod-inference-system:aws-load-balancer-controller"
+KEDA_SA_SUB="system:serviceaccount:hyperpod-inference-system:keda-operator"
+JS_GATED_SA_SUB="system:serviceaccount:*:hyperpod-inference-service-account*"
 
-NEW_ALB_ROLE_NAME="SageMakerHP-ALB-${HYPERPOD_CLUSTER_ID}-addon"
-echo "$NEW_ALB_ROLE_NAME" > "$BACKUP_DIR/alb-role-name-new.txt"
-ALB_TRUST_POLICY=$(cat <<EOF
+# Pre-flight: addon configuration constraints (checked before any role or cluster change)
+# The addon configuration schema requires the bucket name to contain "tls"
+TLS_BUCKET_PATTERN='^[a-z0-9][a-z0-9.-]*tls[a-z0-9.-]*[a-z0-9]$'
+if [[ ! "$TLS_BUCKET_NAME" =~ $TLS_BUCKET_PATTERN ]]; then
+    print_error "TLS bucket name '$TLS_BUCKET_NAME' is not accepted by the addon (the name must contain 'tls')."
+    print_info "Create a bucket whose name contains 'tls', grant the execution role access to it, and re-run."
+    print_info "Existing models keep using their current buckets (covered by the TLSBucketsAccess policy)."
+    exit 1
+fi
+print_success "TLS bucket name is valid for the addon"
+
+K8S_VERSION=$(aws eks describe-cluster --name "$CLUSTER_NAME" --region "$AWS_REGION" --query 'cluster.version' --output text)
+SUPPORTED_VERSIONS=$(aws eks describe-addon-versions \
+    --addon-name amazon-sagemaker-hyperpod-inference \
+    --kubernetes-version "$K8S_VERSION" \
+    --region "$AWS_REGION" \
+    --query 'addons[].addonVersions[].addonVersion' --output text 2>/dev/null || true)
+if [[ -z "$ADDON_VERSION" ]]; then
+    # Resolve the EKS default version for this Kubernetes version (what create-addon would pick
+    # without --addon-version). Resolved explicitly so the configuration below matches its schema.
+    print_info "Resolving default amazon-sagemaker-hyperpod-inference addon version for Kubernetes $K8S_VERSION..."
+    ADDON_VERSION=$(aws eks describe-addon-versions \
+        --addon-name amazon-sagemaker-hyperpod-inference \
+        --kubernetes-version "$K8S_VERSION" \
+        --region "$AWS_REGION" \
+        --query 'addons[0].addonVersions[?compatibilities[?defaultVersion==`true`]].addonVersion | [0]' \
+        --output text 2>/dev/null || true)
+    if [[ -z "$ADDON_VERSION" || "$ADDON_VERSION" == "None" ]]; then
+        print_error "Could not determine the default addon version for Kubernetes $K8S_VERSION in $AWS_REGION."
+        print_info "Available versions: ${SUPPORTED_VERSIONS:-none}"
+        print_info "Re-run with --addon-version <version>."
+        exit 1
+    fi
+    print_success "Using default addon version: $ADDON_VERSION"
+else
+    print_info "Validating requested addon version $ADDON_VERSION for this cluster..."
+    if ! echo "$SUPPORTED_VERSIONS" | tr '\t' '\n' | grep -qx "$ADDON_VERSION"; then
+        print_error "Addon version $ADDON_VERSION is not available for Kubernetes $K8S_VERSION in $AWS_REGION."
+        print_info "Available versions: ${SUPPORTED_VERSIONS:-none}"
+        print_info "Re-run with --addon-version <version> using one of the versions above."
+        exit 1
+    fi
+    print_success "Addon version $ADDON_VERSION is supported on Kubernetes $K8S_VERSION"
+fi
+
+# The inferenceGateway configuration key exists from v2.0.0 (where the gateway is enabled by default).
+# Older versions reject unknown keys, so only send it when the version supports it.
+ADDON_MAJOR_VERSION=$(echo "$ADDON_VERSION" | sed -E 's/^v([0-9]+)\..*/\1/')
+if [[ "$ADDON_MAJOR_VERSION" =~ ^[0-9]+$ ]] && (( ADDON_MAJOR_VERSION >= 2 )); then
+    DISABLE_INFERENCE_GATEWAY=true
+else
+    DISABLE_INFERENCE_GATEWAY=false
+fi
+
+# ---------------------------------------------------------------------------
+# Step 1: Addon IAM roles
+# Trust and permissions mirror the HyperPod Inference addon CloudFormation flow
+# (the same trust and permissions the HyperPod console add-on setup uses). Helm-era roles
+# are left untouched so the rollback on failure can restore Helm.
+# ---------------------------------------------------------------------------
+print_info "Step 1: Preparing IAM roles for the addon..."
+
+# Validate every customer-provided role before creating anything, so a bad role stops the
+# migration with no partial changes.
+[[ -n "$USER_EXECUTION_ROLE_ARN" ]] && check_role_trust "$USER_EXECUTION_ROLE_ARN" "$EXECUTION_SA_SUB"
+if [[ -n "$USER_EXECUTION_ROLE_ARN" ]]; then
+    print_info "TLS bucket(s) in use by this cluster: ${TLS_BUCKETS[*]}"
+    check_tls_bucket_access "$USER_EXECUTION_ROLE_ARN" "${TLS_BUCKETS[@]}"
+fi
+[[ -n "$USER_JS_GATED_ROLE_ARN" ]] && check_role_trust "$USER_JS_GATED_ROLE_ARN" "hyperpod-inference-service-account"
+[[ -n "$USER_ALB_ROLE_ARN" ]] && check_role_trust "$USER_ALB_ROLE_ARN" "$ALB_SA_SUB"
+[[ -n "$USER_KEDA_ROLE_ARN" ]] && check_role_trust "$USER_KEDA_ROLE_ARN" "$KEDA_SA_SUB"
+
+# 1a. Inference operator execution role
+if [[ -n "$USER_EXECUTION_ROLE_ARN" ]]; then
+    print_info "Using provided execution role: $USER_EXECUTION_ROLE_ARN"
+    NEW_EXECUTION_ROLE_ARN="$USER_EXECUTION_ROLE_ARN"
+else
+    confirm_action "Create execution role for addon"
+    NEW_EXECUTION_ROLE_NAME="SageMakerHyperPodInference-${HYPERPOD_CLUSTER_ID}-execution-role"
+    cat > /tmp/execution-trust-policy.json <<EOF
 {
-    "Version": "2012-10-17",
-    "Statement": [{
-        "Effect": "Allow",
-        "Principal": {"Federated": "arn:aws:iam::$(aws sts get-caller-identity --query Account --output text):oidc-provider/$OIDC_ISSUER"},
-        "Action": "sts:AssumeRoleWithWebIdentity",
-        "Condition": {"StringEquals": {"$OIDC_ISSUER:aud": "sts.amazonaws.com", "$OIDC_ISSUER:sub": "system:serviceaccount:hyperpod-inference-system:aws-load-balancer-controller"}}
-    }]
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {"Service": "sagemaker.amazonaws.com"},
+      "Action": "sts:AssumeRole"
+    },
+    {
+      "Effect": "Allow",
+      "Principal": {"Federated": "${OIDC_PROVIDER_ARN}"},
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringLike": {
+          "${OIDC_ISSUER}:aud": "sts.amazonaws.com",
+          "${OIDC_ISSUER}:sub": "${EXECUTION_SA_SUB}"
+        }
+      }
+    }
+  ]
 }
 EOF
-)
-echo "$ALB_TRUST_POLICY" > /tmp/alb-trust-policy-new.json
-ALB_ROLE_ARN=$(aws iam create-role --role-name "$NEW_ALB_ROLE_NAME" --assume-role-policy-document file:///tmp/alb-trust-policy-new.json --query 'Role.Arn' --output text 2>/dev/null || aws iam get-role --role-name "$NEW_ALB_ROLE_NAME" --query 'Role.Arn' --output text)
+    NEW_EXECUTION_ROLE_ARN=$(create_or_get_role "$NEW_EXECUTION_ROLE_NAME" /tmp/execution-trust-policy.json)
+    aws iam attach-role-policy --role-name "$NEW_EXECUTION_ROLE_NAME" --policy-arn "arn:aws:iam::aws:policy/AmazonSageMakerHyperPodInferenceAccess"
 
-OLD_ALB_POLICIES=$(aws iam list-attached-role-policies --role-name "$OLD_ALB_ROLE_NAME" --query 'AttachedPolicies[].PolicyArn' --output text)
-for policy in $OLD_ALB_POLICIES; do
-    aws iam attach-role-policy --role-name "$NEW_ALB_ROLE_NAME" --policy-arn "$policy"
-done
-print_success "New ALB role created: $ALB_ROLE_ARN"
-
-# Step 2: Create new KEDA role (keep old role for rollback)
-print_info "Step 2: Creating new KEDA role..."
-confirm_action "Create new KEDA role for addon (old role preserved for rollback)"
-
-OLD_KEDA_ROLE_NAME=$(echo "$KEDA_ROLE_ARN" | cut -d'/' -f2)
-echo "$OLD_KEDA_ROLE_NAME" > "$BACKUP_DIR/keda-role-name-original.txt"
-
-NEW_KEDA_ROLE_NAME="SageMakerHP-KEDA-${HYPERPOD_CLUSTER_ID}-addon"
-echo "$NEW_KEDA_ROLE_NAME" > "$BACKUP_DIR/keda-role-name-new.txt"
-KEDA_TRUST_POLICY=$(cat <<EOF
+    # TLS buckets already used by existing models (Helm values + JumpStartModel/InferenceEndpointConfig specs and status),
+    # so the addon operator can keep reading/rotating their certificates.
+    S3_OBJECT_RESOURCES=""
+    for bucket in "${TLS_BUCKETS[@]}"; do
+        if [[ -n "$bucket" ]]; then
+            S3_OBJECT_RESOURCES="$S3_OBJECT_RESOURCES\"arn:aws:s3:::$bucket/*\","
+        fi
+    done
+    S3_OBJECT_RESOURCES=${S3_OBJECT_RESOURCES%,}
+    if [[ -n "$S3_OBJECT_RESOURCES" ]]; then
+        cat > /tmp/s3-inline-policy.json <<EOF
 {
-    "Version": "2012-10-17",
-    "Statement": [{
-        "Effect": "Allow",
-        "Principal": {"Service": "sagemaker.amazonaws.com"},
-        "Action": "sts:AssumeRole"
-    },{
-        "Effect": "Allow",
-        "Principal": {"Federated": "arn:aws:iam::$(aws sts get-caller-identity --query Account --output text):oidc-provider/$OIDC_ISSUER"},
-        "Action": "sts:AssumeRoleWithWebIdentity",
-        "Condition": {"StringLike": {"$OIDC_ISSUER:sub": "system:serviceaccount:hyperpod-inference-system:keda-operator"}}
-    }]
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "TLSBucketDeleteObjectsPermission",
+      "Effect": "Allow",
+      "Action": ["s3:DeleteObject"],
+      "Resource": [$S3_OBJECT_RESOURCES],
+      "Condition": {"StringEquals": {"aws:ResourceAccount": "\${aws:PrincipalAccount}"}}
+    },
+    {
+      "Sid": "TLSBucketGetObjectAccess",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject"],
+      "Resource": [$S3_OBJECT_RESOURCES]
+    },
+    {
+      "Sid": "TLSBucketPutObjectAccess",
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:PutObjectTagging"],
+      "Resource": [$S3_OBJECT_RESOURCES],
+      "Condition": {"StringEquals": {"aws:ResourceAccount": "\${aws:PrincipalAccount}"}}
+    }
+  ]
 }
 EOF
-)
-echo "$KEDA_TRUST_POLICY" > /tmp/keda-trust-policy-new.json
-KEDA_ROLE_ARN=$(aws iam create-role --role-name "$NEW_KEDA_ROLE_NAME" --assume-role-policy-document file:///tmp/keda-trust-policy-new.json --query 'Role.Arn' --output text 2>/dev/null || aws iam get-role --role-name "$NEW_KEDA_ROLE_NAME" --query 'Role.Arn' --output text)
+        aws iam put-role-policy --role-name "$NEW_EXECUTION_ROLE_NAME" --policy-name "TLSBucketsAccess" --policy-document file:///tmp/s3-inline-policy.json
+    fi
+    print_success "Execution role ready: $NEW_EXECUTION_ROLE_ARN"
+fi
 
-OLD_KEDA_POLICIES=$(aws iam list-attached-role-policies --role-name "$OLD_KEDA_ROLE_NAME" --query 'AttachedPolicies[].PolicyArn' --output text)
-for policy in $OLD_KEDA_POLICIES; do
-    aws iam attach-role-policy --role-name "$NEW_KEDA_ROLE_NAME" --policy-arn "$policy"
-done
-print_success "New KEDA role created: $KEDA_ROLE_ARN"
+# 1b. JumpStart gated model download role
+if [[ -n "$USER_JS_GATED_ROLE_ARN" ]]; then
+    print_info "Using provided JumpStart gated model role: $USER_JS_GATED_ROLE_ARN"
+    JS_GATED_MODEL_ROLE_ARN="$USER_JS_GATED_ROLE_ARN"
+else
+    confirm_action "Create JumpStart gated model role for addon"
+    JS_GATED_MODEL_ROLE_NAME="js-gated-role-${HYPERPOD_CLUSTER_ID}"
+    cat > /tmp/js-gated-model-trust-policy.json <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {"Service": "sagemaker.amazonaws.com"},
+      "Action": "sts:AssumeRole"
+    },
+    {
+      "Effect": "Allow",
+      "Principal": {"Federated": "${OIDC_PROVIDER_ARN}"},
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringLike": {
+          "${OIDC_ISSUER}:aud": "sts.amazonaws.com",
+          "${OIDC_ISSUER}:sub": "${JS_GATED_SA_SUB}"
+        }
+      }
+    }
+  ]
+}
+EOF
+    JS_GATED_MODEL_ROLE_ARN=$(create_or_get_role "$JS_GATED_MODEL_ROLE_NAME" /tmp/js-gated-model-trust-policy.json)
+    aws iam attach-role-policy --role-name "$JS_GATED_MODEL_ROLE_NAME" --policy-arn "arn:aws:iam::aws:policy/AmazonSageMakerHyperPodGatedModelAccess"
+    print_success "JumpStart gated model role ready: $JS_GATED_MODEL_ROLE_ARN"
+fi
+
+# 1c. AWS Load Balancer Controller role
+if [[ -n "$USER_ALB_ROLE_ARN" ]]; then
+    print_info "Using provided ALB controller role: $USER_ALB_ROLE_ARN"
+    ALB_ROLE_ARN="$USER_ALB_ROLE_ARN"
+else
+    confirm_action "Create ALB controller role for addon (Helm-era role preserved for rollback)"
+    NEW_ALB_ROLE_NAME="SageMakerHP-ALB-${HYPERPOD_CLUSTER_ID}-addon"
+    cat > /tmp/alb-trust-policy-new.json <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {"Federated": "${OIDC_PROVIDER_ARN}"},
+    "Action": "sts:AssumeRoleWithWebIdentity",
+    "Condition": {
+      "StringEquals": {
+        "${OIDC_ISSUER}:aud": "sts.amazonaws.com",
+        "${OIDC_ISSUER}:sub": "${ALB_SA_SUB}"
+      }
+    }
+  }]
+}
+EOF
+    cat > /tmp/alb-permissions-policy.json <<'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["iam:CreateServiceLinkedRole"],
+      "Resource": "*",
+      "Condition": {"StringEquals": {"iam:AWSServiceName": "elasticloadbalancing.amazonaws.com"}}
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeAccountAttributes",
+        "ec2:DescribeAddresses",
+        "ec2:DescribeAvailabilityZones",
+        "ec2:DescribeInternetGateways",
+        "ec2:DescribeVpcs",
+        "ec2:DescribeVpcPeeringConnections",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeInstances",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribeTags",
+        "ec2:GetCoipPoolUsage",
+        "ec2:DescribeCoipPools",
+        "ec2:GetSecurityGroupsForVpc",
+        "ec2:DescribeIpamPools",
+        "ec2:DescribeRouteTables",
+        "elasticloadbalancing:DescribeLoadBalancers",
+        "elasticloadbalancing:DescribeLoadBalancerAttributes",
+        "elasticloadbalancing:DescribeListeners",
+        "elasticloadbalancing:DescribeListenerCertificates",
+        "elasticloadbalancing:DescribeSSLPolicies",
+        "elasticloadbalancing:DescribeRules",
+        "elasticloadbalancing:DescribeTargetGroups",
+        "elasticloadbalancing:DescribeTargetGroupAttributes",
+        "elasticloadbalancing:DescribeTargetHealth",
+        "elasticloadbalancing:DescribeTags",
+        "elasticloadbalancing:DescribeTrustStores",
+        "elasticloadbalancing:DescribeListenerAttributes",
+        "elasticloadbalancing:DescribeCapacityReservation"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:DescribeUserPoolClient",
+        "acm:ListCertificates",
+        "acm:DescribeCertificate",
+        "iam:ListServerCertificates",
+        "iam:GetServerCertificate",
+        "waf-regional:GetWebACL",
+        "waf-regional:GetWebACLForResource",
+        "waf-regional:AssociateWebACL",
+        "waf-regional:DisassociateWebACL",
+        "wafv2:GetWebACL",
+        "wafv2:GetWebACLForResource",
+        "wafv2:AssociateWebACL",
+        "wafv2:DisassociateWebACL",
+        "shield:GetSubscriptionState",
+        "shield:DescribeProtection",
+        "shield:CreateProtection",
+        "shield:DeleteProtection"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["ec2:AuthorizeSecurityGroupIngress", "ec2:RevokeSecurityGroupIngress"],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["ec2:CreateSecurityGroup"],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["ec2:CreateTags"],
+      "Resource": "arn:aws:ec2:*:*:security-group/*",
+      "Condition": {
+        "StringEquals": {"ec2:CreateAction": "CreateSecurityGroup"},
+        "Null": {"aws:RequestTag/elbv2.k8s.aws/cluster": "false"}
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["ec2:CreateTags", "ec2:DeleteTags"],
+      "Resource": "arn:aws:ec2:*:*:security-group/*",
+      "Condition": {
+        "Null": {
+          "aws:RequestTag/elbv2.k8s.aws/cluster": "true",
+          "aws:ResourceTag/elbv2.k8s.aws/cluster": "false"
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["ec2:AuthorizeSecurityGroupIngress", "ec2:RevokeSecurityGroupIngress", "ec2:DeleteSecurityGroup"],
+      "Resource": "*",
+      "Condition": {"Null": {"aws:ResourceTag/elbv2.k8s.aws/cluster": "false"}}
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["elasticloadbalancing:CreateLoadBalancer", "elasticloadbalancing:CreateTargetGroup"],
+      "Resource": "*",
+      "Condition": {"Null": {"aws:RequestTag/elbv2.k8s.aws/cluster": "false"}}
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:CreateListener",
+        "elasticloadbalancing:DeleteListener",
+        "elasticloadbalancing:CreateRule",
+        "elasticloadbalancing:DeleteRule"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["elasticloadbalancing:AddTags", "elasticloadbalancing:RemoveTags"],
+      "Resource": [
+        "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*",
+        "arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*/*",
+        "arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*"
+      ],
+      "Condition": {
+        "Null": {
+          "aws:RequestTag/elbv2.k8s.aws/cluster": "true",
+          "aws:ResourceTag/elbv2.k8s.aws/cluster": "false"
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["elasticloadbalancing:AddTags", "elasticloadbalancing:RemoveTags"],
+      "Resource": [
+        "arn:aws:elasticloadbalancing:*:*:listener/net/*/*/*",
+        "arn:aws:elasticloadbalancing:*:*:listener/app/*/*/*",
+        "arn:aws:elasticloadbalancing:*:*:listener-rule/net/*/*/*",
+        "arn:aws:elasticloadbalancing:*:*:listener-rule/app/*/*/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:ModifyLoadBalancerAttributes",
+        "elasticloadbalancing:SetIpAddressType",
+        "elasticloadbalancing:SetSecurityGroups",
+        "elasticloadbalancing:SetSubnets",
+        "elasticloadbalancing:DeleteLoadBalancer",
+        "elasticloadbalancing:ModifyTargetGroup",
+        "elasticloadbalancing:ModifyTargetGroupAttributes",
+        "elasticloadbalancing:DeleteTargetGroup",
+        "elasticloadbalancing:ModifyListenerAttributes",
+        "elasticloadbalancing:ModifyCapacityReservation",
+        "elasticloadbalancing:ModifyIpPools"
+      ],
+      "Resource": "*",
+      "Condition": {"Null": {"aws:ResourceTag/elbv2.k8s.aws/cluster": "false"}}
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["elasticloadbalancing:AddTags"],
+      "Resource": [
+        "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*",
+        "arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*/*",
+        "arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*"
+      ],
+      "Condition": {
+        "StringEquals": {"elasticloadbalancing:CreateAction": ["CreateTargetGroup", "CreateLoadBalancer"]},
+        "Null": {"aws:RequestTag/elbv2.k8s.aws/cluster": "false"}
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["elasticloadbalancing:RegisterTargets", "elasticloadbalancing:DeregisterTargets"],
+      "Resource": "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:SetWebAcl",
+        "elasticloadbalancing:ModifyListener",
+        "elasticloadbalancing:AddListenerCertificates",
+        "elasticloadbalancing:RemoveListenerCertificates",
+        "elasticloadbalancing:ModifyRule",
+        "elasticloadbalancing:SetRulePriorities"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+    ALB_ROLE_ARN=$(create_or_get_role "$NEW_ALB_ROLE_NAME" /tmp/alb-trust-policy-new.json)
+    aws iam put-role-policy --role-name "$NEW_ALB_ROLE_NAME" --policy-name "HyperPodInferenceAlbControllerAccess" --policy-document file:///tmp/alb-permissions-policy.json
+    print_success "ALB controller role ready: $ALB_ROLE_ARN"
+fi
+
+# 1d. KEDA role
+if [[ -n "$USER_KEDA_ROLE_ARN" ]]; then
+    print_info "Using provided KEDA role: $USER_KEDA_ROLE_ARN"
+    KEDA_ROLE_ARN="$USER_KEDA_ROLE_ARN"
+else
+    confirm_action "Create KEDA role for addon (Helm-era role preserved for rollback)"
+    NEW_KEDA_ROLE_NAME="SageMakerHP-KEDA-${HYPERPOD_CLUSTER_ID}-addon"
+    cat > /tmp/keda-trust-policy-new.json <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {"Federated": "${OIDC_PROVIDER_ARN}"},
+    "Action": "sts:AssumeRoleWithWebIdentity",
+    "Condition": {
+      "StringEquals": {
+        "${OIDC_ISSUER}:aud": "sts.amazonaws.com",
+        "${OIDC_ISSUER}:sub": "${KEDA_SA_SUB}"
+      }
+    }
+  }]
+}
+EOF
+    cat > /tmp/keda-permissions-policy.json <<'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["cloudwatch:GetMetricData", "cloudwatch:GetMetricStatistics", "cloudwatch:ListMetrics"],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["aps:QueryMetrics", "aps:GetLabels", "aps:GetSeries", "aps:GetMetricMetadata"],
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+    KEDA_ROLE_ARN=$(create_or_get_role "$NEW_KEDA_ROLE_NAME" /tmp/keda-trust-policy-new.json)
+    aws iam put-role-policy --role-name "$NEW_KEDA_ROLE_NAME" --policy-name "HyperPodInferenceKedaAccess" --policy-document file:///tmp/keda-permissions-policy.json
+    print_success "KEDA role ready: $KEDA_ROLE_ARN"
+fi
+
+rm -f /tmp/execution-trust-policy.json /tmp/s3-inline-policy.json /tmp/js-gated-model-trust-policy.json \
+      /tmp/alb-trust-policy-new.json /tmp/alb-permissions-policy.json \
+      /tmp/keda-trust-policy-new.json /tmp/keda-permissions-policy.json
+pause_step
 
 # Step 4: Create S3 mountpoint role and install addon if needed
 # Check if S3 addon already exists
@@ -896,6 +1365,7 @@ else
     exit 1
 fi
 
+
 # Step 5: Install dependency addons
 print_info "Step 5: Installing dependency addons..."
 
@@ -906,7 +1376,6 @@ if [[ "$SKIP_S3_ADDON" == "false" && -n "$S3_MOUNTPOINT_ROLE_ARN" ]]; then
         --cluster-name "$CLUSTER_NAME" \
         --addon-name aws-mountpoint-s3-csi-driver \
         --service-account-role-arn "$S3_MOUNTPOINT_ROLE_ARN" \
-        --addon-version v1.14.1-eksbuild.1 \
         --region "$AWS_REGION" \
         --resolve-conflicts OVERWRITE || print_warning "S3 Mountpoint addon may already exist"
 elif [[ "$SKIP_S3_ADDON" == "true" ]]; then
@@ -920,7 +1389,6 @@ if [[ "$SKIP_FSX_ADDON" == "false" && -n "$FSX_ROLE_ARN" ]]; then
         --cluster-name "$CLUSTER_NAME" \
         --addon-name aws-fsx-csi-driver \
         --service-account-role-arn "$FSX_ROLE_ARN" \
-        --addon-version v1.6.0-eksbuild.1 \
         --region "$AWS_REGION" \
         --resolve-conflicts OVERWRITE || print_warning "FSX addon may already exist"
 elif [[ "$SKIP_FSX_ADDON" == "true" ]]; then
@@ -937,7 +1405,6 @@ else
     aws eks create-addon \
         --cluster-name "$CLUSTER_NAME" \
         --addon-name cert-manager \
-        --addon-version v1.18.2-eksbuild.2 \
         --region "$AWS_REGION" || print_warning "Cert manager addon may already exist"
 fi
 
@@ -997,50 +1464,54 @@ else
 fi
 
 # Step 7: Install Inference operator addon
-print_info "Step 7: Installing Inference operator addon..."
-confirm_action "Install amazon-sagemaker-hyperpod-inference addon with OVERWRITE"
+print_info "Step 7: Installing Inference operator addon $ADDON_VERSION..."
+confirm_action "Install amazon-sagemaker-hyperpod-inference addon $ADDON_VERSION with OVERWRITE"
 
-ADDON_CONFIG=$(cat <<EOF
-{
-  "executionRoleArn": "$NEW_EXECUTION_ROLE_ARN",
-  "tlsCertificateS3Bucket": "$TLS_BUCKET_NAME",
-  "hyperpodClusterArn": "$HYPERPOD_CLUSTER_ARN",
-  "jumpstartGatedModelDownloadRoleArn": "$JS_GATED_MODEL_ROLE_ARN",
-  "alb": {
-    "enabled": true,
-    "serviceAccount": {
-      "create": true,
-      "roleArn": "$ALB_ROLE_ARN"
-    }
-  },
-  "keda": {
-    "enabled": true,
-    "auth": {
-      "aws": {
-        "irsa": {
-          "enabled": true,
-          "roleArn": "$KEDA_ROLE_ARN"
-        }
+# Configuration follows the addon configuration schema of the resolved version.
+# - inferenceGateway defaults to enabled in v2.x; it is disabled here so the migration does not install
+#   the Inference Gateway control plane (it was not part of the Helm installation). Enable it later
+#   with `aws eks update-addon` once its IAM role is set up.
+# - jq builds the JSON so values are escaped correctly.
+ADDON_CONFIG=$(jq -n -c \
+    --arg executionRoleArn "$NEW_EXECUTION_ROLE_ARN" \
+    --arg tlsBucket "$TLS_BUCKET_NAME" \
+    --arg hyperpodClusterArn "$HYPERPOD_CLUSTER_ARN" \
+    --arg jsGatedRoleArn "$JS_GATED_MODEL_ROLE_ARN" \
+    --arg albRoleArn "$ALB_ROLE_ARN" \
+    --arg kedaRoleArn "$KEDA_ROLE_ARN" \
+    --argjson disableGateway "$DISABLE_INFERENCE_GATEWAY" \
+    '{
+      executionRoleArn: $executionRoleArn,
+      tlsCertificateS3Bucket: $tlsBucket,
+      hyperpodClusterArn: $hyperpodClusterArn,
+      jumpstartGatedModelDownloadRoleArn: $jsGatedRoleArn,
+      alb: {
+        enabled: true,
+        serviceAccount: { create: true, roleArn: $albRoleArn }
+      },
+      keda: {
+        enabled: true,
+        auth: { aws: { irsa: { enabled: true, roleArn: $kedaRoleArn } } }
       }
-    }
-  }
-}
-EOF
-)
+    } + (if $disableGateway then { inferenceGateway: { enabled: false } } else {} end)')
+echo "$ADDON_CONFIG" > "$BACKUP_DIR/addon-configuration.json"
+print_info "Addon configuration saved to $BACKUP_DIR/addon-configuration.json"
 
 aws eks create-addon \
     --cluster-name "$CLUSTER_NAME" \
     --addon-name amazon-sagemaker-hyperpod-inference \
-    --addon-version v1.0.0-eksbuild.1 \
+    --addon-version "$ADDON_VERSION" \
     --resolve-conflicts OVERWRITE \
     --configuration-values "$ADDON_CONFIG" \
     --region "$AWS_REGION"
 
 touch "$BACKUP_DIR/addon-installed.flag"
-print_success "Inference operator addon installed"
+print_success "Inference operator addon installation started"
 
 # Step 8: Wait for addon to be active
 print_info "Step 8: Waiting for addon to become active..."
+ADDON_WAIT_TIMEOUT_SECONDS=1800
+ADDON_WAIT_START=$(date +%s)
 while true; do
     STATUS=$(aws eks describe-addon \
         --cluster-name "$CLUSTER_NAME" \
@@ -1051,8 +1522,17 @@ while true; do
     if [[ "$STATUS" == "ACTIVE" ]]; then
         print_success "Addon is now ACTIVE"
         break
-    elif [[ "$STATUS" == "CREATE_FAILED" ]]; then
-        print_error "Addon creation failed"
+    elif [[ "$STATUS" == "CREATE_FAILED" || "$STATUS" == "DEGRADED" ]]; then
+        print_error "Addon status: $STATUS"
+        aws eks describe-addon \
+            --cluster-name "$CLUSTER_NAME" \
+            --addon-name amazon-sagemaker-hyperpod-inference \
+            --region "$AWS_REGION" \
+            --query "addon.health.issues[].[code,message]" --output text || true
+        # Do not continue to Helm cleanup with an unhealthy addon
+        handle_error
+    elif (( $(date +%s) - ADDON_WAIT_START > ADDON_WAIT_TIMEOUT_SECONDS )); then
+        print_error "Timed out after ${ADDON_WAIT_TIMEOUT_SECONDS}s waiting for addon (last status: $STATUS)"
         handle_error
     else
         print_info "Addon status: $STATUS. Waiting..."
@@ -1070,31 +1550,50 @@ else
     print_warning "Deployment already removed or not found"
 fi
 
+# Install the metrics-server addon BEFORE removing the Helm metrics-server, so the metrics API
+# (kubectl top, HPA, KEDA CPU/memory triggers) never goes away. OVERWRITE is required: the Helm
+# chart owns the v1beta1.metrics.k8s.io APIService, and without it the addon goes CREATE_FAILED
+# (ConfigurationConflict) while the Helm metrics-server is already deleted.
+print_info "Installing metrics-server addon (takes over the metrics API from the Helm metrics-server)..."
+confirm_action "Install metrics-server addon"
+if aws eks describe-addon --cluster-name "$CLUSTER_NAME" --addon-name metrics-server --region "$AWS_REGION" >/dev/null 2>&1; then
+    print_info "metrics-server addon already exists"
+else
+    aws eks create-addon \
+        --cluster-name "$CLUSTER_NAME" \
+        --addon-name metrics-server \
+        --resolve-conflicts OVERWRITE \
+        --region "$AWS_REGION" >/dev/null
+fi
+if aws eks wait addon-active --cluster-name "$CLUSTER_NAME" --addon-name metrics-server --region "$AWS_REGION"; then
+    print_success "metrics-server addon is ACTIVE"
+    METRICS_ADDON_ACTIVE=true
+else
+    print_warning "metrics-server addon did not become ACTIVE; keeping the Helm metrics-server in place"
+    aws eks describe-addon --cluster-name "$CLUSTER_NAME" --addon-name metrics-server --region "$AWS_REGION" \
+        --query 'addon.health.issues[].[code,message]' --output text || true
+    METRICS_ADDON_ACTIVE=false
+fi
+
 # Step 9: Clean up old service accounts and deployments
 print_info "Step 9: Cleaning up old service accounts and deployments..."
 print_warning "This will permanently delete old Helm resources. The addon is now managing the operator."
 confirm_action "Proceed with cleanup of old Helm resources"
 
-kubectl delete serviceaccount aws-load-balancer-controller -n kube-system --ignore-not-found=true
-kubectl delete serviceaccount keda-operator -n keda --ignore-not-found=true
-kubectl delete serviceaccount keda-operator-metrics-reader -n keda --ignore-not-found=true
+# The Helm chart installs ALB and KEDA into the Helm release namespace (kube-system by default)
+kubectl delete serviceaccount aws-load-balancer-controller -n "$HELM_NAMESPACE" --ignore-not-found=true
+kubectl delete serviceaccount keda-operator -n "$HELM_NAMESPACE" --ignore-not-found=true
+kubectl delete serviceaccount keda-metrics-server -n "$HELM_NAMESPACE" --ignore-not-found=true
 
 # Clean up old deployments
-confirm_action "Delete old hyperpod-inference-operator deployments from kube-system namespace"
-kubectl delete deployment hyperpod-inference-operator-alb -n kube-system --ignore-not-found=true
-kubectl delete deployment hyperpod-inference-operator-metrics -n kube-system --ignore-not-found=true
-kubectl delete deployment keda-admission-webhooks -n kube-system --ignore-not-found=true
-kubectl delete deployment keda-operator -n kube-system --ignore-not-found=true
-kubectl delete deployment keda-operator-metrics-apiserver -n kube-system --ignore-not-found=true
-
-# Install metrics server addon post cleanup
-print_info "Installing metrics-server addon post cleanup..."
-confirm_action "Install metrics-server addon"
-aws eks create-addon \
-    --cluster-name "$CLUSTER_NAME" \
-    --addon-name metrics-server \
-    --addon-version v0.7.2-eksbuild.4 \
-    --region "$AWS_REGION" || print_warning "Metrics server addon may already exist"
+confirm_action "Delete old hyperpod-inference-operator deployments from $HELM_NAMESPACE namespace"
+kubectl delete deployment hyperpod-inference-operator-alb -n "$HELM_NAMESPACE" --ignore-not-found=true
+if [[ "$METRICS_ADDON_ACTIVE" == "true" ]]; then
+    kubectl delete deployment hyperpod-inference-operator-metrics -n "$HELM_NAMESPACE" --ignore-not-found=true
+fi
+kubectl delete deployment keda-admission-webhooks -n "$HELM_NAMESPACE" --ignore-not-found=true
+kubectl delete deployment keda-operator -n "$HELM_NAMESPACE" --ignore-not-found=true
+kubectl delete deployment keda-operator-metrics-apiserver -n "$HELM_NAMESPACE" --ignore-not-found=true
 
 print_success "Old service accounts and deployments cleaned up"
 
@@ -1178,7 +1677,6 @@ EOF
                 --cluster-name "$CLUSTER_NAME" \
                 --addon-name aws-mountpoint-s3-csi-driver \
                 --service-account-role-arn "$S3_MOUNTPOINT_ROLE_ARN" \
-                --addon-version v1.14.1-eksbuild.1 \
                 --region "$AWS_REGION" \
                 --resolve-conflicts OVERWRITE
             print_success "S3 CSI driver migrated to addon"
@@ -1235,7 +1733,6 @@ EOF
                 --cluster-name "$CLUSTER_NAME" \
                 --addon-name aws-fsx-csi-driver \
                 --service-account-role-arn "$FSX_ROLE_ARN" \
-                --addon-version v1.6.0-eksbuild.1 \
                 --region "$AWS_REGION" \
                 --resolve-conflicts OVERWRITE
             print_success "FSX CSI driver migrated to addon"
@@ -1257,7 +1754,6 @@ EOF
             aws eks create-addon \
                 --cluster-name "$CLUSTER_NAME" \
                 --addon-name cert-manager \
-                --addon-version v1.18.2-eksbuild.2 \
                 --region "$AWS_REGION" \
                 --resolve-conflicts OVERWRITE
             print_success "Cert-manager migrated to addon"
@@ -1278,7 +1774,6 @@ EOF
             aws eks create-addon \
                 --cluster-name "$CLUSTER_NAME" \
                 --addon-name metrics-server \
-                --addon-version v0.7.2-eksbuild.4 \
                 --region "$AWS_REGION" \
                 --resolve-conflicts OVERWRITE
             print_success "Metrics-server migrated to addon"
