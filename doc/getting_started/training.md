@@ -267,6 +267,20 @@ pytorch_job.create()
 ````
 `````
 
+### SDK resource quantities
+
+When `node_selector` includes `node.kubernetes.io/instance-type`, SDK quota
+allocation interprets `Resources.requests` and `Resources.limits` as Kubernetes
+quantities. For example, `{"cpu": "500m", "memory": "1024Mi"}` requests 0.5 CPU
+cores and 1 GiB; limits of `{"cpu": "1", "memory": "2048Mi"}` mean 1 core and
+2 GiB. Unitless memory values retain their legacy GiB meaning, including exponent
+notation, so existing SDK configurations and installed template packages keep
+their allocation behavior. Explicit suffixes such as `Mi`, `G`, and `Ki` use
+Kubernetes units. Invalid, negative, or non-finite quantities raise `ValueError`
+before allocation updates the job.
+
+CLI `--memory` and `--memory-limit` parameters remain amounts in GiB.
+
 ### Key Parameters
 
 When creating a training job, you'll need to specify:

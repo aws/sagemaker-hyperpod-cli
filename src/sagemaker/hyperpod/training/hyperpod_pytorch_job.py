@@ -1,4 +1,7 @@
 from pydantic import ConfigDict, Field
+from decimal import Decimal, DecimalException, InvalidOperation
+from math import isfinite
+from kubernetes.utils.quantity import parse_quantity
 
 from sagemaker.hyperpod.cli.constants.command_constants import (
     INSTANCE_TYPE_LABEL,
@@ -11,7 +14,7 @@ from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config impo
 )
 from sagemaker.hyperpod.common.config.metadata import Metadata
 from kubernetes import client, config, stream
-from typing import List, Optional, ClassVar
+from typing import List, Optional, ClassVar, Union
 from sagemaker.hyperpod.common.utils import (
     handle_exception,
     get_default_namespace,
@@ -85,17 +88,40 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             # Verify Kubernetes version compatibility
             verify_kubernetes_version_compatibility(cls.get_logger())
     @classmethod
-    def _extract_numeric_value(cls, value):
-        """Extract numeric value from strings like '1.5Gi' -> 1.5"""
+    def _parse_resource_quantity(
+        cls, value: Optional[Union[int, str]], resource_name: str
+    ) -> Optional[float]:
+        """Normalize resource units, retaining legacy unitless memory in GiB.
+
+        Compatible template packages emit unitless GiB values, including
+        exponent notation. Explicit memory suffixes use Kubernetes units.
+        Missing or numeric-zero values retain the existing default behavior.
+        Invalid, negative, or non-finite values raise ValueError before the
+        job is changed.
+        """
         if not value:
             return None
-        import re
-        match = re.match(r'^([0-9]*\.?[0-9]+)', str(value))
-        return float(match.group(1)) if match else None
+        message = f"Invalid {resource_name} quantity: {value!r}"
+        try:
+            if resource_name == "memory":
+                try:
+                    quantity = Decimal(str(value))
+                except InvalidOperation:
+                    quantity = parse_quantity(value) / (1024**3)
+            else:
+                quantity = parse_quantity(value)
+        except (ValueError, DecimalException) as exc:
+            raise ValueError(message) from exc
+        if not quantity.is_finite() or quantity < 0:
+            raise ValueError(message)
+        normalized = float(quantity)
+        if not isfinite(normalized):
+            raise ValueError(message)
+        return normalized
 
     @classmethod
     def _process_replica_resources(cls, data):
-        """Process and validate replica resource configuration."""
+        """Validate replica resources, interpreting CPU in cores and memory in GiB."""
         try:
             node_count = data.get('replicas', None)
 
@@ -134,20 +160,14 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
                 accelerators = int(requests.get(NEURON_RESOURCE_KEY))
 
             # Extract resource values
-            vcpu = None
-            if requests.get('cpu'):
-                vcpu = float(requests.get('cpu'))
-            elif requests.get('vcpu'):
-                vcpu = float(requests.get('vcpu'))
-
-            vcpu_limit = None
-            if limits.get('cpu'):
-                vcpu_limit = float(limits.get('cpu'))
-            elif limits.get('vcpu'):
-                vcpu_limit = float(limits.get('vcpu'))
-
-            memory = cls._extract_numeric_value(requests.get('memory'))
-            memory_limit = cls._extract_numeric_value(limits.get('memory'))
+            vcpu = cls._parse_resource_quantity(
+                requests.get('cpu', requests.get('vcpu')), 'cpu'
+            )
+            vcpu_limit = cls._parse_resource_quantity(
+                limits.get('cpu', limits.get('vcpu')), 'cpu'
+            )
+            memory = cls._parse_resource_quantity(requests.get('memory'), 'memory')
+            memory_limit = cls._parse_resource_quantity(limits.get('memory'), 'memory')
 
             accelerators_limit = None
             if limits.get('accelerators'):
