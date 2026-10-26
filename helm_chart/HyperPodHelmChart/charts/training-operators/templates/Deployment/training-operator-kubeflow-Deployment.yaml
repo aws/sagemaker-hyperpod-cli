@@ -56,3 +56,8 @@ spec:
           allowPrivilegeEscalation: false
       serviceAccountName: training-operator
       terminationGracePeriodSeconds: 10
+      tolerations:
+      - key: sagemaker.amazonaws.com/node-health-status
+        operator: "Equal"
+        value: "Unschedulable"
+        effect: "NoSchedule"
