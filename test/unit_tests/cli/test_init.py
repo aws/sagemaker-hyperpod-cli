@@ -20,7 +20,7 @@ with patch('sagemaker.hyperpod.cluster_management.hp_cluster_stack.HpClusterStac
             }
         }
     })
-    from sagemaker.hyperpod.cli.commands.init import init, reset, configure, validate, _default_create
+    from sagemaker.hyperpod.cli.commands.init import init, reset, configure, validate, _default_create, _create_standard_template
     from sagemaker.hyperpod.cli.constants.init_constants import CFN, CRD
 
 
@@ -1161,3 +1161,92 @@ class TestSpecialHandlingFlags:
         assert 'environment' not in custom_inference_fields
         assert 'env' not in pytorch_fields
 
+
+
+class TestTemplateRenderingSandbox:
+    """Tests that `hyp create` renders template manifests inside a sandbox.
+
+    Template manifests (`k8s.jinja` / `cfn_params.jinja`) come from the project
+    scaffold on disk. Rendering them must use a sandboxed Jinja2 environment so
+    that template expressions cannot reach unsafe Python attributes or
+    callables, consistent with the recipe rendering path. These tests assert the
+    sandbox is active and that benign templates still render.
+    """
+
+    # A benign expression that calls a mutating method on a literal. An
+    # ImmutableSandboxedEnvironment rejects this; a plain jinja2.Template would
+    # allow the method call. It performs no I/O.
+    SANDBOX_TRIP_EXPR = "{{ [].append(1) }}"
+
+    def _run_create(self, tmp_path, jinja_body):
+        """Write a k8s.jinja + config.yaml and invoke the standard template
+        create path. Returns the raised exception (or None)."""
+        dir_path = Path(tmp_path)
+        (dir_path / "config.yaml").write_text("test: value\n")
+        (dir_path / "k8s.jinja").write_text(jinja_body)
+
+        templates_stub = {
+            "hyp-pytorch-job": {"schema_type": CRD, "registry": {}}
+        }
+        with patch(
+            "sagemaker.hyperpod.cli.commands.init.TEMPLATES", templates_stub
+        ):
+            try:
+                _create_standard_template(
+                    dir_path=dir_path,
+                    data={"test": "value"},
+                    template="hyp-pytorch-job",
+                    version="1.0",
+                    region=None,
+                    template_version=1,
+                )
+            except SystemExit as e:
+                return e
+            except Exception as e:  # noqa: BLE001
+                return e
+        return None
+
+    def test_disallowed_expression_is_blocked(self, tmp_path):
+        """A template expression that the sandbox disallows must cause render
+        to exit with an error rather than evaluating the expression."""
+        result = self._run_create(tmp_path, self.SANDBOX_TRIP_EXPR)
+
+        # _create_standard_template calls sys.exit(1) when render raises.
+        assert isinstance(result, SystemExit)
+        assert result.code == 1
+
+        # No rendered output should have been written for the rejected template.
+        run_dir = Path(tmp_path) / "run"
+        rendered = list(run_dir.glob("*/k8s.yaml")) if run_dir.exists() else []
+        assert not rendered, "Disallowed expression was rendered instead of blocked"
+
+    def test_legitimate_template_still_renders(self, tmp_path):
+        """A benign template with normal variable substitution still works."""
+        dir_path = Path(tmp_path)
+        (dir_path / "config.yaml").write_text("job_name: my-job\n")
+        (dir_path / "k8s.jinja").write_text("name: {{ job_name }}\n")
+
+        templates_stub = {
+            "hyp-pytorch-job": {"schema_type": CRD, "registry": {}}
+        }
+        with patch(
+            "sagemaker.hyperpod.cli.commands.init.TEMPLATES", templates_stub
+        ):
+            try:
+                _create_standard_template(
+                    dir_path=dir_path,
+                    data={"job_name": "my-job"},
+                    template="hyp-pytorch-job",
+                    version="1.0",
+                    region=None,
+                    template_version=1,
+                )
+            except SystemExit:
+                pass  # Downstream K8s/AWS calls may fail in a unit environment.
+            except Exception:
+                pass
+
+        run_dir = dir_path / "run"
+        rendered_files = list(run_dir.glob("*/k8s.yaml")) if run_dir.exists() else []
+        assert rendered_files, "Benign template failed to render"
+        assert "name: my-job" in rendered_files[0].read_text()
