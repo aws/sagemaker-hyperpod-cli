@@ -210,21 +210,22 @@ def describe_cluster_stack(stack_name: str, debug: bool, region: str) -> None:
               help="Filter by stack status. Format: \"['CREATE_COMPLETE', 'UPDATE_COMPLETE']\"")
 @_hyperpod_telemetry_emitter(Feature.HYPERPOD_CLI, "list_cluster_stack_cli")
 def list_cluster_stacks(region, debug, status):
-    """List all HyperPod cluster stacks.
+    """List CloudFormation stacks in the current AWS account and Region.
 
-    Displays a summary of all CloudFormation stacks related to HyperPod clusters
-    in the specified region or default region.
+    Returns all CloudFormation stacks in the current account and Region. This
+    command does not currently filter results to stacks created for HyperPod
+    clusters. Use --status to filter by stack status.
 
     .. dropdown:: Usage Examples
        :open:
 
        .. code-block:: bash
 
-          # List all cluster stacks
-          hyp list hyp-cluster
+          # List CloudFormation stacks
+          hyp list cluster-stack
 
-          # List stacks in specific region
-          hyp list hyp-cluster --region us-east-1
+          # List stacks in a specific region
+          hyp list cluster-stack --region us-east-1
     """
     logger = setup_logging(logging.getLogger(__name__), debug)
 
@@ -242,7 +243,7 @@ def list_cluster_stacks(region, debug, status):
 
         logger.debug(f"Listing stacks in region: {region or 'default'}")
 
-        click.echo(f"📋 HyperPod Cluster Stacks ({len(stack_summaries)} found)")
+        click.echo(f"📋 CloudFormation Stacks ({len(stack_summaries)} found)")
 
         if stack_summaries:
             for i, stack in enumerate(stack_summaries, 1):

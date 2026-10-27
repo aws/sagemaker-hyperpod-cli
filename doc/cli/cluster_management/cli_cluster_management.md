@@ -194,7 +194,11 @@ hyp update cluster [OPTIONS]
 
 ## hyp list cluster-stack
 
-List all HyperPod cluster stacks (CloudFormation stacks).
+List all CloudFormation stacks in the current AWS account and Region.
+
+```{note}
+This command does not currently filter the results to HyperPod-created stacks.
+```
 
 #### Syntax
 
@@ -426,7 +430,7 @@ hyp update cluster \
 ### List and Describe
 
 ```bash
-# List all cluster stacks
+# List all CloudFormation stacks in the Region
 hyp list cluster-stack --region us-west-2
 
 # Describe specific cluster stack
