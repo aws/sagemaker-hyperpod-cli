@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.13.0 (2026-10-28)
+
+### Bug Fixes and Other Changes
+- Clarify cluster-stack listing behavior (#471)
+- Sandbox Jinja2 rendering in the standard template `hyp init` create path (#472)
+
+### Helm Chart Changes
+- Tolerate the HyperPod node-health-status taint in the training-operator Deployment (#449)
+- Update the inference-operator migration tooling: migration guide, ALB controller IAM policy, and `helm_to_addon.sh` (#473)
+
 ## v3.12.0 (2026-10-19)
 
 ### Features
