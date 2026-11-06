@@ -12,7 +12,6 @@ set_script_variables() {
         "eu-north-1"
         "eu-west-2"
         "us-west-2"
-        "ap-northeast-1"
     )
 
     SRC_DIR="HyperPodHelmChart"
@@ -116,7 +115,7 @@ override_image_if_below_version() {
 
 override_aws_node() {
     ###################################################
-    # aws-node has special requirements as of 6/6/2025
+    # aws-node has special requirements as of 11/5/2026
     #  1. For non-RIG Daemonset
     #     1. Need to append new nodeAffinity rules to NOT deploy to RIG nodes
     #  2. For RIG Daemonset
@@ -124,6 +123,7 @@ override_aws_node() {
     #     2. Need to append new environment variable ENABLE_IMDS_ONLY_MODE
     #     3. Need to override existing environment variable ENABLE_PREFIX_DELEGATION
     #     4. Need to append new nodeAffinity rules to only deploy to RIG nodes
+    #     5. Need to set environment variable ENABLE_SUBNET_DISCOVERY to false
     ####################################################
     
     local outdir="$1"                # Daemonset will be in separate files
@@ -167,7 +167,9 @@ override_aws_node() {
 		    select(.name == \"aws-node\").env[] |= 
 		    select(.name == \"ENABLE_PREFIX_DELEGATION\").value = \"true\" |
 	        .spec.template.spec.containers[] |=
-		    select(.name == \"aws-node\").env += [{\"name\": \"ENABLE_IMDS_ONLY_MODE\", \"value\": \"true\"}]
+		    select(.name == \"aws-node\").env += [{\"name\": \"ENABLE_IMDS_ONLY_MODE\", \"value\": \"true\"}] |
+	        .spec.template.spec.containers[] |=
+		    select(.name == \"aws-node\").env |= (map(select(.name != \"ENABLE_SUBNET_DISCOVERY\")) + [{\"name\": \"ENABLE_SUBNET_DISCOVERY\", \"value\": \"false\"}])
 	    " - )
 
     override_images="$set_and_append_envvars"
