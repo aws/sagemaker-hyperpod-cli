@@ -1,0 +1,274 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.5
+  name: hyperpodkrmaconfigs.sagemaker.amazonaws.com
+spec:
+  group: sagemaker.amazonaws.com
+  names:
+    categories:
+    - hyperpod
+    kind: HyperPodKRMAConfig
+    listKind: HyperPodKRMAConfigList
+    plural: hyperpodkrmaconfigs
+    shortNames:
+    - hpkrmaconfig
+    singular: hyperpodkrmaconfig
+  scope: Cluster
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].reason
+      name: Reason
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          HyperPodKRMAConfig configures the HyperPod Kubernetes Resource Monitoring Agent and carries
+          its health report. It is cluster-scoped and a singleton: the only accepted name is "default".
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              HyperPodKRMAConfigSpec configures the agent. Every field is optional; an omitted field keeps
+              the agent default.
+            properties:
+              logLevel:
+                enum:
+                - debug
+                - info
+                - warn
+                - error
+                type: string
+              monitoredNamespaces:
+                description: MonitoredNamespaces scopes the pod monitor. Omitted means
+                  the agent default.
+                items:
+                  type: string
+                type: array
+                x-kubernetes-list-type: set
+              monitors:
+                description: |-
+                  HyperPodKRMAMonitors turns each monitor on or off. An omitted field keeps the agent default,
+                  which is on.
+                properties:
+                  daemonSet:
+                    type: boolean
+                  hyperPodPyTorchJob:
+                    type: boolean
+                  node:
+                    type: boolean
+                  pod:
+                    type: boolean
+                type: object
+              necessaryDaemonSets:
+                items:
+                  description: |-
+                    HyperPodKRMANecessaryDaemonSet names a DaemonSet the DaemonSet monitor reports as missing
+                    when it is absent or has no available pods.
+                  properties:
+                    name:
+                      minLength: 1
+                      type: string
+                    namespace:
+                      minLength: 1
+                      type: string
+                  required:
+                  - name
+                  - namespace
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - namespace
+                - name
+                x-kubernetes-list-type: map
+            type: object
+          status:
+            description: |-
+              HyperPodKRMAConfigStatus reports which generation the running agent uses and, when health
+              reporting is on, the current health of the components and instances the agent watches.
+            properties:
+              components:
+                description: Components is the health of each HyperPod component the
+                  agent watches.
+                items:
+                  description: ComponentHealth is the health of one HyperPod component.
+                  properties:
+                    message:
+                      description: Message is operator detail for Reason. It is not
+                        shown to customers.
+                      type: string
+                    name:
+                      description: Name identifies the component as <kind>/<namespace>/<name>.
+                      type: string
+                    reason:
+                      description: Reason is the highest-priority active detection;
+                        empty when Healthy.
+                      type: string
+                    since:
+                      description: Since is when Status last changed.
+                      format: date-time
+                      type: string
+                    status:
+                      description: ComponentHealthStatus is the rolled-up health of
+                        one component.
+                      enum:
+                      - Healthy
+                      - Unhealthy
+                      type: string
+                  required:
+                  - name
+                  - since
+                  - status
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
+              conditions:
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              instances:
+                description: |-
+                  Instances lists only instances with an active signal; an instance absent from a fresh
+                  report has no active signal.
+                items:
+                  description: InstanceHealth is an instance with at least one active
+                    signal.
+                  properties:
+                    instanceId:
+                      description: InstanceID is the EC2 instance ID.
+                      type: string
+                    node:
+                      type: string
+                    signals:
+                      items:
+                        description: InstanceSignal is one active signal on an instance.
+                        properties:
+                          reason:
+                            type: string
+                          signal:
+                            enum:
+                            - gpu
+                            - efa
+                            - gpu-capability
+                            type: string
+                          since:
+                            description: Since is when the signal became active.
+                            format: date-time
+                            type: string
+                        required:
+                        - reason
+                        - signal
+                        - since
+                        type: object
+                      type: array
+                      x-kubernetes-list-map-keys:
+                      - signal
+                      x-kubernetes-list-type: map
+                  required:
+                  - instanceId
+                  - signals
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - instanceId
+                x-kubernetes-list-type: map
+              lastReportTime:
+                description: |-
+                  LastReportTime is set on every health write. A stale value means the report is unknown,
+                  never that everything recovered.
+                format: date-time
+                type: string
+              observedGeneration:
+                format: int64
+                type: integer
+            type: object
+        type: object
+        x-kubernetes-validations:
+        - message: 'HyperPodKRMAConfig is a singleton: metadata.name must be ''default'''
+          rule: self.metadata.name == 'default'
+    served: true
+    storage: true
+    subresources:
+      status: {}

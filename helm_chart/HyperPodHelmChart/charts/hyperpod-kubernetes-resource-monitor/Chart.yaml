@@ -1,0 +1,6 @@
+apiVersion: v2
+name: hyperpod-kubernetes-resource-monitor
+description: HyperPod Kubernetes Resource Monitoring Agent (report-only node, pod, DaemonSet and training job monitor)
+type: application
+version: 0.1.0     # chart version
+appVersion: "0.1.0"

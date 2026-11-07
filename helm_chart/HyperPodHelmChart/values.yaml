@@ -310,3 +310,9 @@ hyperpod-ray-endpoint-operator:
   kmsKeyArn: ""
   # Domain for Ray dashboard URLs
   domain: ""
+
+# HyperPod Kubernetes Resource Monitoring Agent: report-only monitor that writes Kubernetes
+# Events and HyperPod component health. Off by default; the SageMaker console turns it on.
+# Deploys into the aws-hyperpod namespace, which deep-health-check creates.
+hyperpod-kubernetes-resource-monitor:
+  enabled: false

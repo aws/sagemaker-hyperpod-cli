@@ -1,0 +1,288 @@
+namespace: aws-hyperpod
+# CMA runs a single replica by default (it has no leader election, so multiple
+# replicas would double-emit events/metrics). Set >1 only with an external
+# coordination mechanism, or for customers who accept duplicate signals for HA.
+replicaCount: 1
+# Deployment strategy. CMA has no leader election, so two concurrent pods would
+# double-emit events/metrics. maxSurge: 0 / maxUnavailable: 1 tears down the old
+# pod before starting the new one, accepting a brief monitoring gap during an
+# upgrade in exchange for never overlapping (no duplicate signals).
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 0
+
+# Leader election. When enabled, replicas acquire a coordination.k8s.io Lease
+# and only the lease holder monitors, so replicaCount may safely exceed 1 for
+# HA without double-emitting events/metrics. Disabled by default to preserve the
+# single-replica behavior; enabling it also requires the leases RBAC rule below.
+leaderElection:
+  enabled: false
+
+# Health status report. The agent writes the health of HyperPod components and instances
+# to the status of the HyperPodKRMAConfig "default", which the chart creates; the HyperPod
+# control plane reads it as readerUser and notifies customers of changes. The CRD is in crds/,
+# which Helm installs on first install only and never upgrades.
+healthStatusReport:
+  enabled: true
+  # Kubernetes user of the HyperPod service-linked role in the cluster's access entries.
+  readerUser: "hyperpod-service-linked-role"
+
+# AWS region of the cluster. Selects the regional HyperPod ECR repository the image is pulled from.
+# When empty, it is read from the nodes' topology.kubernetes.io/region label, then defaults to us-east-1.
+region: ""
+
+image:
+  # Full repository URI without the tag, for example a development repository. When empty, the
+  # regional HyperPod ECR repository is used:
+  # <account>.dkr.ecr.<region>.amazonaws.com/hyperpod-cluster-monitoring-agent
+  repository: ""
+  pullPolicy: IfNotPresent
+  # Image tag published by the HyperpodImageBuilder pipeline (<agent version>_<image build version>).
+  # Pinned on purpose: each agent release updates it here. Set it to "" to use the chart appVersion.
+  tag: "1.0.498.0_1.0.325.0"
+
+serviceAccount:
+  name: "hyperpod-cluster-monitor"
+
+# Pod annotations
+podAnnotations:
+  kubernetes.io/change-cause: "Forced recreation with timestamp: $(date)"
+
+# Container security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 2000
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+# Kubernetes API client rate limits. Leave empty to use CMA's defaults (QPS 5 /
+# Burst 10, matching client-go). Set low values only to exercise API-server
+# throttling/backpressure in load tests (load-test plan SC-E08).
+kubeClient:
+  qps: ""
+  burst: ""
+
+# Monitoring configuration - enable/disable different monitors
+monitoring:
+  # Enable node monitoring
+  enableNodeMonitor: true
+  # Enable pod monitoring
+  enablePodMonitor: true
+  # Enable daemonset monitoring
+  enableDaemonsetMonitor: true
+  # Enable HyperPod PyTorch job monitoring
+  enableHyperpodPytorchJobMonitor: true
+  # Enable Kubeflow PyTorch v1 job monitoring (kubeflow.org/v1)
+  enableKubeflowV1PytorchJobMonitor: true
+  # Enable Kubeflow PyTorch v2 job monitoring (kubeflow.org/v2) - PRIMARY, enabled by default
+  enableKubeflowV2PytorchJobMonitor: true
+  # Enable NCCL RAS monitoring
+  enableNcclRasMonitor: true
+  # Namespaces the pod monitor watches. Empty -> agent default
+  # (aws-hyperpod, kube-system, default, kubeflow). Customers running
+  # training jobs in custom namespaces should add them here.
+  monitoredNamespaces:
+    - aws-hyperpod
+    - kube-system
+    - default
+    - kubeflow
+  # NCCL RAS configuration
+  ncclRas:
+    # Manual comma-separated list of nodes (hostnames or IPs)
+    # Example: "node1.example.com,node2.example.com,10.0.1.100"
+    nodes: ""
+    # Enable auto-discovery of nodes from Kubernetes cluster
+    autoDiscover: false
+    # Kubernetes label selector for node discovery (when autoDiscover is true)
+    # Example: "node-role.kubernetes.io/worker=true"
+    nodeSelector: ""
+    # NCCL RAS endpoint port
+    # SECURITY NOTE: Using non-default ports may connect to non-NCCL services.
+    # The monitoring agent validates responses against NCCL RAS protocol format.
+    # Validation failures are logged and exposed in health metrics.
+    # - Default port (28028): Recommended for production use
+    # - Custom ports: Use only when necessary; ensure endpoints are valid NCCL RAS services
+    # - Protocol validation: Automatic checks ensure endpoint responds correctly
+    # - Security warnings: Logged when non-default ports are configured
+    # Default: 28028 (recommended for production)
+    port: 28028
+    # Connection timeout in seconds
+    timeout: 10
+    # Maximum retry attempts
+    maxRetries: 3
+    # Base delay between retries in seconds
+    retryDelay: 2
+    # Monitoring interval in seconds
+    monitorInterval: 30
+    # Output directory for monitoring results
+    outputDir: "/var/log/aws/clusters/nccl_ras_monitoring/"
+  # DaemonSets that must exist; checked every 5 minutes. Format: [{"name": ..., "namespace": ...}]
+  # The default is the HyperPod health monitoring agent only, because which GPU DaemonSets a
+  # cluster runs depends on how it exposes GPUs (device plugins, GPU operator or DRA). Add the
+  # device plugins your cluster uses, and always keep this entry: setting the list replaces it.
+  necessaryDaemonsets:
+    - name: "health-monitoring-agent"
+      namespace: "aws-hyperpod"
+
+# Volume configuration for logs
+volumes:
+  logs:
+    # Host path for log volume
+    hostPath: /var/log/aws
+    # Type of host path - require pre-existing directory
+    type: Directory
+    # Mount path inside the container
+    mountPath: /var/log/aws
+
+# Node affinity configuration
+affinity:
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+            - key: node.kubernetes.io/instance-type
+              operator: NotIn
+              values:    # avoid deploy on GPU instances
+                # P4d instances
+                - ml.p4d.24xlarge
+                # P4de instances
+                - ml.p4de.24xlarge
+                # P5 instances
+                - ml.p5.48xlarge
+                # P5e instances
+                - ml.p5e.48xlarge
+                # P6 instances
+                - ml.p6-b300.48xlarge
+                - ml.p6-b200.48xlarge
+                # P6e instances
+                - ml.p6e-gb200.36xlarge
+                # G5 instances
+                - ml.g5.xlarge
+                - ml.g5.2xlarge
+                - ml.g5.4xlarge
+                - ml.g5.8xlarge
+                - ml.g5.12xlarge
+                - ml.g5.16xlarge
+                - ml.g5.24xlarge
+                - ml.g5.48xlarge
+                # G6 instances
+                - ml.g6.xlarge
+                - ml.g6.2xlarge
+                - ml.g6.4xlarge
+                - ml.g6.8xlarge
+                - ml.g6.12xlarge
+                - ml.g6.16xlarge
+                - ml.g6.24xlarge
+                - ml.g6.48xlarge
+                # G6e instances
+                - ml.g6e.xlarge
+                - ml.g6e.2xlarge
+                - ml.g6e.4xlarge
+                - ml.g6e.8xlarge
+                - ml.g6e.12xlarge
+                - ml.g6e.16xlarge
+                - ml.g6e.24xlarge
+                - ml.g6e.48xlarge
+                # GR6 instances
+                - ml.gr6.4xlarge
+                - ml.gr6.8xlarge
+  # Spreads replicas across distinct nodes when replicaCount > 1 (opt-in HA).
+  # Soft rule so a single-replica default and small clusters still schedule.
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchLabels:
+              app: cluster-monitoring-agent
+
+# can override to deploy to CPU instances
+nodeSelector: {}
+
+# Resource limits and requests
+# Memory scales with cluster size: the pod informer caches pod objects for
+# monitored namespaces. 1Gi limit / 512Mi request accommodates large clusters.
+resources:
+  limits:
+    cpu: 200m
+    memory: 1Gi
+  requests:
+    cpu: 100m
+    memory: 512Mi
+
+# Health probe configuration
+probes:
+  # Startup probe - allows up to 150 seconds for initial startup (30 failures × 5 seconds)
+  # Prevents premature liveness probe failures during slow startup
+  startup:
+    enabled: true
+    initialDelaySeconds: 0
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 30
+  # Liveness probe - detects if the application is alive and restarts if unhealthy
+  liveness:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  # Readiness probe - determines when the pod is ready to receive traffic
+  readiness:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# RBAC configuration
+rbac:
+  create: true
+  # Rules for the cluster role
+  rules:
+    - apiGroups: [""]
+      resources: ["nodes", "nodes/status", "pods", "pods/status"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["", "events.k8s.io"]
+      resources: ["events"]
+      verbs: ["create", "patch"]
+    - apiGroups: ["apps"]
+      resources: ["daemonsets"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["batch"]
+      resources: ["jobs"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["sagemaker.amazonaws.com"]
+      resources: ["hyperpodpytorchjobs"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["kubeflow.org"]
+      resources: ["pytorchjobs", "pytorchjobs/status"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["trainer.kubeflow.org"]
+      resources: ["trainjobs", "trainjobs/status"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["apiextensions.k8s.io"]
+      resources: ["customresourcedefinitions"]
+      verbs: ["get", "list"]
+    # Health status report: the agent reads the persisted report at startup and patches the
+    # status of the HyperPodKRMAConfig "default".
+    - apiGroups: ["sagemaker.amazonaws.com"]
+      resources: ["hyperpodkrmaconfigs"]
+      verbs: ["get"]
+    - apiGroups: ["sagemaker.amazonaws.com"]
+      resources: ["hyperpodkrmaconfigs/status"]
+      verbs: ["get", "update", "patch"]
+    # Leader election (only used when ENABLE_LEADER_ELECTION=true): the agent
+    # acquires and renews a coordination.k8s.io Lease so exactly one replica
+    # monitors at a time. Harmless when leader election is disabled.
+    - apiGroups: ["coordination.k8s.io"]
+      resources: ["leases"]
+      verbs: ["get", "list", "watch", "create", "update", "patch"]
