@@ -1,4 +1,7 @@
 namespace: aws-hyperpod
+# Fixed resource names, like health-monitoring-agent: the Deployment, ClusterRole and
+# ClusterRoleBinding are named hyperpod-kubernetes-resource-monitoring-agent, whatever the release name.
+fullnameOverride: "hyperpod-kubernetes-resource-monitoring-agent"
 # CMA runs a single replica by default (it has no leader election, so multiple
 # replicas would double-emit events/metrics). Set >1 only with an external
 # coordination mechanism, or for customers who accept duplicate signals for HA.
@@ -44,7 +47,7 @@ image:
   tag: "1.0.498.0_1.0.325.0"
 
 serviceAccount:
-  name: "hyperpod-cluster-monitor"
+  name: "hyperpod-kubernetes-resource-monitoring-agent"
 
 # Pod annotations
 podAnnotations:
