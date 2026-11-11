@@ -96,3 +96,7 @@ dependencies:
     version: "0.1.0"
     repository: "file://charts/hyperpod-ray-endpoint-operator"
     condition: hyperpod-ray-endpoint-operator.enabled
+  - name: hyperpod-kubernetes-resource-monitor
+    version: "0.1.0"
+    repository: "file://charts/hyperpod-kubernetes-resource-monitor"
+    condition: hyperpod-kubernetes-resource-monitor.enabled

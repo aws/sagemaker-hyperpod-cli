@@ -1,0 +1,14 @@
+{{- if and .Values.healthStatusReport.enabled (.Capabilities.APIVersions.Has "sagemaker.amazonaws.com/v1alpha1/HyperPodKRMAConfig") }}
+# The singleton the agent configures itself from and writes its health report to. The agent
+# patches only its status; the chart owns the object and its spec. Rendered only when the CRD
+# is served. On a first install Helm applies crds/ before it reads the API versions, so the
+# gate is true (helm v3 pkg/action/install.go: installCRDs runs before getCapabilities). On an
+# upgrade Helm never applies crds/, and an unknown kind would fail the release, so the object
+# is skipped until the CRD is applied.
+apiVersion: sagemaker.amazonaws.com/v1alpha1
+kind: HyperPodKRMAConfig
+metadata:
+  name: default
+  labels:
+    {{- include "hyperpod-cluster-monitoring-agent.labels" . | nindent 4 }}
+{{- end }}

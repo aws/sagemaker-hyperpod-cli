@@ -1,0 +1,30 @@
+{{- if and .Values.rbac.create .Values.healthStatusReport.enabled }}
+# Lets the HyperPod control plane read the health report. Its Kubernetes client authenticates
+# as the HyperPod service-linked role, mapped to this user, and may read only the singleton.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "hyperpod-cluster-monitoring-agent.fullname" . }}-health-report-reader
+  labels:
+    {{- include "hyperpod-cluster-monitoring-agent.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["sagemaker.amazonaws.com"]
+    resources: ["hyperpodkrmaconfigs"]
+    resourceNames: ["default"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "hyperpod-cluster-monitoring-agent.fullname" . }}-health-report-reader
+  labels:
+    {{- include "hyperpod-cluster-monitoring-agent.labels" . | nindent 4 }}
+subjects:
+  - kind: User
+    name: {{ .Values.healthStatusReport.readerUser }}
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: {{ include "hyperpod-cluster-monitoring-agent.fullname" . }}-health-report-reader
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
