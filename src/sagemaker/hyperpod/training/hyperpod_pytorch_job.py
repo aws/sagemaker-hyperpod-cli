@@ -7,7 +7,7 @@ from sagemaker.hyperpod.cli.constants.command_constants import (
     EFA_RESOURCE_LIMIT_KEY,
 )
 from sagemaker.hyperpod.training.config.hyperpod_pytorch_job_unified_config import (
-    _HyperPodPytorchJob, HyperPodPytorchJobStatus
+    _HyperPodPytorchJob, HyperPodPytorchJobStatus, Resources
 )
 from sagemaker.hyperpod.common.config.metadata import Metadata
 from kubernetes import client, config, stream
@@ -100,20 +100,20 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             node_count = data.get('replicas', None)
 
             # Extract nested configuration with validation
-            template = data.get('template', {})
-            spec = template.get('spec', {})
+            template = data.get('template') or {}
+            spec = template.get('spec') or {}
             node_selector = spec.get('nodeSelector', {})
             instance_type = node_selector.get(INSTANCE_TYPE_LABEL) if node_selector else None
 
-            containers = spec.get('containers', [])
+            containers = spec.get('containers') or []
 
             if not containers:
                 raise ValueError("No containers found in template spec")
 
             container = containers[0]
-            resources = container.get('resources', {})
-            requests = resources.get('requests', {})
-            limits = resources.get('limits', {})
+            resources = container.get('resources') or {}
+            requests = resources.get('requests') or {}
+            limits = resources.get('limits') or {}
 
             # Check if accelerators are specified without instance_type
             accel_keys = ['accelerators', NVIDIA_RESOURCE_KEY, NEURON_RESOURCE_KEY]
@@ -200,8 +200,9 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
             _resolve_default_cpu_values(instance_type, requests_values)
 
             # Update data with calculated values
-            data['template']['spec']['containers'][0]['resources']['requests'] = requests_values
-            data['template']['spec']['containers'][0]['resources']['limits'] = limits_values
+            resources['requests'] = requests_values
+            resources['limits'] = limits_values
+            container['resources'] = resources
 
             return data
         except KeyError as e:
@@ -215,22 +216,29 @@ class HyperPodPytorchJob(_HyperPodPytorchJob):
 
     @classmethod
     def allocate_quotas_if_applicable(cls, spec):
-        try:
-            spec_dict = spec.model_dump()
-            replica_spec = spec_dict['replicaSpecs'][0]
-            cls._process_replica_resources(replica_spec)
+        """Resolve every replica set's resources before updating the job.
 
-            # Update the original spec object directly
+        Replica sets without an instance type keep their explicit resources.
+        A validation failure in any replica set leaves the input job unchanged.
+        """
+        spec_dict = spec.model_dump()
+        allocations = []
+        for index, replica_spec in enumerate(spec_dict['replicaSpecs'] or []):
+            if cls._process_replica_resources(replica_spec) is None:
+                continue
             requests, limits = cls._get_container_resources(replica_spec)
-            spec.replicaSpecs[0].template.spec.containers[0].resources.requests = requests
-            spec.replicaSpecs[0].template.spec.containers[0].resources.limits = limits
+            allocations.append((index, requests, limits))
 
-            return spec
-        except ValueError as e:
-            raise ValueError(e)
-        except Exception as e:
-            # In case of any other exception, return original spec
-            return spec
+        # Validate all replica sets before mutating the caller's job.
+        for index, requests, limits in allocations:
+            container = spec.replicaSpecs[index].template.spec.containers[0]
+            if container.resources is None:
+                container.resources = Resources(requests=requests, limits=limits)
+            else:
+                container.resources.requests = requests
+                container.resources.limits = limits
+
+        return spec
 
     @_hyperpod_telemetry_emitter(Feature.HYPERPOD, "create_pytorchjob")
     def create(self, debug=False):
