@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from decimal import Decimal
 import re
 from sagemaker.hyperpod.cli.constants.command_constants import NVIDIA_GPU_RESOURCE_LIMIT_KEY, NEURON_RESOURCE_LIMIT_KEY
 from sagemaker.hyperpod.cli.utils import (
@@ -121,7 +122,7 @@ def _trim_resource_requests(instance_type: str, requests_values: dict) -> dict:
     max_allocatable_memory = memory_capacity - (_calculate_memory_reservation(memory_capacity))
 
     cpu_request_str = requests_values.get('cpu', '0')
-    cpu_request = float(''.join(filter(lambda x: x.isdigit() or x == '.', cpu_request_str)))
+    cpu_request = float(cpu_request_str)
 
     mem_request_str = requests_values.get('memory', '0Gi')
     mem_request = float(mem_request_str.replace('Gi', ''))
@@ -185,9 +186,10 @@ def _resolve_default_memory_values(instance_type: str, requests_values: dict, li
     if mem_limit_str is None and mem_request_str is not None:
         mem_limit_str = mem_request_str
 
+    numeric_pattern = r'^([0-9]*\.?[0-9]+(?:[eE][+-]?[0-9]+)?)'
     try:
-        memory_limit = float(re.match(r'^([0-9]*\.?[0-9]+)', mem_limit_str).group(1))
-        memory_request = float(re.match(r'^([0-9]*\.?[0-9]+)', mem_request_str).group(1))
+        memory_limit = float(re.match(numeric_pattern, mem_limit_str).group(1))
+        memory_request = float(re.match(numeric_pattern, mem_request_str).group(1))
     except (AttributeError, ValueError):
         raise ValueError(f"Invalid memory format: {mem_limit_str or mem_request_str}")
 
@@ -203,8 +205,8 @@ def _resolve_default_memory_values(instance_type: str, requests_values: dict, li
         memory_limit = min(memory_limit, max_allocatable_memory)
 
     memory_request = min(memory_request, max_allocatable_memory)
-    limits_values["memory"] = str(memory_limit) + "Gi"
-    requests_values["memory"] = str(memory_request) + "Gi"
+    limits_values["memory"] = format(Decimal(str(memory_limit)), 'f') + "Gi"
+    requests_values["memory"] = format(Decimal(str(memory_request)), 'f') + "Gi"
 
 
 def _validate_accelerators_inputs(instance_type: str, accelerators_request: int, accelerators_limit: int) -> None:
