@@ -1,0 +1,48 @@
+# HuggingFace Model Source — Mistral 7B with vLLM Runtime (noprefetch)
+# Uses official vLLM OpenAI-compatible server to download and serve the model natively.
+# The operator injects MODEL_ID, HF_MODEL_ID, HF_TOKEN, HF_HOME env vars.
+# NOTE: The operator auto-injects --model arg for vLLM (it does NOT read MODEL_ID env var).
+apiVersion: inference.sagemaker.aws.amazon.com/v1
+kind: InferenceEndpointConfig
+metadata:
+  name: mistral-7b-vllm
+  namespace: test-hf
+spec:
+  modelName: mistral-7b
+  modelSourceConfig:
+    modelSourceType: huggingface
+    prefetchEnabled: false
+    huggingFaceModel:
+      modelId: "mistralai/Mistral-7B-Instruct-v0.3"
+      tokenSecretRef:
+        name: token-test
+        key: token
+  instanceType: "ml.g5.24xlarge"
+  invocationEndpoint: v1/chat/completions
+  worker:
+    image: "vllm/vllm-openai:v0.8.4"
+    modelInvocationPort:
+      containerPort: 8000
+      name: http
+    modelVolumeMount:
+      name: model-weights
+      mountPath: /opt/ml/model
+    resources:
+      requests:
+        nvidia.com/gpu: "4"
+        memory: "96Gi"
+        cpu: "16"
+      limits:
+        nvidia.com/gpu: "4"
+        memory: "96Gi"
+        cpu: "16"
+    args:
+      - "--port"
+      - "8000"
+      - "--tensor-parallel-size"
+      - "4"
+      - "--download-dir"
+      - "/opt/ml/model"
+    environmentVariables:
+      - name: VLLM_REQUEST_TIMEOUT
+        value: "600"

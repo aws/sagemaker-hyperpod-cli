@@ -1,0 +1,45 @@
+# HuggingFace Model Source Example — Mistral 7B with TGI (prefetch DISABLED)
+# TGI runtime downloads the model natively at startup — no init container.
+# The operator injects HF_MODEL_ID, HF_MODEL_REVISION, HF_TOKEN env vars
+# directly into the inference container.
+apiVersion: inference.sagemaker.aws.amazon.com/v1
+kind: InferenceEndpointConfig
+metadata:
+  name: mistral-7b-hf-noprefetch
+  namespace: test-hf
+spec:
+  modelName: mistral-7b
+  modelSourceConfig:
+    modelSourceType: huggingface
+    prefetchEnabled: false
+    huggingFaceModel:
+      modelId: "mistralai/Mistral-7B-Instruct-v0.3"
+      tokenSecretRef:
+        name: token-test
+        key: token
+  instanceType: "ml.g5.24xlarge"
+  invocationEndpoint: v1/chat/completions
+  worker:
+    image: "ghcr.io/huggingface/text-generation-inference:2.4.1"
+    modelInvocationPort:
+      containerPort: 8080
+      name: http
+    modelVolumeMount:
+      name: model-weights
+      mountPath: /opt/ml/model
+    resources:
+      requests:
+        nvidia.com/gpu: "4"
+        memory: "96Gi"
+        cpu: "16"
+      limits:
+        nvidia.com/gpu: "4"
+        memory: "96Gi"
+        cpu: "16"
+    environmentVariables:
+      - name: PORT
+        value: "8080"
+      - name: MAX_INPUT_LENGTH
+        value: "4096"
+      - name: MAX_TOTAL_TOKENS
+        value: "8192"
