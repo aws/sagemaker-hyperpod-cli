@@ -44,7 +44,7 @@ image:
   pullPolicy: IfNotPresent
   # Image tag published by the HyperpodImageBuilder pipeline (<agent version>_<image build version>).
   # Pinned on purpose: each agent release updates it here. Set it to "" to use the chart appVersion.
-  tag: "1.0.498.0_1.0.325.0"
+  tag: "1.0.508.0_1.0.327.0"
 
 serviceAccount:
   name: "hyperpod-kubernetes-resource-monitoring-agent"
@@ -95,16 +95,8 @@ monitoring:
     - kube-system
     - default
     - kubeflow
-  # NCCL RAS configuration
+  # NCCL RAS configuration. Endpoints are the pod IPs of each running training job.
   ncclRas:
-    # Manual comma-separated list of nodes (hostnames or IPs)
-    # Example: "node1.example.com,node2.example.com,10.0.1.100"
-    nodes: ""
-    # Enable auto-discovery of nodes from Kubernetes cluster
-    autoDiscover: false
-    # Kubernetes label selector for node discovery (when autoDiscover is true)
-    # Example: "node-role.kubernetes.io/worker=true"
-    nodeSelector: ""
     # NCCL RAS endpoint port
     # SECURITY NOTE: Using non-default ports may connect to non-NCCL services.
     # The monitoring agent validates responses against NCCL RAS protocol format.
@@ -112,19 +104,14 @@ monitoring:
     # - Default port (28028): Recommended for production use
     # - Custom ports: Use only when necessary; ensure endpoints are valid NCCL RAS services
     # - Protocol validation: Automatic checks ensure endpoint responds correctly
-    # - Security warnings: Logged when non-default ports are configured
     # Default: 28028 (recommended for production)
     port: 28028
     # Connection timeout in seconds
     timeout: 10
-    # Maximum retry attempts
+    # Connection attempts per endpoint in each monitoring cycle
     maxRetries: 3
-    # Base delay between retries in seconds
-    retryDelay: 2
     # Monitoring interval in seconds
     monitorInterval: 30
-    # Output directory for monitoring results
-    outputDir: "/var/log/aws/clusters/nccl_ras_monitoring/"
   # DaemonSets that must exist; checked every 5 minutes. Format: [{"name": ..., "namespace": ...}]
   # The default is the HyperPod health monitoring agent only, because which GPU DaemonSets a
   # cluster runs depends on how it exposes GPUs (device plugins, GPU operator or DRA). Add the

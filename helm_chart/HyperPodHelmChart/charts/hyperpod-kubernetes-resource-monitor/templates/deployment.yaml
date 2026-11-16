@@ -128,24 +128,14 @@ spec:
         - name: MONITORED_NAMESPACES
           value: {{ join "," .Values.monitoring.monitoredNamespaces | quote }}
         {{- if .Values.monitoring.enableNcclRasMonitor }}
-        - name: NCCL_RAS_NODES
-          value: {{ .Values.monitoring.ncclRas.nodes | quote }}
-        - name: NCCL_RAS_AUTO_DISCOVER
-          value: {{ .Values.monitoring.ncclRas.autoDiscover | quote }}
-        - name: NCCL_RAS_NODE_SELECTOR
-          value: {{ .Values.monitoring.ncclRas.nodeSelector | quote }}
         - name: NCCL_RAS_PORT
           value: {{ .Values.monitoring.ncclRas.port | quote }}
         - name: NCCL_RAS_TIMEOUT
           value: {{ .Values.monitoring.ncclRas.timeout | quote }}
         - name: NCCL_RAS_MAX_RETRIES
           value: {{ .Values.monitoring.ncclRas.maxRetries | quote }}
-        - name: NCCL_RAS_RETRY_DELAY
-          value: {{ .Values.monitoring.ncclRas.retryDelay | quote }}
         - name: NCCL_RAS_MONITOR_INTERVAL
           value: {{ .Values.monitoring.ncclRas.monitorInterval | quote }}
-        - name: NCCL_RAS_OUTPUT_DIR
-          value: {{ .Values.monitoring.ncclRas.outputDir | quote }}
         {{- end }}
         ports:
         - name: health
