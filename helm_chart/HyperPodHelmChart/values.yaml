@@ -312,7 +312,9 @@ hyperpod-ray-endpoint-operator:
   domain: ""
 
 # HyperPod Kubernetes Resource Monitoring Agent: report-only monitor that writes Kubernetes
-# Events and HyperPod component health. Off by default; the SageMaker console turns it on.
+# Events and HyperPod component health. On by default; set enabled=false to skip it.
 # Deploys into the aws-hyperpod namespace, which deep-health-check creates.
+# Set region to the cluster's AWS Region: on a cluster with no nodes yet it cannot be read from a
+# node label, and the image then comes from us-east-1.
 hyperpod-kubernetes-resource-monitor:
-  enabled: false
+  enabled: true
