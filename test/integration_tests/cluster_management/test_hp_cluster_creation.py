@@ -325,6 +325,7 @@ def test_wait_for_stack_completion(runner, cluster_name):
     print(f"✅ Stack {STACK_NAME} is now CREATE_COMPLETE")
 
 
+
 @pytest.mark.dependency(name="update_cluster", depends=["wait_for_stack"])
 def test_cluster_update_workflow(runner, cluster_name):
     """Test hyp update-cluster command by toggling node recovery setting."""
