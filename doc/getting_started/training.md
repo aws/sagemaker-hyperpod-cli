@@ -267,6 +267,16 @@ pytorch_job.create()
 ````
 `````
 
+For SDK jobs with several `ReplicaSpec` entries, quota allocation validates and
+resolves the main container's resources in every replica set using that replica's
+instance type. For example, a chief on `ml.g5.xlarge` and workers on
+`ml.p4d.24xlarge` receive their own GPU, CPU, memory, and EFA allocations. Replica
+sets without an instance type keep their explicit resources, including omitted
+resource mappings. Managed replicas can omit mappings to use instance defaults.
+If any replica set
+fails validation, allocation raises `ValueError` without partially updating the
+input job.
+
 ### Key Parameters
 
 When creating a training job, you'll need to specify:
