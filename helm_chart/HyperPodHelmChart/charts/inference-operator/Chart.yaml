@@ -15,16 +15,16 @@ type: application
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 2.7.0
+version: 2.8.3
 
 # This is the version number of the application being deployed. Keep this aligned
 # with operator image MAJOR.MINOR version.
-appVersion: "3.7"
+appVersion: "3.8"
 
 dependencies:
 - name: aws-mountpoint-s3-csi-driver
   alias: s3
-  version: 1.14.1
+  version: 1.15.0
   repository: "https://awslabs.github.io/mountpoint-s3-csi-driver/"
   condition: s3.enabled
 - name: metrics-server
@@ -33,7 +33,7 @@ dependencies:
   repository: "https://kubernetes-sigs.github.io/metrics-server/"
 - name: aws-fsx-csi-driver
   alias: fsx
-  version: 1.17.0
+  version: 1.19.0
   repository: "https://kubernetes-sigs.github.io/aws-fsx-csi-driver"
   condition: fsx.enabled
 - name: aws-load-balancer-controller

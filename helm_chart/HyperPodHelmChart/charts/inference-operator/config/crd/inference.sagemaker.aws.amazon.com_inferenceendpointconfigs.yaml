@@ -613,6 +613,867 @@ spec:
                 required:
                 - hostedZoneId
                 type: object
+              dynamoSpec:
+                description: |-
+                  Configuration for the NVIDIA Dynamo serving path. Presence of dynamoSpec selects
+                  Dynamo mode: the operator translates this InferenceEndpointConfig into a
+                  DynamoGraphDeployment (DGD) and lets the Dynamo operator reconcile the graph into
+                  gang-scheduled pods, while the operator keeps owning storage, autoscaling,
+                  registration, status, edge and TLS.
+
+                  Dynamo mode is mutually exclusive with pdSpec and intelligentRoutingSpec (a config
+                  combining them is marked DeploymentFailed). worker.image is the Dynamo runtime image
+                  for the worker and frontend, and worker.args are passed to the worker engine (merged
+                  under dynamoSpec.aggregation.args). worker.command is ignored because the
+                  entrypoint is generated from dynamoSpec. worker.probes, when set, replace the
+                  Dynamo operator's default probes on every worker container (unset probes keep
+                  the Dynamo defaults); Dynamo serves /live and /health on its system port, 9090.
+                properties:
+                  aggregation:
+                    description: |-
+                      Aggregation configures a single worker role (optionally spanning nodes).
+                      Mutually exclusive with disaggregation.
+                    properties:
+                      args:
+                        description: |-
+                          Args are additional engine arguments for this worker role, appended after the
+                          generated entrypoint flags. Optional.
+                        items:
+                          type: string
+                        type: array
+                      dataParallelism:
+                        description: |-
+                          DataParallelism is the number of data-parallel engine ranks in one worker
+                          (vLLM --data-parallel-size). Each rank runs attention on its own
+                          tensorParallelism GPUs, so a worker requests tensorParallelism x
+                          dataParallelism GPUs; with --enable-expert-parallel in args the MoE experts
+                          are sharded across all of them. Supported with modelServer vllm on
+                          single-node workers (nodesPerReplica 1) whose GPUs fit on one instance.
+                          Optional; defaults to 1.
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      instanceType:
+                        description: InstanceType overrides the endpoint's instance
+                          type for this role. Optional.
+                        pattern: ^ml\..*
+                        type: string
+                      nodesPerReplica:
+                        default: 1
+                        description: |-
+                          NodesPerReplica is the number of nodes that form one logical worker.
+                          1 means a single-node worker; greater than 1 makes the worker span nodes
+                          (multi-node tensor/pipeline parallelism, gang-scheduled).
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      tensorParallelism:
+                        description: TensorParallelism is the total TP degree for
+                          the worker. Optional; defaults to 1.
+                        format: int32
+                        minimum: 1
+                        type: integer
+                    type: object
+                  disaggregation:
+                    description: |-
+                      Disaggregation configures separate prefill and decode roles.
+                      Mutually exclusive with aggregation.
+                    properties:
+                      args:
+                        description: |-
+                          Args are additional engine arguments applied to both prefill and decode roles,
+                          appended after the generated entrypoint flags and before per-role args, which
+                          take precedence. Optional.
+                        items:
+                          type: string
+                        type: array
+                      decode:
+                        description: |-
+                          Decode configures the decode role. When omitted, defaults are derived from
+                          the endpoint-level instance type and a single-node, TP=1 worker.
+                        properties:
+                          args:
+                            description: |-
+                              Args are additional engine arguments for this role, appended after the
+                              disaggregation-level args and taking precedence for this role. Optional.
+                            items:
+                              type: string
+                            type: array
+                          autoScalingSpec:
+                            description: |-
+                              AutoScalingSpec autoscales this role's workers with KEDA, independently of
+                              the other role, through the Dynamo scaling adapter of the role's DGD
+                              component. Same fields as the endpoint-level autoScalingSpec, which is not
+                              supported with disaggregation. Without triggers the role is sized by
+                              replicas. minReplicaCount must be at least 1. Optional.
+                            properties:
+                              cloudWatchTrigger:
+                                description: CloudWatch metric trigger to use for
+                                  autoscaling
+                                properties:
+                                  activationTargetValue:
+                                    default: 0
+                                    description: Activation Value for CloudWatch metric
+                                      to scale from 0 to 1. Only applicable if minReplicaCount
+                                      = 0
+                                    type: number
+                                  dimensions:
+                                    description: Dimensions for Cloudwatch metrics
+                                    items:
+                                      properties:
+                                        name:
+                                          description: CloudWatch Metric dimension
+                                            name
+                                          type: string
+                                        value:
+                                          description: CloudWatch Metric dimension
+                                            value
+                                          type: string
+                                      required:
+                                      - name
+                                      - value
+                                      type: object
+                                    type: array
+                                  metricCollectionPeriod:
+                                    default: 300
+                                    description: Defines the Period for CloudWatch
+                                      query
+                                    format: int32
+                                    type: integer
+                                  metricCollectionStartTime:
+                                    default: 300
+                                    description: Defines the StartTime for CloudWatch
+                                      query
+                                    format: int32
+                                    type: integer
+                                  metricName:
+                                    description: Metric name to query for Cloudwatch
+                                      trigger
+                                    type: string
+                                  metricStat:
+                                    default: Average
+                                    description: Statistics metric to be used by Trigger.
+                                      Used to define Stat for CloudWatch query. Default
+                                      is Average.
+                                    type: string
+                                  metricType:
+                                    default: Average
+                                    description: 'The type of metric to be used by
+                                      HPA. Enum: AverageValue - Uses average value
+                                      of metric per pod, Value - Uses absolute metric
+                                      value'
+                                    enum:
+                                    - Value
+                                    - Average
+                                    type: string
+                                  minValue:
+                                    default: 0
+                                    description: Minimum metric value used in case
+                                      of empty response from CloudWatch. Default is
+                                      0.
+                                    type: number
+                                  name:
+                                    description: Name for the CloudWatch trigger
+                                    type: string
+                                  namespace:
+                                    description: AWS CloudWatch namespace for metric
+                                    type: string
+                                  targetValue:
+                                    description: TargetValue for CloudWatch metric
+                                    type: number
+                                  useCachedMetrics:
+                                    default: true
+                                    description: Enable caching of metric values during
+                                      polling interval. Default is true
+                                    type: boolean
+                                type: object
+                              cloudWatchTriggerList:
+                                description: Multiple CloudWatch metric triggers to
+                                  use for autoscaling. Takes priority over CloudWatchTrigger
+                                  if both are provided.
+                                items:
+                                  properties:
+                                    activationTargetValue:
+                                      default: 0
+                                      description: Activation Value for CloudWatch
+                                        metric to scale from 0 to 1. Only applicable
+                                        if minReplicaCount = 0
+                                      type: number
+                                    dimensions:
+                                      description: Dimensions for Cloudwatch metrics
+                                      items:
+                                        properties:
+                                          name:
+                                            description: CloudWatch Metric dimension
+                                              name
+                                            type: string
+                                          value:
+                                            description: CloudWatch Metric dimension
+                                              value
+                                            type: string
+                                        required:
+                                        - name
+                                        - value
+                                        type: object
+                                      type: array
+                                    metricCollectionPeriod:
+                                      default: 300
+                                      description: Defines the Period for CloudWatch
+                                        query
+                                      format: int32
+                                      type: integer
+                                    metricCollectionStartTime:
+                                      default: 300
+                                      description: Defines the StartTime for CloudWatch
+                                        query
+                                      format: int32
+                                      type: integer
+                                    metricName:
+                                      description: Metric name to query for Cloudwatch
+                                        trigger
+                                      type: string
+                                    metricStat:
+                                      default: Average
+                                      description: Statistics metric to be used by
+                                        Trigger. Used to define Stat for CloudWatch
+                                        query. Default is Average.
+                                      type: string
+                                    metricType:
+                                      default: Average
+                                      description: 'The type of metric to be used
+                                        by HPA. Enum: AverageValue - Uses average
+                                        value of metric per pod, Value - Uses absolute
+                                        metric value'
+                                      enum:
+                                      - Value
+                                      - Average
+                                      type: string
+                                    minValue:
+                                      default: 0
+                                      description: Minimum metric value used in case
+                                        of empty response from CloudWatch. Default
+                                        is 0.
+                                      type: number
+                                    name:
+                                      description: Name for the CloudWatch trigger
+                                      type: string
+                                    namespace:
+                                      description: AWS CloudWatch namespace for metric
+                                      type: string
+                                    targetValue:
+                                      description: TargetValue for CloudWatch metric
+                                      type: number
+                                    useCachedMetrics:
+                                      default: true
+                                      description: Enable caching of metric values
+                                        during polling interval. Default is true
+                                      type: boolean
+                                  type: object
+                                maxItems: 100
+                                type: array
+                              cooldownPeriod:
+                                default: 300
+                                description: The period to wait after the last trigger
+                                  reported active before scaling the resource back
+                                  to 0. Default 300 seconds.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              initialCooldownPeriod:
+                                default: 300
+                                description: The delay before the cooldownPeriod starts
+                                  after the initial creation of the ScaledObject.
+                                  Default 300 seconds.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              maxReplicaCount:
+                                default: 5
+                                description: The maximum number of model pods to scale
+                                  to. Default 5.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              minReplicaCount:
+                                default: 1
+                                description: The minimum number of model pods to scale
+                                  down to. Default 1.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              pollingInterval:
+                                default: 30
+                                description: This is the interval to check each trigger
+                                  on. Default 30 seconds.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              prometheusTrigger:
+                                description: Prometheus metric trigger to use for
+                                  autoscaling
+                                properties:
+                                  activationTargetValue:
+                                    default: 0
+                                    description: Activation Value for Prometheus metric
+                                      to scale from 0 to 1. Only applicable if minReplicaCount
+                                      = 0
+                                    type: number
+                                  customHeaders:
+                                    description: Custom headers to include while querying
+                                      the prometheus endpoint.
+                                    type: string
+                                  metricType:
+                                    default: Average
+                                    description: 'The type of metric to be used by
+                                      HPA. Enum: AverageValue - Uses average value
+                                      of metric per pod, Value - Uses absolute metric
+                                      value'
+                                    enum:
+                                    - Value
+                                    - Average
+                                    type: string
+                                  name:
+                                    description: Name for the Prometheus trigger
+                                    type: string
+                                  namespace:
+                                    description: Namespace for namespaced queries
+                                    type: string
+                                  query:
+                                    description: PromQLQuery for the metric.
+                                    type: string
+                                  serverAddress:
+                                    description: Server address for AMP workspace
+                                    pattern: ^https:\/\/aps-workspaces\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.amazonaws\.com\/workspaces\/ws-[a-zA-Z0-9-]+$|^$
+                                    type: string
+                                  targetValue:
+                                    description: Target metric value for scaling
+                                    type: number
+                                  useCachedMetrics:
+                                    default: true
+                                    description: Enable caching of metric values during
+                                      polling interval. Default is true
+                                    type: boolean
+                                type: object
+                              prometheusTriggerList:
+                                description: Multiple Prometheus metric triggers to
+                                  use for autoscaling. Takes priority over PrometheusTrigger
+                                  if both are provided.
+                                items:
+                                  properties:
+                                    activationTargetValue:
+                                      default: 0
+                                      description: Activation Value for Prometheus
+                                        metric to scale from 0 to 1. Only applicable
+                                        if minReplicaCount = 0
+                                      type: number
+                                    customHeaders:
+                                      description: Custom headers to include while
+                                        querying the prometheus endpoint.
+                                      type: string
+                                    metricType:
+                                      default: Average
+                                      description: 'The type of metric to be used
+                                        by HPA. Enum: AverageValue - Uses average
+                                        value of metric per pod, Value - Uses absolute
+                                        metric value'
+                                      enum:
+                                      - Value
+                                      - Average
+                                      type: string
+                                    name:
+                                      description: Name for the Prometheus trigger
+                                      type: string
+                                    namespace:
+                                      description: Namespace for namespaced queries
+                                      type: string
+                                    query:
+                                      description: PromQLQuery for the metric.
+                                      type: string
+                                    serverAddress:
+                                      description: Server address for AMP workspace
+                                      pattern: ^https:\/\/aps-workspaces\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.amazonaws\.com\/workspaces\/ws-[a-zA-Z0-9-]+$|^$
+                                      type: string
+                                    targetValue:
+                                      description: Target metric value for scaling
+                                      type: number
+                                    useCachedMetrics:
+                                      default: true
+                                      description: Enable caching of metric values
+                                        during polling interval. Default is true
+                                      type: boolean
+                                  type: object
+                                maxItems: 100
+                                type: array
+                              scaleDownStabilizationTime:
+                                default: 300
+                                description: The time window to stabilize for HPA
+                                  before scaling down. Default 300 seconds.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              scaleUpStabilizationTime:
+                                default: 0
+                                description: The time window to stabilize for HPA
+                                  before scaling up. Default 0 seconds.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                            type: object
+                          dataParallelism:
+                            description: |-
+                              DataParallelism is the number of data-parallel engine ranks in one worker of
+                              this role (vLLM --data-parallel-size). A worker requests tensorParallelism x
+                              dataParallelism GPUs. Supported with modelServer vllm on single-node workers
+                              (nodesPerReplica 1) whose GPUs fit on one instance. Optional; defaults to 1.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          instanceType:
+                            description: InstanceType overrides the endpoint's instance
+                              type for this role. Optional.
+                            pattern: ^ml\..*
+                            type: string
+                          nodesPerReplica:
+                            default: 1
+                            description: |-
+                              NodesPerReplica is the number of nodes that form one logical worker for this role.
+                              1 means single-node; greater than 1 makes the role span nodes.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          replicas:
+                            default: 1
+                            description: |-
+                              Replicas is the number of workers for this role. Optional; defaults to 1.
+                              Ignored when autoScalingSpec has triggers: minReplicaCount then seeds the role.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          tensorParallelism:
+                            description: TensorParallelism is the total TP degree
+                              for this role. Optional; defaults to 1.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                        type: object
+                      prefill:
+                        description: |-
+                          Prefill configures the prefill role. When omitted, defaults are derived from
+                          the endpoint-level instance type and a single-node, TP=1 worker.
+                        properties:
+                          args:
+                            description: |-
+                              Args are additional engine arguments for this role, appended after the
+                              disaggregation-level args and taking precedence for this role. Optional.
+                            items:
+                              type: string
+                            type: array
+                          autoScalingSpec:
+                            description: |-
+                              AutoScalingSpec autoscales this role's workers with KEDA, independently of
+                              the other role, through the Dynamo scaling adapter of the role's DGD
+                              component. Same fields as the endpoint-level autoScalingSpec, which is not
+                              supported with disaggregation. Without triggers the role is sized by
+                              replicas. minReplicaCount must be at least 1. Optional.
+                            properties:
+                              cloudWatchTrigger:
+                                description: CloudWatch metric trigger to use for
+                                  autoscaling
+                                properties:
+                                  activationTargetValue:
+                                    default: 0
+                                    description: Activation Value for CloudWatch metric
+                                      to scale from 0 to 1. Only applicable if minReplicaCount
+                                      = 0
+                                    type: number
+                                  dimensions:
+                                    description: Dimensions for Cloudwatch metrics
+                                    items:
+                                      properties:
+                                        name:
+                                          description: CloudWatch Metric dimension
+                                            name
+                                          type: string
+                                        value:
+                                          description: CloudWatch Metric dimension
+                                            value
+                                          type: string
+                                      required:
+                                      - name
+                                      - value
+                                      type: object
+                                    type: array
+                                  metricCollectionPeriod:
+                                    default: 300
+                                    description: Defines the Period for CloudWatch
+                                      query
+                                    format: int32
+                                    type: integer
+                                  metricCollectionStartTime:
+                                    default: 300
+                                    description: Defines the StartTime for CloudWatch
+                                      query
+                                    format: int32
+                                    type: integer
+                                  metricName:
+                                    description: Metric name to query for Cloudwatch
+                                      trigger
+                                    type: string
+                                  metricStat:
+                                    default: Average
+                                    description: Statistics metric to be used by Trigger.
+                                      Used to define Stat for CloudWatch query. Default
+                                      is Average.
+                                    type: string
+                                  metricType:
+                                    default: Average
+                                    description: 'The type of metric to be used by
+                                      HPA. Enum: AverageValue - Uses average value
+                                      of metric per pod, Value - Uses absolute metric
+                                      value'
+                                    enum:
+                                    - Value
+                                    - Average
+                                    type: string
+                                  minValue:
+                                    default: 0
+                                    description: Minimum metric value used in case
+                                      of empty response from CloudWatch. Default is
+                                      0.
+                                    type: number
+                                  name:
+                                    description: Name for the CloudWatch trigger
+                                    type: string
+                                  namespace:
+                                    description: AWS CloudWatch namespace for metric
+                                    type: string
+                                  targetValue:
+                                    description: TargetValue for CloudWatch metric
+                                    type: number
+                                  useCachedMetrics:
+                                    default: true
+                                    description: Enable caching of metric values during
+                                      polling interval. Default is true
+                                    type: boolean
+                                type: object
+                              cloudWatchTriggerList:
+                                description: Multiple CloudWatch metric triggers to
+                                  use for autoscaling. Takes priority over CloudWatchTrigger
+                                  if both are provided.
+                                items:
+                                  properties:
+                                    activationTargetValue:
+                                      default: 0
+                                      description: Activation Value for CloudWatch
+                                        metric to scale from 0 to 1. Only applicable
+                                        if minReplicaCount = 0
+                                      type: number
+                                    dimensions:
+                                      description: Dimensions for Cloudwatch metrics
+                                      items:
+                                        properties:
+                                          name:
+                                            description: CloudWatch Metric dimension
+                                              name
+                                            type: string
+                                          value:
+                                            description: CloudWatch Metric dimension
+                                              value
+                                            type: string
+                                        required:
+                                        - name
+                                        - value
+                                        type: object
+                                      type: array
+                                    metricCollectionPeriod:
+                                      default: 300
+                                      description: Defines the Period for CloudWatch
+                                        query
+                                      format: int32
+                                      type: integer
+                                    metricCollectionStartTime:
+                                      default: 300
+                                      description: Defines the StartTime for CloudWatch
+                                        query
+                                      format: int32
+                                      type: integer
+                                    metricName:
+                                      description: Metric name to query for Cloudwatch
+                                        trigger
+                                      type: string
+                                    metricStat:
+                                      default: Average
+                                      description: Statistics metric to be used by
+                                        Trigger. Used to define Stat for CloudWatch
+                                        query. Default is Average.
+                                      type: string
+                                    metricType:
+                                      default: Average
+                                      description: 'The type of metric to be used
+                                        by HPA. Enum: AverageValue - Uses average
+                                        value of metric per pod, Value - Uses absolute
+                                        metric value'
+                                      enum:
+                                      - Value
+                                      - Average
+                                      type: string
+                                    minValue:
+                                      default: 0
+                                      description: Minimum metric value used in case
+                                        of empty response from CloudWatch. Default
+                                        is 0.
+                                      type: number
+                                    name:
+                                      description: Name for the CloudWatch trigger
+                                      type: string
+                                    namespace:
+                                      description: AWS CloudWatch namespace for metric
+                                      type: string
+                                    targetValue:
+                                      description: TargetValue for CloudWatch metric
+                                      type: number
+                                    useCachedMetrics:
+                                      default: true
+                                      description: Enable caching of metric values
+                                        during polling interval. Default is true
+                                      type: boolean
+                                  type: object
+                                maxItems: 100
+                                type: array
+                              cooldownPeriod:
+                                default: 300
+                                description: The period to wait after the last trigger
+                                  reported active before scaling the resource back
+                                  to 0. Default 300 seconds.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              initialCooldownPeriod:
+                                default: 300
+                                description: The delay before the cooldownPeriod starts
+                                  after the initial creation of the ScaledObject.
+                                  Default 300 seconds.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              maxReplicaCount:
+                                default: 5
+                                description: The maximum number of model pods to scale
+                                  to. Default 5.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              minReplicaCount:
+                                default: 1
+                                description: The minimum number of model pods to scale
+                                  down to. Default 1.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              pollingInterval:
+                                default: 30
+                                description: This is the interval to check each trigger
+                                  on. Default 30 seconds.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              prometheusTrigger:
+                                description: Prometheus metric trigger to use for
+                                  autoscaling
+                                properties:
+                                  activationTargetValue:
+                                    default: 0
+                                    description: Activation Value for Prometheus metric
+                                      to scale from 0 to 1. Only applicable if minReplicaCount
+                                      = 0
+                                    type: number
+                                  customHeaders:
+                                    description: Custom headers to include while querying
+                                      the prometheus endpoint.
+                                    type: string
+                                  metricType:
+                                    default: Average
+                                    description: 'The type of metric to be used by
+                                      HPA. Enum: AverageValue - Uses average value
+                                      of metric per pod, Value - Uses absolute metric
+                                      value'
+                                    enum:
+                                    - Value
+                                    - Average
+                                    type: string
+                                  name:
+                                    description: Name for the Prometheus trigger
+                                    type: string
+                                  namespace:
+                                    description: Namespace for namespaced queries
+                                    type: string
+                                  query:
+                                    description: PromQLQuery for the metric.
+                                    type: string
+                                  serverAddress:
+                                    description: Server address for AMP workspace
+                                    pattern: ^https:\/\/aps-workspaces\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.amazonaws\.com\/workspaces\/ws-[a-zA-Z0-9-]+$|^$
+                                    type: string
+                                  targetValue:
+                                    description: Target metric value for scaling
+                                    type: number
+                                  useCachedMetrics:
+                                    default: true
+                                    description: Enable caching of metric values during
+                                      polling interval. Default is true
+                                    type: boolean
+                                type: object
+                              prometheusTriggerList:
+                                description: Multiple Prometheus metric triggers to
+                                  use for autoscaling. Takes priority over PrometheusTrigger
+                                  if both are provided.
+                                items:
+                                  properties:
+                                    activationTargetValue:
+                                      default: 0
+                                      description: Activation Value for Prometheus
+                                        metric to scale from 0 to 1. Only applicable
+                                        if minReplicaCount = 0
+                                      type: number
+                                    customHeaders:
+                                      description: Custom headers to include while
+                                        querying the prometheus endpoint.
+                                      type: string
+                                    metricType:
+                                      default: Average
+                                      description: 'The type of metric to be used
+                                        by HPA. Enum: AverageValue - Uses average
+                                        value of metric per pod, Value - Uses absolute
+                                        metric value'
+                                      enum:
+                                      - Value
+                                      - Average
+                                      type: string
+                                    name:
+                                      description: Name for the Prometheus trigger
+                                      type: string
+                                    namespace:
+                                      description: Namespace for namespaced queries
+                                      type: string
+                                    query:
+                                      description: PromQLQuery for the metric.
+                                      type: string
+                                    serverAddress:
+                                      description: Server address for AMP workspace
+                                      pattern: ^https:\/\/aps-workspaces\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.amazonaws\.com\/workspaces\/ws-[a-zA-Z0-9-]+$|^$
+                                      type: string
+                                    targetValue:
+                                      description: Target metric value for scaling
+                                      type: number
+                                    useCachedMetrics:
+                                      default: true
+                                      description: Enable caching of metric values
+                                        during polling interval. Default is true
+                                      type: boolean
+                                  type: object
+                                maxItems: 100
+                                type: array
+                              scaleDownStabilizationTime:
+                                default: 300
+                                description: The time window to stabilize for HPA
+                                  before scaling down. Default 300 seconds.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              scaleUpStabilizationTime:
+                                default: 0
+                                description: The time window to stabilize for HPA
+                                  before scaling up. Default 0 seconds.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                            type: object
+                          dataParallelism:
+                            description: |-
+                              DataParallelism is the number of data-parallel engine ranks in one worker of
+                              this role (vLLM --data-parallel-size). A worker requests tensorParallelism x
+                              dataParallelism GPUs. Supported with modelServer vllm on single-node workers
+                              (nodesPerReplica 1) whose GPUs fit on one instance. Optional; defaults to 1.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          instanceType:
+                            description: InstanceType overrides the endpoint's instance
+                              type for this role. Optional.
+                            pattern: ^ml\..*
+                            type: string
+                          nodesPerReplica:
+                            default: 1
+                            description: |-
+                              NodesPerReplica is the number of nodes that form one logical worker for this role.
+                              1 means single-node; greater than 1 makes the role span nodes.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          replicas:
+                            default: 1
+                            description: |-
+                              Replicas is the number of workers for this role. Optional; defaults to 1.
+                              Ignored when autoScalingSpec has triggers: minReplicaCount then seeds the role.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                          tensorParallelism:
+                            description: TensorParallelism is the total TP degree
+                              for this role. Optional; defaults to 1.
+                            format: int32
+                            minimum: 1
+                            type: integer
+                        type: object
+                    type: object
+                  frontend:
+                    description: |-
+                      Frontend configures the OpenAI-compatible HTTP frontend component (replicas,
+                      routing mode and args). The frontend is the only component that receives client
+                      traffic.
+                    properties:
+                      args:
+                        description: |-
+                          Args are additional arguments for the frontend process, appended after the
+                          generated frontend flags. Optional. These are frontend-only and are not applied
+                          to worker roles.
+                        items:
+                          type: string
+                        type: array
+                      replicas:
+                        default: 1
+                        description: Replicas is the number of frontend replicas.
+                          Defaults to 1.
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      routingMode:
+                        default: kv-aware
+                        description: |-
+                          RoutingMode selects how the frontend picks a worker: kv-aware (KV-overlap based),
+                          round-robin, or random. Defaults to kv-aware.
+                        enum:
+                        - kv-aware
+                        - round-robin
+                        - random
+                        type: string
+                    type: object
+                  modelServer:
+                    default: vllm
+                    description: ModelServer selects the inference engine (vllm, sglang,
+                      trtllm). Defaults to vllm.
+                    enum:
+                    - vllm
+                    - sglang
+                    - trtllm
+                    type: string
+                type: object
+                x-kubernetes-validations:
+                - message: dynamoSpec requires exactly one of aggregation or disaggregation
+                  rule: has(self.aggregation) != has(self.disaggregation)
+                - message: dynamoSpec cannot switch between aggregation and disaggregation
+                    on an existing InferenceEndpointConfig; delete and recreate it
+                  rule: has(oldSelf.aggregation) == has(self.aggregation)
               endpointName:
                 description: |-
                   Name used for Sagemaker Endpoint
@@ -632,6 +1493,27 @@ spec:
                     description: Enabled opts this model into the shared inference
                       gateway.
                     type: boolean
+                  globalRouting:
+                    description: |-
+                      GlobalRouting publishes the gateway to the Global Inference Gateway (GIG)
+                      over AWS PrivateLink. It sets spec.globalRouting on the gateway's
+                      InferenceGatewayConfig, which is gateway-wide and shared by every model
+                      attached to it.
+
+                      Global routing is off by default. When enabled is true, the operator
+                      enables global routing on the gateway, both one it creates and an
+                      existing one. When omitted or false, the operator does not enable it, and
+                      it never disables it on an existing gateway: another model may need it,
+                      and a gateway that belongs to a GIG cannot disable it until it is removed
+                      from the GIG.
+                    properties:
+                      enabled:
+                        description: Enabled publishes the gateway to the Global Inference
+                          Gateway.
+                        type: boolean
+                    required:
+                    - enabled
+                    type: object
                   name:
                     description: |-
                       Name of the gateway (InferenceGatewayConfig) this model attaches to.
@@ -971,6 +1853,8 @@ spec:
                 description: |-
                   The invocation endpoint of the model server. http://<host>:<port>/ would be pre-populated based on the other fields.
                   Please fill in the path after http://<host>:<port>/ specific to your model server.
+                maxLength: 256
+                pattern: ^[A-Za-z0-9/_.:-]+$
                 type: string
               kubernetes:
                 description: |-
@@ -2087,7 +2971,6 @@ spec:
                                 procMount denotes the type of proc mount to use for the containers.
                                 The default value is Default which uses the container runtime defaults for
                                 readonly paths and masked paths.
-                                This requires the ProcMountType feature flag to be enabled.
                                 Note that this field cannot be set when spec.os.name is windows.
                               type: string
                             readOnlyRootFilesystem:
@@ -3507,7 +4390,7 @@ spec:
                             A failure to resolve or pull the image during pod startup will block containers from starting and may add significant latency. Failures will be retried using normal volume backoff and will be reported on the pod reason and message.
                             The types of objects that may be mounted by this volume are defined by the container runtime implementation on a host machine and at minimum must include all valid types supported by the container image field.
                             The OCI object gets mounted in a single directory (spec.containers[*].volumeMounts.mountPath) by merging the manifest layers in the same way as for container images.
-                            The volume will be mounted read-only (ro) and non-executable files (noexec).
+                            The volume will be mounted read-only (ro).
                             Sub path mounts for containers are not supported (spec.containers[*].volumeMounts.subpath) before 1.33.
                             The field spec.securityContext.fsGroupChangePolicy has no effect on this volume type.
                           properties:
@@ -3679,8 +4562,7 @@ spec:
                           description: |-
                             portworxVolume represents a portworx volume attached and mounted on kubelets host machine.
                             Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type
-                            are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate
-                            is on.
+                            are redirected to the pxd.portworx.com CSI driver.
                           properties:
                             fsType:
                               description: |-
@@ -4543,7 +5425,8 @@ spec:
                     default: /ping
                     description: Health check path for the ALB target group. Defaults
                       to /ping if not specified.
-                    pattern: ^/.*
+                    maxLength: 256
+                    pattern: ^/[A-Za-z0-9/_.:-]*$
                     type: string
                   idleTimeoutSeconds:
                     description: Idle timeout in seconds for the ALB connection. If
@@ -4568,7 +5451,10 @@ spec:
                 format: int32
                 type: integer
               metrics:
-                description: Configuration for metrics collection and exposure
+                description: |-
+                  Configuration for metrics collection and exposure.
+                  With dynamoSpec, enabled and metricsScrapeIntervalSeconds apply to the metrics
+                  collector on the frontend and every worker; modelMetrics is ignored.
                 properties:
                   enabled:
                     default: true
@@ -6184,6 +7070,8 @@ spec:
                       Resource defaults are automatically adjusted when data capture is enabled.
                       Defaults (metrics only): requests cpu=50m, memory=64Mi; limits cpu=100m, memory=128Mi.
                       Defaults (data capture enabled): requests cpu=100m, memory=256Mi; limits cpu=500m, memory=1Gi.
+                      With dynamoSpec, this applies to the metrics collector on the frontend and every worker,
+                      and to the data capture collector on the frontend.
                     properties:
                       claims:
                         description: |-
@@ -6248,6 +7136,7 @@ spec:
                       This container is deployed when metrics or data capture is enabled.
                       If not specified, operator defaults are used (requests: cpu=100m, memory=128Mi,
                       ephemeral-storage=256Mi; limits: cpu=200m, memory=256Mi, ephemeral-storage=512Mi).
+                      With dynamoSpec, this container runs only on the frontend, when data capture is enabled.
                     properties:
                       claims:
                         description: |-
@@ -6921,6 +7810,9 @@ spec:
                 are mutually exclusive
               rule: '!(has(self.inferenceGateway) && self.inferenceGateway.enabled
                 && has(self.intelligentRoutingSpec) && self.intelligentRoutingSpec.enabled)'
+            - message: dynamoSpec cannot be added to or removed from an existing InferenceEndpointConfig;
+                delete and recreate it
+              rule: has(oldSelf.dynamoSpec) == has(self.dynamoSpec)
           status:
             description: ModelDeploymentStatus defines the observed state of ModelDeployment
             properties:
@@ -7277,6 +8169,11 @@ spec:
               selector:
                 description: LabelSelector for the deployment.
                 type: string
+              selfHealCount:
+                description: Number of times the routing service was automatically
+                  re-created by the operator self-heal path.
+                format: int32
+                type: integer
               state:
                 description: Current phase of the model deployment
                 enum:

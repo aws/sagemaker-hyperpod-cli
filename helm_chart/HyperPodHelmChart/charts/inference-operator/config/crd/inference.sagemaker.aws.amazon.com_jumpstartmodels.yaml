@@ -631,6 +631,27 @@ spec:
                     description: Enabled opts this model into the shared inference
                       gateway.
                     type: boolean
+                  globalRouting:
+                    description: |-
+                      GlobalRouting publishes the gateway to the Global Inference Gateway (GIG)
+                      over AWS PrivateLink. It sets spec.globalRouting on the gateway's
+                      InferenceGatewayConfig, which is gateway-wide and shared by every model
+                      attached to it.
+
+                      Global routing is off by default. When enabled is true, the operator
+                      enables global routing on the gateway, both one it creates and an
+                      existing one. When omitted or false, the operator does not enable it, and
+                      it never disables it on an existing gateway: another model may need it,
+                      and a gateway that belongs to a GIG cannot disable it until it is removed
+                      from the GIG.
+                    properties:
+                      enabled:
+                        description: Enabled publishes the gateway to the Global Inference
+                          Gateway.
+                        type: boolean
+                    required:
+                    - enabled
+                    type: object
                   name:
                     description: |-
                       Name of the gateway (InferenceGatewayConfig) this model attaches to.
@@ -999,7 +1020,8 @@ spec:
                     default: /ping
                     description: Health check path for the ALB target group. Defaults
                       to /ping if not specified.
-                    pattern: ^/.*
+                    maxLength: 256
+                    pattern: ^/[A-Za-z0-9/_.:-]*$
                     type: string
                   idleTimeoutSeconds:
                     description: Idle timeout in seconds for the ALB connection. If
@@ -1956,6 +1978,11 @@ spec:
               selector:
                 description: LabelSelector for the deployment.
                 type: string
+              selfHealCount:
+                description: Number of times the routing service was automatically
+                  re-created by the operator self-heal path.
+                format: int32
+                type: integer
               state:
                 description: Current phase of the model deployment
                 enum:
