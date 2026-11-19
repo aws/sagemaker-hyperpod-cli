@@ -1,35 +1,60 @@
 apiVersion: inference.sagemaker.aws.amazon.com/v1
 kind: InferenceEndpointConfig
 metadata:
-  name: deepseeks3
+  name: demo-l1-l2-membrain-with-ir
   namespace: ns-team-a
 spec:
-  modelName: deepseeks3
-  endpointName: deepseeks3sme
-  instanceType: ml.g5.8xlarge
+  modelName: Llama-3.1-8B-Instruct
+  instanceType: ml.p5.48xlarge
+  invocationEndpoint: v1/chat/completions
+  replicas: 7
   modelSourceConfig:
     modelSourceType: s3
     s3Storage:
-      bucketName: model-data-578732889311
-      region: us-west-2
-    modelLocation: deepseek15b
-    prefetchEnabled: true
+      bucketName: <YOUR_MODEL_BUCKET>
+      region: us-east-2
+    modelLocation: models/Llama-3.1-70B-Instruct
+    prefetchEnabled: false
+  kvCacheSpec:
+    enableL1Cache: true
+    enableL2Cache: true
+    l2CacheSpec:
+      l2CacheBackend: tieredstorage
+  intelligentRoutingSpec:
+    enabled: true
+    routingStrategy: prefixaware
+  tlsConfig:
+    tlsCertificateOutputS3Uri: s3://<YOUR_TLS_BUCKET>/certificates
+  metrics:
+    enabled: true
+    modelMetrics:
+      port: 8000
+  loadBalancer:
+    healthCheckPath: /health
   worker:
     resources:
       limits:
-        nvidia.com/gpu: 1
+        nvidia.com/gpu: "8"
+        cpu: "48"
+        memory: 100Gi
       requests:
-        nvidia.com/gpu: 1
-        cpu: 25600m
-        memory: 102Gi
-    image: 763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.32.0-lmi14.0.0-cu124
+        cpu: "48"
+        memory: 512Gi
+        nvidia.com/gpu: "4"
+    image: <ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/<YOUR_LMCACHE_IMAGE>
+    args:
+      - "/opt/ml/model"
+      - "--max-model-len"
+      - "12000"
     modelInvocationPort:
-      containerPort: 8080
+      containerPort: 8000
       name: http
     modelVolumeMount:
       name: model-weights
       mountPath: /opt/ml/model
     environmentVariables:
+      - name: PYTHONHASHSEED
+        value: "123"
       - name: OPTION_ROLLING_BATCH
         value: "vllm"
       - name: SERVING_CHUNKED_READ_TIMEOUT
