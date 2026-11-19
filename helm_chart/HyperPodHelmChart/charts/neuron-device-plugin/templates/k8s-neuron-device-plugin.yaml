@@ -60,6 +60,7 @@ spec:
                       - ml.trn1.2xlarge
                       - ml.trn1.32xlarge
                       - ml.trn1n.32xlarge
+                      - ml.trn2.3xlarge
                       - ml.trn2.48xlarge
       containers:
         # Find all neuron-device-plugin images at https://gallery.ecr.aws/neuron/neuron-device-plugin
