@@ -1,0 +1,45 @@
+Thank you for installing {{ .Chart.Name }}.
+
+Your release is named {{ .Release.Name }}.
+{{- if (.Values.crd | default dict).enable }}
+
+The ComputeConfiguration CRD has been installed.
+
+To verify the installation:
+
+  kubectl get customresourcedefinitions computeconfigurations.compute.configuration.sagemaker.amazonaws.com
+  kubectl get computeconfigurations --all-namespaces
+{{- else }}
+
+crd.enable is false, so this release did not install the ComputeConfiguration CRD.
+{{- end }}
+{{- if .Values.webhook.enable }}
+
+The compute configuration admission webhook is installed (image {{ include "hyperpod-compute-configuration.webhookImage" . }}).
+It handles RayJob, PyTorchJob, HyperPodPyTorchJob and InferenceEndpointConfig creates and
+updates that carry the compute.configuration.sagemaker.amazonaws.com/name label, in every
+namespace except kube-system:
+- The mutating webhook fills in compute and never blocks a workload (failurePolicy Ignore).
+- The validating webhook runs only in namespaces labelled
+  {{ include "hyperpod-compute-configuration.enforcementLabel" . }}=enabled and rejects workloads
+  it can't check (failurePolicy Fail).
+- A ValidatingAdmissionPolicy rejects labelled objects of other kinds in those namespaces, unless
+  a controller created them (they have an owner, or come from webhook.workloadControllers).
+- A second ValidatingAdmissionPolicy requires every RayJob, PyTorchJob, HyperPodPyTorchJob and
+  InferenceEndpointConfig there to use a compute configuration, and accepts them only in API
+  version v1 (in any namespace when they reference a compute configuration).
+The webhook can read compute configurations and namespaces (read-only ClusterRole).{{ if .Values.certManager.enable }}
+Its TLS certificate is issued by cert-manager, which must be installed in the cluster.{{ end }}
+
+To verify the webhook:
+
+  kubectl -n {{ include "hyperpod-compute-configuration.namespaceName" . }} rollout status deployment/{{ include "hyperpod-compute-configuration.webhookName" . }}
+  kubectl -n {{ include "hyperpod-compute-configuration.namespaceName" . }} get certificate {{ include "hyperpod-compute-configuration.webhookName" . }}-cert
+  kubectl get mutatingwebhookconfiguration,validatingwebhookconfiguration {{ include "hyperpod-compute-configuration.webhookName" . }}
+  kubectl -n {{ include "hyperpod-compute-configuration.namespaceName" . }} logs deployment/{{ include "hyperpod-compute-configuration.webhookName" . }} | grep "Webhook version"
+{{- end }}
+
+To learn more about the release, try:
+
+  $ helm status {{ .Release.Name }} -n {{ .Release.Namespace }}
+  $ helm get all {{ .Release.Name }} -n {{ .Release.Namespace }}

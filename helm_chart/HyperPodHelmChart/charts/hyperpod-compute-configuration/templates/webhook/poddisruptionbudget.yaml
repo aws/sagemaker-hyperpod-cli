@@ -1,0 +1,14 @@
+{{- if .Values.webhook.enable }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "hyperpod-compute-configuration.webhookName" . }}
+  namespace: {{ include "hyperpod-compute-configuration.namespaceName" . }}
+  labels:
+    {{- include "hyperpod-compute-configuration.webhookLabels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.webhook.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "hyperpod-compute-configuration.webhookSelectorLabels" . | nindent 6 }}
+{{- end }}

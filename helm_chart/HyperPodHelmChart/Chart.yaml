@@ -100,3 +100,7 @@ dependencies:
     version: "0.1.0"
     repository: "file://charts/hyperpod-kubernetes-resource-monitor"
     condition: hyperpod-kubernetes-resource-monitor.enabled
+  - name: hyperpod-compute-configuration
+    version: "0.1.0"
+    repository: "file://charts/hyperpod-compute-configuration"
+    condition: hyperpod-compute-configuration.enabled

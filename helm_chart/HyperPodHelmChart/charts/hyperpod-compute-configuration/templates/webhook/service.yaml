@@ -1,0 +1,18 @@
+{{- if .Values.webhook.enable }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "hyperpod-compute-configuration.webhookName" . }}
+  namespace: {{ include "hyperpod-compute-configuration.namespaceName" . }}
+  labels:
+    {{- include "hyperpod-compute-configuration.webhookLabels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "hyperpod-compute-configuration.webhookSelectorLabels" . | nindent 4 }}
+  ports:
+  - name: webhook
+    port: 443
+    targetPort: webhook
+    protocol: TCP
+{{- end }}

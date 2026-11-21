@@ -1,0 +1,119 @@
+## Namespace the webhook is installed into (the parent chart's release namespace is kube-system).
+namespace: aws-hyperpod
+
+## AWS region for resolving regional ECR image registries.
+## Required when webhook.image.override is not explicitly set.
+##
+## Region detection priority:
+## 1. This explicit region setting (highest priority)
+## 2. Global region setting (global.region from parent chart)
+##
+## Supported regions: ap-northeast-1, ap-south-1, ap-south-2, ap-southeast-1, ap-southeast-2,
+## eu-central-1, eu-north-1, eu-west-1, eu-west-2, sa-east-1, us-east-1, us-east-2, us-west-1,
+## us-west-2
+region: ""
+
+## Custom Resource Definitions
+##
+crd:
+  # Install CRDs with the chart
+  enable: true
+  # Keep CRDs when uninstalling
+  keep: true
+
+## RBAC helper roles
+##
+rbac:
+  helpers:
+    # Install viewer / editor / admin ClusterRoles for ComputeConfigurations. They aren't bound to
+    # anyone; bind them to users or groups yourself. Access is normally granted through the EKS
+    # access policies AmazonSagemakerHyperpodComputeConfigurationPolicy (read) and
+    # AmazonSagemakerHyperpodComputeConfigurationAdminPolicy (write) instead.
+    enable: false
+
+## Admission webhook
+##
+webhook:
+  # Install the admission webhook: the server Deployment, Service, PodDisruptionBudget,
+  # ServiceAccount, cert-manager certificate, and the Mutating and Validating
+  # WebhookConfigurations. Set it to false to install only the CRD: compute configurations can
+  # then be created and read, but nothing applies them to workloads.
+  enable: true
+
+  # Number of webhook server pods. Keep at least 2 so a node drain or pod restart doesn't
+  # leave workload creates without a webhook.
+  replicas: 2
+
+  ## Container image configuration. The repository is resolved from the region: see
+  ## hyperpod-compute-configuration.webhookImage in templates/_helpers.tpl.
+  image:
+    ## Image tag override.
+    ## If not specified, defaults to the published tag this chart version is tested with.
+    ## Ignored when digest is set.
+    ##
+    # tag: ""
+
+    ## Image digest, "sha256:<64 hex>". Pins the webhook to one image, which a tag does not.
+    ##
+    digest: ""
+
+    ## Override the full image URI, pinned by digest ("<repository>@sha256:<64 hex>"; a tag isn't
+    ## accepted). If specified, this overrides the automatic region-based URI selection.
+    ## Example: "945058679767.dkr.ecr.us-east-2.amazonaws.com/hyperpod-compute-configuration-webhook@sha256:<digest>"
+    ##
+    override: ""
+    pullPolicy: IfNotPresent
+
+  # Port the webhook server listens on inside the pod (the Service exposes it on 443)
+  port: 9443
+  # Port for the /healthz and /readyz endpoints
+  healthProbePort: 8081
+
+  # How long the API server waits for the webhook before applying its failurePolicy (1-30)
+  timeoutSeconds: 5
+
+  # Log level (debug, info, error)
+  logLevel: info
+
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+  # Run on HyperPod-managed amd64 nodes, as the Ray endpoint operator does
+  nodeSelector:
+    kubernetes.io/arch: amd64
+    sagemaker.amazonaws.com/compute-type: hyperpod
+  tolerations: []
+  affinity: {}
+  # Optional priority class, so the webhook isn't evicted before workloads under node pressure
+  priorityClassName: ""
+
+  # Controllers that create workloads on users' behalf. In enforced namespaces the "workloads"
+  # admission policy doesn't require them to use a compute configuration. In every namespace the
+  # "unsupported-kinds" policy lets them create labelled objects without an owner (such as the
+  # inference operator's Deployment for an InferenceEndpointConfig). Each is the requester's
+  # username, system:serviceaccount:<namespace>:<name>; add your own installs' names.
+  workloadControllers:
+  # HyperPod inference operator (Helm and EKS add-on installs): InferenceEndpointConfigs for
+  # JumpStartModels
+  - system:serviceaccount:hyperpod-inference-system:hyperpod-inference-operator-controller-manager
+  - system:serviceaccount:hyperpod-inference-system:hyperpod-inference-controller-manager
+  # KubeRay: RayJobs for RayCronJobs
+  - system:serviceaccount:kuberay-system:kuberay-operator
+
+  podDisruptionBudget:
+    # Minimum webhook pods kept running during voluntary disruptions (node drains)
+    minAvailable: 1
+
+## cert-manager integration
+##
+certManager:
+  # Create a self-signed cert-manager Issuer and Certificate for the webhook's TLS, and have
+  # cert-manager inject the CA into both webhook configurations. Requires cert-manager in the
+  # cluster (HyperPod installs it as an EKS add-on). Must stay true when webhook.enable is true:
+  # the webhook has no other source of certificates, so the chart refuses to render without it.
+  enable: true

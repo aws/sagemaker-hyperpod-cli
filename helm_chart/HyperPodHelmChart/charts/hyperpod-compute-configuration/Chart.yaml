@@ -1,0 +1,14 @@
+apiVersion: v2
+name: hyperpod-compute-configuration
+description: The HyperPod ComputeConfiguration CRD and its admission webhook
+type: application
+
+version: 0.1.0
+appVersion: "0.1.0"
+# CRD validation rules (x-kubernetes-validations) are on by default from 1.25.
+# The -0 suffix lets EKS versions such as v1.33.13-eks-cfb47f5 match.
+kubeVersion: ">=1.30.0-0"
+
+keywords:
+  - kubernetes
+  - hyperpod
