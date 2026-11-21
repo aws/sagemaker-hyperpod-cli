@@ -1,0 +1,17 @@
+{{- if .Values.webhook.enable }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "resource-ownership.resourceName" (dict "suffix" "webhook" "context" $) }}
+  namespace: {{ include "resource-ownership.namespaceName" . }}
+  labels:
+    {{- include "resource-ownership.labels" . | nindent 4 }}
+spec:
+  ports:
+    - name: webhook-server
+      port: 443
+      protocol: TCP
+      targetPort: webhook-server
+  selector:
+    {{- include "resource-ownership.selectorLabels" . | nindent 4 }}
+{{- end }}

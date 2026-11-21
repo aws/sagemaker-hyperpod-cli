@@ -318,3 +318,23 @@ hyperpod-ray-endpoint-operator:
 # node label, and the image then comes from us-east-1.
 hyperpod-kubernetes-resource-monitor:
   enabled: true
+
+# HyperPod resource ownership: records the creator of RayJob, HyperPodPyTorchJob,
+# InferenceEndpointConfig and JumpStartModel resources, and lets only the creator, the operators
+# and cluster admins update or delete the ones marked OwnerOnly. Off by default. Requires
+# cert-manager (cert-manager.enabled) and Kubernetes 1.30+. The webhook image is picked by
+# region (or global.region).
+hyperpod-resource-ownership:
+  enabled: false
+  # Namespace for the webhook (default: aws-hyperpod, created by deep-health-check)
+  namespace: "aws-hyperpod"
+  # AWS region for resolving regional ECR image registries
+  region: ""
+  # Container image configuration
+  image:
+    # Image tag override (defaults to the tested published tag)
+    # tag: ""
+    # Image digest, "sha256:<64 hex>"; pins one image and takes precedence over tag
+    digest: ""
+    # Override the full image URI (skips region-based resolution)
+    override: ""

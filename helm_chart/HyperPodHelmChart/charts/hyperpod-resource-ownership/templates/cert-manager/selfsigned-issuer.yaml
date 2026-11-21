@@ -1,0 +1,11 @@
+{{- if and .Values.webhook.enable .Values.certManager.enable }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ include "resource-ownership.resourceName" (dict "suffix" "selfsigned-issuer" "context" $) }}
+  namespace: {{ include "resource-ownership.namespaceName" . }}
+  labels:
+    {{- include "resource-ownership.labels" . | nindent 4 }}
+spec:
+  selfSigned: {}
+{{- end }}

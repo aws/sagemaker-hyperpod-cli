@@ -1,0 +1,111 @@
+{{- if .Values.webhook.enable }}
+{{- /*
+  cert-manager is the only source of the webhook's serving certificate and of the caBundle
+  injected into the MutatingWebhookConfiguration. Without it the API server can't complete the
+  TLS handshake, and with failurePolicy: Fail every governed CREATE would be blocked.
+*/ -}}
+{{- if not .Values.certManager.enable }}
+{{- fail "webhook.enable requires certManager.enable (cert-manager issues the webhook's serving certificate and CA bundle); set webhook.enable=false to install only the policy" }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "resource-ownership.resourceName" (dict "suffix" "webhook" "context" $) }}
+  namespace: {{ include "resource-ownership.namespaceName" . }}
+  labels:
+    {{- include "resource-ownership.labels" . | nindent 4 }}
+    app.kubernetes.io/component: webhook
+spec:
+  replicas: {{ .Values.manager.replicas }}
+  selector:
+    matchLabels:
+      {{- include "resource-ownership.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+      labels:
+        {{- include "resource-ownership.labels" . | nindent 8 }}
+        {{- include "resource-ownership.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "resource-ownership.resourceName" (dict "suffix" "webhook" "context" $) }}
+      {{- with .Values.manager.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.manager.podSecurityContext | nindent 8 }}
+      # Spread replicas across nodes so a single node loss can't take admission down.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "resource-ownership.selectorLabels" . | nindent 14 }}
+      {{- with .Values.manager.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.manager.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.manager.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: manager
+          image: {{ include "resource-ownership.imageUri" . }}
+          imagePullPolicy: {{ .Values.manager.image.pullPolicy }}
+          args:
+            - --health-probe-bind-address=:{{ .Values.manager.healthProbePort }}
+            - --metrics-bind-address=0
+            - --webhook-port={{ .Values.webhook.port }}
+            - --zap-log-level={{ .Values.manager.logLevel }}
+            {{- if .Values.certManager.enable }}
+            - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
+            {{- end }}
+            {{- range .Values.manager.args }}
+            - {{ . }}
+            {{- end }}
+          env:
+            # Logged at startup, so the running version shows in kubectl logs and CloudWatch.
+            - name: WEBHOOK_VERSION
+              value: {{ include "resource-ownership.webhookImageVersion" . | quote }}
+          ports:
+            - name: webhook-server
+              containerPort: {{ .Values.webhook.port }}
+              protocol: TCP
+            - name: health
+              containerPort: {{ .Values.manager.healthProbePort }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.manager.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.manager.securityContext | nindent 12 }}
+          {{- if .Values.certManager.enable }}
+          volumeMounts:
+            - name: webhook-certs
+              mountPath: /tmp/k8s-webhook-server/serving-certs
+              readOnly: true
+          {{- end }}
+      {{- if .Values.certManager.enable }}
+      volumes:
+        - name: webhook-certs
+          secret:
+            secretName: {{ include "resource-ownership.resourceName" (dict "suffix" "webhook-server-cert" "context" $) }}
+      {{- end }}
+{{- end }}

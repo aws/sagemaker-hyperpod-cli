@@ -1,0 +1,59 @@
+{{- if .Values.webhook.enable }}
+{{- /*
+  Cluster-scoped, with a fixed name (as the ValidatingAdmissionPolicy): the chart is installed
+  once per cluster. A second release fails at install time (Helm refuses to take over an object
+  owned by another release) instead of silently replacing the first one.
+*/ -}}
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ include "resource-ownership.resourceName" (dict "suffix" "mutating-webhook" "context" $) }}
+  labels:
+    {{- include "resource-ownership.labels" . | nindent 4 }}
+  {{- if .Values.certManager.enable }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ include "resource-ownership.namespaceName" . }}/{{ include "resource-ownership.resourceName" (dict "suffix" "serving-cert" "context" $) }}
+  {{- end }}
+webhooks:
+  - name: resource-ownership.sagemaker.amazonaws.com
+    admissionReviewVersions: ["v1"]
+    clientConfig:
+      service:
+        name: {{ include "resource-ownership.resourceName" (dict "suffix" "webhook" "context" $) }}
+        namespace: {{ include "resource-ownership.namespaceName" . }}
+        path: /mutate-resource-ownership
+        port: 443
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    # Also stamp CREATEs sent through another served version of a governed kind.
+    matchPolicy: Equivalent
+    # If a later mutating webhook changes the object, call this one once more, so its
+    # annotations are re-applied if that webhook rewrote them (as the compute configuration
+    # webhook). The stamp is idempotent, so a second call changes nothing otherwise.
+    reinvocationPolicy: IfNeeded
+    # The stamp only writes annotations derived from request.userInfo.
+    sideEffects: None
+    # Skip the principals the ValidatingAdmissionPolicy skips (same expressions), so the two
+    # halves stay symmetric: a controller or admin creating a resource on a user's behalf doesn't
+    # become its immutable owner. Their creates get no created-by, so the policy treats the
+    # resource as unowned (open), as it does for any resource created without the webhook.
+    matchConditions:
+      - name: skip-admins
+        expression: '!request.userInfo.groups.exists(g, g in {{ .Values.policy.adminGroups | toJson }})'
+      - name: skip-controllers
+        expression: '!(request.userInfo.username in {{ .Values.policy.bypassServiceAccounts | toJson }})'
+    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+    # CREATE only: the owner is recorded once, and the policy keeps it immutable afterwards.
+    rules:
+      {{- range .Values.governedResources }}
+      - apiGroups: {{ .apiGroups | toJson }}
+        apiVersions: ["*"]
+        operations: ["CREATE"]
+        resources: {{ .resources | toJson }}
+        scope: Namespaced
+      {{- end }}
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values: {{ include "resource-ownership.excludedNamespaces" . }}
+{{- end }}

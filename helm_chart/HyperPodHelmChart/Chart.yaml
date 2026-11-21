@@ -100,3 +100,7 @@ dependencies:
     version: "0.1.0"
     repository: "file://charts/hyperpod-kubernetes-resource-monitor"
     condition: hyperpod-kubernetes-resource-monitor.enabled
+  - name: hyperpod-resource-ownership
+    version: "0.1.0"
+    repository: "file://charts/hyperpod-resource-ownership"
+    condition: hyperpod-resource-ownership.enabled

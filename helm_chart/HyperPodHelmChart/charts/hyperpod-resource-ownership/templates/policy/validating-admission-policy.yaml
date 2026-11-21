@@ -1,0 +1,146 @@
+{{- if .Values.policy.enable }}
+{{- /*
+  Enforcement half. Runs in the API server, fail-closed. The annotations are
+  written by the CREATE webhook in this chart:
+    resource.ownership.sagemaker.amazonaws.com/created-by      the creator's EKS username (raw)
+    resource.ownership.sagemaker.amazonaws.com/ownership-type  Public (default) or OwnerOnly
+  A missing ownership-type reads as Public, so resources created before the webhook was installed
+  keep today's behavior.
+
+  Admins and controllers skip the whole policy through matchConditions.
+
+  The policy also matches writes to the status subresource, which a rule on the resource alone
+  does not: a non-owner could otherwise forge an OwnerOnly resource's status.
+  /status gets the checks below. The scale subresource of the kinds in policy.scaleOwnership is
+  checked by scale-ownership-policies.yaml; no other kind's scale subresource is governed.
+
+  This is the counterpart of jupyter-k8s's WorkspaceCustomValidator
+  (internal/webhook/v1alpha1/workspace_webhook.go), written as CEL because the governed kinds belong
+  to other operators:
+    isControllerOrAdminUser      -> matchConditions (controller service accounts, admin groups;
+                                    system:masters is jupyter-k8s's DefaultAdminGroup)
+    validateOwnershipPermission  -> check 1 (an OwnerOnly resource: only the creator may update
+                                    (ValidateUpdate) or delete (ValidateDelete); read from the old
+                                    object, as jupyter-k8s does)
+    validateReservedPrefixOnUpdate (created-by is SetOnCreateOnly) -> check 2 (immutable)
+    ownership-type -> check 3 (only the creator may change it, either direction, as jupyter-k8s's
+    ValidateUpdate does for spec.ownershipType) and check 4 (a changed value must be valid).
+  One jupyter-k8s behavior is not copied: it skips validation of updates to a workspace that is
+  being deleted (deletionTimestamp set). Here the controllers that remove finalizers are already
+  exempt through matchConditions.
+*/ -}}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ .Values.policy.name }}
+  labels:
+    {{- include "resource-ownership.labels" . | nindent 4 }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      {{- range .Values.governedResources }}
+      - apiGroups: {{ .apiGroups | toJson }}
+        apiVersions: ["*"]
+        operations: ["UPDATE", "DELETE"]
+        resources: {{ .resources | toJson }}
+      {{- /*
+        Writes through the status subresource are separate requests on <resource>/status; a
+        rule on <resource> alone does not match them. The scale subresource is not matched here:
+        scale-ownership-policies.yaml checks it for the kinds in policy.scaleOwnership.
+      */}}
+      {{- $subresources := list }}
+      {{- range .resources }}
+      {{- $subresources = append $subresources (printf "%s/status" .) }}
+      {{- end }}
+      - apiGroups: {{ .apiGroups | toJson }}
+        apiVersions: ["*"]
+        operations: ["UPDATE"]
+        resources: {{ $subresources | toJson }}
+      {{- end }}
+  matchConditions:
+    - name: skip-admins
+      expression: '!request.userInfo.groups.exists(g, g in {{ .Values.policy.adminGroups | toJson }})'
+    - name: skip-controllers
+      expression: '!(request.userInfo.username in {{ .Values.policy.bypassServiceAccounts | toJson }})'
+  variables:
+    - name: oldCreatedBy
+      expression: 'oldObject.metadata.?annotations[?"resource.ownership.sagemaker.amazonaws.com/created-by"].orValue("")'
+    - name: oldOwnershipType
+      expression: 'oldObject.metadata.?annotations[?"resource.ownership.sagemaker.amazonaws.com/ownership-type"].orValue("Public")'
+    - name: isCreator
+      expression: 'variables.oldCreatedBy != "" && variables.oldCreatedBy == request.userInfo.username'
+  validations:
+    # 1. Owner check (UPDATE + DELETE): an OwnerOnly resource can only be changed or deleted by
+    #    its creator. A resource with no created-by has no owner to protect, so it stays open
+    #    even if it says OwnerOnly (created without the webhook, e.g. a policy-only install);
+    #    otherwise nobody but an admin could ever touch it. A stamped resource can't lose its
+    #    created-by (check 2), so this doesn't weaken any owned resource.
+    - expression: 'variables.oldOwnershipType != "OwnerOnly" || variables.oldCreatedBy == "" || variables.isCreator'
+      message: "access denied: only the resource owner can modify or delete OwnerOnly resources (resource.ownership.sagemaker.amazonaws.com/ownership-type)"
+      reason: Forbidden
+    # 2. created-by is immutable (UPDATE) for every user, including the creator. Also stops anyone
+    #    from adding a created-by to a resource that has none. Admins and the bypass controllers
+    #    skip the policy (matchConditions), so an admin can still reassign or remove it.
+    - expression: >-
+        request.operation != "UPDATE" ||
+        variables.oldCreatedBy == object.metadata.?annotations[?"resource.ownership.sagemaker.amazonaws.com/created-by"].orValue("")
+      message: "annotation 'resource.ownership.sagemaker.amazonaws.com/created-by' is immutable"
+      reason: Forbidden
+    # 3. Only the owner may change ownership-type (UPDATE), in either direction: Public to OwnerOnly
+    #    or back. Any other user, including on a Public resource, is denied, so a non-owner can't
+    #    protect a shared resource and lock its owner out. Compares the raw values (missing reads as
+    #    ""), so adding or removing the annotation is a change too. A resource without a created-by
+    #    (created before the chart was installed) has no owner, so no user can change its
+    #    ownership-type; it keeps reading as Public. Admins and the bypass controllers skip the
+    #    policy (matchConditions), so they can change it on any resource.
+    - expression: >-
+        request.operation != "UPDATE" ||
+        oldObject.metadata.?annotations[?"resource.ownership.sagemaker.amazonaws.com/ownership-type"].orValue("") ==
+        object.metadata.?annotations[?"resource.ownership.sagemaker.amazonaws.com/ownership-type"].orValue("") ||
+        variables.isCreator
+      message: "access denied: only the resource owner can change annotation 'resource.ownership.sagemaker.amazonaws.com/ownership-type'"
+      reason: Forbidden
+    # 4. A changed ownership-type must be Public or OwnerOnly (UPDATE). The webhook validates the
+    #    value only on create, and check 1 protects only an exact OwnerOnly, so without this a typo
+    #    (such as ownerOnly) or removing the annotation would quietly make the resource Public.
+    #    Admins and the bypass controllers skip this check too.
+    - expression: >-
+        request.operation != "UPDATE" ||
+        oldObject.metadata.?annotations[?"resource.ownership.sagemaker.amazonaws.com/ownership-type"].orValue("") ==
+        object.metadata.?annotations[?"resource.ownership.sagemaker.amazonaws.com/ownership-type"].orValue("") ||
+        object.metadata.?annotations[?"resource.ownership.sagemaker.amazonaws.com/ownership-type"].orValue("") in ["Public", "OwnerOnly"]
+      message: "annotation 'resource.ownership.sagemaker.amazonaws.com/ownership-type' must be Public or OwnerOnly"
+      reason: Invalid
+  # The owner of the object being written, in the request's audit event as
+  # "<policy name>/owner", so a write (or a denial, which the binding's Audit action also records)
+  # shows whose object it was without looking the object up afterwards. The requester is already
+  # in the event (user, or impersonatedUser). An object without a created-by gives "", which the
+  # API server omits. Admins and the bypass controllers skip the policy, so their writes get none.
+  auditAnnotations:
+    - key: owner
+      valueExpression: 'variables.oldCreatedBy'
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ .Values.policy.name }}-binding
+  labels:
+    {{- include "resource-ownership.labels" . | nindent 4 }}
+spec:
+  policyName: {{ .Values.policy.name }}
+  # Deny rejects the request; Audit also records the failed check (policy, binding, message) in
+  # the request's audit event, as validation.policy.admission.k8s.io/validation_failure, so a
+  # denial is attributable in the EKS audit log when the cluster has audit logging on.
+  validationActions: ["Deny", "Audit"]
+  matchResources:
+    namespaceSelector:
+      {{- if .Values.policy.namespaceSelector }}
+      {{- toYaml .Values.policy.namespaceSelector | nindent 6 }}
+      {{- else }}
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values: {{ include "resource-ownership.excludedNamespaces" . }}
+      {{- end }}
+{{- end }}
