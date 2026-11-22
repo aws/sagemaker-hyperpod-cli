@@ -1,0 +1,17 @@
+apiVersion: v2
+name: hyperpod-resource-ownership
+description: >-
+  HyperPod user-level resource isolation: a mutating webhook that records the creator of governed
+  resources, and a ValidatingAdmissionPolicy that limits UPDATE and DELETE of OwnerOnly
+  resources to their creator, controllers and cluster admins.
+type: application
+
+version: 0.1.0
+appVersion: "0.1.0"
+# ValidatingAdmissionPolicy is GA (admissionregistration.k8s.io/v1) from 1.30.
+# The -0 suffix lets EKS versions such as v1.33.13-eks-cfb47f5 match.
+kubeVersion: ">=1.30.0-0"
+
+keywords:
+  - kubernetes
+  - hyperpod

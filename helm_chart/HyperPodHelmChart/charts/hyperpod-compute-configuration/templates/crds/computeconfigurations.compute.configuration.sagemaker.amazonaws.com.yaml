@@ -1,0 +1,248 @@
+{{- /*
+Generated from the ComputeConfiguration Go types. Do not edit by hand.
+*/}}
+{{- if (.Values.crd | default dict).enable }}
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    {{- if (.Values.crd | default dict).keep }}
+    "helm.sh/resource-policy": keep
+    {{- end }}
+  labels:
+    app.kubernetes.io/component: compute-configurations
+  name: computeconfigurations.compute.configuration.sagemaker.amazonaws.com
+spec:
+  group: compute.configuration.sagemaker.amazonaws.com
+  names:
+    kind: ComputeConfiguration
+    listKind: ComputeConfigurationList
+    plural: computeconfigurations
+    shortNames:
+    - computeconfig
+    singular: computeconfiguration
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.targetKinds
+      name: Targets
+      type: string
+    - jsonPath: .spec.resources.gpus
+      name: GPUs
+      type: integer
+    - jsonPath: .spec.resources.vcpus
+      name: vCPUs
+      type: string
+    - jsonPath: .spec.resources.memory
+      name: Memory
+      type: string
+    - jsonPath: .spec.resources.efa
+      name: EFA
+      type: integer
+    - jsonPath: .spec.resources.worker.gpus
+      name: Worker GPUs
+      type: integer
+    - jsonPath: .spec.resources.worker.vcpus
+      name: Worker vCPUs
+      type: string
+    - jsonPath: .spec.resources.worker.memory
+      name: Worker Memory
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          ComputeConfiguration is an admin-defined, named compute shape
+          that workloads of the target kind can reference.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              ComputeConfigurationSpec defines the compute shape and
+              the workload kind it applies to.
+            properties:
+              description:
+                description: |-
+                  Description is a human-readable description of this
+                  configuration.
+                maxLength: 1024
+                type: string
+              instanceType:
+                description: |-
+                  InstanceType is the instance type this configuration
+                  targets, for example ml.p5.48xlarge. The admission webhook applies it as
+                  the node.kubernetes.io/instance-type node selector. If it isn't set, the
+                  configuration doesn't manage the instance type.
+                maxLength: 64
+                pattern: ^ml\.[a-z0-9-]+\.[a-z0-9]+$
+                type: string
+              resources:
+                description: |-
+                  Resources is the compute shape applied to the workload.
+                  Set either vcpus and memory (one shape for every pod), or head and
+                  worker (Ray only, a shape per role), not both.
+                properties:
+                  efa:
+                    description: EFA is the number of EFA devices. Omitted means 0.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  gpus:
+                    description: |-
+                      GPUs is the number of accelerator devices (NVIDIA GPUs
+                      or Neuron devices, per the workload's instance type). Omitted means 0.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  head:
+                    description: Head is the Ray head pod's compute shape.
+                    properties:
+                      efa:
+                        default: 0
+                        description: EFA is the number of EFA devices.
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      gpus:
+                        default: 0
+                        description: |-
+                          GPUs is the number of accelerator devices
+                          (NVIDIA GPUs or Neuron devices, per the workload's instance type).
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      memory:
+                        description: |-
+                          Memory is the memory quantity, for example 64Gi.
+                          Must be greater than 0.
+                        pattern: ^([1-9][0-9]*(\.[0-9]+)?|0\.[0-9]*[1-9][0-9]*)(k|M|G|T|P|Ki|Mi|Gi|Ti|Pi)?$
+                        type: string
+                      vcpus:
+                        description: |-
+                          VCPUs is the CPU quantity, for example 8 or 500m.
+                          Must be greater than 0.
+                        pattern: ^([1-9][0-9]*(\.[0-9]+)?|0\.[0-9]*[1-9][0-9]*)m?$
+                        type: string
+                    required:
+                    - memory
+                    - vcpus
+                    type: object
+                  memory:
+                    description: |-
+                      Memory is the memory quantity, for example 64Gi.
+                      Must be greater than 0.
+                    pattern: ^([1-9][0-9]*(\.[0-9]+)?|0\.[0-9]*[1-9][0-9]*)(k|M|G|T|P|Ki|Mi|Gi|Ti|Pi)?$
+                    type: string
+                  vcpus:
+                    description: |-
+                      VCPUs is the CPU quantity, for example 8 or 500m.
+                      Must be greater than 0.
+                    pattern: ^([1-9][0-9]*(\.[0-9]+)?|0\.[0-9]*[1-9][0-9]*)m?$
+                    type: string
+                  worker:
+                    description: Worker is the Ray worker pods' compute shape.
+                    properties:
+                      efa:
+                        default: 0
+                        description: EFA is the number of EFA devices.
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      gpus:
+                        default: 0
+                        description: |-
+                          GPUs is the number of accelerator devices
+                          (NVIDIA GPUs or Neuron devices, per the workload's instance type).
+                        format: int32
+                        minimum: 0
+                        type: integer
+                      memory:
+                        description: |-
+                          Memory is the memory quantity, for example 64Gi.
+                          Must be greater than 0.
+                        pattern: ^([1-9][0-9]*(\.[0-9]+)?|0\.[0-9]*[1-9][0-9]*)(k|M|G|T|P|Ki|Mi|Gi|Ti|Pi)?$
+                        type: string
+                      vcpus:
+                        description: |-
+                          VCPUs is the CPU quantity, for example 8 or 500m.
+                          Must be greater than 0.
+                        pattern: ^([1-9][0-9]*(\.[0-9]+)?|0\.[0-9]*[1-9][0-9]*)m?$
+                        type: string
+                    required:
+                    - memory
+                    - vcpus
+                    type: object
+                type: object
+                x-kubernetes-validations:
+                - message: vcpus and memory are required (for Ray, set head and worker
+                    instead)
+                  rule: has(self.head) || has(self.worker) || (has(self.vcpus) &&
+                    has(self.memory))
+                - message: head and worker must be set together
+                  rule: has(self.head) == has(self.worker)
+                - message: head and worker can't be combined with vcpus, memory, gpus
+                    or efa; set those inside head and worker instead
+                  rule: '!(has(self.head) || has(self.worker)) || !(has(self.vcpus)
+                    || has(self.memory) || has(self.gpus) || has(self.efa))'
+              targetKinds:
+                description: |-
+                  TargetKinds are the workload kinds this configuration
+                  applies to, each as <group>/<Kind>: ray.io/RayJob,
+                  sagemaker.amazonaws.com/HyperPodPyTorchJob,
+                  inference.sagemaker.aws.amazon.com/InferenceEndpointConfig or
+                  kubeflow.org/PyTorchJob.
+                items:
+                  enum:
+                  - ray.io/RayJob
+                  - sagemaker.amazonaws.com/HyperPodPyTorchJob
+                  - inference.sagemaker.aws.amazon.com/InferenceEndpointConfig
+                  - kubeflow.org/PyTorchJob
+                  type: string
+                maxItems: 16
+                minItems: 1
+                type: array
+                x-kubernetes-list-type: set
+            required:
+            - resources
+            - targetKinds
+            type: object
+            x-kubernetes-validations:
+            - message: head and worker resources are only supported when every target
+                kind is a Ray kind (ray.io/...)
+              rule: '!has(self.resources.head) || self.targetKinds.all(k, k.startsWith(''ray.io/''))'
+          status:
+            description: |-
+              ComputeConfigurationStatus is reserved for the admission
+              webhook; nothing writes it today.
+            type: object
+        required:
+        - spec
+        type: object
+        x-kubernetes-validations:
+        - message: name must be at most 63 characters (it is used as a label value
+            on workloads)
+          rule: self.metadata.name.size() <= 63
+    served: true
+    storage: true
+    subresources:
+      status: {}
+{{- end }}

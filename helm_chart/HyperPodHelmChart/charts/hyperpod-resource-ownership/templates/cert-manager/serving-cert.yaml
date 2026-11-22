@@ -1,0 +1,17 @@
+{{- if and .Values.webhook.enable .Values.certManager.enable }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "resource-ownership.resourceName" (dict "suffix" "serving-cert" "context" $) }}
+  namespace: {{ include "resource-ownership.namespaceName" . }}
+  labels:
+    {{- include "resource-ownership.labels" . | nindent 4 }}
+spec:
+  dnsNames:
+    - {{ include "resource-ownership.resourceName" (dict "suffix" "webhook" "context" $) }}.{{ include "resource-ownership.namespaceName" . }}.svc
+    - {{ include "resource-ownership.resourceName" (dict "suffix" "webhook" "context" $) }}.{{ include "resource-ownership.namespaceName" . }}.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: {{ include "resource-ownership.resourceName" (dict "suffix" "selfsigned-issuer" "context" $) }}
+  secretName: {{ include "resource-ownership.resourceName" (dict "suffix" "webhook-server-cert" "context" $) }}
+{{- end }}

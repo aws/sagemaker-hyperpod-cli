@@ -1,0 +1,18 @@
+{{- if .Values.webhook.enable }}
+{{- $name := include "hyperpod-compute-configuration.webhookName" . }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "hyperpod-compute-configuration.webhookLabels" . | nindent 4 }}
+  {{- if .Values.certManager.enable }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ include "hyperpod-compute-configuration.namespaceName" . }}/{{ $name }}-cert
+  {{- end }}
+# Denies, in enforced namespaces only, workloads whose compute wasn't filled in from their
+# configuration or no longer matches it. It runs after every mutating webhook, so it sees the
+# final object.
+webhooks:
+{{- include "hyperpod-compute-configuration.webhookEntries" (dict "context" . "type" "validate" "operations" (list "CREATE" "UPDATE") "enforced" true) }}
+{{- end }}

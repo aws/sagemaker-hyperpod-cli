@@ -1,0 +1,95 @@
+{{- if .Values.policy.enable }}
+{{- /*
+  Owner check for the scale subresource (kubectl scale, PATCH .../<resource>/scale), one policy
+  per kind in policy.scaleOwnership. Same rule as check 1 of the main policy: anyone may scale a
+  Public (or unannotated) resource, only the creator may scale an OwnerOnly one, and admins and
+  the bypass controllers skip the check.
+
+  Why a separate policy: a scale request's object and oldObject are autoscaling/v1 Scale objects,
+  which carry none of the resource's annotations, so the main policy can't see the owner. Here the
+  binding loads the kind itself as params (paramKind, namespaced, so from the request's namespace;
+  the API server keeps them in a watch cache, no call per request). The policy is evaluated once
+  per param, and only the param named in the request (the resource being scaled) is checked.
+
+  A resource created a moment ago may not be in the param cache yet. A scale request for it then
+  depends on what else of that kind the cache holds in the namespace:
+    - other objects of the kind: the request is evaluated only against those params, isTarget is
+      false for each, and the scale is allowed without the owner check (fails open, briefly);
+    - no other object of the kind: no param matches, and parameterNotFoundAction: Deny rejects
+      the request, the owner's included (fails closed, briefly).
+  Both last only until the watch delivers the new object.
+*/ -}}
+{{- range .Values.policy.scaleOwnership }}
+{{- $name := printf "%s-scale-%s" $.Values.policy.name .resource }}
+{{- $group := (split "/" .apiVersion)._0 }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "resource-ownership.labels" $ | nindent 4 }}
+spec:
+  failurePolicy: Fail
+  paramKind:
+    apiVersion: {{ .apiVersion }}
+    kind: {{ .kind }}
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [{{ $group | quote }}]
+        apiVersions: ["*"]
+        operations: ["UPDATE"]
+        resources: [{{ printf "%s/scale" .resource | quote }}]
+  matchConditions:
+    - name: skip-admins
+      expression: '!request.userInfo.groups.exists(g, g in {{ $.Values.policy.adminGroups | toJson }})'
+    - name: skip-controllers
+      expression: '!(request.userInfo.username in {{ $.Values.policy.bypassServiceAccounts | toJson }})'
+  variables:
+    - name: isTarget
+      expression: 'params.metadata.name == request.name'
+    - name: createdBy
+      expression: 'params.metadata.?annotations[?"resource.ownership.sagemaker.amazonaws.com/created-by"].orValue("")'
+    - name: ownershipType
+      expression: 'params.metadata.?annotations[?"resource.ownership.sagemaker.amazonaws.com/ownership-type"].orValue("Public")'
+  validations:
+    - expression: >-
+        !variables.isTarget || variables.ownershipType != "OwnerOnly" ||
+        variables.createdBy == "" || variables.createdBy == request.userInfo.username
+      message: "access denied: only the resource owner can modify or delete OwnerOnly resources (resource.ownership.sagemaker.amazonaws.com/ownership-type)"
+      reason: Forbidden
+  # As the main policy: the owner of the object being scaled, as "<policy name>/owner" in the
+  # audit event. Only the param named in the request is the object; every other param gives "",
+  # which the API server omits.
+  auditAnnotations:
+    - key: owner
+      valueExpression: 'variables.isTarget ? variables.createdBy : ""'
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ $name }}-binding
+  labels:
+    {{- include "resource-ownership.labels" $ | nindent 4 }}
+spec:
+  policyName: {{ $name }}
+  # As the main binding: deny, and record the failed check in the request's audit event.
+  validationActions: ["Deny", "Audit"]
+  paramRef:
+    # Every object of the kind in the request's namespace; the policy checks only the one being
+    # scaled. Deny when there are none (see the cache note above: this also briefly rejects a
+    # scale of a just-created resource that is the only one of its kind in the namespace).
+    selector: {}
+    parameterNotFoundAction: Deny
+  matchResources:
+    namespaceSelector:
+      {{- if $.Values.policy.namespaceSelector }}
+      {{- toYaml $.Values.policy.namespaceSelector | nindent 6 }}
+      {{- else }}
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values: {{ include "resource-ownership.excludedNamespaces" $ }}
+      {{- end }}
+{{- end }}
+{{- end }}

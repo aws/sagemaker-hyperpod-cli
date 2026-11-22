@@ -1,0 +1,81 @@
+{{- if .Values.webhook.enable }}
+{{- $name := printf "%s-workloads" (include "hyperpod-compute-configuration.webhookName" .) }}
+{{- $label := "compute.configuration.sagemaker.amazonaws.com/name" }}
+# Rules for the supported workload kinds that don't need the webhook. It runs in the API server,
+# so it works even when the webhook is down.
+# - In enforced namespaces, every workload a user creates must use a compute configuration, which
+#   can then be switched but not removed.
+# - A workload is only accepted in API version v1, the version the webhooks handle (matchPolicy
+#   Exact): in enforced namespaces always, elsewhere when it uses a compute configuration.
+#   Otherwise it would skip the webhooks and its configuration would be silently ignored.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "hyperpod-compute-configuration.webhookLabels" . | nindent 4 }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    matchPolicy: Exact
+    resourceRules:
+    {{- range fromYamlArray (include "hyperpod-compute-configuration.webhookKinds" .) }}
+    {{- if not .blocked }}
+    - apiGroups: [{{ .group | quote }}]
+      apiVersions: ["*"]
+      operations: ["CREATE", "UPDATE"]
+      resources: [{{ .resource }}]
+    {{- end }}
+    {{- end }}
+    namespaceSelector:
+      matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: NotIn
+        values: [kube-system, {{ include "hyperpod-compute-configuration.namespaceName" . }}]
+  variables:
+  # matchConditions can't see the namespace, so the rules below check it through these variables.
+  - name: enforced
+    expression: >-
+      namespaceObject.?metadata.?labels[?'{{ include "hyperpod-compute-configuration.enforcementLabel" . }}'].orValue('') == 'enabled'
+  - name: configured
+    expression: "object.metadata.?labels[?'{{ $label }}'].orValue('') != ''"
+  matchConditions:
+  # Workloads a controller creates (for example the HyperPod inference operator's
+  # InferenceEndpointConfigs for a JumpStartModel) aren't checked. The exemption goes by who sends
+  # the request, not by ownerReferences, which any user can set on their own object.
+  - name: not-a-controller
+    expression: >-
+      !(request.userInfo.username in {{ .Values.webhook.workloadControllers | default list | toJson }})
+  validations:
+  # Outside enforced namespaces, workloads that don't use a compute configuration are never
+  # affected.
+  - expression: >-
+      !(variables.enforced || variables.configured) || request.kind.version == 'v1'
+    messageExpression: >-
+      request.kind.kind + ' ' + request.kind.group + '/' + request.kind.version
+      + " isn't supported with compute configurations. Use " + request.kind.group + '/v1.'
+    reason: Invalid
+  - expression: >-
+      !variables.enforced || request.operation != 'CREATE' || variables.configured
+    message: >-
+      Every workload in this namespace must use a compute configuration: set the
+      {{ $label }} label.
+    reason: Invalid
+  - expression: >-
+      !variables.enforced || request.operation != 'UPDATE' || variables.configured
+      || oldObject.metadata.?labels[?'{{ $label }}'].orValue('') == ''
+    message: >-
+      This workload's compute configuration can't be removed in this namespace. Switch to a
+      different configuration instead.
+    reason: Invalid
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "hyperpod-compute-configuration.webhookLabels" . | nindent 4 }}
+spec:
+  policyName: {{ $name }}
+  validationActions: [Deny]
+{{- end }}
