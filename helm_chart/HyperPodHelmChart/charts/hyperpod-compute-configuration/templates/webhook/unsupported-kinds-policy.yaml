@@ -1,0 +1,76 @@
+{{- if .Values.webhook.enable }}
+{{- $name := printf "%s-unsupported-kinds" (include "hyperpod-compute-configuration.webhookName" .) }}
+# Rejects, in every namespace, a workload that references a compute configuration but is a kind
+# the webhook doesn't support, so the reference is never silently ignored. It runs in
+# the API server, so it works even when the webhook is down.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "hyperpod-compute-configuration.webhookLabels" . | nindent 4 }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups: ["*"]
+      apiVersions: ["*"]
+      operations: ["CREATE", "UPDATE"]
+      resources: ["*"]
+      scope: Namespaced
+    # The supported kinds (the webhook checks them) and compute configurations themselves. A
+    # blocked kind is deliberately not excluded, so this policy rejects it.
+    excludeResourceRules:
+    {{- range fromYamlArray (include "hyperpod-compute-configuration.webhookKinds" .) }}
+    {{- if not .blocked }}
+    - apiGroups: [{{ .group | quote }}]
+      apiVersions: ["*"]
+      operations: ["CREATE", "UPDATE"]
+      resources: [{{ .resource }}]
+    {{- end }}
+    {{- end }}
+    - apiGroups: ["compute.configuration.sagemaker.amazonaws.com"]
+      apiVersions: ["*"]
+      operations: ["CREATE", "UPDATE"]
+      resources: [computeconfigurations]
+    namespaceSelector:
+      matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: NotIn
+        values: [kube-system, {{ include "hyperpod-compute-configuration.namespaceName" . }}]
+    objectSelector:
+      matchExpressions:
+      - key: compute.configuration.sagemaker.amazonaws.com/name
+        operator: Exists
+  matchConditions:
+  # Objects a controller creates from a supported workload (a RayJob's RayCluster, Pods) inherit
+  # the label but have an owner, so only objects a user created directly are checked.
+  - name: user-created
+    expression: "size(object.metadata.?ownerReferences.orValue([])) == 0"
+  # The listed controllers create objects from supported workloads without an owner (the HyperPod
+  # inference operator's Deployment for an InferenceEndpointConfig), so they aren't checked either.
+  - name: not-a-controller
+    expression: >-
+      !(request.userInfo.username in {{ .Values.webhook.workloadControllers | default list | toJson }})
+  # Removing the label from an unsupported object must stay possible.
+  - name: still-labelled
+    expression: "'compute.configuration.sagemaker.amazonaws.com/name' in object.metadata.?labels.orValue({})"
+  validations:
+  - expression: "false"
+    messageExpression: >-
+      request.kind.kind + " doesn't support compute configurations: remove the
+      compute.configuration.sagemaker.amazonaws.com/name label. Supported kinds: RayJob (ray.io),
+      HyperPodPyTorchJob (sagemaker.amazonaws.com) and InferenceEndpointConfig
+      (inference.sagemaker.aws.amazon.com)."
+    reason: Invalid
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "hyperpod-compute-configuration.webhookLabels" . | nindent 4 }}
+spec:
+  policyName: {{ $name }}
+  validationActions: [Deny]
+{{- end }}

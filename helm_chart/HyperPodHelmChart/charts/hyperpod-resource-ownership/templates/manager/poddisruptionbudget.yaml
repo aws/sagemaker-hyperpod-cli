@@ -1,0 +1,14 @@
+{{- if .Values.webhook.enable }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "resource-ownership.resourceName" (dict "suffix" "webhook" "context" $) }}
+  namespace: {{ include "resource-ownership.namespaceName" . }}
+  labels:
+    {{- include "resource-ownership.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.manager.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "resource-ownership.selectorLabels" . | nindent 6 }}
+{{- end }}

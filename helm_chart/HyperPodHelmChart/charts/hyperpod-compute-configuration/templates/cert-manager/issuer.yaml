@@ -1,0 +1,11 @@
+{{- if and .Values.webhook.enable .Values.certManager.enable }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ include "hyperpod-compute-configuration.webhookName" . }}-selfsigned
+  namespace: {{ include "hyperpod-compute-configuration.namespaceName" . }}
+  labels:
+    {{- include "hyperpod-compute-configuration.webhookLabels" . | nindent 4 }}
+spec:
+  selfSigned: {}
+{{- end }}

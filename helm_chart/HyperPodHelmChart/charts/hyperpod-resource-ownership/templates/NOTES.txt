@@ -1,0 +1,32 @@
+Thank you for installing {{ .Chart.Name }}.
+
+Your release is named {{ .Release.Name }}.
+{{- if .Values.webhook.enable }}
+
+The CREATE webhook records resource.ownership.sagemaker.amazonaws.com/created-by and
+resource.ownership.sagemaker.amazonaws.com/ownership-type (default Public) on new governed resources.
+{{- end }}
+{{- if .Values.policy.enable }}
+
+The ValidatingAdmissionPolicy {{ .Values.policy.name }} limits UPDATE and DELETE of
+OwnerOnly resources to their creator, the controllers and cluster admins.
+{{- end }}
+
+To verify the installation:
+
+{{- if .Values.policy.enable }}
+  kubectl get validatingadmissionpolicy {{ .Values.policy.name }}
+{{- end }}
+{{- if .Values.webhook.enable }}
+  kubectl get mutatingwebhookconfiguration {{ include "resource-ownership.resourceName" (dict "suffix" "mutating-webhook" "context" $) }}
+  kubectl -n {{ include "resource-ownership.namespaceName" . }} get deployment {{ include "resource-ownership.resourceName" (dict "suffix" "webhook" "context" $) }}
+  kubectl -n {{ include "resource-ownership.namespaceName" . }} logs deployment/{{ include "resource-ownership.resourceName" (dict "suffix" "webhook" "context" $) }} | grep "Webhook version"
+{{- end }}
+
+Studio users are only isolated from each other when the SageMaker domain sets
+ExecutionRoleSessionNameMode to USER_IDENTITY.
+
+To learn more about the release, try:
+
+  $ helm status {{ .Release.Name }} -n {{ .Release.Namespace }}
+  $ helm get all {{ .Release.Name }} -n {{ .Release.Namespace }}

@@ -1,0 +1,17 @@
+{{- if .Values.webhook.enable }}
+{{- $name := include "hyperpod-compute-configuration.webhookName" . }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "hyperpod-compute-configuration.webhookLabels" . | nindent 4 }}
+  {{- if .Values.certManager.enable }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ include "hyperpod-compute-configuration.namespaceName" . }}/{{ $name }}-cert
+  {{- end }}
+# Fills in compute from the referenced configuration. It never denies a workload; the
+# ValidatingWebhookConfiguration does all denying.
+webhooks:
+{{- include "hyperpod-compute-configuration.webhookEntries" (dict "context" . "type" "mutate" "operations" (list "CREATE" "UPDATE")) }}
+{{- end }}

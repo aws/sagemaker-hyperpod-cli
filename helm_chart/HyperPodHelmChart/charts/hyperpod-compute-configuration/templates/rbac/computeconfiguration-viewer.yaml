@@ -1,0 +1,29 @@
+{{- if ((.Values.rbac | default dict).helpers | default dict).enable }}
+# Read-only access to ComputeConfigurations.
+# Not bound to anyone: bind it with a RoleBinding (one namespace) or ClusterRoleBinding (all).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/component: compute-configurations
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+  name: {{ .Chart.Name }}-computeconfiguration-viewer
+rules:
+- apiGroups:
+  - compute.configuration.sagemaker.amazonaws.com
+  resources:
+  - computeconfigurations
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - compute.configuration.sagemaker.amazonaws.com
+  resources:
+  - computeconfigurations/status
+  verbs:
+  - get
+{{- end }}

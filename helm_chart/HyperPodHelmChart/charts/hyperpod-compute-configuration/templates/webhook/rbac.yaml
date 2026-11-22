@@ -1,0 +1,35 @@
+{{- if .Values.webhook.enable }}
+{{- $name := include "hyperpod-compute-configuration.webhookName" . }}
+# Lets the webhook read compute configurations, to fill in and check workloads' compute, and
+# namespaces, to see which ones enforce compute configurations (their
+# compute.configuration.sagemaker.amazonaws.com/enforcement label). list and watch are for its
+# in-memory cache, so admission never waits on the API server.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "hyperpod-compute-configuration.webhookLabels" . | nindent 4 }}
+rules:
+- apiGroups: ["compute.configuration.sagemaker.amazonaws.com"]
+  resources: ["computeconfigurations"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "hyperpod-compute-configuration.webhookLabels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ $name }}
+subjects:
+- kind: ServiceAccount
+  name: {{ $name }}
+  namespace: {{ include "hyperpod-compute-configuration.namespaceName" . }}
+{{- end }}

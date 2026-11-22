@@ -1,0 +1,17 @@
+{{- if and .Values.webhook.enable .Values.certManager.enable }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "hyperpod-compute-configuration.webhookName" . }}-cert
+  namespace: {{ include "hyperpod-compute-configuration.namespaceName" . }}
+  labels:
+    {{- include "hyperpod-compute-configuration.webhookLabels" . | nindent 4 }}
+spec:
+  secretName: {{ include "hyperpod-compute-configuration.webhookName" . }}-tls
+  dnsNames:
+  - {{ include "hyperpod-compute-configuration.webhookName" . }}.{{ include "hyperpod-compute-configuration.namespaceName" . }}.svc
+  - {{ include "hyperpod-compute-configuration.webhookName" . }}.{{ include "hyperpod-compute-configuration.namespaceName" . }}.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: {{ include "hyperpod-compute-configuration.webhookName" . }}-selfsigned
+{{- end }}

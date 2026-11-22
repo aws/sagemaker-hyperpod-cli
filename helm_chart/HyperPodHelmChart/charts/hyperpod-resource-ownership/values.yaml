@@ -1,0 +1,169 @@
+## Namespace the webhook is installed into (the parent chart's release namespace is kube-system).
+namespace: aws-hyperpod
+
+## Prefix for every cluster object this chart creates.
+namePrefix: sagemaker-hyperpod-resource-ownership
+
+## Resource kinds governed by user-level resource ownership. Used by both the CREATE webhook rules
+## and the ValidatingAdmissionPolicy match constraints, so adding a kind here is the only change
+## needed to cover it.
+governedResources:
+  - apiGroups: ["ray.io"]
+    resources: ["rayjobs"]
+  - apiGroups: ["sagemaker.amazonaws.com"]
+    resources: ["hyperpodpytorchjobs"]
+  - apiGroups: ["inference.sagemaker.aws.amazon.com"]
+    resources: ["inferenceendpointconfigs", "jumpstartmodels"]
+
+## Namespaces excluded from both the webhook and the policy, so a fail-closed outage can never
+## block control-plane or operator namespaces. The release namespace is always excluded too.
+excludedNamespaces:
+  - kube-system
+  - kube-public
+  - kube-node-lease
+  - cert-manager
+  - kueue-system
+  - hyperpod-inference-system
+  - kuberay-system
+  - kubeflow
+  - aws-hyperpod
+  - aws-hyperpod-hpto
+
+## AWS region for resolving regional ECR image registries.
+## Required when image.override is not explicitly set.
+##
+## Region detection priority:
+## 1. This explicit region setting (highest priority)
+## 2. Global region setting (global.region from parent chart)
+##
+## Supported regions: ap-northeast-1, ap-south-1, ap-south-2, ap-southeast-1, ap-southeast-2,
+## eu-central-1, eu-north-1, eu-west-1, eu-west-2, sa-east-1, us-east-1, us-east-2, us-west-1,
+## us-west-2
+region: ""
+
+## Container image configuration
+##
+image:
+  ## Image tag override.
+  ## If not specified, defaults to 1.0.20.0_1.0.3.0. Ignored when digest is set.
+  ##
+  # tag: ""
+
+  ## Image digest, "sha256:<64 hex>". Pins the webhook to one image, which a tag does not:
+  ##   aws ecr describe-images --repository-name hyperpod-resource-ownership-webhook \
+  ##     --image-ids imageTag=<tag> --query 'imageDetails[0].imageDigest'
+  ##
+  digest: ""
+
+  ## Override the full image URI.
+  ## If specified, this overrides the automatic region-based URI selection.
+  ## Example: "945058679767.dkr.ecr.us-east-2.amazonaws.com/hyperpod-resource-ownership-webhook@sha256:<digest>"
+  ##
+  override: ""
+
+## ValidatingAdmissionPolicy (enforcement, runs in the API server; no pod).
+policy:
+  enable: true
+  name: sagemaker-hyperpod-user-resource-ownership-policy
+  # Groups whose members bypass the policy. EKS access policies (for example
+  # AmazonEKSClusterAdminPolicy) grant permissions without adding the caller to any Kubernetes
+  # group, so an EKS cluster admin is only exempt if their access entry's kubernetesGroups (or an
+  # aws-auth mapping) puts them in one of these groups.
+  adminGroups:
+    - system:masters
+  # Controller service accounts that reconcile governed resources and must be able to update
+  # and delete any of them (status, finalizers, cleanup).
+  # The inference operator's service account depends on how it was installed: the Helm chart
+  # names it hyperpod-inference-operator-controller-manager and the EKS add-on
+  # hyperpod-inference-controller-manager. The HyperPod training operator runs as
+  # hp-training-operator-controller-manager in aws-hyperpod, or as
+  # hp-training-operator-ga-controller-manager in aws-hyperpod-hpto. All are listed; a missing
+  # entry makes the policy block the operator's own finalizer/status updates on OwnerOnly objects.
+  bypassServiceAccounts:
+    - system:serviceaccount:hyperpod-inference-system:hyperpod-inference-operator-controller-manager
+    - system:serviceaccount:hyperpod-inference-system:hyperpod-inference-controller-manager
+    - system:serviceaccount:kuberay-system:kuberay-operator
+    - system:serviceaccount:aws-hyperpod:hp-training-operator-controller-manager
+    - system:serviceaccount:aws-hyperpod-hpto:hp-training-operator-ga-controller-manager
+    - system:serviceaccount:kueue-system:kueue-controller-manager
+    - system:serviceaccount:kube-system:generic-garbage-collector
+    - system:serviceaccount:kube-system:namespace-controller
+  # Governed kinds that have a scale subresource (kubectl scale, PATCH .../scale). A scale
+  # request carries an autoscaling/v1 Scale object without the resource's annotations, so each
+  # kind listed here gets its own policy that reads the resource itself as a param and applies
+  # the same rule as for any other change: anyone on a Public resource, only the owner on an
+  # OwnerOnly one, plus admins and the controllers above. The scale subresource of a kind not
+  # listed here is not governed. apiVersion is the version the param is read in; resource must
+  # also appear in governedResources.
+  scaleOwnership:
+    - apiVersion: inference.sagemaker.aws.amazon.com/v1
+      kind: InferenceEndpointConfig
+      resource: inferenceendpointconfigs
+    - apiVersion: inference.sagemaker.aws.amazon.com/v1
+      kind: JumpStartModel
+      resource: jumpstartmodels
+  # Optional override of the binding's namespaceSelector. Leave empty to apply to every
+  # namespace except excludedNamespaces, or set it to scope the policy to selected namespaces.
+  namespaceSelector: {}
+
+## Mutating webhook (CREATE stamp, runs as a Deployment).
+webhook:
+  enable: true
+  port: 9443
+  # Fail closed: a resource created while the webhook is down would get no created-by, could
+  # never get one later (it's immutable), and would stay modifiable by anyone. A webhook outage
+  # therefore blocks creates of the governed kinds, and only those: the rules match only those
+  # kinds and the excluded namespaces are skipped.
+  failurePolicy: Fail
+  # How long the API server waits for the webhook before applying failurePolicy (1-30). Kept at
+  # the Kubernetes default: the stamp does no I/O, so there is no slow path to bound.
+  timeoutSeconds: 10
+
+manager:
+  replicas: 2
+  image:
+    pullPolicy: IfNotPresent
+  # Port for the /healthz and /readyz endpoints
+  healthProbePort: 8081
+  # Log level (debug, info, error)
+  logLevel: info
+  # Optional priority class, so the webhook isn't evicted before workloads under node pressure.
+  # The webhook fails closed, so losing every replica blocks governed CREATEs.
+  priorityClassName: ""
+  args: []
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+  podSecurityContext:
+    runAsNonRoot: true
+    # The image's non-root user (65532:65532), set here too so the pod runs as it whatever image
+    # is used.
+    runAsUser: 65532
+    runAsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  podDisruptionBudget:
+    # Minimum webhook pods kept running during voluntary disruptions (node drains). Always
+    # created with the webhook: the webhook fails closed, so losing every replica blocks
+    # governed CREATEs.
+    minAvailable: 1
+  # Run on HyperPod-managed amd64 nodes, as the Ray endpoint operator does (the image is amd64
+  # only)
+  nodeSelector:
+    kubernetes.io/arch: amd64
+    sagemaker.amazonaws.com/compute-type: hyperpod
+  tolerations: []
+  affinity: {}
+
+## cert-manager issues the webhook serving certificate and injects its CA into the
+## MutatingWebhookConfiguration. Required when webhook.enable is true; rendering fails otherwise.
+certManager:
+  enable: true
