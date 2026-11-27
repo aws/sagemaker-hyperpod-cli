@@ -57,8 +57,10 @@ webhook:
     # tag: ""
 
     ## Image digest, "sha256:<64 hex>". Pins the webhook to one image, which a tag does not.
+    ## Defaults to the image this chart version is tested with, published as 1.0.26.0_1.0.5.0
+    ## with this digest in every supported Region. Set it to "" to use the tag instead.
     ##
-    digest: ""
+    digest: "sha256:4b339946caf1143e93124a14c849fc05bc7f61cd53550f7f1a47f930220ba759"
 
     ## Override the full image URI, pinned by digest ("<repository>@sha256:<64 hex>"; a tag isn't
     ## accepted). If specified, this overrides the automatic region-based URI selection.

@@ -334,8 +334,9 @@ hyperpod-resource-ownership:
   image:
     # Image tag override (defaults to the tested published tag)
     # tag: ""
-    # Image digest, "sha256:<64 hex>"; pins one image and takes precedence over tag
-    digest: ""
+    # Image digest, "sha256:<64 hex>"; pins one image and takes precedence over tag. Defaults to
+    # the tested image (published as 1.0.20.0_1.0.3.0); set "" to use the tag instead.
+    digest: "sha256:c52787e71e3da26cb25c0c08a271dbbf37d5eb5a037d38e9b790973613fef884"
     # Override the full image URI (skips region-based resolution)
     override: ""
 
@@ -358,7 +359,8 @@ hyperpod-compute-configuration:
     image:
       # Image tag override (defaults to the tested published tag)
       # tag: ""
-      # Image digest, "sha256:<64 hex>"; pins one image and takes precedence over tag
-      digest: ""
+      # Image digest, "sha256:<64 hex>"; pins one image and takes precedence over tag. Defaults
+      # to the tested image (published as 1.0.26.0_1.0.5.0); set "" to use the tag instead.
+      digest: "sha256:4b339946caf1143e93124a14c849fc05bc7f61cd53550f7f1a47f930220ba759"
       # Override the full image URI, pinned by digest (skips region-based resolution)
       override: ""
